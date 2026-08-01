@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,7 +11,10 @@ import 'fixtures/kcsapi_fixtures.dart';
 
 void main() {
   setUpAll(() async {
-    final fontBytes = await File(r'C:\Windows\Fonts\msyh.ttc').readAsBytes();
+    final separator = Platform.pathSeparator;
+    final fontBytes = await File(
+      'assets${separator}fonts${separator}HarmonyOS_Sans_SC.ttf',
+    ).readAsBytes();
     await (FontLoader(
       'PreviewCjk',
     )..addFont(Future<ByteData>.value(ByteData.sublistView(fontBytes)))).load();
@@ -128,6 +131,22 @@ void main() {
   });
 }
 
+File _materialIconsFont() {
+  final separator = Platform.pathSeparator;
+  var directory = File(Platform.resolvedExecutable).parent;
+  while (directory.parent.path != directory.path) {
+    final candidate = File(
+      '${directory.path}${separator}bin${separator}cache${separator}artifacts'
+      '${separator}material_fonts${separator}MaterialIcons-Regular.otf',
+    );
+    if (candidate.existsSync()) {
+      return candidate;
+    }
+    directory = directory.parent;
+  }
+  throw StateError('Unable to locate the Flutter Material Icons font.');
+}
+
 GameState _combinedFleetState() {
   const friendNames = <String>[
     '大和改二',
@@ -221,20 +240,4 @@ GameState _combinedFleetState() {
     hasMasterData: true,
     hasPortData: true,
   );
-}
-
-File _materialIconsFont() {
-  final separator = Platform.pathSeparator;
-  var directory = File(Platform.resolvedExecutable).parent;
-  while (directory.parent.path != directory.path) {
-    final candidate = File(
-      '${directory.path}${separator}bin${separator}cache${separator}artifacts'
-      '${separator}material_fonts${separator}MaterialIcons-Regular.otf',
-    );
-    if (candidate.existsSync()) {
-      return candidate;
-    }
-    directory = directory.parent;
-  }
-  throw StateError('Unable to locate the Flutter Material Icons font.');
 }
