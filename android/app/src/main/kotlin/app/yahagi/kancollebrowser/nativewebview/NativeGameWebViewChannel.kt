@@ -166,7 +166,12 @@ internal class NativeWebViewActivityStartupCoordinator(
     private var restartRequested = false
 
     fun begin(storedMode: String?): NativeWebViewActivityStartupOutcome {
-        if (storedMode != NATIVE_ACTIVITY_RENDERING_MODE) {
+        // Match Dart GameRenderingModeCodec: missing/unknown preferences use native mode.
+        val renderingMode = when (storedMode) {
+            "standard", "compatibility", "canvasCompatibility" -> storedMode
+            else -> NATIVE_ACTIVITY_RENDERING_MODE
+        }
+        if (renderingMode != NATIVE_ACTIVITY_RENDERING_MODE) {
             return NativeWebViewActivityStartupOutcome.Unavailable(
                 "native_webview_unavailable",
                 "Native Activity WebView mode is not active.",

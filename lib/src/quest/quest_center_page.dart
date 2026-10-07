@@ -7,6 +7,7 @@ import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/quest_text_normalizer.dart';
 import '../layout/adaptive_layout.dart';
+import '../settings/display_mode_store.dart';
 import '../widgets/filter_controls.dart';
 import '../widgets/adaptive_input_dialog.dart';
 import 'quest_catalog.dart';
@@ -490,6 +491,7 @@ class QuestCenterPage extends StatefulWidget {
     required this.controller,
     this.initialQuestId,
     this.showTitle = true,
+    this.displayMode = DisplayMode.auto,
     this.mode = QuestCenterMode.active,
     this.onModeChanged,
     this.catalog,
@@ -502,6 +504,7 @@ class QuestCenterPage extends StatefulWidget {
   final GameStateController controller;
   final int? initialQuestId;
   final bool showTitle;
+  final DisplayMode displayMode;
   final QuestCenterMode mode;
   final ValueChanged<QuestCenterMode>? onModeChanged;
   final QuestCatalog? catalog;
@@ -676,13 +679,21 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
                               : selected.detail,
                           onRelationSelected: _selectRelation,
                         );
+                        final windowSize = MediaQuery.sizeOf(context);
                         final unfoldedSquare =
-                            constraints.maxWidth >= compactWindowShortestSide &&
-                            classifyAdaptiveWindow(
-                                  MediaQuery.sizeOf(context),
-                                ) ==
-                                AdaptiveWindowClass.nearSquareLarge;
-                        if (constraints.maxWidth < 760 && !unfoldedSquare) {
+                            classifyAdaptiveWindow(windowSize) ==
+                            AdaptiveWindowClass.nearSquareLarge;
+                        // Expanded near-square screens keep both panes visible
+                        // in every display mode, even with a narrow side menu.
+                        final horizontal =
+                            unfoldedSquare ||
+                            switch (widget.displayMode) {
+                              DisplayMode.landscape => true,
+                              DisplayMode.portrait => false,
+                              DisplayMode.auto =>
+                                windowSize.width > windowSize.height,
+                            };
+                        if (!horizontal) {
                           final detailMin = _mode == QuestCenterMode.all
                               ? 310.0
                               : 330.0;
@@ -935,12 +946,14 @@ class _QuestCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(9),
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: [
-              Container(
-                width: 5,
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 5,
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: accent,
                   borderRadius: const BorderRadius.horizontal(
@@ -948,62 +961,102 @@ class _QuestCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 11),
-              Expanded(
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 64),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 10, 8),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        _QuestCodeTag(
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final code = _QuestCodeTag(
                           key: Key('quest-card-code-${entry.id}'),
                           code: entry.code,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            entry.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
+                        );
+                        final narrow =
+                            constraints.maxWidth <
+                            MediaQuery.textScalerOf(context).scale(160);
+                        final title = Text(
+                          entry.title,
+                          maxLines: narrow ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
                           ),
-                        ),
-                      ],
+                        );
+                        if (narrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FittedBox(fit: BoxFit.scaleDown, child: code),
+                              const SizedBox(height: 3),
+                              title,
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            code,
+                            const SizedBox(width: 6),
+                            Expanded(child: title),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        _SmallTag(
-                          label: entry.categoryLabel(context),
-                          color: entry.categoryColor,
-                        ),
-                        const SizedBox(width: 5),
-                        _SmallTag(
-                          label: entry.periodLabel(context),
-                          color: entry.periodColor,
-                        ),
-                        const SizedBox(width: 5),
-                        _SmallTag(
-                          label: entry.progressLabel,
-                          color: entry.progressColor,
-                        ),
-                        const Spacer(),
-                        _StatusBadge(
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final tags = <Widget>[
+                          _SmallTag(
+                            label: entry.categoryLabel(context),
+                            color: entry.categoryColor,
+                          ),
+                          _SmallTag(
+                            label: entry.periodLabel(context),
+                            color: entry.periodColor,
+                          ),
+                          _SmallTag(
+                            label: entry.progressLabel,
+                            color: entry.progressColor,
+                          ),
+                        ];
+                        final status = _StatusBadge(
                           key: Key('quest-card-status-${entry.id}'),
                           entry: entry,
-                        ),
-                      ],
+                        );
+                        if (constraints.maxWidth <
+                            MediaQuery.textScalerOf(context).scale(200)) {
+                          return Wrap(
+                            spacing: 5,
+                            runSpacing: 3,
+                            children: [...tags, status],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: Wrap(
+                                spacing: 5,
+                                runSpacing: 3,
+                                children: tags,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            status,
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1157,19 +1210,26 @@ class _QuestDetail extends StatelessWidget {
             const SizedBox(height: 8),
             _DetailCard(
               title: l10n.baseReward,
-              child: entry.rewardsText.isNotEmpty
-                  ? Text(entry.rewardsText)
-                  : Wrap(
-                      spacing: 18,
-                      runSpacing: 9,
-                      children: [
-                        for (var index = 0; index < 4; index++)
-                          _MaterialReward(
-                            assetIndex: index + 1,
-                            value: entry.materials[index],
-                          ),
-                      ],
-                    ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 18,
+                    runSpacing: 9,
+                    children: [
+                      for (var index = 0; index < 4; index++)
+                        _MaterialReward(
+                          assetIndex: index + 1,
+                          value: entry.materials[index],
+                        ),
+                    ],
+                  ),
+                  if (entry.rewardsText.isNotEmpty) ...[
+                    const SizedBox(height: 9),
+                    Text(entry.rewardsText),
+                  ],
+                ],
+              ),
             ),
             if (entry.prerequisites.isNotEmpty ||
                 entry.successors.isNotEmpty) ...[
@@ -1551,7 +1611,7 @@ class _QuestViewEntry {
           : QuestStatus.inProgress,
       allMode: false,
       materials: quest.materials,
-      rewardsText: '',
+      rewardsText: doc?.rewards ?? '',
       memo: doc?.memo ?? '',
       exactProgress: quest.exactProgressLabel,
       prerequisites: doc == null
@@ -1582,7 +1642,7 @@ class _QuestViewEntry {
       unlockState: item.unlockState,
       status: item.status,
       allMode: true,
-      materials: live?.materials ?? const <int>[0, 0, 0, 0],
+      materials: live?.materials ?? doc.materials,
       rewardsText: doc.rewards,
       memo: doc.memo,
       exactProgress: live?.exactProgressLabel,

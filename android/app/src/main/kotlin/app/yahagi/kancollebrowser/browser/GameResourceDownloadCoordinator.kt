@@ -91,6 +91,9 @@ class GameResourceDownloadCoordinator(
     private var outdatedCount = 0
     private var validByteLengths = linkedMapOf<String, Long>()
     private var expectedByteLengths = linkedMapOf<String, Long>()
+    // A metadata-only hit cannot clear a checksum failure discovered by an explicit check.
+    // This set belongs to the active manifest and is only accessed under this monitor.
+    private var checksumRequiredUrls = linkedSetOf<String>()
     private var state = GameResourceDownloadState.IDLE
     private var preloadAuthorized = false
 
@@ -216,6 +219,7 @@ class GameResourceDownloadCoordinator(
             userPaused = false
         }
         validByteLengths = LinkedHashMap(prepared.validByteLengths)
+        checksumRequiredUrls = linkedSetOf()
         cachedBytesSnapshot = validByteLengths.values.sum()
         missingCount = prepared.missingCount
         damagedCount = prepared.damagedCount
@@ -270,6 +274,7 @@ class GameResourceDownloadCoordinator(
                 outdatedCount = 0
                 validByteLengths = linkedMapOf()
                 expectedByteLengths = linkedMapOf()
+                checksumRequiredUrls = linkedSetOf()
                 preloadAuthorized = false
                 userPaused = isDisabled
             }
@@ -456,8 +461,11 @@ class GameResourceDownloadCoordinator(
                     }
                     return
                 }
-                val expectedLength = synchronized(this) { expectedByteLengths[url] }
-                if (engine.hasCachedMetadata(url, expectedLength)) continue
+                val (expectedLength, requiresChecksum) = synchronized(this) {
+                    if (workerGeneration != generation.get()) return
+                    expectedByteLengths[url] to (url in checksumRequiredUrls)
+                }
+                if (!requiresChecksum && engine.hasCachedMetadata(url, expectedLength)) continue
                 val response = try {
                     engine.fetch(
                         url,
@@ -537,7 +545,7 @@ class GameResourceDownloadCoordinator(
     private fun refreshInspectionCounts(verifyChecksum: Boolean = false) {
         val inspections = urls.associateWith { url ->
             val expectedLength = expectedByteLengths[url]
-            if (verifyChecksum) {
+            if (verifyChecksum || url in checksumRequiredUrls) {
                 engine.inspect(url, expectedLength)
             } else {
                 engine.inspectMetadata(url, expectedLength)
@@ -545,6 +553,11 @@ class GameResourceDownloadCoordinator(
         }
         validByteLengths.clear()
         inspections.forEach { (url, inspection) ->
+            if (inspection.state == GameResourceInspectionState.DAMAGED) {
+                checksumRequiredUrls.add(url)
+            } else {
+                checksumRequiredUrls.remove(url)
+            }
             if (inspection.state == GameResourceInspectionState.VALID) {
                 validByteLengths[url] = inspection.byteLength
             }
@@ -710,6 +723,7 @@ class GameResourceDownloadCoordinator(
         outdatedCount = outdatedCount,
         validByteLengths = validByteLengths,
         expectedByteLengths = expectedByteLengths,
+        checksumRequiredUrls = checksumRequiredUrls,
         state = state,
         preloadAuthorized = preloadAuthorized,
         pauseRequested = pauseRequested,
@@ -731,6 +745,7 @@ class GameResourceDownloadCoordinator(
         outdatedCount = snapshot.outdatedCount
         validByteLengths = snapshot.validByteLengths
         expectedByteLengths = snapshot.expectedByteLengths
+        checksumRequiredUrls = snapshot.checksumRequiredUrls
         state = snapshot.state
         preloadAuthorized = snapshot.preloadAuthorized
         pauseRequested = snapshot.pauseRequested
@@ -813,6 +828,7 @@ class GameResourceDownloadCoordinator(
         val outdatedCount: Int,
         val validByteLengths: LinkedHashMap<String, Long>,
         val expectedByteLengths: LinkedHashMap<String, Long>,
+        val checksumRequiredUrls: LinkedHashSet<String>,
         val state: GameResourceDownloadState,
         val preloadAuthorized: Boolean,
         val pauseRequested: Boolean,

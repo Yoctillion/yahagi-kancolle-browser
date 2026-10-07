@@ -1,5 +1,6 @@
 import '../settings/fleet_display_options.dart';
 import 'package:flutter/material.dart';
+import '../battle/prophet_hp_bar.dart';
 import 'fleet_ui_strings.dart';
 import 'fleet_ship_type_label.dart';
 
@@ -466,6 +467,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                                     value:
                                                         '${ship.currentHp}/${ship.maxHp}',
                                                     ratio: hpRatio,
+                                                    showHpThresholds: true,
                                                     valueColor:
                                                         shipHpValueColor(
                                                           hpRatio,
@@ -625,6 +627,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
               ),
         value: '$current/$max',
         ratio: ratio,
+        showHpThresholds: hp,
         valueColor: hp
             ? shipHpValueColor(ratio, isZeroHp: current <= 0)
             : shipSupplyValueColor(ratio),
@@ -793,6 +796,7 @@ class CompactStatusMeter extends StatelessWidget {
     this.trackKey,
     this.showTrack = true,
     this.alignRight = false,
+    this.showHpThresholds = false,
   });
 
   final double height;
@@ -805,6 +809,7 @@ class CompactStatusMeter extends StatelessWidget {
   final Key? trackKey;
   final bool showTrack;
   final bool alignRight;
+  final bool showHpThresholds;
 
   @override
   Widget build(BuildContext context) {
@@ -878,16 +883,23 @@ class CompactStatusMeter extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(
-                        widthFactor: ratio,
-                        heightFactor: 1.0,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: barColor,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                      ),
+                      child: showHpThresholds
+                          ? ProphetHpBar(
+                              value: ratio,
+                              color: barColor,
+                              backgroundColor: const Color(0xff294052),
+                              height: height * 0.45,
+                            )
+                          : FractionallySizedBox(
+                              widthFactor: ratio,
+                              heightFactor: 1.0,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: barColor,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                 ),

@@ -24,75 +24,6 @@ enum class GameFrameRateTarget(val wireName: String) {
     }
 }
 
-internal object GameFrameRateBridgeScript {
-    const val objectName = "YahagiFrameRate"
-
-    val source: String =
-        """
-        (() => {
-          'use strict';
-          if (window.__yahagiFrameRateBridgeInstalled) return;
-
-          const bridge = window.YahagiFrameRate;
-          if (!bridge || typeof bridge.postMessage !== 'function') return;
-          window.__yahagiFrameRateBridgeInstalled = true;
-          let requestedTarget = 'fps60';
-
-          const applyTarget = () => {
-            const ticker = window.createjs && window.createjs.Ticker;
-            if (!ticker) return false;
-            if (requestedTarget === 'highRefresh') {
-              if (typeof ticker.RAF === 'undefined') return false;
-              if (ticker.timingMode !== ticker.RAF) {
-                ticker.timingMode = ticker.RAF;
-              }
-            } else if (requestedTarget === 'fps30') {
-              if (ticker.framerate !== 30) ticker.framerate = 30;
-              if (ticker.timingMode !== ticker.TIMEOUT) {
-                ticker.timingMode = ticker.TIMEOUT;
-              }
-            } else {
-              if (ticker.framerate !== 60) ticker.framerate = 60;
-              const cappedMode = typeof ticker.RAF_SYNCHED !== 'undefined'
-                ? ticker.RAF_SYNCHED
-                : ticker.TIMEOUT;
-              if (ticker.timingMode !== cappedMode) {
-                ticker.timingMode = cappedMode;
-              }
-            }
-            return true;
-          };
-
-          bridge.onmessage = (event) => {
-            try {
-              const data = typeof event.data === 'string'
-                ? JSON.parse(event.data)
-                : event.data;
-              if (data && (
-                data.target === 'fps30' ||
-                data.target === 'fps60' ||
-                data.target === 'highRefresh'
-              )) {
-                requestedTarget = data.target;
-                applyTarget();
-              }
-            } catch (_) {}
-          };
-
-          bridge.postMessage(JSON.stringify({kind: 'ready'}));
-          window.setInterval(() => {
-            if (!applyTarget()) return;
-            const ticker = window.createjs && window.createjs.Ticker;
-            if (!ticker || typeof ticker.getMeasuredFPS !== 'function') return;
-            const fps = Number(ticker.getMeasuredFPS());
-            if (Number.isFinite(fps) && fps >= 0) {
-              bridge.postMessage(JSON.stringify({kind: 'sample', fps: fps}));
-            }
-          }, 1000);
-        })();
-        """.trimIndent()
-}
-
 class GameFrameRateBridge(
     private val activity: Activity,
     private val originPolicy: CaptureOriginPolicy = CaptureOriginPolicy(),
@@ -108,6 +39,8 @@ class GameFrameRateBridge(
     private val replyProxies = mutableMapOf<String, JavaScriptReplyProxy>()
     private var latestFps: Double? = null
     private var latestFpsAtMillis = 0L
+    private var latestPerformanceSample: GameFramePerformanceSample? = null
+    private var originalLayerType: Int? = null
 
     fun isSupported(): Boolean =
         WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) &&
@@ -115,6 +48,7 @@ class GameFrameRateBridge(
 
     @Throws(GameFrameRateBridgeException::class)
     fun configure(target: GameFrameRateTarget) {
+        if (this.target != target) clearSample()
         this.target = target
         if (!isSupported()) {
             throw GameFrameRateBridgeException(
@@ -163,6 +97,7 @@ class GameFrameRateBridge(
     }
 
     fun apply(target: GameFrameRateTarget) {
+        if (this.target != target) clearSample()
         this.target = target
         postTargetToAllFrames()
     }
@@ -173,6 +108,49 @@ class GameFrameRateBridge(
             return null
         }
         return fps
+    }
+
+    /** A cached one-second game sample. Reading it does not schedule more drawing. */
+    fun performanceSnapshot(): Map<String, Any?> {
+        val age = if (latestFpsAtMillis == 0L) null else
+            SystemClock.elapsedRealtime() - latestFpsAtMillis
+        val fresh = age != null && age <= SAMPLE_MAX_AGE_MILLIS
+        return mapOf(
+            "target" to target.wireName,
+            "sampleAgeMs" to age,
+            "fresh" to fresh,
+            "sample" to if (fresh) latestPerformanceSample?.toMap() else null,
+            "layerMode" to when (attachedWebView?.layerType) {
+                View.LAYER_TYPE_HARDWARE -> "hardware"
+                View.LAYER_TYPE_NONE -> "platformDefault"
+                else -> "unknown"
+            },
+            "hardwareAccelerated" to attachedWebView?.isHardwareAccelerated,
+            "displayRefreshRate" to attachedWebView?.display?.refreshRate,
+        )
+    }
+
+    /** Transient A/B override; restore on dispose and never select software rendering. */
+    fun setLayerMode(mode: String): Boolean {
+        val webView = attachedWebView ?: return false
+        val layer = when (mode) {
+            "hardware" -> View.LAYER_TYPE_HARDWARE
+            "platformDefault" -> View.LAYER_TYPE_NONE
+            "restore" -> originalLayerType ?: webView.layerType
+            else -> return false
+        }
+        if (originalLayerType == null && mode != "restore") {
+            originalLayerType = webView.layerType
+        }
+        webView.setLayerType(layer, null)
+        if (mode == "restore") originalLayerType = null
+        return true
+    }
+
+    private fun clearSample() {
+        latestFps = null
+        latestFpsAtMillis = 0L
+        latestPerformanceSample = null
     }
 
     fun dispose() = disable()
@@ -203,11 +181,11 @@ class GameFrameRateBridge(
                 }
             }
             "sample" -> {
-                val fps = payload.optDouble("fps", Double.NaN)
-                if (fps.isFinite() && fps in 0.0..240.0) {
-                    latestFps = fps
-                    latestFpsAtMillis = SystemClock.elapsedRealtime()
-                }
+                val sample = GameFramePerformanceSample.fromJson(payload) ?: return
+                if (sample.target != target.wireName) return
+                latestPerformanceSample = sample
+                latestFps = if (sample.isUsableForAuto(target.wireName)) sample.fps else null
+                latestFpsAtMillis = SystemClock.elapsedRealtime()
             }
         }
     }
@@ -230,13 +208,14 @@ class GameFrameRateBridge(
 
     private fun disable() {
         val webView = attachedWebView
+        if (webView != null) originalLayerType?.let { webView.setLayerType(it, null) }
+        originalLayerType = null
         scriptHandler?.remove()
         scriptHandler = null
         if (webView != null) disableWebView(webView)
         attachedWebView = null
         replyProxies.clear()
-        latestFps = null
-        latestFpsAtMillis = 0L
+        clearSample()
     }
 
     private fun disableWebView(webView: WebView) {

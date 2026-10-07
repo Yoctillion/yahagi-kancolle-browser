@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/quest_text_normalizer.dart';
+import 'quest_reward_corrections.dart';
 import 'quest_translation_fallbacks.dart';
 
 enum QuestUnlockState { unlocked, locked, completed, unknown }
@@ -25,6 +26,7 @@ class QuestCatalogEntry {
     required this.description,
     this.translatedName,
     this.translatedDescription,
+    this.materials = const <int>[0, 0, 0, 0],
     this.rewards = '',
     this.memo = '',
     this.prerequisites = const <String>[],
@@ -36,6 +38,7 @@ class QuestCatalogEntry {
   final String description;
   final String? translatedName;
   final String? translatedDescription;
+  final List<int> materials;
   final String rewards;
   final String memo;
   final List<String> prerequisites;
@@ -66,6 +69,7 @@ class QuestCatalogEntry {
 
   factory QuestCatalogEntry.fromJson(int gameId, Map<String, Object?> json) {
     final fallback = questTranslationFallbacks[gameId];
+    final rewardJson = correctQuestRewardData(gameId, json);
     return QuestCatalogEntry(
       gameId: gameId,
       code: (json['code'] as String? ?? gameId.toString()).trim(),
@@ -74,13 +78,39 @@ class QuestCatalogEntry {
       translatedName: _nonEmptyString(json['nameZh']) ?? fallback?.name,
       translatedDescription:
           _normalizedNonEmptyString(json['descZh']) ?? fallback?.description,
-      rewards: json['rewards'] as String? ?? json['memo'] as String? ?? '',
+      materials: _questMaterials(rewardJson['resources']),
+      rewards:
+          rewardJson['rewards'] as String? ?? json['memo'] as String? ?? '',
       memo: json['memo2'] as String? ?? '',
       prerequisites: (json['pre'] as List<Object?>? ?? const <Object?>[])
           .whereType<String>()
           .toList(growable: false),
     );
   }
+}
+
+List<int> _questMaterials(Object? resources) {
+  if (resources == null) return const <int>[0, 0, 0, 0];
+  if (resources is! List ||
+      resources.isEmpty ||
+      resources.first is! List ||
+      (resources.first as List).length != 4) {
+    throw const FormatException('Quest fixed resource rewards are invalid');
+  }
+  // The second row describes consumables already included in rewards text.
+  return List<int>.unmodifiable(
+    (resources.first as List).map((value) {
+      // Keep legacy blank-cell compatibility after verified corrections above.
+      if (value is String && value.trim().isEmpty) return 0;
+      if (value is! num ||
+          !value.isFinite ||
+          value < 0 ||
+          value != value.toInt()) {
+        throw const FormatException('Quest fixed resource amount is invalid');
+      }
+      return value.toInt();
+    }),
+  );
 }
 
 String? _nonEmptyString(Object? value) {
@@ -174,6 +204,7 @@ class QuestCatalog {
               translatedName: entry.translatedName ?? local.translatedName,
               translatedDescription:
                   entry.translatedDescription ?? local.translatedDescription,
+              materials: entry.materials,
               rewards: entry.rewards,
               memo: entry.memo.trim().isEmpty ? local.memo : entry.memo,
               prerequisites: entry.prerequisites,

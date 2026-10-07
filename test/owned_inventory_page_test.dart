@@ -23,6 +23,52 @@ import 'fixtures/kcsapi_fixtures.dart';
 void main() {
   setUp(() => GameStateController.disableTimerForTest = true);
 
+  testWidgets('land-base-only updates invalidate equipment counts', (
+    tester,
+  ) async {
+    final controller = GameStateController(
+      initialState: const GameState(
+        hasPortData: true,
+        slotItems: {10: OwnedSlotItem(id: 10, masterId: 168)},
+        masterSlotItems: {
+          168: MasterSlotItem(id: 168, name: 'fixture', type: [0, 0, 47]),
+        },
+      ),
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OwnedInventoryPage(controller: controller, showShips: false),
+        ),
+      ),
+    );
+    expect(find.text('1（1）'), findsOneWidget);
+    controller.accept(
+      kcsapiEvent('/kcsapi/api_get_member/mapinfo', {
+        'api_map_info': <Object?>[],
+        'api_air_base': [
+          {
+            'api_area_id': 6,
+            'api_rid': 1,
+            'api_name': 'fixture',
+            'api_plane_info': [
+              {
+                'api_squadron_id': 1,
+                'api_state': 1,
+                'api_slotid': 10,
+                'api_count': 0,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    await controller.idle;
+    await tester.pump();
+    expect(find.text('1（0）'), findsOneWidget);
+  });
+
   testWidgets('owned equipment rank follows received inventory updates', (
     tester,
   ) async {

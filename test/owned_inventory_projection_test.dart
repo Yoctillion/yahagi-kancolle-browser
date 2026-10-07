@@ -49,6 +49,76 @@ void main() {
     ],
   );
 
+  test('remaining counts ship and known land-base instance union once', () {
+    final base = fixture();
+    final state = base.copyWith(
+      ships: {
+        ...base.ships,
+        1: const OwnedShip(
+          id: 1,
+          masterId: 101,
+          level: 98,
+          slotIds: [301, 301],
+          extraSlotId: 302,
+        ),
+      },
+      landBases: const [
+        LandBaseState(
+          areaId: 6,
+          baseId: 1,
+          name: 'fixture',
+          squadrons: [
+            LandBaseSquadronState(squadronId: 1, state: 1, slotItemId: 301),
+            LandBaseSquadronState(
+              squadronId: 2,
+              state: 2,
+              slotItemId: 303,
+              currentCount: 0,
+            ),
+            LandBaseSquadronState(
+              squadronId: 3,
+              state: 1,
+              slotItemId: 304,
+              currentCount: 0,
+            ),
+            LandBaseSquadronState(squadronId: 4, state: 1, slotItemId: 304),
+            LandBaseSquadronState(squadronId: 5, state: 1, slotItemId: 999),
+            LandBaseSquadronState(squadronId: 6, state: 1, slotItemId: -1),
+          ],
+        ),
+      ],
+    );
+    final groups = OwnedInventoryProjection(state).equipmentGroups();
+    expect(groups.map((g) => g.total), [3, 1]);
+    expect(groups.map((g) => g.remaining), [0, 0]);
+    expect(groups.first.wearings.single.count, 2);
+    expect(groups.last.wearings, isEmpty);
+    final empty = state.copyWith(
+      landBases: const [
+        LandBaseState(
+          areaId: 6,
+          baseId: 1,
+          name: 'fixture',
+          squadrons: [
+            LandBaseSquadronState(squadronId: 1, state: 0, slotItemId: 303),
+            LandBaseSquadronState(squadronId: 2, state: 9, slotItemId: 304),
+          ],
+        ),
+      ],
+    );
+    expect(
+      OwnedInventoryProjection(empty).equipmentGroups().map((g) => g.remaining),
+      [1, 1],
+    );
+    // Empty captured data preserves the existing count contract; completeness is unknown.
+    expect(
+      OwnedInventoryProjection(
+        state.copyWith(landBases: const []),
+      ).equipmentGroups().map((g) => g.remaining),
+      [1, 1],
+    );
+  });
+
   test('keeps battleships combined and splits carrier categories', () {
     List<int> matches(ShipInventoryCategory category) => [
       for (var typeId = 1; typeId <= 22; typeId++)

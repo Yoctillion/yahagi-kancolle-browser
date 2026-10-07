@@ -57,7 +57,8 @@ final class MethodChannelScreenAwakePort implements ScreenAwakePort {
 }
 
 final class ScreenAwakeController extends ChangeNotifier {
-  ScreenAwakeController._(this._store, this._enabled);
+  ScreenAwakeController._(this._store, this._enabled)
+    : _savedEnabled = _enabled;
 
   static Future<ScreenAwakeController> load(ScreenAwakeStore store) async {
     return ScreenAwakeController._(store, await store.readEnabled() ?? false);
@@ -69,46 +70,67 @@ final class ScreenAwakeController extends ChangeNotifier {
   bool _foreground = true;
   bool? _lastApplied;
   String? _errorMessage;
+  bool _savedEnabled;
+  bool _disposed = false;
+  int _portGeneration = 0;
+  int _settingsRevision = 0;
+  Future<void> _nativeTail = Future<void>.value();
+  Future<void> _settingsTail = Future<void>.value();
 
   bool get enabled => _enabled;
   String? get errorMessage => _errorMessage;
   bool get _effectiveEnabled => _enabled && _foreground;
 
   Future<void> attachPort(ScreenAwakePort port) async {
+    if (_disposed) return;
     _port = port;
+    final generation = ++_portGeneration;
     _lastApplied = null;
     try {
       await _apply();
     } catch (error) {
+      if (_disposed || generation != _portGeneration) return;
       _errorMessage = '屏幕常亮不可用：$error';
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> setEnabled(bool enabled) async {
-    if (_enabled == enabled) {
+    if (_disposed || _enabled == enabled) {
       return;
     }
-    final previous = _enabled;
+    final revision = ++_settingsRevision;
     _enabled = enabled;
     _errorMessage = null;
-    notifyListeners();
-    try {
-      await _store.writeEnabled(enabled);
-      await _apply();
-    } catch (error) {
-      _enabled = previous;
-      _errorMessage = '屏幕常亮设置失败：$error';
-      await _store.writeEnabled(previous);
+    _notify();
+    final result = _settingsTail.then((_) async {
+      if (_disposed || revision != _settingsRevision) return;
+      final previous = _savedEnabled;
       try {
-        _lastApplied = null;
+        await _store.writeEnabled(enabled);
+        _savedEnabled = enabled;
         await _apply();
-      } catch (_) {}
-      notifyListeners();
-    }
+      } catch (error) {
+        if (_disposed || revision != _settingsRevision) return;
+        _enabled = previous;
+        try {
+          await _store.writeEnabled(previous);
+          _savedEnabled = previous;
+        } catch (_) {}
+        try {
+          await _apply();
+        } catch (_) {}
+        if (_disposed || revision != _settingsRevision) return;
+        _errorMessage = '屏幕常亮设置失败：$error';
+        _notify();
+      }
+    });
+    _settingsTail = result.catchError((Object _) {});
+    await result;
   }
 
   Future<void> handleLifecycleState(AppLifecycleState state) async {
+    if (_disposed) return;
     final foreground = state == AppLifecycleState.resumed;
     if (_foreground == foreground) {
       return;
@@ -118,23 +140,50 @@ final class ScreenAwakeController extends ChangeNotifier {
       await _apply();
     } catch (error) {
       _errorMessage = '屏幕常亮同步失败：$error';
-      notifyListeners();
+      _notify();
     }
   }
 
-  Future<void> _apply() async {
-    final port = _port;
-    final target = _effectiveEnabled;
-    if (port == null || _lastApplied == target) {
-      return;
+  Future<void> _apply() {
+    final result = _nativeTail.then((_) => _reconcileNative());
+    _nativeTail = result.catchError((Object _) {});
+    return result;
+  }
+
+  Future<void> _reconcileNative() async {
+    while (!_disposed) {
+      final port = _port;
+      final generation = _portGeneration;
+      final target = _effectiveEnabled;
+      if (port == null || _lastApplied == target) return;
+      try {
+        await port.setEnabled(target);
+        if (_disposed || generation != _portGeneration) continue;
+        final actual = await port.isEnabled();
+        if (_disposed || generation != _portGeneration) continue;
+        if (actual != target) {
+          throw StateError('native window flag did not match requested state');
+        }
+        _lastApplied = actual;
+      } catch (_) {
+        if (_disposed || generation != _portGeneration) continue;
+        _lastApplied = null;
+        rethrow;
+      }
+      _errorMessage = null;
+      _notify();
     }
-    await port.setEnabled(target);
-    final actual = await port.isEnabled();
-    if (actual != target) {
-      throw StateError('native window flag did not match requested state');
-    }
-    _lastApplied = actual;
-    _errorMessage = null;
-    notifyListeners();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    ++_portGeneration;
+    _port = null;
+    super.dispose();
   }
 }

@@ -18,6 +18,135 @@ class GameResourceDownloadCoordinatorTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
+    fun `repair replaces same length corruption and leaves healthy files cached`() {
+        val calls = AtomicInteger()
+        val fixture = fixture(fetcher = GameResourceFetcher { url, _, _ ->
+            calls.incrementAndGet()
+            response(byteArrayOf(if (url.contains("healthy.png")) 2 else 1))
+        })
+        val damaged = official("/kcs2/resources/damaged.png?version=1")
+        val healthy = official("/kcs2/resources/healthy.png?version=1")
+        fixture.engine.fetch(damaged)
+        val entry = fixture.engine.entries().single()
+        fixture.engine.fetch(healthy)
+        val file = fixture.root.resolve("files/${entry.fileName}")
+        file.writeBytes(byteArrayOf(9))
+        fixture.coordinator.setManifest("full", listOf(damaged, healthy), 2, listOf(1, 1))
+        try {
+            assertEquals(1, fixture.coordinator.checkIntegrity().damagedCount)
+            assertTrue("Checking must not delete the damaged file", file.isFile)
+            assertTrue(fixture.coordinator.repair())
+            awaitState(fixture.coordinator, GameResourceDownloadState.COMPLETE)
+            assertEquals("Only the damaged resource is fetched again", 3, calls.get())
+            assertEquals(GameResourceInspectionState.VALID, fixture.engine.inspect(damaged, 1).state)
+            assertEquals(0, fixture.coordinator.status().damagedCount)
+        } finally { fixture.coordinator.dispose() }
+    }
+
+    @Test
+    fun `failed repair never reports complete and can be retried`() {
+        var fail = false
+        val calls = AtomicInteger()
+        val fixture = fixture(fetcher = GameResourceFetcher { _, _, _ ->
+            calls.incrementAndGet()
+            if (fail) null else response(byteArrayOf(1))
+        })
+        val url = official("/kcs2/resources/failure.png?version=1")
+        fixture.engine.fetch(url)
+        fixture.root.resolve("files/${fixture.engine.entries().single().fileName}").writeBytes(byteArrayOf(9))
+        fixture.coordinator.setManifest("full", listOf(url), 1, listOf(1))
+        try {
+            fail = true
+            assertTrue(fixture.coordinator.repair())
+            awaitState(fixture.coordinator, GameResourceDownloadState.IDLE)
+            assertEquals(2, calls.get())
+            assertFalse(fixture.engine.hasCached(url))
+            fail = false
+            assertTrue(fixture.coordinator.repair())
+            awaitState(fixture.coordinator, GameResourceDownloadState.COMPLETE)
+            assertEquals(GameResourceInspectionState.VALID, fixture.engine.inspect(url, 1).state)
+        } finally { fixture.coordinator.dispose() }
+    }
+
+    @Test
+    fun `repair handles removed and truncated files without refetching healthy data`() {
+        for (remove in listOf(false, true)) {
+            val calls = AtomicInteger()
+            val fixture = fixture(fetcher = GameResourceFetcher { _, _, _ ->
+                calls.incrementAndGet()
+                response(byteArrayOf(1, 2))
+            })
+            val url = official("/kcs2/resources/repair.png?version=1")
+            try {
+                fixture.engine.fetch(url)
+                val file = fixture.root.resolve("files/${fixture.engine.entries().single().fileName}")
+                if (remove) file.delete() else file.writeBytes(byteArrayOf(9))
+                fixture.coordinator.setManifest("full", listOf(url), 2, listOf(2))
+                assertTrue(fixture.coordinator.repair())
+                awaitState(fixture.coordinator, GameResourceDownloadState.COMPLETE)
+                assertEquals(2, calls.get())
+                assertEquals(GameResourceInspectionState.VALID, fixture.engine.inspect(url, 2).state)
+                assertTrue(fixture.coordinator.repair())
+                awaitState(fixture.coordinator, GameResourceDownloadState.COMPLETE)
+                assertEquals(2, calls.get())
+            } finally { fixture.coordinator.dispose() }
+        }
+    }
+
+    @Test
+    fun `a concurrent game fetch that repairs damage is reused by repair`() {
+        val calls = AtomicInteger()
+        val fixture = fixture(fetcher = GameResourceFetcher { _, _, _ ->
+            calls.incrementAndGet()
+            response(byteArrayOf(1))
+        })
+        val url = official("/kcs2/resources/concurrent.png?version=1")
+        try {
+            fixture.engine.fetch(url)
+            fixture.root.resolve("files/${fixture.engine.entries().single().fileName}").writeBytes(byteArrayOf(9))
+            fixture.coordinator.setManifest("full", listOf(url), 1, listOf(1))
+            assertEquals(1, fixture.coordinator.checkIntegrity().damagedCount)
+            fixture.engine.fetch(url)?.discard()
+            assertTrue(fixture.coordinator.startDownload())
+            awaitState(fixture.coordinator, GameResourceDownloadState.COMPLETE)
+            assertEquals(2, calls.get())
+            assertEquals(GameResourceInspectionState.VALID, fixture.engine.inspect(url, 1).state)
+        } finally { fixture.coordinator.dispose() }
+    }
+
+    @Test
+    fun `cancelled repair cannot store its response and resume repairs once`() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val calls = AtomicInteger()
+        val fixture = fixture(fetcher = GameResourceFetcher { _, _, _ ->
+            if (calls.incrementAndGet() == 2) {
+                entered.countDown()
+                check(release.await(5, TimeUnit.SECONDS))
+            }
+            response(byteArrayOf(1))
+        })
+        val url = official("/kcs2/resources/cancelled.png?version=1")
+        try {
+            fixture.engine.fetch(url)
+            fixture.root.resolve("files/${fixture.engine.entries().single().fileName}").writeBytes(byteArrayOf(9))
+            fixture.coordinator.setManifest("full", listOf(url), 1, listOf(1))
+            assertTrue(fixture.coordinator.repair())
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            assertFalse(fixture.engine.hasCached(url))
+            assertTrue(fixture.coordinator.cancelDownload())
+            release.countDown()
+            assertTrue(fixture.coordinator.startDownload())
+            awaitState(fixture.coordinator, GameResourceDownloadState.COMPLETE)
+            assertEquals(3, calls.get())
+            assertEquals(GameResourceInspectionState.VALID, fixture.engine.inspect(url, 1).state)
+        } finally {
+            release.countDown()
+            fixture.coordinator.dispose()
+        }
+    }
+
+    @Test
     fun `temporary mode never starts manifest download`() {
         val fixture = fixture(mode = GameResourceCacheMode.TEMPORARY)
         fixture.coordinator.setManifest(

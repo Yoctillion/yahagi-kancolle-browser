@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../battle/prophet_hp_bar.dart';
 import 'fleet_ui_strings.dart';
 import 'ship_remodel_capsule.dart';
 
@@ -603,6 +604,10 @@ class _FleetRosterPanel extends StatefulWidget {
 class _FleetRosterPanelState extends State<_FleetRosterPanel>
     with SingleTickerProviderStateMixin {
   late final AnimationController _sparklePulse;
+  final _rosterScroll = ScrollController();
+  double _rosterHeight = 0;
+  double _shipHeight = 0;
+  bool _tickerEnabled = true;
 
   @override
   void initState() {
@@ -610,11 +615,41 @@ class _FleetRosterPanelState extends State<_FleetRosterPanel>
     _sparklePulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1100),
-    )..repeat();
+    );
+    _rosterScroll.addListener(_syncSparkleAnimation);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tickerEnabled = TickerMode.valuesOf(context).enabled;
+    _syncSparkleAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FleetRosterPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncSparkleAnimation();
+  }
+
+  void _syncSparkleAnimation() {
+    final offset = _rosterScroll.hasClients ? _rosterScroll.offset : 0.0;
+    final visibleSparkle = widget.ships.asMap().entries.any((entry) {
+      final top = 8 + entry.key * (_shipHeight + 10) - offset;
+      return entry.value.condition >= 50 &&
+          top < _rosterHeight &&
+          top + _shipHeight > 0;
+    });
+    if (_tickerEnabled && widget.moraleSparkleEnabled && visibleSparkle) {
+      if (!_sparklePulse.isAnimating) _sparklePulse.repeat();
+    } else {
+      _sparklePulse.stop();
+    }
   }
 
   @override
   void dispose() {
+    _rosterScroll.dispose();
     _sparklePulse.dispose();
     super.dispose();
   }
@@ -626,21 +661,39 @@ class _FleetRosterPanelState extends State<_FleetRosterPanel>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(8),
-              itemCount: widget.ships.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final ship = widget.ships[index];
-                return _FleetRosterShipCapsule(
-                  state: widget.state,
-                  ship: ship,
-                  repairStatus: widget.repairStatuses[ship.id],
-                  selected: ship.id == widget.selectedShipId,
-                  damagePulseMode: widget.damagePulseMode,
-                  moraleSparkleEnabled: widget.moraleSparkleEnabled,
-                  sparklePulse: _sparklePulse,
-                  onTap: () => widget.onSelected(ship.id),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final height =
+                    (constraints.maxWidth - 16) /
+                    (MediaQuery.orientationOf(context) == Orientation.portrait
+                        ? 1.5
+                        : 3);
+                if (_rosterHeight != constraints.maxHeight ||
+                    _shipHeight != height) {
+                  _rosterHeight = constraints.maxHeight;
+                  _shipHeight = height;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _syncSparkleAnimation();
+                  });
+                }
+                return ListView.separated(
+                  controller: _rosterScroll,
+                  padding: const EdgeInsets.all(8),
+                  itemCount: widget.ships.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final ship = widget.ships[index];
+                    return _FleetRosterShipCapsule(
+                      state: widget.state,
+                      ship: ship,
+                      repairStatus: widget.repairStatuses[ship.id],
+                      selected: ship.id == widget.selectedShipId,
+                      damagePulseMode: widget.damagePulseMode,
+                      moraleSparkleEnabled: widget.moraleSparkleEnabled,
+                      sparklePulse: _sparklePulse,
+                      onTap: () => widget.onSelected(ship.id),
+                    );
+                  },
                 );
               },
             ),
@@ -953,6 +1006,7 @@ class _FleetFocusPanel extends StatelessWidget {
                                 ),
                                 value: '${ship.currentHp}/${ship.maxHp}',
                                 ratio: hpRatio,
+                                showHpThresholds: true,
                                 valueColor: shipHpValueColor(
                                   hpRatio,
                                   isZeroHp: ship.currentHp <= 0,
@@ -1181,6 +1235,7 @@ class _CompactStatusMeter extends StatelessWidget {
     required this.barColor,
     required this.valueKey,
     required this.trackKey,
+    this.showHpThresholds = false,
   });
 
   final double height;
@@ -1191,6 +1246,7 @@ class _CompactStatusMeter extends StatelessWidget {
   final Color barColor;
   final Key valueKey;
   final Key trackKey;
+  final bool showHpThresholds;
 
   @override
   Widget build(BuildContext context) {
@@ -1220,12 +1276,18 @@ class _CompactStatusMeter extends StatelessWidget {
             child: ClipRRect(
               key: trackKey,
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                minHeight: 6,
-                value: ratio.clamp(0, 1),
-                color: barColor,
-                backgroundColor: const Color(0xff263f4d),
-              ),
+              child: showHpThresholds
+                  ? ProphetHpBar(
+                      value: ratio,
+                      color: barColor,
+                      backgroundColor: const Color(0xff263f4d),
+                    )
+                  : LinearProgressIndicator(
+                      minHeight: 6,
+                      value: ratio.clamp(0, 1),
+                      color: barColor,
+                      backgroundColor: const Color(0xff263f4d),
+                    ),
             ),
           ),
         ],

@@ -216,6 +216,139 @@ class _MigratingDocumentPort implements BackupDocumentPort {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('import decoding yields the event loop before completing', () async {
+    SharedPreferences.setMockInitialValues({});
+    final root = await Directory.systemTemp.createTemp('yahagi-worker-import-');
+    final db = await LogbookDatabase.openForTesting();
+    final session = AccountSession(initialMemberId: 1001);
+    final port = _ImportHeartbeatPort()..directory = false;
+    final tables = {
+      for (final table in LogbookDatabase.backupTables)
+        table: <Map<String, Object?>>[],
+    };
+    tables['resource_logs'] = [
+      for (var i = 1; i <= 50000; i++) {'id': i, 'fuel': i * 7},
+    ];
+    port.importBytes = BackupArchive(
+      memberId: 1001,
+      tables: tables,
+      compositions: [],
+    ).encode();
+    final service = RecordBackupService(
+      session: session,
+      port: port,
+      enabledStore: _EnabledStore(),
+      databaseFor: (_) => db,
+      compositionStore: FileCompositionRecordStore(
+        rootDirectory: () async => root,
+      ),
+    );
+    addTearDown(() async {
+      await service.close();
+      session.dispose();
+      await db.close();
+      await root.delete(recursive: true);
+    });
+    await service.start();
+    final archive = await service.selectImport();
+    expect(archive!.tables['resource_logs'], hasLength(50000));
+    expect(
+      port.heartbeatFired,
+      isTrue,
+      reason:
+          'JSON/gzip/checksum decoding must leave the UI event loop available',
+    );
+  });
+  test(
+    'slow worker keeps account ownership and serializes pending syncs',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final root = await Directory.systemTemp.createTemp(
+        'yahagi-worker-queue-',
+      );
+      final a = await LogbookDatabase.openForTesting();
+      final b = await LogbookDatabase.openForTesting();
+      final session = AccountSession(initialMemberId: 1001);
+      final port = _MemoryDocumentPort();
+      final worker = _GatedMergeWorker();
+      final service = RecordBackupService(
+        session: session,
+        port: port,
+        worker: worker,
+        enabledStore: _EnabledStore(),
+        databaseFor: (id) => id == 1001 ? a : b,
+        installationId: 'test',
+        compositionStore: FileCompositionRecordStore(
+          rootDirectory: () async => root,
+        ),
+      );
+      addTearDown(() async {
+        if (!worker.release.isCompleted) worker.release.complete();
+        await service.close();
+        session.dispose();
+        await a.close();
+        await b.close();
+        await root.delete(recursive: true);
+      });
+      await service.start();
+      await worker.started.future;
+      session.reset();
+      session.selectMember(2002);
+      var finished = false;
+      final syncing = service.sync().then((_) => finished = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(finished, isFalse);
+      expect(port.live, isEmpty);
+      worker.release.complete();
+      await syncing;
+      expect(worker.peakActive, 1);
+      expect(BackupArchive.decode(port.live[1001]!).memberId, 1001);
+      expect(BackupArchive.decode(port.live[2002]!).memberId, 2002);
+    },
+  );
+
+  test(
+    'same member in a new generation rejects an import during worker await',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'yahagi-worker-scope-',
+      );
+      final db = await LogbookDatabase.openForTesting();
+      final session = AccountSession(initialMemberId: 1001);
+      final worker = _GatedDecodeWorker();
+      final port = _MemoryDocumentPort()..directory = false;
+      port.importBytes = BackupArchive(
+        memberId: 1001,
+        tables: {for (final table in LogbookDatabase.backupTables) table: []},
+        compositions: [],
+      ).encode();
+      final service = RecordBackupService(
+        session: session,
+        port: port,
+        worker: worker,
+        enabledStore: _EnabledStore(),
+        databaseFor: (_) => db,
+        compositionStore: FileCompositionRecordStore(
+          rootDirectory: () async => root,
+        ),
+      );
+      addTearDown(() async {
+        if (!worker.release.isCompleted) worker.release.complete();
+        await service.close();
+        session.dispose();
+        await db.close();
+        await root.delete(recursive: true);
+      });
+      await service.start();
+      final selecting = service.selectImport();
+      final rejected = expectLater(selecting, throwsStateError);
+      await worker.started.future;
+      session.reset();
+      session.selectMember(1001);
+      worker.release.complete();
+      await rejected;
+    },
+  );
   test(
     'close waits for an in-flight start without attaching listeners',
     () async {
@@ -3384,4 +3517,64 @@ void main() {
       expect(await store.load(owner), hasLength(2));
     },
   );
+}
+
+class _ImportHeartbeatPort extends _MemoryDocumentPort {
+  bool heartbeatFired = false;
+  @override
+  Future<Uint8List?> pickImport() async {
+    Timer.run(() => heartbeatFired = true);
+    return importBytes;
+  }
+}
+
+class _GatedMergeWorker extends BackupArchiveWorker {
+  final started = Completer<void>();
+  final release = Completer<void>();
+  int active = 0;
+  int peakActive = 0;
+  @override
+  Future<BackupArchiveResult> mergeAndEncode({
+    required int memberId,
+    required Uint8List? existing,
+    required Map<String, List<Map<String, Object?>>> tables,
+    required List<CompositionRecord> compositions,
+    required String writerId,
+    required Set<String> deletedCompositions,
+  }) async {
+    active++;
+    if (active > peakActive) peakActive = active;
+    try {
+      if (!started.isCompleted) {
+        started.complete();
+        await release.future;
+      }
+      return await super.mergeAndEncode(
+        memberId: memberId,
+        existing: existing,
+        tables: tables,
+        compositions: compositions,
+        writerId: writerId,
+        deletedCompositions: deletedCompositions,
+      );
+    } finally {
+      active--;
+    }
+  }
+}
+
+class _GatedDecodeWorker extends BackupArchiveWorker {
+  final started = Completer<void>();
+  final release = Completer<void>();
+  @override
+  Future<BackupArchive> decode(
+    Uint8List bytes, {
+    int maxPlainBytes = 250 * 1024 * 1024,
+  }) async {
+    if (!started.isCompleted) {
+      started.complete();
+      await release.future;
+    }
+    return super.decode(bytes, maxPlainBytes: maxPlainBytes);
+  }
 }

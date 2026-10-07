@@ -116,6 +116,7 @@ final class FormationMemoryController {
   Future<void> _pendingSave = Future<void>.value();
   Future<void> _ready = Future<void>.value();
   final AccountSession? accountSession;
+  AccountScope? _accountScope;
   bool _disposed = false;
   Future<void> get idle async {
     await _ready;
@@ -131,8 +132,10 @@ final class FormationMemoryController {
   }
 
   void _onAccountChanged() {
-    _formations.clear();
     final scope = accountSession!.current;
+    if (identical(scope, _accountScope)) return;
+    _accountScope = scope;
+    _formations.clear();
     final store = _storeFor(scope);
     _ready = () async {
       await _pendingSave.catchError((Object _) {});

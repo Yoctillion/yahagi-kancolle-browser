@@ -36,6 +36,7 @@ class SenkaController extends ChangeNotifier implements GameApiEventConsumer {
   final FrameNotificationCoalescer _captureNotifications;
   final DateTime Function() _now;
   final AccountSession? _accountSession;
+  AccountScope? _accountScope;
   SenkaState _state;
   Future<void> _queue = Future<void>.value();
   int _revision = 0;
@@ -118,6 +119,8 @@ class SenkaController extends ChangeNotifier implements GameApiEventConsumer {
   void _onAccountChanged() {
     if (_disposed) return;
     final scope = _accountSession!.current;
+    if (identical(scope, _accountScope)) return;
+    _accountScope = scope;
     _state = SenkaState.forMonth(
       currentSenkaMonthKey(_now()),
     ).copyWith(memberId: scope.memberId);

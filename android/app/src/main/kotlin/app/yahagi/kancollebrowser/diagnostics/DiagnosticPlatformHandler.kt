@@ -27,13 +27,31 @@ internal class DiagnosticPlatformHandler(
 ) : MethodChannel.MethodCallHandler {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val ioExecutor = Executors.newSingleThreadExecutor()
+    private val runtimeWorker = DiagnosticRuntimeSnapshotWorker(
+        worker = ioExecutor,
+        postToMain = { mainHandler.post(it) },
+        snapshot = ::runtimeSnapshot,
+    )
     private var pendingSaveResult: MethodChannel.Result? = null
     private var pendingSaveFile: File? = null
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "deviceSnapshot" -> result.success(deviceSnapshot().toMap())
-            "runtimeSnapshot" -> result.success(runtimeSnapshot())
+            "runtimeSnapshot" -> runtimeWorker.sample { sampled ->
+                sampled.fold(
+                    onSuccess = result::success,
+                    onFailure = { error ->
+                        val cancelled = error is DiagnosticRuntimeSnapshotCancelled
+                        result.error(
+                            if (cancelled) "activity_destroyed" else "runtime_snapshot_failed",
+                            if (cancelled) "The diagnostic memory sample was cancelled."
+                            else "Unable to collect diagnostic memory statistics.",
+                            null,
+                        )
+                    },
+                )
+            }
             "saveJson" -> saveJson(call.argument<String>("path"), result)
             "shareJson" -> shareJson(call.argument<String>("path"), result)
             else -> result.notImplemented()
@@ -184,6 +202,7 @@ internal class DiagnosticPlatformHandler(
     }
 
     fun dispose() {
+        runtimeWorker.dispose()
         pendingSaveResult?.error(
             "activity_destroyed",
             "The diagnostic save was cancelled.",

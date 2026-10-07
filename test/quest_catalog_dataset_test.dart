@@ -54,6 +54,43 @@ void main() {
     );
   });
 
+  test('rejects malformed fixed resource rewards', () {
+    for (final resources in <Object?>[
+      '50,50,0,0',
+      <Object?>[],
+      <Object?>[
+        <int>[50, 50, 0],
+      ],
+      <Object?>[
+        <Object?>[50, '50', 0, 0],
+      ],
+      <Object?>[
+        <num>[50, -1, 0, 0],
+      ],
+      <Object?>[
+        <num>[50, 1.5, 0, 0],
+      ],
+    ]) {
+      final raw = jsonEncode(<String, Object?>{
+        '201': <String, Object?>{
+          'code': 'Bd1',
+          'name': '敵艦隊を撃破せよ！',
+          'desc': '',
+          'resources': resources,
+        },
+      });
+      expect(
+        () => QuestCatalogDataset.parse(
+          rawJson: raw,
+          version: versionFor(raw),
+          minimumQuestCount: 1,
+        ),
+        throwsFormatException,
+        reason: '$resources',
+      );
+    }
+  });
+
   test('rejects self references and content hash mismatches', () {
     final raw = jsonEncode(<String, Object?>{
       '1': <String, Object?>{

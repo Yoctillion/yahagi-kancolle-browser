@@ -41,8 +41,8 @@ void main() {
     expect(result.percentage, closeTo(63.5, 0.0001));
     expect(result.remainingDays, 22);
     expect(result.unsettledSenka, 0);
-    expect(result.dailyRequired, closeTo(1173.85 / 22, 0.0001));
-    expect(result.todayRemaining, 0);
+    expect(result.dailyRequired, closeTo(1098.85 / 22, 0.0001));
+    expect(result.todayRemaining, closeTo(1098.85 / 22 - 3.85, 0.0001));
   });
 
   test('超过目标时差额与每日需求归零并报告超额', () {
@@ -60,6 +60,44 @@ void main() {
     expect(result.over, 200);
     expect(result.percentage, 120);
     expect(result.remainingDays, 1);
+    expect(result.dailyRequired, 0);
+    expect(result.todayRemaining, 0);
+  });
+
+  test('有日初目标时当月目标被额外奖励达成也不再要求经验战果', () {
+    final state = SenkaState.forMonth('2026-08').copyWith(
+      targetSenka: 1220,
+      calculatorCurrentSenka: 1000,
+      calculatorLocalSenkaAtSet: 0,
+      dailyTargetDateKey: '2026-08-10',
+      dailyProjectedSenkaAtStart: 1000,
+      days: const {'2026-08-10': SenkaDayRecord(experience: 4, eo: 250)},
+    );
+    final result = SenkaCalculationResult.fromState(
+      state,
+      now: DateTime.utc(2026, 8, 10, 3),
+    );
+    expect(result.projected, 1254);
+    expect(result.gap, 0);
+    expect(result.dailyRequired, 0);
+    expect(result.todayRemaining, 0);
+  });
+
+  test('月底当月目标被任务奖励达成时今日剩余归零', () {
+    final state = SenkaState.forMonth('2026-08').copyWith(
+      targetSenka: 1020,
+      calculatorCurrentSenka: 1000,
+      calculatorLocalSenkaAtSet: 0,
+      dailyTargetDateKey: '2026-08-31',
+      dailyProjectedSenkaAtStart: 1000,
+      days: const {'2026-08-31': SenkaDayRecord(experience: 4, quest: 80)},
+    );
+    final result = SenkaCalculationResult.fromState(
+      state,
+      now: DateTime.utc(2026, 8, 31, 3),
+    );
+    expect(result.projected, 1084);
+    expect(result.gap, 0);
     expect(result.dailyRequired, 0);
     expect(result.todayRemaining, 0);
   });
@@ -152,6 +190,126 @@ void main() {
     expect(beforeRefresh.todayRemaining, 0);
     expect(afterRefresh.dailyRequired, 10);
     expect(afterRefresh.todayRemaining, 0);
+  });
+
+  test('下午排名刷新清空结算后增量时仍扣除全天日历经验', () {
+    final before = SenkaState.forMonth('2026-08').copyWith(
+      targetSenka: 1220,
+      calculatorCurrentSenka: 1000,
+      dailyTargetDateKey: '2026-08-10',
+      dailyProjectedSenkaAtStart: 1000,
+      days: const {'2026-08-10': SenkaDayRecord(experience: 4)},
+      rankingHistory: {
+        'player': [
+          SenkaRankingSnapshot(
+            rank: 500,
+            senka: 1000,
+            capturedAt: DateTime.utc(2026, 8, 9, 6),
+            localSenkaAtCapture: 0,
+          ),
+        ],
+      },
+    );
+    final after = before.copyWith(
+      calculatorCurrentSenka: 1001,
+      rankingHistory: {
+        'player': [
+          SenkaRankingSnapshot(
+            rank: 500,
+            senka: 1001,
+            capturedAt: DateTime.utc(2026, 8, 10, 6),
+            localSenkaAtCapture: 4,
+          ),
+        ],
+      },
+    );
+
+    final beforeRefresh = SenkaCalculationResult.fromState(
+      before,
+      now: DateTime.utc(2026, 8, 10, 4, 59),
+    );
+    final afterRefresh = SenkaCalculationResult.fromState(
+      after,
+      now: DateTime.utc(2026, 8, 10, 6),
+    );
+
+    expect(beforeRefresh.unsettledSenka, 4);
+    expect(afterRefresh.unsettledSenka, 0);
+    expect(beforeRefresh.dailyRequired, 10);
+    expect(afterRefresh.dailyRequired, 10);
+    expect(beforeRefresh.todayRemaining, 6);
+    expect(afterRefresh.todayRemaining, 6);
+
+    final afterMoreExperience = SenkaCalculationResult.fromState(
+      after.copyWith(
+        days: const {'2026-08-10': SenkaDayRecord(experience: 5.5)},
+      ),
+      now: DateTime.utc(2026, 8, 10, 7),
+    );
+    expect(afterMoreExperience.unsettledSenka, 1.5);
+    expect(afterMoreExperience.dailyRequired, 10);
+    expect(afterMoreExperience.todayRemaining, 4.5);
+
+    final afterDailyGoal = SenkaCalculationResult.fromState(
+      after.copyWith(
+        days: const {'2026-08-10': SenkaDayRecord(experience: 12)},
+      ),
+      now: DateTime.utc(2026, 8, 10, 8),
+    );
+    expect(afterDailyGoal.todayRemaining, 0);
+  });
+
+  test('今日剩余只扣日历经验而不扣当天 EO 与任务奖励', () {
+    final state = SenkaState.forMonth('2026-08').copyWith(
+      targetSenka: 1440,
+      calculatorCurrentSenka: 1000,
+      calculatorLocalSenkaAtSet: 0,
+      dailyTargetDateKey: '2026-08-10',
+      dailyProjectedSenkaAtStart: 1000,
+      days: const {
+        '2026-08-10': SenkaDayRecord(experience: 4, eo: 75, quest: 80),
+      },
+    );
+
+    final result = SenkaCalculationResult.fromState(
+      state,
+      now: DateTime.utc(2026, 8, 10, 3),
+    );
+
+    expect(result.projected, 1159);
+    expect(result.dailyRequired, 20);
+    expect(result.todayRemaining, 16);
+  });
+
+  test('当天奖励兑现后首次建立日初目标不会重复算入奖励', () {
+    final now = DateTime.utc(2026, 8, 10, 3);
+    final before = SenkaState.forMonth('2026-08').copyWith(
+      targetSenka: 1595,
+      calculatorCurrentSenka: 1000,
+      calculatorLocalSenkaAtSet: 0,
+      eoStatuses: const {15: SenkaRewardStatus.planned},
+      questStatuses: const {284: SenkaRewardStatus.planned},
+      days: const {'2026-08-10': SenkaDayRecord(experience: 4)},
+    );
+    final after = before.copyWith(
+      eoStatuses: const {15: SenkaRewardStatus.completed},
+      questStatuses: const {284: SenkaRewardStatus.completed},
+      days: const {
+        '2026-08-10': SenkaDayRecord(experience: 4, eo: 75, quest: 80),
+      },
+    );
+
+    for (final state in [before, after]) {
+      final initialized = ensureSenkaDailyTarget(state, now);
+      expect(initialized.dailyTargetDateKey, '2026-08-10');
+      expect(initialized.dailyProjectedSenkaAtStart, 1155);
+      for (final candidate in [state, initialized]) {
+        final result = SenkaCalculationResult.fromState(candidate, now: now);
+        expect(result.projected, 1159);
+        expect(result.dailyRequired, 20);
+        expect(result.todayRemaining, 16);
+      }
+    }
   });
 
   test('计划奖励当天兑现不会被今日剩余重复抵扣', () {

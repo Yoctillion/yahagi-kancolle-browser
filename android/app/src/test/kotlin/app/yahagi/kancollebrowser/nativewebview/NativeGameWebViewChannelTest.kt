@@ -952,7 +952,109 @@ class NativeGameWebViewChannelTest {
     }
 
     @Test
-    fun activityStartupCoordinatorGatesExactModeAndRestartsOnceAfterDurableFallback() {
+    fun activityStartupCoordinatorUsesNativeDefaultForMissingPreference() {
+        assertDefaultModeStartsHost(null)
+    }
+
+    @Test
+    fun activityStartupCoordinatorUsesNativeDefaultForUnknownPreference() {
+        listOf("", "unknown", "futureRenderingMode", "STANDARD", " compatibility ")
+            .forEach(::assertDefaultModeStartsHost)
+    }
+
+    private fun assertDefaultModeStartsHost(storedMode: String?) {
+        val store = CountingStore(NativeWebViewStartupSnapshot(0, null, null, storedMode))
+        var scheduledDelay: Long? = null
+        var restarts = 0
+        val session = NativeWebViewProcessSessionId("fresh-process")
+        val coordinator = NativeWebViewActivityStartupCoordinator(
+            guard = NativeWebViewStartupGuard(store, session),
+            nowMs = { 100L },
+            scheduleTimeout = { delay, _ -> scheduledDelay = delay },
+            cancelTimeout = {},
+            requestRestart = { restarts++ },
+        )
+
+        assertEquals("Preference $storedMode must match the Dart native default",
+            NativeWebViewActivityStartupOutcome.StartHost, coordinator.begin(storedMode))
+        assertEquals(NativeWebViewStartupGuard.STARTUP_TIMEOUT_MS, scheduledDelay)
+        assertEquals(NativeWebViewStartupSnapshot(0, 100L, session, storedMode), store.snapshot)
+        assertEquals(0, restarts)
+        coordinator.onPageFinished()
+        assertNull(store.snapshot.attemptStartedAtMs)
+    }
+
+    @Test
+    fun activityStartupCoordinatorRejectsAllExplicitPlatformViewModesWithoutStartingGuard() {
+        listOf("standard", "compatibility", "canvasCompatibility").forEach { mode ->
+            val store = CountingStore(NativeWebViewStartupSnapshot(0, null, null, mode))
+            val coordinator = NativeWebViewActivityStartupCoordinator(
+                guard = NativeWebViewStartupGuard(store, NativeWebViewProcessSessionId("process")),
+                nowMs = { 100L },
+                scheduleTimeout = { _, _ -> throw AssertionError("Platform mode must not start a timeout") },
+                cancelTimeout = {},
+                requestRestart = { throw AssertionError("Platform mode must not restart") },
+            )
+            assertEquals(
+                NativeWebViewActivityStartupOutcome.Unavailable(
+                    "native_webview_unavailable", "Native Activity WebView mode is not active.",
+                ), coordinator.begin(mode),
+            )
+            assertEquals(0, store.reads)
+        }
+    }
+
+    @Test
+    fun defaultModeCannotBypassDurableCompatibilityFallback() {
+        listOf(null, "unknown").forEach { mode ->
+            val store = CountingStore(NativeWebViewStartupSnapshot(2, null, null, "compatibility"))
+            val coordinator = NativeWebViewActivityStartupCoordinator(
+                guard = NativeWebViewStartupGuard(store, NativeWebViewProcessSessionId("process")),
+                nowMs = { 100L },
+                scheduleTimeout = { _, _ -> throw AssertionError("Fallback must not start a timeout") },
+                cancelTimeout = {},
+                requestRestart = { throw AssertionError("Durable fallback must not restart again") },
+            )
+            assertEquals(
+                NativeWebViewActivityStartupOutcome.Unavailable(
+                    "native_webview_unavailable", "Native Activity WebView fallback is active.",
+                ), coordinator.begin(mode),
+            )
+            assertEquals(NativeWebViewStartupSnapshot(2, null, null, "compatibility"), store.snapshot)
+        }
+    }
+
+    @Test
+    fun defaultModeStillFallsBackOnThirdProcessStartAfterTwoUnfinishedAttempts() {
+        listOf(null, "unknown").forEach { mode ->
+            val store = CountingStore(NativeWebViewStartupSnapshot(0, null, null, mode))
+            var restarts = 0
+            val scheduledDelays = mutableListOf<Long>()
+            fun process(index: Int) = NativeWebViewActivityStartupCoordinator(
+                guard = NativeWebViewStartupGuard(store, NativeWebViewProcessSessionId("process-$index")),
+                nowMs = { index.toLong() },
+                scheduleTimeout = { delay, _ -> scheduledDelays.add(delay) },
+                cancelTimeout = {},
+                requestRestart = { restarts++ },
+            )
+
+            assertEquals(NativeWebViewActivityStartupOutcome.StartHost, process(1).begin(mode))
+            assertEquals(0, store.snapshot.consecutiveFailures)
+            // Simulate process loss: no page-finished or orderly Activity close.
+            assertEquals(NativeWebViewActivityStartupOutcome.StartHost, process(2).begin(mode))
+            assertEquals(1, store.snapshot.consecutiveFailures)
+            val thirdProcess = process(3)
+            assertTrue(thirdProcess.begin(mode) is NativeWebViewActivityStartupOutcome.Unavailable)
+            assertEquals(NativeWebViewStartupSnapshot(0, null, null, "compatibility"), store.snapshot)
+            assertEquals(1, restarts)
+            assertTrue(thirdProcess.begin(mode) is NativeWebViewActivityStartupOutcome.Unavailable)
+            assertEquals(1, restarts)
+            assertEquals(List(2) { NativeWebViewStartupGuard.STARTUP_TIMEOUT_MS }, scheduledDelays)
+        }
+    }
+
+    @Test
+    fun activityStartupCoordinatorGatesCompatibilityAndRestartsOnceAfterDurableFallback() {
         val compatibilityStore = CountingStore(
             NativeWebViewStartupSnapshot(0, null, null, "compatibility"),
         )

@@ -10,6 +10,59 @@ import org.junit.Test
 
 class CaptureMessageValidatorTest {
     @Test
+    fun timestampsPreserveUtcAndMillisecondPrecisionAcrossConcurrentCalls() {
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(8)
+        val previous = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"))
+            val results = (0L..999L).map { millis ->
+                executor.submit<String> { formatCaptureTimestamp(1_790_784_000_000L + millis) }
+            }
+            results.forEachIndexed { millis, result ->
+                assertEquals(java.time.Instant.ofEpochMilli(1_790_784_000_000L + millis).toEpochMilli(),
+                    java.time.Instant.parse(result.get(5, java.util.concurrent.TimeUnit.SECONDS)).toEpochMilli())
+                assertTrue(result.get().matches(Regex("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z")))
+            }
+            assertEquals("1970-01-01T00:00:00.000Z", formatCaptureTimestamp(0))
+            assertEquals("1969-12-31T23:59:59.999Z", formatCaptureTimestamp(-1))
+        } finally {
+            java.util.TimeZone.setDefault(previous)
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun defaultClockWorksWhenJavaTimeIsUnavailableOnApi24And25() {
+        val parent = CaptureMessageValidator::class.java.classLoader
+        val legacyLoader = object : ClassLoader(parent) {
+            override fun loadClass(name: String, resolve: Boolean): Class<*> {
+                if (name.startsWith("java.time.")) throw ClassNotFoundException(name)
+                if (!name.startsWith("app.yahagi.kancollebrowser.capture.")) {
+                    return super.loadClass(name, resolve)
+                }
+                return synchronized(this) {
+                    val type = findLoadedClass(name) ?: run {
+                        val bytes = parent.getResourceAsStream(name.replace('.', '/') + ".class")!!
+                            .use { it.readBytes() }
+                        defineClass(name, bytes, 0, bytes.size)
+                    }
+                    if (resolve) resolveClass(type)
+                    type
+                }
+            }
+        }
+        val type = legacyLoader.loadClass(CaptureMessageValidator::class.java.name)
+        val validator = type.getConstructor().newInstance()
+        val before = System.currentTimeMillis()
+        val event = type.getMethod("validate", String::class.java, String::class.java)
+            .invoke(validator, validMessage(), "https://w01y.kancolle-server.com") as Map<*, *>
+        val capturedAt = event["capturedAt"] as String
+        assertTrue(capturedAt.endsWith("Z"))
+        val timestamp = java.time.Instant.parse(capturedAt).toEpochMilli()
+        assertTrue(timestamp in before..System.currentTimeMillis())
+    }
+
+    @Test
     fun preservesDocumentCaptureSessionInStringAndBinaryMessages() {
         val validator = CaptureMessageValidator()
         val json = org.json.JSONObject(validMessage()).put("captureSessionId", "session-b")

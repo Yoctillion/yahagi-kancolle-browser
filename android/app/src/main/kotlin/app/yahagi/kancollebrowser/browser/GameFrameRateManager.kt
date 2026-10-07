@@ -75,6 +75,22 @@ class GameFrameRateManager(
                     bridge.measuredFps(),
                 ),
             )
+            "performanceSnapshot" -> result.success(
+                bridge.performanceSnapshot() + mapOf(
+                    "mode" to mode.wireName,
+                    "requestedTarget" to requestedTarget.wireName,
+                    "effectiveTarget" to effectiveTarget().wireName,
+                    "powerSave" to systemConstraints.state.powerSaveEnabled,
+                    "thermalStatus" to systemConstraints.state.thermalStatus,
+                ),
+            )
+            "setLayerMode" -> {
+                if (bridge.setLayerMode(call.argument<String>("mode") ?: "")) {
+                    result.success(bridge.performanceSnapshot())
+                } else {
+                    result.error("invalid_layer_mode", "No game WebView or unknown layer mode.", null)
+                }
+            }
             else -> result.notImplemented()
         }
     }

@@ -88,6 +88,34 @@ void main() {
     expect(harness.dispatcher.pendingCount, 0);
   });
 
+  test('re-enabling the same account restarts the dispatcher', () async {
+    final harness = await _Harness.create(enabled: true);
+    addTearDown(harness.dispose);
+    await harness.controller.setEnabled(false);
+    await harness.controller.setEnabled(true);
+    harness.consumer.accept(_mapStart);
+    await harness.consumer.idle;
+    expect(harness.transport.sent, hasLength(1));
+  });
+
+  test('unknown then the same ID invalidates queued report work', () async {
+    final gate = Completer<void>();
+    final harness = await _Harness.create(
+      enabled: true,
+      waitForGameState: () => gate.future,
+    );
+    addTearDown(harness.dispose);
+    harness.consumer.accept(_mapStart);
+    AccountSession.shared.reset();
+    AccountSession.shared.selectMember(1001);
+    gate.complete();
+    await harness.consumer.idle;
+    expect(harness.transport.sent, isEmpty);
+    harness.consumer.accept(_mapStart);
+    await harness.consumer.idle;
+    expect(harness.transport.sent, hasLength(1));
+  });
+
   test(
     'status notifications do not cancel an active reporting session',
     () async {

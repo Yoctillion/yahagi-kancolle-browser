@@ -8,25 +8,27 @@ class ProphetHpBar extends StatelessWidget {
     required this.value,
     required this.color,
     required this.backgroundColor,
+    this.height = 6,
   });
 
   final double value;
   final Color color;
   final Color backgroundColor;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     final ratio = value.clamp(0.0, 1.0).toDouble();
     return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
+      borderRadius: BorderRadius.circular(height / 2),
       child: SizedBox(
-        height: 6,
+        height: height,
         child: LayoutBuilder(
           builder: (context, constraints) => Stack(
             fit: StackFit.expand,
             children: <Widget>[
               LinearProgressIndicator(
-                minHeight: 6,
+                minHeight: height,
                 value: ratio,
                 color: color,
                 backgroundColor: backgroundColor,
@@ -44,7 +46,10 @@ class ProphetHpBar extends StatelessWidget {
                           left: constraints.maxWidth * threshold,
                           top: 1,
                           width: 1,
-                          height: 4,
+                          height: (constraints.maxHeight - 2).clamp(
+                            0.0,
+                            constraints.maxHeight,
+                          ),
                           child: const ColoredBox(
                             color: Color.fromRGBO(2, 11, 16, 0.78),
                           ),

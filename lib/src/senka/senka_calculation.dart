@@ -32,16 +32,16 @@ class SenkaCalculationResult {
     final currentDateKey = dateKey(currentDate);
     final projectedAtDayStart = state.dailyTargetDateKey == currentDateKey
         ? state.dailyProjectedSenkaAtStart
-        : math.max(projected - today.total, 0).toDouble();
+        : math.max(projected - today.experience, 0).toDouble();
     final gapAtDayStart = math
         .max(state.targetSenka - projectedAtDayStart, 0)
         .toDouble();
-    final dailyRequired = remainingDays > 0
+    final dailyRequired = remainingDays > 0 && gap > 0
         ? gapAtDayStart / remainingDays
         : 0.0;
-    final todayProgress = math
-        .max(projected - projectedAtDayStart, 0)
-        .toDouble();
+    // Calendar experience spans the whole senka day, survives ranking refreshes,
+    // and excludes EO/quest rewards already accounted for in the projection.
+    final todayProgress = today.experience;
 
     return SenkaCalculationResult(
       plannedEo: plannedEo,
@@ -85,7 +85,7 @@ SenkaState ensureSenkaDailyTarget(SenkaState state, DateTime instant) {
   if (state.dailyTargetDateKey == key) return state;
   final projected = senkaProjected(state);
   final inferredStart = math
-      .max(projected - state.day(businessDate).total, 0)
+      .max(projected - state.day(businessDate).experience, 0)
       .toDouble();
   return state.copyWith(
     dailyTargetDateKey: key,

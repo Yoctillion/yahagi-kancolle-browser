@@ -52,6 +52,7 @@ final class HttpKcwikiReportTransport implements KcwikiReportTransport {
   final Duration timeout;
   final int maxBodyBytes;
   bool _closed = false;
+  final Set<void Function()> _activeCancellations = {};
 
   @override
   Future<KcwikiTransportResult> send(KcwikiReportRequest request) async {
@@ -73,35 +74,90 @@ final class HttpKcwikiReportTransport implements KcwikiReportTransport {
       );
     }
     final target = baseUri.resolve(request.module.path);
-    final outbound = http.Request('POST', target)
-      ..headers['content-type'] = request.contentType
-      ..followRedirects = false
-      ..body = request.encodedBody;
-    try {
-      final response = await _client.send(outbound).timeout(timeout);
-      await response.stream.drain<void>();
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return KcwikiTransportResult.accepted(statusCode: response.statusCode);
+    final abort = Completer<void>();
+    final outbound =
+        http.AbortableRequest('POST', target, abortTrigger: abort.future)
+          ..headers['content-type'] = request.contentType
+          ..followRedirects = false
+          ..body = request.encodedBody;
+
+    final completion = Completer<KcwikiTransportResult>();
+    StreamSubscription<List<int>>? subscription;
+    Timer? deadline;
+    late final void Function() cancel;
+
+    void finish(KcwikiTransportResult result, {bool cancelRequest = false}) {
+      if (completion.isCompleted) return;
+      deadline?.cancel();
+      _activeCancellations.remove(cancel);
+      if (cancelRequest) {
+        if (!abort.isCompleted) abort.complete();
+        final active = subscription;
+        if (active != null) {
+          // Do not let a broken cancellation future keep the report queue busy.
+          // The abort trigger also terminates this request in the native client.
+          unawaited(active.cancel().catchError((Object _) {}));
+        }
       }
-      return KcwikiTransportResult.failed(
-        statusCode: response.statusCode,
-        failure: KcwikiTransportFailure.rejected,
-      );
-    } on TimeoutException {
-      return const KcwikiTransportResult.failed(
-        failure: KcwikiTransportFailure.timeout,
-      );
-    } catch (_) {
-      return const KcwikiTransportResult.failed(
-        failure: KcwikiTransportFailure.network,
-      );
+      completion.complete(result);
     }
+
+    cancel = () => finish(
+      const KcwikiTransportResult.failed(
+        failure: KcwikiTransportFailure.network,
+      ),
+      cancelRequest: true,
+    );
+    _activeCancellations.add(cancel);
+    deadline = Timer(timeout, () {
+      finish(
+        const KcwikiTransportResult.failed(
+          failure: KcwikiTransportFailure.timeout,
+        ),
+        cancelRequest: true,
+      );
+    });
+
+    Future<void> consume() async {
+      try {
+        final response = await _client.send(outbound);
+        if (completion.isCompleted) {
+          // Injected clients may ignore Abortable. Cancel any late response too.
+          await response.stream
+              .listen((_) {}, onError: (Object _, StackTrace _) {})
+              .cancel();
+          return;
+        }
+        subscription = response.stream.listen(
+          (_) {},
+          onError: (Object _, StackTrace _) => cancel(),
+          onDone: () => finish(
+            response.statusCode >= 200 && response.statusCode < 300
+                ? KcwikiTransportResult.accepted(
+                    statusCode: response.statusCode,
+                  )
+                : KcwikiTransportResult.failed(
+                    statusCode: response.statusCode,
+                    failure: KcwikiTransportFailure.rejected,
+                  ),
+          ),
+        );
+      } catch (_) {
+        cancel();
+      }
+    }
+
+    unawaited(consume());
+    return completion.future;
   }
 
   @override
   void close() {
     if (_closed) return;
     _closed = true;
+    for (final cancel in _activeCancellations.toList()) {
+      cancel();
+    }
     _client.close();
   }
 }

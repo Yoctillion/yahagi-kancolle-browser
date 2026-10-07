@@ -6,6 +6,30 @@ import 'package:yahagi_kancolle_browser/src/browser/game_frame_rate_runtime_cont
 import 'package:yahagi_kancolle_browser/src/settings/game_frame_rate_settings.dart';
 
 void main() {
+  test('newly ready pages receive a sampling grace period', () async {
+    final settings = await GameFrameRateSettingsController.load(
+      MemoryGameFrameRateSettingsStore(GameFrameRateMode.automatic),
+    );
+    final port = _FakeRuntimePort(const <double>[]);
+    final timers = _FakeTimerFactory();
+    final runtime = GameFrameRateRuntimeController(
+      settings: settings,
+      port: port,
+      timerFactory: timers.call,
+      addTimingsCallback: (_) {},
+      removeTimingsCallback: (_) {},
+    );
+    addTearDown(() {
+      runtime.dispose();
+      settings.dispose();
+    });
+
+    await runtime.onPageReady();
+    timers.timer!.fire();
+    await runtime.idle;
+    expect(port.measurementCalls, 0);
+  });
+
   test('does not sample before the game page is ready', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -46,7 +70,7 @@ void main() {
     },
   );
 
-  test('two unstable windows apply 30 FPS once and lock the session', () async {
+  test('two unstable windows apply 30 FPS and continue monitoring', () async {
     final fixture = await _Fixture.create(
       measurements: <double>[49, 48, 47, 55, 56, 49, 48, 47, 55, 56],
     );
@@ -62,12 +86,82 @@ void main() {
       GameFrameRateTarget.fps60,
       GameFrameRateTarget.fps30,
     ]);
-    expect(fixture.timer!.isActive, isFalse);
+    expect(fixture.timer!.isActive, isTrue);
 
     fixture.runtime.onPageStarted();
     await fixture.runtime.onPageReady();
     expect(fixture.port.appliedTargets.last, GameFrameRateTarget.fps30);
   });
+
+  test('timer ticks do not queue duplicate pending measurements', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.runtime.onPageReady();
+    final pending = Completer<double?>();
+    fixture.port.measure = () => pending.future;
+
+    fixture.timer!.fire();
+    await Future<void>.delayed(Duration.zero);
+    for (var i = 0; i < 8; i++) {
+      fixture.timer!.fire();
+    }
+    pending.complete(60);
+    await fixture.runtime.idle;
+
+    expect(fixture.port.measurementCalls, 1);
+  });
+
+  test(
+    'navigation discards pending samples and previous instability',
+    () async {
+      final fixture = await _Fixture.create(
+        measurements: List<double>.filled(10, 40),
+      );
+      addTearDown(fixture.dispose);
+      await fixture.runtime.onPageReady();
+      for (var i = 0; i < 5; i++) {
+        fixture.timer!.fire();
+        await fixture.runtime.idle;
+      }
+      final pending = Completer<double?>();
+      fixture.port.measure = () => pending.future;
+      fixture.timer!.fire();
+      await Future<void>.delayed(Duration.zero);
+
+      fixture.runtime.onPageStarted();
+      final ready = fixture.runtime.onPageReady();
+      pending.complete(40);
+      await ready;
+      fixture.port.measure = null;
+      for (var i = 0; i < 5; i++) {
+        fixture.timer!.fire();
+        await fixture.runtime.idle;
+      }
+      expect(
+        fixture.port.appliedTargets,
+        everyElement(GameFrameRateTarget.fps60),
+      );
+    },
+  );
+
+  test(
+    'an initial apply failure can retry without another page event',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      fixture.port.applyFailures = 1;
+
+      await fixture.runtime.onPageReady();
+      expect(fixture.timer?.isActive, isTrue);
+      fixture.timer!.fire();
+      await fixture.runtime.idle;
+      fixture.timer!.fire();
+      await fixture.runtime.idle;
+
+      expect(fixture.port.appliedTargets.length, 2);
+      expect(fixture.port.measurementCalls, 1);
+    },
+  );
 
   test(
     'records Flutter timings only while automatic sampling is active',
@@ -147,6 +241,163 @@ void main() {
     expect(fixture.port.appliedTargets.last, GameFrameRateTarget.fps60);
   });
 
+  test(
+    'automatic mode recovers after thirty seconds of stable 30 FPS',
+    () async {
+      final fixture = await _Fixture.create(
+        measurements: <double>[
+          ...List<double>.filled(10, 40),
+          ...List<double>.filled(30, 30),
+        ],
+      );
+      addTearDown(fixture.dispose);
+      await fixture.runtime.onPageReady();
+      await fixture.fire(39);
+      expect(fixture.port.appliedTargets.last, GameFrameRateTarget.fps30);
+      await fixture.fire(1);
+      expect(fixture.port.appliedTargets, <GameFrameRateTarget>[
+        GameFrameRateTarget.fps60,
+        GameFrameRateTarget.fps30,
+        GameFrameRateTarget.fps60,
+      ]);
+      expect(fixture.timer!.isActive, isTrue);
+    },
+  );
+
+  test('system-constrained null samples cannot trigger recovery', () async {
+    final fixture = await _Fixture.create(
+      measurements: <double?>[
+        ...List<double>.filled(10, 40),
+        ...List<double?>.filled(50, null),
+        ...List<double>.filled(15, 30),
+      ],
+    );
+    addTearDown(fixture.dispose);
+    await fixture.runtime.onPageReady();
+    await fixture.fire(60);
+    expect(fixture.port.appliedTargets.last, GameFrameRateTarget.fps30);
+    await fixture.fire(14);
+    expect(fixture.port.appliedTargets.last, GameFrameRateTarget.fps30);
+    await fixture.fire(1);
+    expect(fixture.port.appliedTargets.last, GameFrameRateTarget.fps60);
+  });
+
+  test(
+    'resume and mode changes restart the three second sampling grace',
+    () async {
+      final fixture = await _Fixture.create(
+        samplingGracePeriod: const Duration(seconds: 3),
+      );
+      addTearDown(fixture.dispose);
+      await fixture.runtime.onPageReady();
+      await fixture.fire(2);
+      expect(fixture.port.measurementCalls, 0);
+      await fixture.fire(1);
+      expect(fixture.port.measurementCalls, 1);
+
+      fixture.runtime.onLifecycleChanged(AppLifecycleState.paused);
+      await fixture.runtime.idle;
+      fixture.runtime.onLifecycleChanged(AppLifecycleState.resumed);
+      await fixture.runtime.idle;
+      await fixture.fire(2);
+      expect(fixture.port.measurementCalls, 1);
+      await fixture.fire(1);
+      expect(fixture.port.measurementCalls, 2);
+
+      await fixture.settings.setMode(GameFrameRateMode.stable60);
+      await fixture.runtime.idle;
+      await fixture.settings.setMode(GameFrameRateMode.automatic);
+      await fixture.runtime.idle;
+      await fixture.fire(2);
+      expect(fixture.port.measurementCalls, 2);
+      await fixture.fire(1);
+      expect(fixture.port.measurementCalls, 3);
+    },
+  );
+
+  test(
+    'failed downgrade retries without interpreting the old 60 FPS target',
+    () async {
+      final fixture = await _Fixture.create(
+        measurements: List<double>.filled(10, 40),
+      );
+      addTearDown(fixture.dispose);
+      await fixture.runtime.onPageReady();
+      await fixture.fire(9);
+      fixture.port.applyFailures = 1;
+      await fixture.fire(1);
+      expect(fixture.port.measurementCalls, 10);
+      await fixture.fire(1);
+      expect(fixture.port.measurementCalls, 10);
+      expect(fixture.port.appliedTargets, <GameFrameRateTarget>[
+        GameFrameRateTarget.fps60,
+        GameFrameRateTarget.fps30,
+        GameFrameRateTarget.fps30,
+      ]);
+    },
+  );
+
+  test('successful manual retry stops the retry timer', () async {
+    final fixture = await _Fixture.create(
+      initialMode: GameFrameRateMode.stable60,
+    );
+    addTearDown(fixture.dispose);
+    fixture.port.applyFailures = 1;
+    await fixture.runtime.onPageReady();
+    expect(fixture.timer!.isActive, isTrue);
+    await fixture.fire(1);
+    expect(fixture.timer!.isActive, isFalse);
+    expect(fixture.port.measurementCalls, 0);
+  });
+
+  test(
+    'a timed out apply cannot overwrite a later mode when it completes',
+    () async {
+      final fixture = await _Fixture.create(
+        operationTimeout: const Duration(milliseconds: 10),
+      );
+      addTearDown(fixture.dispose);
+      final pending = Completer<void>();
+      fixture.port.applyOperation = () => pending.future;
+      await fixture.runtime.onPageReady();
+      expect(fixture.timer!.isActive, isTrue);
+
+      fixture.port.applyOperation = null;
+      await fixture.settings.setMode(GameFrameRateMode.stable30);
+      await fixture.runtime.idle;
+      pending.complete();
+      await Future<void>.delayed(Duration.zero);
+      await fixture.runtime.idle;
+      expect(fixture.port.appliedTargets, <GameFrameRateTarget>[
+        GameFrameRateTarget.fps60,
+        GameFrameRateTarget.fps30,
+        GameFrameRateTarget.fps30,
+      ]);
+    },
+  );
+
+  test(
+    'a stalled measurement times out and does not block future sampling',
+    () async {
+      final fixture = await _Fixture.create(
+        operationTimeout: const Duration(milliseconds: 10),
+      );
+      addTearDown(fixture.dispose);
+      await fixture.runtime.onPageReady();
+      final pending = Completer<double?>();
+      fixture.port.measure = () => pending.future;
+      await fixture.fire(1);
+      fixture.port.measure = null;
+      await fixture.fire(1);
+      pending.complete(20);
+      await fixture.runtime.idle;
+      expect(fixture.port.measurementCalls, 2);
+      expect(fixture.port.appliedTargets, <GameFrameRateTarget>[
+        GameFrameRateTarget.fps60,
+      ]);
+    },
+  );
+
   test('dispose cancels timers and unregisters the timings callback', () async {
     final fixture = await _Fixture.create();
     await fixture.runtime.onPageReady();
@@ -178,8 +429,10 @@ final class _Fixture {
   _FakeTimer? get timer => timerFactory.timer;
 
   static Future<_Fixture> create({
-    List<double> measurements = const <double>[],
+    List<double?> measurements = const <double>[],
     GameFrameRateMode initialMode = GameFrameRateMode.automatic,
+    Duration samplingGracePeriod = Duration.zero,
+    Duration operationTimeout = const Duration(seconds: 5),
   }) async {
     final settings = await GameFrameRateSettingsController.load(
       MemoryGameFrameRateSettingsStore(initialMode),
@@ -190,6 +443,9 @@ final class _Fixture {
       settings: settings,
       port: port,
       timerFactory: timerFactory.call,
+      samplingGracePeriod: samplingGracePeriod,
+      operationTimeout: operationTimeout,
+      now: () => timerFactory.now,
       addTimingsCallback: (callback) =>
           timerFactory.addedTimingCallback = callback,
       removeTimingsCallback: (callback) =>
@@ -208,35 +464,55 @@ final class _Fixture {
     runtime.dispose();
     settings.dispose();
   }
+
+  Future<void> fire(int count) async {
+    for (var i = 0; i < count; i++) {
+      timer!.fire();
+      await runtime.idle;
+    }
+  }
 }
 
 final class _FakeRuntimePort implements GameFrameRateRuntimePort {
-  _FakeRuntimePort(List<double> measurements)
-    : _measurements = List<double>.of(measurements);
+  _FakeRuntimePort(List<double?> measurements)
+    : _measurements = List<double?>.of(measurements);
 
-  final List<double> _measurements;
+  final List<double?> _measurements;
   final List<GameFrameRateTarget> appliedTargets = <GameFrameRateTarget>[];
   int measurementCalls = 0;
+  int applyFailures = 0;
+  Future<double?> Function()? measure;
+  Future<void> Function()? applyOperation;
 
   @override
   Future<void> apply(GameFrameRateTarget target) async {
     appliedTargets.add(target);
+    if (applyFailures > 0) {
+      applyFailures -= 1;
+      throw StateError('temporarily unavailable');
+    }
+    await applyOperation?.call();
   }
 
   @override
   Future<double?> measuredFps() async {
     measurementCalls += 1;
+    if (measure != null) return measure!();
     return _measurements.isEmpty ? 60 : _measurements.removeAt(0);
   }
 }
 
 final class _FakeTimerFactory {
   _FakeTimer? timer;
+  DateTime now = DateTime.utc(2026);
   TimingsCallback? addedTimingCallback;
   TimingsCallback? removedTimingCallback;
 
   Timer call(Duration duration, void Function(Timer timer) callback) {
-    return timer = _FakeTimer(callback);
+    return timer = _FakeTimer((timer) {
+      now = now.add(duration);
+      callback(timer);
+    });
   }
 }
 

@@ -4,7 +4,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
-import java.time.Instant
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
+internal fun formatCaptureTimestamp(epochMillis: Long): String =
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }.format(Date(epochMillis))
 
 enum class CaptureMessageFailure {
     INVALID_FORMAT,
@@ -13,7 +21,7 @@ enum class CaptureMessageFailure {
 
 class CaptureMessageValidator(
     private val maxMessageBytes: Int = 8 * 1024 * 1024,
-    private val clock: () -> String = { Instant.now().toString() },
+    private val clock: () -> String = { formatCaptureTimestamp(System.currentTimeMillis()) },
 ) {
     private companion object {
         const val BINARY_HEADER_BYTES = 4

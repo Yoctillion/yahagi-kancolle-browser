@@ -61,9 +61,11 @@ final class AndroidBackupDocumentPort implements BackupDocumentPort {
       'app.yahagi.kancollebrowser/record_backup',
     ),
     this.validateCandidate,
+    this.worker = const BackupArchiveWorker(),
   });
   final MethodChannel channel;
   final Future<void> Function(BackupArchive archive)? validateCandidate;
+  final BackupArchiveWorker worker;
 
   @override
   Future<bool> hasDirectory() async =>
@@ -97,7 +99,7 @@ final class AndroidBackupDocumentPort implements BackupDocumentPort {
       found = true;
       BackupArchive archive;
       try {
-        archive = BackupArchive.decode(bytes);
+        archive = await worker.decode(bytes);
       } catch (_) {
         continue;
       }
@@ -545,6 +547,104 @@ final class BackupRestoreJournal {
   }
 }
 
+typedef BackupArchiveResult = ({BackupArchive archive, Uint8List bytes});
+typedef _BackupMergeInput = ({
+  int memberId,
+  Uint8List? existing,
+  Map<String, List<Map<String, Object?>>> tables,
+  List<CompositionRecord> compositions,
+  String writerId,
+  Set<String> deletedCompositions,
+});
+
+/// Only detached archive values cross this boundary. Database connections,
+/// document ports and account-session objects remain on the calling isolate.
+class BackupArchiveWorker {
+  const BackupArchiveWorker();
+
+  Future<BackupArchive> decode(
+    Uint8List bytes, {
+    int maxPlainBytes = 250 * 1024 * 1024,
+  }) => compute(_decodeArchive, (bytes, maxPlainBytes));
+
+  Future<Uint8List> encode(BackupArchive archive) =>
+      compute(_encodeArchive, archive);
+
+  Future<BackupArchive> normalize(BackupArchive archive) =>
+      compute(_normalizeArchive, archive);
+
+  Future<void> validateOwner(int memberId, Uint8List bytes) =>
+      compute(_validateArchiveOwner, (memberId, bytes));
+
+  Future<BackupArchiveResult> mergeAndEncode({
+    required int memberId,
+    required Uint8List? existing,
+    required Map<String, List<Map<String, Object?>>> tables,
+    required List<CompositionRecord> compositions,
+    required String writerId,
+    required Set<String> deletedCompositions,
+  }) => compute(_mergeArchive, (
+    memberId: memberId,
+    existing: existing,
+    tables: tables,
+    compositions: compositions,
+    writerId: writerId,
+    deletedCompositions: deletedCompositions,
+  ));
+
+  Future<bool> verify(int memberId, Uint8List expected, Uint8List actual) =>
+      compute(_verifyArchive, (memberId, expected, actual));
+
+  Future<Uint8List> encodeJournal(BackupRestoreJournal journal) =>
+      compute(_encodeJournal, journal);
+
+  Future<BackupRestoreJournal> decodeJournal(Uint8List bytes) =>
+      compute(_decodeJournal, bytes);
+}
+
+BackupArchive _decodeArchive((Uint8List, int) input) =>
+    BackupArchive.decode(input.$1, maxPlainBytes: input.$2);
+Uint8List _encodeArchive(BackupArchive archive) => archive.encode();
+BackupArchive _normalizeArchive(BackupArchive archive) =>
+    BackupArchive.decode(archive.encode());
+void _validateArchiveOwner((int, Uint8List) input) {
+  if (BackupArchive.decode(input.$2).memberId != input.$1) {
+    throw StateError('Backup belongs to another account');
+  }
+}
+
+Uint8List _encodeJournal(BackupRestoreJournal journal) => journal.encode();
+BackupRestoreJournal _decodeJournal(Uint8List bytes) =>
+    BackupRestoreJournal.decode(bytes);
+bool _verifyArchive((int, Uint8List, Uint8List) input) =>
+    BackupArchive.decode(input.$3).memberId == input.$1 &&
+    listEquals(input.$2, input.$3);
+
+BackupArchiveResult _mergeArchive(_BackupMergeInput input) {
+  final old = input.existing == null
+      ? null
+      : BackupArchive.decode(input.existing!);
+  if (old != null && old.memberId != input.memberId) {
+    throw StateError('Backup belongs to another account');
+  }
+  final archive =
+      (old ??
+              BackupArchive(
+                memberId: input.memberId,
+                tables: {
+                  for (final table in LogbookDatabase.backupTables) table: [],
+                },
+                compositions: const [],
+              ))
+          .merge(
+            input.tables,
+            input.compositions,
+            writerId: input.writerId,
+            deletedCompositions: input.deletedCompositions,
+          );
+  return (archive: archive, bytes: archive.encode());
+}
+
 /// Test-only fault used to model process death after a durable restore step.
 final class RestoreInterruptionForTesting implements Exception {
   const RestoreInterruptionForTesting();
@@ -567,6 +667,7 @@ final class RecordBackupService extends ChangeNotifier {
     this.deleteAdoptedBaseline,
     this.afterJournalWritten,
     this.afterRestoreStage,
+    this.worker = const BackupArchiveWorker(),
   }) : compositionStore = compositionStore ?? FileCompositionRecordStore(),
        databaseFor = databaseFor ?? LogbookDatabase.forAccount,
        now = now ?? DateTime.now;
@@ -574,6 +675,7 @@ final class RecordBackupService extends ChangeNotifier {
   static RecordBackupService? shared;
   final AccountSession session;
   final BackupDocumentPort port;
+  final BackupArchiveWorker worker;
   final RecordBackupEnabledStore enabledStore;
   final FileCompositionRecordStore compositionStore;
   final LogbookDatabase Function(int) databaseFor;
@@ -874,14 +976,14 @@ final class RecordBackupService extends ChangeNotifier {
     final file = await _pendingBaseline(memberId);
     if (!await file.exists()) return null;
     final bytes = await file.readAsBytes();
-    if (BackupArchive.decode(bytes).memberId != memberId) {
+    if ((await worker.decode(bytes)).memberId != memberId) {
       throw StateError('Pending backup baseline belongs to another account');
     }
     return bytes;
   }
 
   Future<void> _writePendingBaseline(int memberId, Uint8List bytes) async {
-    if (BackupArchive.decode(bytes).memberId != memberId) {
+    if ((await worker.decode(bytes)).memberId != memberId) {
       throw StateError('Pending backup baseline belongs to another account');
     }
     final file = await _pendingBaseline(memberId);
@@ -916,7 +1018,7 @@ final class RecordBackupService extends ChangeNotifier {
     if (bytes == null) return;
     final existing = await port.readLive(memberId, name);
     if (existing != null &&
-        BackupArchive.decode(existing).memberId != memberId) {
+        (await worker.decode(existing)).memberId != memberId) {
       throw StateError('Destination contains another account backup');
     }
     await port.writeLive(memberId, name, bytes);
@@ -952,7 +1054,7 @@ final class RecordBackupService extends ChangeNotifier {
     final oldDeletionPending = File('${oldDeletionMarker.path}.pending');
     if (await oldDeletionPending.exists()) await oldDeletionPending.delete();
     final pending = File('${file.path}.pending');
-    final bytes = journal.encode();
+    final bytes = await worker.encodeJournal(journal);
     await pending.writeAsBytes(bytes, flush: true);
     if (!listEquals(await pending.readAsBytes(), bytes)) {
       throw StateError('Restore journal verification failed');
@@ -1090,7 +1192,7 @@ final class RecordBackupService extends ChangeNotifier {
     }
     await afterRestoreStage?.call('compositions');
     final name = '${_name(memberId)}.yhb';
-    await _writePendingBaseline(memberId, archive.encode());
+    await _writePendingBaseline(memberId, await worker.encode(archive));
     if (_hasDirectory) await _adoptPendingBaseline(memberId, name);
     await afterRestoreStage?.call('backup');
   }
@@ -1103,7 +1205,7 @@ final class RecordBackupService extends ChangeNotifier {
       await _cleanCompletedRestore(file);
       return;
     }
-    final journal = BackupRestoreJournal.decode(await file.readAsBytes());
+    final journal = await worker.decodeJournal(await file.readAsBytes());
     if (journal.archive.memberId != memberId) {
       throw StateError('Restore journal belongs to another account');
     }
@@ -1167,10 +1269,8 @@ final class RecordBackupService extends ChangeNotifier {
     final name = _name(memberId);
     await _adoptPendingBaseline(memberId, '$name.yhb');
     final existing = await port.readLive(memberId, '$name.yhb');
-    final old = existing == null ? null : BackupArchive.decode(existing);
-    if (old != null && old.memberId != memberId) {
-      throw StateError('Backup belongs to another account');
-    }
+    // Preserve the ownership barrier before completing persisted deletions.
+    if (existing != null) await worker.validateOwner(memberId, existing);
     final offlineDeletions = await _completeOfflineDeletions(memberId);
     final currentTables = await databaseFor(memberId).backupSnapshot();
     final allRecords = await compositionStore.load(memberId);
@@ -1179,34 +1279,26 @@ final class RecordBackupService extends ChangeNotifier {
         .toList();
     sourceSnapshot?.tables = currentTables;
     sourceSnapshot?.compositions = allRecords;
-    final archive =
-        (old ??
-                BackupArchive(
-                  memberId: memberId,
-                  tables: {
-                    for (final table in LogbookDatabase.backupTables) table: [],
-                  },
-                  compositions: const [],
-                ))
-            .merge(
-              currentTables,
-              currentRecords,
-              writerId:
-                  installationId ??
-                  await databaseFor(memberId).backupSourceId(),
-              deletedCompositions: {
-                ...offlineDeletions,
-                ...?_deletedCompositions[memberId],
-              },
-            );
-    final bytes = archive.encode();
+    // These are owned snapshots returned by the database/file stores. The
+    // compute message copies them before control returns to the event loop.
+    final result = await worker.mergeAndEncode(
+      memberId: memberId,
+      existing: existing,
+      tables: currentTables,
+      compositions: currentRecords,
+      writerId: installationId ?? await databaseFor(memberId).backupSourceId(),
+      deletedCompositions: {
+        ...offlineDeletions,
+        ...?_deletedCompositions[memberId],
+      },
+    );
+    final archive = result.archive;
+    final bytes = result.bytes;
     if (existing == null || !listEquals(existing, bytes)) {
       await port.writeLive(memberId, '$name.yhb', bytes);
     }
     final verified = await port.readLive(memberId, '$name.yhb');
-    if (verified == null ||
-        BackupArchive.decode(verified).memberId != memberId ||
-        !listEquals(bytes, verified)) {
+    if (verified == null || !await worker.verify(memberId, bytes, verified)) {
       throw StateError('Backup verification failed');
     }
     _deletedCompositions.remove(memberId);
@@ -1247,7 +1339,7 @@ final class RecordBackupService extends ChangeNotifier {
       prior = await _enqueue(
         () => port.readLive(memberId, '${_name(memberId)}.yhb'),
       );
-      if (prior != null && BackupArchive.decode(prior).memberId != memberId) {
+      if (prior != null && (await worker.decode(prior)).memberId != memberId) {
         throw StateError('Current backup belongs to another account');
       }
     }
@@ -1259,10 +1351,10 @@ final class RecordBackupService extends ChangeNotifier {
       if (prior != null) {
         final name = '${_name(memberId)}.yhb';
         final destination = await port.readLive(memberId, name);
-        final imported = BackupArchive.decode(prior);
+        final imported = await worker.decode(prior);
         if (imported.memberId != memberId ||
             (destination != null &&
-                BackupArchive.decode(destination).memberId != memberId)) {
+                (await worker.decode(destination)).memberId != memberId)) {
           throw StateError('Destination contains another account backup');
         }
         if (destination == null) {
@@ -1378,7 +1470,10 @@ final class RecordBackupService extends ChangeNotifier {
       if (!session.isCurrent(scope)) throw StateError('Game account changed');
       final archive = await _syncFor(scope.memberId);
       if (!session.isCurrent(scope)) throw StateError('Game account changed');
-      return (name: _exportName(scope.memberId), bytes: archive.encode());
+      return (
+        name: _exportName(scope.memberId),
+        bytes: await worker.encode(archive),
+      );
     });
     if (!session.isCurrent(scope)) throw StateError('Game account changed');
     final token = await port.prepareShareFile(payload.name, payload.bytes);
@@ -1407,7 +1502,7 @@ final class RecordBackupService extends ChangeNotifier {
         if (!session.isCurrent(scope)) throw StateError('Game account changed');
         final archive = await _syncFor(scope.memberId);
         if (!session.isCurrent(scope)) throw StateError('Game account changed');
-        return archive.encode();
+        return await worker.encode(archive);
       });
       if (!session.isCurrent(scope)) throw StateError('Game account changed');
       await port.writeSavedFile(token, bytes);
@@ -1431,7 +1526,8 @@ final class RecordBackupService extends ChangeNotifier {
     if (!scope.isKnown) throw StateError('Game account is not verified');
     final bytes = await port.pickImport();
     if (bytes == null) return null;
-    final archive = BackupArchive.decode(bytes);
+    final archive = await worker.decode(bytes);
+    if (!session.isCurrent(scope)) throw StateError('Game account changed');
     if (archive.memberId != scope.memberId) {
       throw StateError('Backup belongs to another account');
     }
@@ -1441,8 +1537,8 @@ final class RecordBackupService extends ChangeNotifier {
   Future<void> restore(BackupArchive archive) async {
     await start();
     _requireEnabled();
-    archive = BackupArchive.decode(archive.encode());
     final scope = session.current;
+    archive = await worker.normalize(archive);
     if (!scope.isKnown || archive.memberId != scope.memberId) {
       throw StateError('Backup belongs to another account');
     }

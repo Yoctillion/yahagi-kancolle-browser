@@ -250,6 +250,7 @@ class EquipmentDevelopmentController extends ChangeNotifier {
       return;
     }
     _resources = value;
+    _lastAppliedRecipeKey = null;
     _recompute();
     notifyListeners();
     _persistState();

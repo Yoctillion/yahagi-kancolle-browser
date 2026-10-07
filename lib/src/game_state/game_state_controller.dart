@@ -40,6 +40,7 @@ final class GameStateController extends ChangeNotifier
        _timerService =
            timerService ??
            TimerMechanicsService(accountSession: accountSession) {
+    _accountScope = accountSession?.current;
     accountSession?.addListener(_onAccountChanged);
     _initialization = _initialize();
     _startExpirationTimer();
@@ -57,6 +58,7 @@ final class GameStateController extends ChangeNotifier
       questProgress?.completedIds(DateTime.now().toUtc()) ?? const {};
   final GameStateStore? gameStateStore;
   final AccountSession? accountSession;
+  AccountScope? _accountScope;
   Timer? _expirationTimer;
   late final Future<void> _initialization;
 
@@ -75,6 +77,8 @@ final class GameStateController extends ChangeNotifier
 
   void _onAccountChanged() {
     final scope = accountSession!.current;
+    if (identical(scope, _accountScope)) return;
+    _accountScope = scope;
     _hasAcceptedLiveEvent = true;
     if (!scope.isKnown ||
         (_state.memberId > 0 && _state.memberId != scope.memberId)) {

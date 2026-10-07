@@ -57,6 +57,7 @@ final class BattleController extends ChangeNotifier
            predictionExecutor ?? const IsolateBattlePredictionExecutor(),
        assert(maxRecords > 0) {
     _memberId = accountSession?.current.memberId ?? gameState().memberId;
+    _accountScope = accountSession?.current;
     accountSession?.addListener(_onAccountChanged);
   }
 
@@ -83,12 +84,18 @@ final class BattleController extends ChangeNotifier
   final BattleNodeLabelResolver nodeLabelResolver;
   final FormationMemoryController? formationMemory;
   final AccountSession? accountSession;
+  AccountScope? _accountScope;
   int _memberId = 0;
   int _generation = 0;
   final Map<int, List<BattleRecord>> _recordsByMember = {};
   final Map<int, List<BattleSession>> _sessionsByMember = {};
 
-  void _onAccountChanged() => _selectAccount(accountSession!.current.memberId);
+  void _onAccountChanged() {
+    final scope = accountSession!.current;
+    if (identical(scope, _accountScope)) return;
+    _accountScope = scope;
+    _selectAccount(scope.memberId);
+  }
 
   void _selectAccount(int memberId) {
     if (_memberId > 0) {

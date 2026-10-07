@@ -2559,8 +2559,8 @@ class GameStateReducer {
             : 0,
         repairSteelCost: !item.containsKey('api_ndock_item')
             ? existing?.repairSteelCost ?? 0
-            : repairItems.length > 2
-            ? _asInt(repairItems[2])
+            : repairItems.length > 1
+            ? _asInt(repairItems[1])
             : 0,
         locked:
             _asInt(item['api_locked'], existing?.locked == true ? 1 : 0) > 0,

@@ -36,6 +36,7 @@ final class NewShipReminderController extends ChangeNotifier
     this.waitForGameState,
     this.accountSession,
   }) {
+    _accountScope = accountSession?.current;
     accountSession?.addListener(_onAccountChanged);
   }
 
@@ -44,6 +45,7 @@ final class NewShipReminderController extends ChangeNotifier
   final NewShipAlertPublisher onPublish;
   final Future<void> Function()? waitForGameState;
   final AccountSession? accountSession;
+  AccountScope? _accountScope;
   bool _disposed = false;
   Future<void> _queue = Future<void>.value();
   final Set<String> _acceptedEventKeys = <String>{};
@@ -69,8 +71,12 @@ final class NewShipReminderController extends ChangeNotifier
       path == '/kcsapi/api_req_kousyou/getship' ||
       path == '/kcsapi/api_req_quest/clearitemget';
 
-  void _onAccountChanged() =>
-      _selectAccount(accountSession!.current.memberId, newSession: true);
+  void _onAccountChanged() {
+    final scope = accountSession!.current;
+    if (identical(scope, _accountScope)) return;
+    _accountScope = scope;
+    _selectAccount(scope.memberId, newSession: true);
+  }
 
   @override
   void dispose() {

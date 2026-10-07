@@ -14,6 +14,7 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
@@ -112,7 +113,7 @@ class GadgetBypassWebViewClientTest {
     }
 
     @Test
-    fun legacyUrlOnlyCallbackDelegatesWithoutReadingGameCache() {
+    fun legacyUrlOnlyCallbackServesOfficialStaticAssetThroughGameCache() {
         val sentinel = WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(byteArrayOf(9)))
         val original = RecordingClient(sentinel)
         val root = File(cacheDir, "legacy-resources")
@@ -135,8 +136,41 @@ class GadgetBypassWebViewClientTest {
                 webView, "https://w17k.kancolle-server.com/kcs2/resources/a.png"))
             webView.destroy()
         }
+        assertNotNull(actual.get())
+        actual.get()!!.data.use { stream ->
+            assertArrayEquals(byteArrayOf(1), stream.readBytes())
+        }
+        assertEquals(1, fetches)
+        assertEquals(0, original.interceptCalls)
+    }
+
+    @Test
+    fun legacyApiCallbackDelegatesWithoutReadingGameCache() {
+        val sentinel = WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(byteArrayOf(9)))
+        val original = RecordingClient(sentinel)
+        val root = File(cacheDir, "legacy-api-resources")
+        var fetches = 0
+        val resourceEngine = GameResourceCacheEngine(
+            GameResourceCacheStore(root, GameResourceCacheIndex(File(root, "index.json")), 10_000),
+            GameResourceFetcher { _, _, _ ->
+                fetches++
+                GameResourceFetchResult(200, "OK", emptyMap(), byteArrayOf(1))
+            },
+        ) { GameResourceCacheMode.FULL }
+        val wrapper = GadgetBypassWebViewClient(
+            original, GadgetBypassEngine(GadgetBypassCache(cacheDir)),
+            { false }, { GadgetBypassRules.DEFAULT_ENDPOINT }, resourceEngine, true,
+        )
+        val actual = AtomicReference<WebResourceResponse?>()
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val webView = WebView(ApplicationProvider.getApplicationContext())
+            actual.set(wrapper.shouldInterceptRequest(
+                webView, "https://w17k.kancolle-server.com/kcsapi/api_port/port"))
+            webView.destroy()
+        }
         assertSame(sentinel, actual.get())
         assertEquals(0, fetches)
+        assertEquals(1, original.interceptCalls)
     }
 
     private fun request(url: String): WebResourceRequest = object : WebResourceRequest {

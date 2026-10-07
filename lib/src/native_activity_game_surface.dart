@@ -620,44 +620,52 @@ final class _NativeActivityGameSurfaceState
         _setNetworkStartupError('网络设置应用失败 [${result.code}]: ${result.message}');
         return;
       }
-      _setStartupState(GameStartupState.networkReady);
-
-      final initialAddress = resolveInitialGameAddress(
-        widget.browserController,
-      );
-      await orchestrator
-          .runCaptureStartup(
-            waitForSurface: () async {
-              await WidgetsBinding.instance.endOfFrame;
-            },
-            isActive: () =>
-                _matchesGeneration(port, generationId, operationEpoch),
-            navigate: () async {
-              if (_matchesGeneration(port, generationId, operationEpoch)) {
-                await widget.browserController.prepareInitialHome();
-              }
-              if (_matchesGeneration(port, generationId, operationEpoch)) {
-                await _navigateInitialPage(
-                  port,
-                  initialAddress,
-                  generationId: generationId,
-                  operationEpoch: operationEpoch,
-                );
-              }
-            },
-          )
-          .timeout(_cleanupTimeout);
-      if (!_matchesGeneration(port, generationId, operationEpoch)) return;
-      if (_pageReady) {
-        await orchestrator.attachAudioPortOnce().timeout(_cleanupTimeout);
-        if (_matchesGeneration(port, generationId, operationEpoch)) {
-          _setStartupState(GameStartupState.ready);
-        }
-      }
+      await _continueStartupAfterNetwork(port, generationId, operationEpoch);
     } catch (error, stackTrace) {
       debugPrint('Native game surface startup failed: $error\n$stackTrace');
       if (_matchesAttempt(port, operationEpoch)) {
         _setFatalError(nativeWebViewStartupErrorMessage(error));
+      }
+    }
+  }
+
+  Future<void> _continueStartupAfterNetwork(
+    NativeActivityGameWebViewPort port,
+    int generationId,
+    int operationEpoch,
+  ) async {
+    if (!_matchesGeneration(port, generationId, operationEpoch)) return;
+    final orchestrator = _startupOrchestrator;
+    _networkRetryAvailable = false;
+    _setStartupState(GameStartupState.networkReady);
+    final initialAddress = resolveInitialGameAddress(widget.browserController);
+    await orchestrator
+        .runCaptureStartup(
+          waitForSurface: () async {
+            await WidgetsBinding.instance.endOfFrame;
+          },
+          isActive: () =>
+              _matchesGeneration(port, generationId, operationEpoch),
+          navigate: () async {
+            if (_matchesGeneration(port, generationId, operationEpoch)) {
+              await widget.browserController.prepareInitialHome();
+            }
+            if (_matchesGeneration(port, generationId, operationEpoch)) {
+              await _navigateInitialPage(
+                port,
+                initialAddress,
+                generationId: generationId,
+                operationEpoch: operationEpoch,
+              );
+            }
+          },
+        )
+        .timeout(_cleanupTimeout);
+    if (!_matchesGeneration(port, generationId, operationEpoch)) return;
+    if (_pageReady) {
+      await orchestrator.attachAudioPortOnce().timeout(_cleanupTimeout);
+      if (_matchesGeneration(port, generationId, operationEpoch)) {
+        _setStartupState(GameStartupState.ready);
       }
     }
   }
@@ -1375,6 +1383,23 @@ final class _NativeActivityGameSurfaceState
     }
     if (!_matchesGeneration(port, generationId, operationEpoch)) return;
     if (result.success) {
+      if (!_navigationIssued && !_navigationAcknowledged) {
+        try {
+          await _continueStartupAfterNetwork(
+            port,
+            generationId,
+            operationEpoch,
+          );
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Native game surface startup retry failed: $error\n$stackTrace',
+          );
+          if (_matchesGeneration(port, generationId, operationEpoch)) {
+            _setFatalError(nativeWebViewStartupErrorMessage(error));
+          }
+        }
+        return;
+      }
       try {
         await port.reload().timeout(_cleanupTimeout);
       } catch (error, stackTrace) {

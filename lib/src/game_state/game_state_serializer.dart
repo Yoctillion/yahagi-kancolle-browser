@@ -3,228 +3,246 @@ import 'game_state.dart';
 import 'quest_text_normalizer.dart';
 
 class GameStateSerializer {
-  static String serialize(GameState state) {
-    return jsonEncode({
-      'memberId': state.memberId,
-      'admiralLevel': state.admiralLevel,
-      'resources': state.resources.map(
-        (k, v) => MapEntry(k.apiId.toString(), v),
-      ),
-      'useItems': state.useItems.map((k, v) => MapEntry(k.toString(), v)),
-      'hasUseItemData': state.hasUseItemData,
-      'furnitureCoins': state.furnitureCoins,
-      'hasFurnitureCoinData': state.hasFurnitureCoinData,
-      'mapDifficulties': state.mapDifficulties.map(
-        (key, value) => MapEntry(key.toString(), value),
-      ),
-      'masterMapAreas': state.masterMapAreas.map(
-        (key, value) => MapEntry(key.toString(), value),
-      ),
-      'memberMapInfos': state.memberMapInfos.map(
-        (key, value) => MapEntry(key.toString(), {
-          'id': value.id,
-          'mapAreaId': value.mapAreaId,
-          'mapNo': value.mapNo,
-          'name': value.name,
-          'operationText': value.operationText,
-          'cleared': value.cleared,
-          'defeatCount': value.defeatCount,
-          'requiredDefeatCount': value.requiredDefeatCount,
-          'currentHp': value.currentHp,
-          'maxHp': value.maxHp,
-          'gaugeType': value.gaugeType,
-          'gaugeNum': value.gaugeNum,
-          'gaugeMaxNum': value.gaugeMaxNum,
-          'selectedRank': value.selectedRank,
-          'isEvent': value.isEvent,
-        }),
-      ),
-      'quests': state.quests.map(
-        (k, v) => MapEntry(k.toString(), {
-          'id': v.id,
-          'title': v.title,
-          'detail': v.detail,
-          'category': v.category,
-          'type': v.type,
-          'state': v.state,
-          'progressFlag': v.progressFlag,
-          'materials': v.materials,
-          'progressCurrent': v.progressCurrent,
-          'progressRequired': v.progressRequired,
-          'localCompletionVerified': v.localCompletionVerified,
-          'updatedAt': v.updatedAt?.millisecondsSinceEpoch,
-        }),
-      ),
-      'hasQuestData': state.hasQuestData,
-      'activeQuestCount': state.activeQuestCount,
-      'questCapacity': state.questCapacity,
-      'fleets': state.fleets
-          .map(
-            (f) => {
-              'id': f.id,
-              'name': f.name,
-              'shipIds': f.shipIds,
-              'slotCount': f.slotCount,
-              'mission': {
-                'state': f.mission.state,
-                'missionId': f.mission.missionId,
-                'completionTime':
-                    f.mission.completionTime?.millisecondsSinceEpoch,
-              },
+  static String serialize(GameState state) =>
+      jsonEncode({...sharedData(state), ...personalData(state)});
+
+  /// Builds account data without traversing the shared definitions.
+  static Map<String, Object?> personalData(GameState state) => {
+    'memberId': state.memberId,
+    'admiralLevel': state.admiralLevel,
+    'resources': state.resources.map((k, v) => MapEntry(k.apiId.toString(), v)),
+    'useItems': state.useItems.map((k, v) => MapEntry(k.toString(), v)),
+    'hasUseItemData': state.hasUseItemData,
+    'furnitureCoins': state.furnitureCoins,
+    'hasFurnitureCoinData': state.hasFurnitureCoinData,
+    'mapDifficulties': state.mapDifficulties.map(
+      (key, value) => MapEntry(key.toString(), value),
+    ),
+    'memberMapInfos': state.memberMapInfos.map(
+      (key, value) => MapEntry(key.toString(), {
+        'id': value.id,
+        'mapAreaId': value.mapAreaId,
+        'mapNo': value.mapNo,
+        'name': value.name,
+        'operationText': value.operationText,
+        'cleared': value.cleared,
+        'defeatCount': value.defeatCount,
+        'requiredDefeatCount': value.requiredDefeatCount,
+        'currentHp': value.currentHp,
+        'maxHp': value.maxHp,
+        'gaugeType': value.gaugeType,
+        'gaugeNum': value.gaugeNum,
+        'gaugeMaxNum': value.gaugeMaxNum,
+        'selectedRank': value.selectedRank,
+        'isEvent': value.isEvent,
+      }),
+    ),
+    'quests': state.quests.map(
+      (k, v) => MapEntry(k.toString(), {
+        'id': v.id,
+        'title': v.title,
+        'detail': v.detail,
+        'category': v.category,
+        'type': v.type,
+        'state': v.state,
+        'progressFlag': v.progressFlag,
+        'materials': v.materials,
+        'progressCurrent': v.progressCurrent,
+        'progressRequired': v.progressRequired,
+        'localCompletionVerified': v.localCompletionVerified,
+        'updatedAt': v.updatedAt?.millisecondsSinceEpoch,
+      }),
+    ),
+    'hasQuestData': state.hasQuestData,
+    'activeQuestCount': state.activeQuestCount,
+    'questCapacity': state.questCapacity,
+    'fleets': state.fleets
+        .map(
+          (f) => {
+            'id': f.id,
+            'name': f.name,
+            'shipIds': f.shipIds,
+            'slotCount': f.slotCount,
+            'mission': {
+              'state': f.mission.state,
+              'missionId': f.mission.missionId,
+              'completionTime':
+                  f.mission.completionTime?.millisecondsSinceEpoch,
             },
-          )
-          .toList(),
-      'repairDocks': state.repairDocks
-          .map(
-            (r) => {
-              'id': r.id,
-              'state': r.state,
-              'shipId': r.shipId,
-              'completionTime': r.completionTime?.millisecondsSinceEpoch,
-              'fuelCost': r.fuelCost,
-              'steelCost': r.steelCost,
-            },
-          )
-          .toList(),
-      'constructionDocks': state.constructionDocks
-          .map(
-            (c) => {
-              'id': c.id,
-              'state': c.state,
-              'createdShipMasterId': c.createdShipMasterId,
-              'completionTime': c.completionTime?.millisecondsSinceEpoch,
-              'startedAt': c.startedAt?.millisecondsSinceEpoch,
-              'fuel': c.fuel,
-              'ammunition': c.ammunition,
-              'steel': c.steel,
-              'bauxite': c.bauxite,
-              'developmentMaterial': c.developmentMaterial,
-            },
-          )
-          .toList(),
-      'landBases': state.landBases
-          .map(
-            (base) => {
-              'areaId': base.areaId,
-              'baseId': base.baseId,
-              'name': base.name,
-              'actionKind': base.actionKind,
-              'distanceBase': base.distanceBase,
-              'distanceBonus': base.distanceBonus,
-              'squadrons': base.squadrons
-                  .map(
-                    (squadron) => {
-                      'squadronId': squadron.squadronId,
-                      'state': squadron.state,
-                      'slotItemId': squadron.slotItemId,
-                      'currentCount': squadron.currentCount,
-                      'maxCount': squadron.maxCount,
-                      'condition': squadron.condition,
-                    },
-                  )
-                  .toList(),
-            },
-          )
-          .toList(),
-      'masterMissions': state.masterMissions.map(
-        (k, v) => MapEntry(k.toString(), {
-          'id': v.id,
-          'name': v.name,
-          'durationSeconds': v.duration.inSeconds,
-          'displayNumber': v.displayNumber,
-          'mapAreaId': v.mapAreaId,
-        }),
-      ),
-      'masterShipTypes': state.masterShipTypes.map(
-        (k, v) => MapEntry(k.toString(), {
-          'id': v.id,
-          'name': v.name,
-          'equipTypeIds': v.equipTypeIds.toList(),
-        }),
-      ),
-      'masterShips': state.masterShips.map(
-        (k, v) => MapEntry(k.toString(), {
-          'id': v.id,
-          'name': v.name,
-          'reading': v.reading,
-          'shipTypeId': v.shipTypeId,
-          'afterShipId': v.afterShipId,
-          'afterLv': v.afterLv,
-          'buildTimeMinutes': v.buildTimeMinutes,
-          'sortNo': v.sortNo,
-          'classTypeId': v.classTypeId,
-          'baseFirepower': v.baseFirepower,
-          'maxFirepower': v.maxFirepower,
-          'baseTorpedo': v.baseTorpedo,
-          'maxTorpedo': v.maxTorpedo,
-          'baseAntiAir': v.baseAntiAir,
-          'maxAntiAir': v.maxAntiAir,
-          'baseArmor': v.baseArmor,
-          'maxArmor': v.maxArmor,
-          'baseLuck': v.baseLuck,
-          'maxLuck': v.maxLuck,
-          'baseHp': v.baseHp,
-          'maxHp': v.maxHp,
-          'powerUp': v.powerUp,
-          'modernizationRangeIndices': v.modernizationRangeIndices.toList(),
-          'equipTypeIds': v.equipTypeIds.toList(),
-          'limitedEquipmentIdsByType': v.limitedEquipmentIdsByType.map(
-            (typeId, equipmentIds) =>
-                MapEntry(typeId.toString(), equipmentIds.toList()),
-          ),
-        }),
-      ),
-      'masterSlotItems': state.masterSlotItems.map(
-        (k, v) => MapEntry(k.toString(), {
-          'id': v.id,
-          'name': v.name,
-          'sortNo': v.sortNo,
-          'type': v.type,
-        }),
-      ),
-      'masterSlotItemTypes': state.masterSlotItemTypes.map(
-        (key, value) => MapEntry(key.toString(), value),
-      ),
-      'expansionSlotEquipmentTypeIds': state.expansionSlotEquipmentTypeIds
-          .toList(),
-      'expansionSlotSpecialRules': state.expansionSlotSpecialRules.map(
-        (equipmentId, rule) => MapEntry(equipmentId.toString(), {
-          'equipmentMasterId': rule.equipmentMasterId,
-          'shipMasterIds': rule.shipMasterIds.toList(),
-          'classTypeIds': rule.classTypeIds.toList(),
-          'shipTypeIds': rule.shipTypeIds.toList(),
-          'minimumImprovement': rule.minimumImprovement,
-        }),
-      ),
-      'expansionSlotLimitsByShipId': state.expansionSlotLimitsByShipId.map(
-        (shipId, typeIds) => MapEntry(shipId.toString(), typeIds.toList()),
-      ),
-      'hasEquipmentCompatibilityData': state.hasEquipmentCompatibilityData,
-      'ships': state.ships.map(
-        (k, v) => MapEntry(k.toString(), {
-          'id': v.id,
-          'masterId': v.masterId,
-          'level': v.level,
-          'currentHp': v.currentHp,
-          'maxHp': v.maxHp,
-          'luck': v.luck,
-          'luckMax': v.luckMax,
-          'modernization': v.modernization,
-          'sallyArea': v.sallyArea,
-          'specialEffectKinds': v.specialEffectKinds,
-          'maxSlotCounts': v.maxSlotCounts,
-          'condition': v.condition,
-          'experience': v.experience,
-          'nextExperience': v.nextExperience,
-          'extraSlotId': v.extraSlotId,
-          'repairDurationMilliseconds': v.repairDurationMilliseconds,
-          'repairFuelCost': v.repairFuelCost,
-          'repairSteelCost': v.repairSteelCost,
-        }),
-      ),
-      'updatedAt': state.updatedAt?.millisecondsSinceEpoch,
-    });
-  }
+          },
+        )
+        .toList(),
+    'repairDocks': state.repairDocks
+        .map(
+          (r) => {
+            'id': r.id,
+            'state': r.state,
+            'shipId': r.shipId,
+            'completionTime': r.completionTime?.millisecondsSinceEpoch,
+            'fuelCost': r.fuelCost,
+            'steelCost': r.steelCost,
+          },
+        )
+        .toList(),
+    'constructionDocks': state.constructionDocks
+        .map(
+          (c) => {
+            'id': c.id,
+            'state': c.state,
+            'createdShipMasterId': c.createdShipMasterId,
+            'completionTime': c.completionTime?.millisecondsSinceEpoch,
+            'startedAt': c.startedAt?.millisecondsSinceEpoch,
+            'fuel': c.fuel,
+            'ammunition': c.ammunition,
+            'steel': c.steel,
+            'bauxite': c.bauxite,
+            'developmentMaterial': c.developmentMaterial,
+          },
+        )
+        .toList(),
+    'landBases': state.landBases
+        .map(
+          (base) => {
+            'areaId': base.areaId,
+            'baseId': base.baseId,
+            'name': base.name,
+            'actionKind': base.actionKind,
+            'distanceBase': base.distanceBase,
+            'distanceBonus': base.distanceBonus,
+            'squadrons': base.squadrons
+                .map(
+                  (squadron) => {
+                    'squadronId': squadron.squadronId,
+                    'state': squadron.state,
+                    'slotItemId': squadron.slotItemId,
+                    'currentCount': squadron.currentCount,
+                    'maxCount': squadron.maxCount,
+                    'condition': squadron.condition,
+                  },
+                )
+                .toList(),
+          },
+        )
+        .toList(),
+    'ships': state.ships.map(
+      (k, v) => MapEntry(k.toString(), {
+        'id': v.id,
+        'masterId': v.masterId,
+        'level': v.level,
+        'currentHp': v.currentHp,
+        'maxHp': v.maxHp,
+        'luck': v.luck,
+        'luckMax': v.luckMax,
+        'modernization': v.modernization,
+        'sallyArea': v.sallyArea,
+        'specialEffectKinds': v.specialEffectKinds,
+        'maxSlotCounts': v.maxSlotCounts,
+        'condition': v.condition,
+        'experience': v.experience,
+        'nextExperience': v.nextExperience,
+        'extraSlotId': v.extraSlotId,
+        'repairDurationMilliseconds': v.repairDurationMilliseconds,
+        'repairFuelCost': v.repairFuelCost,
+        'repairSteelCost': v.repairSteelCost,
+      }),
+    ),
+    'updatedAt': state.updatedAt?.millisecondsSinceEpoch,
+  };
+
+  /// Detached JSON values also detect later in-place collection mutations.
+  static Map<String, Object?> sharedData(GameState state) => {
+    'masterMapAreas': state.masterMapAreas.map(
+      (key, value) => MapEntry(key.toString(), value),
+    ),
+    'masterMissions': state.masterMissions.map(
+      (k, v) => MapEntry(k.toString(), {
+        'id': v.id,
+        'name': v.name,
+        'durationSeconds': v.duration.inSeconds,
+        'displayNumber': v.displayNumber,
+        'mapAreaId': v.mapAreaId,
+      }),
+    ),
+    'masterShipTypes': state.masterShipTypes.map(
+      (k, v) => MapEntry(k.toString(), {
+        'id': v.id,
+        'name': v.name,
+        'equipTypeIds': (v.equipTypeIds.toList()..sort()),
+      }),
+    ),
+    'masterShips': state.masterShips.map(
+      (k, v) => MapEntry(k.toString(), {
+        'id': v.id,
+        'name': v.name,
+        'reading': v.reading,
+        'shipTypeId': v.shipTypeId,
+        'afterShipId': v.afterShipId,
+        'afterLv': v.afterLv,
+        'buildTimeMinutes': v.buildTimeMinutes,
+        'sortNo': v.sortNo,
+        'classTypeId': v.classTypeId,
+        'baseFirepower': v.baseFirepower,
+        'maxFirepower': v.maxFirepower,
+        'baseTorpedo': v.baseTorpedo,
+        'maxTorpedo': v.maxTorpedo,
+        'baseAntiAir': v.baseAntiAir,
+        'maxAntiAir': v.maxAntiAir,
+        'baseArmor': v.baseArmor,
+        'maxArmor': v.maxArmor,
+        'baseLuck': v.baseLuck,
+        'maxLuck': v.maxLuck,
+        'baseHp': v.baseHp,
+        'maxHp': v.maxHp,
+        'powerUp': List<int>.of(v.powerUp),
+        'modernizationRangeIndices': (v.modernizationRangeIndices.toList()
+          ..sort()),
+        'equipTypeIds': (v.equipTypeIds.toList()..sort()),
+        'limitedEquipmentIdsByType': v.limitedEquipmentIdsByType.map(
+          (typeId, equipmentIds) =>
+              MapEntry(typeId.toString(), (equipmentIds.toList()..sort())),
+        ),
+      }),
+    ),
+    'masterSlotItems': state.masterSlotItems.map(
+      (k, v) => MapEntry(k.toString(), {
+        'id': v.id,
+        'name': v.name,
+        'sortNo': v.sortNo,
+        'type': List<int>.of(v.type),
+      }),
+    ),
+    'masterSlotItemTypes': state.masterSlotItemTypes.map(
+      (key, value) => MapEntry(key.toString(), value),
+    ),
+    'expansionSlotEquipmentTypeIds':
+        (state.expansionSlotEquipmentTypeIds.toList()..sort()),
+    'expansionSlotSpecialRules': state.expansionSlotSpecialRules.map(
+      (equipmentId, rule) => MapEntry(equipmentId.toString(), {
+        'equipmentMasterId': rule.equipmentMasterId,
+        'shipMasterIds': (rule.shipMasterIds.toList()..sort()),
+        'classTypeIds': (rule.classTypeIds.toList()..sort()),
+        'shipTypeIds': (rule.shipTypeIds.toList()..sort()),
+        'minimumImprovement': rule.minimumImprovement,
+      }),
+    ),
+    'expansionSlotLimitsByShipId': state.expansionSlotLimitsByShipId.map(
+      (shipId, typeIds) =>
+          MapEntry(shipId.toString(), (typeIds.toList()..sort())),
+    ),
+    'hasEquipmentCompatibilityData': state.hasEquipmentCompatibilityData,
+    'masterMapInfos': state.masterMapInfos.map(
+      (key, value) => MapEntry(key.toString(), {
+        'id': value.id,
+        'mapAreaId': value.mapAreaId,
+        'mapNo': value.mapNo,
+        'name': value.name,
+        'operationText': value.operationText,
+        'requiredDefeatCount': value.requiredDefeatCount,
+        'maxMapHp': value.maxMapHp,
+      }),
+    ),
+    'hasMasterData': state.hasMasterData,
+  };
 
   static GameState deserialize(String jsonStr) {
     try {
@@ -321,6 +339,24 @@ class GameStateSerializer {
       }
 
       final memberMapInfos = <int, MemberMapInfo>{};
+      final masterMapInfos = <int, MasterMapInfo>{};
+      final rawMasterMapInfos = map['masterMapInfos'];
+      if (rawMasterMapInfos is Map) {
+        for (final entry in rawMasterMapInfos.entries) {
+          final id = int.tryParse('${entry.key}');
+          final value = entry.value;
+          if (id == null || id <= 0 || value is! Map) continue;
+          masterMapInfos[id] = MasterMapInfo(
+            id: _int(value['id']) ?? id,
+            mapAreaId: _int(value['mapAreaId']) ?? 0,
+            mapNo: _int(value['mapNo']) ?? 0,
+            name: _string(value['name']),
+            operationText: _string(value['operationText']),
+            requiredDefeatCount: _int(value['requiredDefeatCount']),
+            maxMapHp: _int(value['maxMapHp']),
+          );
+        }
+      }
       final rawMemberMapInfos = map['memberMapInfos'];
       if (rawMemberMapInfos is Map) {
         for (final entry in rawMemberMapInfos.entries) {
@@ -687,6 +723,7 @@ class GameStateSerializer {
         hasFurnitureCoinData: map['hasFurnitureCoinData'] == true,
         mapDifficulties: mapDifficulties,
         masterMapAreas: masterMapAreas,
+        masterMapInfos: masterMapInfos,
         memberMapInfos: memberMapInfos,
         quests: quests,
         hasQuestData: map['hasQuestData'] == true,

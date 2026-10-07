@@ -273,6 +273,15 @@ class OwnedInventoryProjection {
         if (id > 0) equippedByItemId[id] = ship;
       }
     }
+    final assignedItemIds = <int>{
+      ...equippedByItemId.keys,
+      for (final base in state.landBases)
+        for (final squadron in base.squadrons)
+          // A depleted or transferring squadron still owns its assigned item.
+          if ((squadron.state == 1 || squadron.state == 2) &&
+              squadron.slotItemId > 0)
+            squadron.slotItemId,
+    };
 
     final groups = <EquipmentInventoryGroup>[];
     for (final entry in ownedByMaster.entries) {
@@ -289,8 +298,8 @@ class OwnedInventoryProjection {
         final variant = (item.level, item.proficiency);
         variantCounts[variant] = (variantCounts[variant] ?? 0) + 1;
         final ship = equippedByItemId[item.instanceId];
+        if (assignedItemIds.contains(item.instanceId)) equippedCount++;
         if (ship != null) {
-          equippedCount++;
           wearingCounts[ship.id] = (wearingCounts[ship.id] ?? 0) + 1;
         }
       }

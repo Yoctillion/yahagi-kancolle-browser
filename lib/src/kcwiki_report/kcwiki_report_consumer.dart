@@ -18,6 +18,7 @@ final class KcwikiReportConsumer implements GameApiEventConsumer {
     _gameState = gameState;
     _waitForGameState = waitForGameState;
     _lastEnabled = controller.enabled;
+    _accountScope = this.accountSession.current;
     controller.addListener(_onSettingsChanged);
     this.accountSession.addListener(_onAccountChanged);
     if (controller.enabled && this.accountSession.current.isKnown) {
@@ -37,6 +38,7 @@ final class KcwikiReportConsumer implements GameApiEventConsumer {
   int _pendingEventCount = 0;
   bool _disposed = false;
   late bool _lastEnabled;
+  late AccountScope _accountScope;
 
   int get pendingEventCount => _pendingEventCount;
 
@@ -97,10 +99,17 @@ final class KcwikiReportConsumer implements GameApiEventConsumer {
   void _onSettingsChanged() {
     if (controller.enabled == _lastEnabled) return;
     _lastEnabled = controller.enabled;
-    _onAccountChanged();
+    _resetSession();
   }
 
   void _onAccountChanged() {
+    final scope = accountSession.current;
+    if (identical(scope, _accountScope)) return;
+    _accountScope = scope;
+    _resetSession();
+  }
+
+  void _resetSession() {
     _session += 1;
     _queue = Future<void>.value();
     collector.reset();

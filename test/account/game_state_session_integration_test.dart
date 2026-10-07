@@ -122,6 +122,19 @@ void main() {
     },
   );
 
+  test('same scope metadata retains the claimed quest ledger', () async {
+    await _seedLedgers();
+    final harness = await _Harness.create();
+    await harness.login(1001);
+    expect(harness.controller.completedQuestIds, {901});
+    harness.session.accept(_basic(1001));
+    expect(harness.controller.completedQuestIds, {901});
+    harness.session.reset();
+    expect(harness.controller.completedQuestIds, isEmpty);
+    await harness.login(1001);
+    expect(harness.controller.completedQuestIds, {901});
+  });
+
   test(
     'a delayed account snapshot cannot publish after identity switches',
     () async {

@@ -1171,7 +1171,7 @@ void main() {
               'api_slot': <int>[7003, -1],
               'api_onslot': <int>[0, 0],
               'api_ndock_time': 5400000,
-              'api_ndock_item': <int>[24, 0, 46, 0],
+              'api_ndock_item': <int>[24, 46],
             },
           ]),
         );

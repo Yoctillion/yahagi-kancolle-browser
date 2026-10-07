@@ -281,7 +281,9 @@ class WorkspaceContextHeader extends StatelessWidget {
       );
     }
     if (workspaceIndex == 7) {
-      final unowned = UnownedInventoryProjection(state);
+      final unowned = inventoryShowOwned
+          ? null
+          : UnownedInventoryProjection(state);
       return Row(
         children: [
           Text(
@@ -310,10 +312,10 @@ class WorkspaceContextHeader extends StatelessWidget {
                       showShips: inventoryShowShips,
                       shipCount: inventoryShowOwned
                           ? state.ships.length
-                          : unowned.unownedShipFamilies.length,
+                          : unowned!.unownedShipFamilies.length,
                       equipmentCount: inventoryShowOwned
                           ? state.equipmentCapacityUsed
-                          : unowned.unownedEquipment.length,
+                          : unowned!.unownedEquipment.length,
                       onChanged: onInventorySectionChanged ?? (_) {},
                     ),
                   ],

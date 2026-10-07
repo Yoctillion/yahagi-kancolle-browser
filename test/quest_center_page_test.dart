@@ -17,6 +17,222 @@ import 'package:yahagi_kancolle_browser/src/widgets/filter_controls.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
 void main() {
+  testWidgets(
+    'resources and choice rewards survive quest states and mode changes',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1180, 720);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final controller = GameStateController(
+        questStore: _QuestFixtureStore(const <int, GameQuest>{}),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      const materials = <int>[0, 200, 1200, 200];
+      const rewards =
+          '二回選択報酬：[装備運用枠+8、二式爆雷★4、開発資材×40]'
+          '[61cm五連装(酸素)魚雷★4×2、12.7cm連装高角砲改二★4、新型兵装資材×3]';
+      final catalog = QuestCatalog(<QuestCatalogEntry>[
+        QuestCatalogEntry.fromJson(1164, <String, Object?>{
+          'code': 'F142',
+          'name': '水雷戦隊新改装艦、改装準備！',
+          'desc': '第一艦隊に旗艦「玉波」を配備せよ！',
+          'rewards': rewards,
+          'resources': <Object?>[
+            <num>[0, 200, 1200.0, 200],
+            <int>[0, 0, 0, 0],
+          ],
+        }),
+      ]);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: QuestCenterPage(
+            controller: controller,
+            catalog: catalog,
+            mode: QuestCenterMode.all,
+          ),
+        ),
+      );
+
+      void expectRewards(String reason) {
+        _expectQuestMaterials(tester, materials, reason: reason);
+        expect(_questDetailText(rewards), findsOneWidget, reason: reason);
+        for (final item in const <String>[
+          '二式爆雷★4',
+          '開発資材×40',
+          '61cm五連装(酸素)魚雷★4×2',
+          '新型兵装資材×3',
+        ]) {
+          expect(
+            find.descendant(
+              of: find.byKey(const Key('quest-detail-panel')),
+              matching: find.textContaining(item),
+            ),
+            findsOneWidget,
+            reason: reason,
+          );
+        }
+      }
+
+      expectRewards('catalog rewards before the first quest snapshot');
+      var sequence = 0;
+      for (final state in const <int>[1, 2, 3, 1]) {
+        await _acceptRewardQuestSnapshot(
+          controller,
+          id: 1164,
+          state: state,
+          materials: materials,
+          sequence: ++sequence,
+        );
+        await tester.pumpAndSettle();
+        final status = switch (state) {
+          1 => '未接取',
+          2 => '进行中',
+          _ => '待领取',
+        };
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('quest-detail-status-1164')),
+            matching: find.text(status),
+          ),
+          findsOneWidget,
+        );
+        expectRewards('all quests, api_state $state, snapshot $sequence');
+
+        if (state >= 2) {
+          await tester.tap(_questModeTab('进行中'));
+          await tester.pumpAndSettle();
+          expectRewards('active quests, api_state $state');
+          await tester.tap(_questModeTab('全任务'));
+          await tester.pumpAndSettle();
+          expectRewards('return to all quests, api_state $state');
+        }
+      }
+      await tester.tap(_questModeTab('进行中'));
+      await tester.pumpAndSettle();
+      expect(find.text('等待任务数据'), findsOneWidget);
+      await tester.tap(_questModeTab('全任务'));
+      await tester.pumpAndSettle();
+      expectRewards('return to all quests after stopping the quest');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'API materials stay visible without catalog and override catalog values',
+    (tester) async {
+      final controller = GameStateController(
+        questStore: _QuestFixtureStore(const <int, GameQuest>{}),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      const materials = <int>[50, 0, 400, 0];
+      await _acceptRewardQuestSnapshot(
+        controller,
+        id: 9001,
+        state: 2,
+        materials: materials,
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: QuestCenterPage(controller: controller)),
+      );
+      await tester.pumpAndSettle();
+      _expectQuestMaterials(tester, materials, reason: 'no catalog supplied');
+
+      const rewards = '零式艦戦21型×2、開発資材×3';
+      final catalog = QuestCatalog(<QuestCatalogEntry>[
+        QuestCatalogEntry.fromJson(9001, <String, Object?>{
+          'code': 'B1',
+          'name': '報酬のある任務',
+          'desc': '任務を達成せよ。',
+          'rewards': rewards,
+          'resources': <Object?>[
+            <num>[600, 300, 0.0, 200],
+            <int>[0, 0, 3, 0],
+          ],
+        }),
+      ]);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: QuestCenterPage(controller: controller, catalog: catalog),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (final mode in const <String>['进行中', '全任务']) {
+        await tester.tap(_questModeTab(mode));
+        await tester.pumpAndSettle();
+        _expectQuestMaterials(tester, materials, reason: mode);
+        expect(_questDetailText(rewards), findsOneWidget, reason: mode);
+        for (final value in const <String>['600', '300', '200', '650']) {
+          expect(_questDetailText(value), findsNothing, reason: mode);
+        }
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('phone detail wraps long rewards beside all four resources', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 780);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final controller = GameStateController(
+      questStore: _QuestFixtureStore(const <int, GameQuest>{}),
+    );
+    addTearDown(controller.dispose);
+    await controller.idle;
+    const materials = <int>[0, 200, 1200, 200];
+    const rewards =
+        '二回選択報酬：[装備運用枠+8、二式爆雷★4、開発資材×40]\n'
+        '[61cm五連装(酸素)魚雷★4×2、12.7cm連装高角砲改二★4、新型兵装資材×3]';
+    final catalog = QuestCatalog(<QuestCatalogEntry>[
+      QuestCatalogEntry.fromJson(1164, <String, Object?>{
+        'code': 'F142',
+        'name': '水雷戦隊新改装艦、改装準備！',
+        'desc': '第一艦隊に旗艦「玉波」を配備せよ！',
+        'rewards': rewards,
+        'resources': <Object?>[
+          <num>[0, 200, 1200.0, 200],
+          <int>[0, 0, 0, 0],
+        ],
+      }),
+    ]);
+    await _acceptRewardQuestSnapshot(
+      controller,
+      id: 1164,
+      state: 2,
+      materials: materials,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: QuestCenterPage(controller: controller, catalog: catalog),
+      ),
+    );
+    for (final mode in const <String>['进行中', '全任务']) {
+      await tester.tap(_questModeTab(mode));
+      await tester.pumpAndSettle();
+      _expectQuestMaterials(tester, materials, reason: mode);
+      final reward = _questDetailText(rewards);
+      expect(reward, findsOneWidget, reason: mode);
+      await tester.ensureVisible(reward);
+      await tester.pumpAndSettle();
+      final text = tester.widget<Text>(reward);
+      expect(text.maxLines, isNull);
+      expect(text.overflow, isNot(TextOverflow.ellipsis));
+      expect(tester.getSize(reward).height, greaterThan(60));
+      final panel = tester.getRect(find.byKey(const Key('quest-detail-panel')));
+      final rewardRect = tester.getRect(reward);
+      expect(rewardRect.left, greaterThanOrEqualTo(panel.left));
+      expect(rewardRect.right, lessThanOrEqualTo(panel.right));
+      expect(rewardRect.top, greaterThanOrEqualTo(panel.top));
+      expect(rewardRect.bottom, lessThanOrEqualTo(panel.bottom));
+      expect(tester.takeException(), isNull, reason: mode);
+    }
+  });
+
   testWidgets('unfolded square screen keeps quest list beside details', (
     tester,
   ) async {
@@ -744,6 +960,92 @@ void main() {
 
     expect(catalog.projectCalls, 1);
   });
+}
+
+Finder _questDetailText(String text) => find.descendant(
+  of: find.byKey(const Key('quest-detail-panel')),
+  matching: find.text(text),
+);
+
+Finder _questModeTab(String label) => find.descendant(
+  of: find.byKey(const Key('quest-mode-tabs')),
+  matching: find.text(label),
+);
+
+void _expectQuestMaterials(
+  WidgetTester tester,
+  List<int> materials, {
+  required String reason,
+}) {
+  final panel = find.byKey(const Key('quest-detail-panel'));
+  expect(panel, findsOneWidget, reason: reason);
+  expect(
+    find.descendant(of: panel, matching: find.byType(Image)),
+    findsNWidgets(4),
+    reason: reason,
+  );
+  for (var index = 0; index < 4; index++) {
+    final asset =
+        'assets/images/material/${(index + 1).toString().padLeft(2, '0')}.png';
+    final icon = find.descendant(
+      of: panel,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == asset,
+      ),
+    );
+    expect(icon, findsOneWidget, reason: reason);
+    final resourceRow = find
+        .ancestor(of: icon, matching: find.byType(Row))
+        .first;
+    expect(
+      find.descendant(
+        of: resourceRow,
+        matching: find.text('${materials[index]}'),
+      ),
+      findsOneWidget,
+      reason: '$reason, resource ${index + 1}',
+    );
+  }
+}
+
+Future<void> _acceptRewardQuestSnapshot(
+  GameStateController controller, {
+  required int id,
+  required int state,
+  required List<int> materials,
+  int sequence = 1,
+}) async {
+  controller.accept(
+    kcsapiEvent(
+      '/kcsapi/api_get_member/questlist',
+      <String, Object?>{
+        'api_count': 1,
+        'api_page_count': 1,
+        'api_exec_count': state >= 2 ? 1 : 0,
+        'api_list': <Object?>[
+          <String, Object?>{
+            'api_no': id,
+            'api_category': 6,
+            'api_type': 4,
+            'api_state': state,
+            'api_progress_flag': state == 3 ? 2 : 0,
+            'api_title': '報酬のある任務',
+            'api_detail': '任務を達成せよ。',
+            'api_get_material': materials,
+          },
+        ],
+      },
+      sequence: sequence,
+      requestParams: const <String, Object?>{
+        'api_tab_id': '0',
+        'api_page_no': '1',
+      },
+    ),
+  );
+  await controller.idle;
 }
 
 final class _CountingQuestCatalog extends QuestCatalog {

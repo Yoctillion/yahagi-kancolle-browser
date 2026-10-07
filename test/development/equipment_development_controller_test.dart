@@ -13,6 +13,48 @@ void main() {
   setUp(() => AccountSession.shared.selectMember(1001));
 
   test(
+    'manual changes to every resource allow reapplying the same recipe',
+    () async {
+      final controller = EquipmentDevelopmentController(
+        repository: _repository(),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize(_stateWithFlagship(101));
+      controller.toggleTarget(7);
+      final recipe = controller.recipes.first;
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      controller.applyRecipe(recipe);
+      for (var index = 0; index < 4; index++) {
+        final values = recipe.resources.values.toList();
+        values[index] = values[index] == 300 ? 299 : values[index] + 1;
+        controller.commitResources(
+          DevelopmentResources(values[0], values[1], values[2], values[3]),
+        );
+        expect(controller.isRecipeApplied(recipe), isFalse);
+        controller.applyRecipe(recipe);
+        expect(controller.resources, recipe.resources);
+        expect(controller.isRecipeApplied(recipe), isTrue);
+      }
+      final count = notifications;
+      controller.commitResources(recipe.resources);
+      controller.commitResources(const DevelopmentResources(9, 10, 10, 10));
+      controller.commitResources(const DevelopmentResources(301, 10, 10, 10));
+      controller.applyRecipe(recipe);
+      expect(controller.isRecipeApplied(recipe), isTrue);
+      expect(notifications, count);
+      controller.selectPool('carrier-akagi#1');
+      expect(controller.isRecipeApplied(recipe), isFalse);
+      controller.applyRecipe(recipe);
+      controller.toggleTarget(7);
+      expect(controller.isRecipeApplied(recipe), isFalse);
+      controller.applyRecipe(recipe);
+      AccountSession.shared.selectMember(2002);
+      expect(controller.isRecipeApplied(recipe), isFalse);
+    },
+  );
+
+  test(
     'a delayed previous account load cannot replace the new account plan',
     () async {
       final session = AccountSession(initialMemberId: 1001);

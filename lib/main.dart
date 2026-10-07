@@ -109,7 +109,7 @@ import 'src/inventory/owned_inventory_page.dart';
 import 'src/new_ship/new_ship_reminder_controller.dart';
 import 'src/new_ship/new_ship_reminder_store.dart';
 import 'src/notification/game_notification_coordinator.dart';
-import 'src/notification/notification_models.dart';
+import 'src/notification/new_ship_notification.dart';
 import 'src/improvement/improvement_dataset_store.dart';
 import 'src/improvement/improvement_dataset_update_service.dart';
 import 'src/improvement/improvement_favorites_store.dart';
@@ -462,6 +462,9 @@ Future<void> main() async {
     gameState: () => gameStateController.state,
     waitForGameState: () => gameStateController.idle,
   );
+  String notificationLocaleCode() =>
+      layoutSettingsController.localeCode ??
+      _localeStorageCode(WidgetsBinding.instance.platformDispatcher.locale);
   late final GameNotificationCoordinator notificationCoordinator;
   final newShipReminderController = NewShipReminderController(
     accountSession: accountSession,
@@ -469,20 +472,11 @@ Future<void> main() async {
     waitForGameState: () => gameStateController.idle,
     store: NewShipReminderStore(await SharedPreferences.getInstance()),
     onPublish: (alert) {
-      final state = gameStateController.state;
-      final l10n = lookupAppLocalizations(const Locale('zh'));
-      final names = alert.masterIds
-          .map(
-            (id) => state.masterShips[id]?.name ?? l10n.newShipFallbackName(id),
-          )
-          .join('、');
       notificationCoordinator.enqueueImmediateAlert(
-        ImmediateNotificationItem(
-          key: 'new-ship:${alert.key}',
-          type: GameNotificationType.newShip,
-          occurredAt: alert.occurredAt,
-          title: l10n.newShipAlertTitle,
-          body: l10n.newShipAlertBody(names),
+        buildNewShipNotification(
+          alert: alert,
+          state: gameStateController.state,
+          localeCode: notificationLocaleCode(),
         ),
       );
     },
@@ -639,9 +633,7 @@ Future<void> main() async {
     accountSession: accountSession,
     gameStateController: gameStateController,
     settingsController: notificationSettingsController,
-    localeCodeProvider: () =>
-        layoutSettingsController.localeCode ??
-        _localeStorageCode(WidgetsBinding.instance.platformDispatcher.locale),
+    localeCodeProvider: notificationLocaleCode,
     localeListenable: layoutSettingsController,
     notificationPort: const MethodChannelNotificationPort(),
     initialTimerAnchors: notificationTimerAnchors,
@@ -2569,22 +2561,25 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 ),
                                                 child: Offstage(
                                                   offstage: _gameFullscreen,
-                                                  child: Padding(
-                                                    key: const Key(
-                                                      'workspace-information-panel',
+                                                  child: TickerMode(
+                                                    enabled: !_gameFullscreen,
+                                                    child: Padding(
+                                                      key: const Key(
+                                                        'workspace-information-panel',
+                                                      ),
+                                                      padding: isLandscape
+                                                          ? (infoOnLeft
+                                                                ? const EdgeInsets.only(
+                                                                    right: 2,
+                                                                  )
+                                                                : const EdgeInsets.only(
+                                                                    left: 2,
+                                                                  ))
+                                                          : const EdgeInsets.only(
+                                                              top: 4,
+                                                            ),
+                                                      child: infoWidget,
                                                     ),
-                                                    padding: isLandscape
-                                                        ? (infoOnLeft
-                                                              ? const EdgeInsets.only(
-                                                                  right: 2,
-                                                                )
-                                                              : const EdgeInsets.only(
-                                                                  left: 2,
-                                                                ))
-                                                        : const EdgeInsets.only(
-                                                            top: 4,
-                                                          ),
-                                                    child: infoWidget,
                                                   ),
                                                 ),
                                               ),
@@ -2611,23 +2606,29 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                   ),
                                                   child: Offstage(
                                                     offstage: _gameFullscreen,
-                                                    child: HdBottomStrip(
-                                                      editing: _hdEditing,
-                                                      onStartEditing:
-                                                          widget
-                                                              .layoutSettingsController
-                                                              .uiLocked
-                                                          ? null
-                                                          : () => setState(
-                                                              () => _hdEditing =
-                                                                  true,
-                                                            ),
-                                                      controller: widget
-                                                          .layoutSettingsController,
-                                                      moduleBuilder: (module) =>
-                                                          buildInfo(
-                                                            module: module,
-                                                          ),
+                                                    child: TickerMode(
+                                                      enabled: !_gameFullscreen,
+                                                      child: HdBottomStrip(
+                                                        editing: _hdEditing,
+                                                        onStartEditing:
+                                                            widget
+                                                                .layoutSettingsController
+                                                                .uiLocked
+                                                            ? null
+                                                            : () => setState(
+                                                                () =>
+                                                                    _hdEditing =
+                                                                        true,
+                                                              ),
+                                                        controller: widget
+                                                            .layoutSettingsController,
+                                                        moduleBuilder:
+                                                            (module) =>
+                                                                buildInfo(
+                                                                  module:
+                                                                      module,
+                                                                ),
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
@@ -2760,6 +2761,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                 if (_workspaceIndex == 5)
                                   QuestCenterPage(
                                     controller: widget.gameStateController,
+                                    displayMode: screenDisplayMode,
                                     catalogController:
                                         widget.questCatalogController,
                                     initialQuestId: _questCenterInitialQuestId,

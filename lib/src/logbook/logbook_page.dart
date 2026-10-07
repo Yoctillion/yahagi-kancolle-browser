@@ -286,6 +286,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
   bool _hasMore = true;
   Map<String, String> _filters = const <String, String>{};
   SortieFilterCatalog? _sortieFilterCatalog;
+  List<Map<String, dynamic>>? _operationFilterCatalog;
   Future<void>? _sortieCatalogLoading;
   Map<String, List<SortieMapIdentity>> _sortieMapsByLabel = const {};
   Map<String, List<String>> _sortieStatusesByLabel = const {};
@@ -311,6 +312,8 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
       _changeSignal(widget).addListener(_refreshLatest);
       _catalogGeneration += 1;
       _sortieFilterCatalog = null;
+      _operationFilterCatalog = null;
+      _filters = const {};
       _sortieMapsByLabel = const {};
       _sortieStatusesByLabel = const {};
       _selectedDetail = null;
@@ -344,16 +347,32 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
 
   Future<void> _refreshLatest() async {
     if (!mounted) return;
-    _loadSortieFilterCatalog(force: true);
     if (_refreshing || _loading) {
       _refreshQueued = true;
       return;
     }
+    _loadSortieFilterCatalog(force: true);
     _refreshing = true;
     final generation = _queryGeneration;
     try {
-      final latest = await _queryRecords();
+      final latest = <Map<String, dynamic>>[...await _queryRecords()];
       if (!mounted || generation != _queryGeneration) return;
+      // Bridge bursts larger than one page before joining the already loaded
+      // rows. Every query remains bounded and uses the same filtered keyset.
+      final newestLoadedId = _records.isEmpty
+          ? null
+          : _records.first['id'] as int?;
+      if (widget.category != _LogbookCategory.sortie &&
+          newestLoadedId != null) {
+        var pageSize = latest.length;
+        while (pageSize == _batchSize &&
+            (latest.last['id'] as int) > newestLoadedId) {
+          final next = await _queryRecords(beforeId: latest.last['id'] as int);
+          if (!mounted || generation != _queryGeneration) return;
+          latest.addAll(next);
+          pageSize = next.length;
+        }
+      }
       if (latest.isEmpty) {
         setState(() {
           _records.clear();
@@ -366,22 +385,21 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
           .where((row) => !latestIds.contains(row['id']))
           .toList(growable: false);
       setState(() {
+        if (_records.isEmpty) _hasMore = latest.length == _batchSize;
         _records
           ..clear()
           ..addAll(latest)
           ..addAll(older);
       });
+    } catch (_) {
+      // Keep visible rows on a transient failure; a later notification retries.
     } finally {
-      if (generation == _queryGeneration) _refreshing = false;
-      if (_refreshQueued && mounted) {
-        _refreshQueued = false;
-        Future<void>.microtask(_refreshLatest);
-      }
+      _finishQuery(generation, refreshing: true);
     }
   }
 
   Future<void> _loadMore() async {
-    if (_loading || !_hasMore) return;
+    if (_loading || _refreshing || !_hasMore) return;
     _loading = true;
     final generation = _queryGeneration;
     try {
@@ -392,14 +410,33 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         _records.addAll(next);
         _hasMore = next.length == _batchSize;
       });
+    } catch (_) {
+      // Preserve the cursor so the next scroll or change can retry this page.
     } finally {
-      if (generation == _queryGeneration) _loading = false;
+      _finishQuery(generation, refreshing: false);
+    }
+  }
+
+  void _finishQuery(int generation, {required bool refreshing}) {
+    if (!mounted || generation != _queryGeneration) return;
+    setState(() {
+      if (refreshing) {
+        _refreshing = false;
+      } else {
+        _loading = false;
+      }
+    });
+    if (_refreshQueued && !_loading && !_refreshing) {
+      _refreshQueued = false;
+      Future<void>.microtask(() {
+        if (mounted && generation == _queryGeneration) _refreshLatest();
+      });
     }
   }
 
   Future<void> _loadSortieFilterCatalog({bool force = false}) {
     if (widget.category != _LogbookCategory.sortie) {
-      return Future<void>.value();
+      return _loadOperationFilterCatalog(force: force);
     }
     final existing = _sortieCatalogLoading;
     if (!force) {
@@ -458,6 +495,74 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
     return operation;
   }
 
+  Future<void> _loadOperationFilterCatalog({bool force = false}) async {
+    if (widget.category == _LogbookCategory.resource) return;
+    if (!force && _operationFilterCatalog != null) return;
+    final generation = ++_catalogGeneration;
+    final category = switch (widget.category) {
+      _LogbookCategory.expedition => LogbookChangeCategory.expedition,
+      _LogbookCategory.construction => LogbookChangeCategory.construction,
+      _LogbookCategory.development => LogbookChangeCategory.development,
+      _LogbookCategory.retirement => LogbookChangeCategory.retirement,
+      _ => throw StateError('Not an operation log'),
+    };
+    try {
+      final catalog = await widget.database.getOperationFilterCatalog(category);
+      if (mounted && generation == _catalogGeneration) {
+        setState(() => _operationFilterCatalog = catalog);
+      }
+    } catch (_) {
+      // Retain the last available catalog; the next opening retries.
+    }
+  }
+
+  OperationRecordQuery get _operationRecordQuery {
+    String? selected(String key) {
+      final value = _filters[key];
+      return value == null || value == _filterDefaults[key] ? null : value;
+    }
+
+    final days = switch (selected('date')) {
+      '最近 7 天' => 7,
+      '最近 30 天' => 30,
+      _ => null,
+    };
+    final mission = selected('mission');
+    return OperationRecordQuery(
+      sinceTimestamp: days == null
+          ? null
+          : DateTime.now()
+                .subtract(Duration(days: days))
+                .millisecondsSinceEpoch,
+      success: selected('result') == null ? null : selected('result') == '成功',
+      equipmentType: selected('equipmentType'),
+      secretaryName: selected('secretary'),
+      constructionType: selected('constructionType'),
+      shipType: selected('shipType'),
+      retirementType: selected('type'),
+      expeditionResult: switch (selected('result')) {
+        '大成功' => 2,
+        '成功' => 1,
+        '失败' => 0,
+        _ => null,
+      },
+      hasRewardItems: selected('item') == null
+          ? null
+          : selected('item') == '有道具',
+      missions: mission == null
+          ? null
+          : [
+              for (final row
+                  in _operationFilterCatalog ?? const <Map<String, dynamic>>[])
+                if (_expeditionName(row) == mission)
+                  (
+                    id: row['expedition_id'] as int,
+                    name: row['name'] as String,
+                  ),
+            ],
+    );
+  }
+
   SortieRecordQuery get _sortieRecordQuery {
     final date = _filters['date'] ?? '全部日期';
     final days = switch (date) {
@@ -494,18 +599,22 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         _LogbookCategory.expedition => widget.database.getExpeditionRecords(
           limit: _batchSize,
           beforeId: beforeId,
+          query: _operationRecordQuery,
         ),
         _LogbookCategory.construction => widget.database.getConstructionRecords(
           limit: _batchSize,
           beforeId: beforeId,
+          query: _operationRecordQuery,
         ),
         _LogbookCategory.development => widget.database.getDevelopmentRecords(
           limit: _batchSize,
           beforeId: beforeId,
+          query: _operationRecordQuery,
         ),
         _LogbookCategory.retirement => widget.database.getRetirementRecords(
           limit: _batchSize,
           beforeId: beforeId,
+          query: _operationRecordQuery,
         ),
         _LogbookCategory.resource => Future.value(
           const <Map<String, dynamic>>[],
@@ -653,7 +762,10 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         LogbookFilterField(
           keyName: 'mission',
           label: '远征',
-          options: _distinct('全部远征', _records.map(_expeditionName)),
+          options: _distinct(
+            '全部远征',
+            (_operationFilterCatalog ?? _records).map(_expeditionName),
+          ),
         ),
         const LogbookFilterField(
           keyName: 'result',
@@ -678,7 +790,9 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
           label: '舰种',
           options: _distinct(
             '全部舰种',
-            _records.map((row) => '${row['ship_type']}'),
+            (_operationFilterCatalog ?? _records).map(
+              (row) => '${row['ship_type']}',
+            ),
           ),
         ),
         LogbookFilterField(
@@ -686,7 +800,9 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
           label: '秘书舰',
           options: _distinct(
             '全部秘书舰',
-            _records.map((row) => '${row['secretary_name']}'),
+            (_operationFilterCatalog ?? _records).map(
+              (row) => '${row['secretary_name']}',
+            ),
           ),
         ),
       ],
@@ -702,7 +818,9 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
           label: '装备类型',
           options: _distinct(
             '全部类型',
-            _records.map((row) => '${row['equipment_type']}'),
+            (_operationFilterCatalog ?? _records).map(
+              (row) => '${row['equipment_type']}',
+            ),
           ),
         ),
         LogbookFilterField(
@@ -710,7 +828,9 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
           label: '秘书舰',
           options: _distinct(
             '全部秘书舰',
-            _records.map((row) => '${row['secretary_name']}'),
+            (_operationFilterCatalog ?? _records).map(
+              (row) => '${row['secretary_name']}',
+            ),
           ),
         ),
       ],
@@ -726,7 +846,9 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
           label: '舰种',
           options: _distinct(
             '全部舰种',
-            _records.map((row) => '${row['ship_type']}'),
+            (_operationFilterCatalog ?? _records).map(
+              (row) => '${row['ship_type']}',
+            ),
           ),
         ),
       ],
@@ -735,10 +857,8 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
   }
 
   Future<void> _showFilter() async {
-    if (widget.category == _LogbookCategory.sortie) {
-      await _loadSortieFilterCatalog();
-      if (!mounted) return;
-    }
+    await _loadSortieFilterCatalog();
+    if (!mounted) return;
     final button =
         _filterButtonAnchor.currentContext?.findRenderObject() as RenderBox?;
     if (button == null) return;
@@ -753,10 +873,6 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
       defaults: defaults,
     );
     if (selected == null || !mounted) return;
-    if (widget.category != _LogbookCategory.sortie) {
-      setState(() => _filters = selected);
-      return;
-    }
     _queryGeneration += 1;
     _loading = false;
     _refreshing = false;

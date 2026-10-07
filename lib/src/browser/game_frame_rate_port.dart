@@ -78,6 +78,20 @@ final class MethodChannelGameFrameRateRuntimePort
     });
   }
 
+  /// Cached game-loop and main-canvas render statistics, separate from Flutter.
+  Future<Map<Object?, Object?>?> performanceSnapshot() {
+    return channel.invokeMapMethod<Object?, Object?>('performanceSnapshot');
+  }
+
+  /// Temporary layer comparison; [GameWebViewLayerMode.restore] restores the
+  /// original configuration. Neither option changes the canvas resolution.
+  Future<Map<Object?, Object?>?> setLayerMode(GameWebViewLayerMode mode) {
+    return channel.invokeMapMethod<Object?, Object?>(
+      'setLayerMode',
+      <String, Object?>{'mode': mode.name},
+    );
+  }
+
   @override
   Future<double?> measuredFps() async {
     final value = await channel.invokeMethod<num>('measuredFps');
@@ -85,6 +99,8 @@ final class MethodChannelGameFrameRateRuntimePort
     return fps != null && fps.isFinite && fps >= 0 ? fps : null;
   }
 }
+
+enum GameWebViewLayerMode { hardware, platformDefault, restore }
 
 final class UnsupportedGameFrameRatePort implements GameFrameRatePort {
   const UnsupportedGameFrameRatePort();

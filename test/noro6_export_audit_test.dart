@@ -488,7 +488,7 @@ void main() {
             'api_soku': 10,
             'api_leng': 2,
             'api_ndock_time': 20000,
-            'api_ndock_item': [10, 0, 15],
+            'api_ndock_item': [10, 15],
             'api_locked': 1,
           },
         ],

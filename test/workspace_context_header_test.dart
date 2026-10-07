@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -18,6 +19,28 @@ Widget _localizedApp({required Widget home, Locale? locale}) => MaterialApp(
 );
 
 void main() {
+  testWidgets('owned inventory header does not traverse remodel families', (
+    tester,
+  ) async {
+    final masters = _CountingMasterShips();
+    final state = GameState(masterShips: masters);
+    Future<void> show(bool owned) => tester.pumpWidget(
+      _localizedApp(
+        home: Scaffold(
+          body: WorkspaceContextHeader(
+            workspaceIndex: 7,
+            state: state,
+            selectedFleetId: 1,
+            inventoryShowOwned: owned,
+          ),
+        ),
+      ),
+    );
+    await show(true);
+    expect(masters.keyReads, 0);
+    await show(false);
+    expect(masters.keyReads, greaterThan(0));
+  });
   const state = GameState(
     resources: <GameResourceType, int>{GameResourceType.fuel: 123456},
     fleets: <Fleet>[
@@ -668,4 +691,23 @@ void main() {
     expect(tabs.right, lessThanOrEqualTo(header.right));
     expect(find.byKey(const Key('workspace-title-tools')), findsNothing);
   });
+}
+
+class _CountingMasterShips extends MapBase<int, MasterShip> {
+  final _values = {1: const MasterShip(id: 1, name: 'fixture', shipTypeId: 2)};
+  int keyReads = 0;
+  @override
+  Iterable<int> get keys {
+    keyReads++;
+    return _values.keys;
+  }
+
+  @override
+  MasterShip? operator [](Object? key) => _values[key];
+  @override
+  void operator []=(int key, MasterShip value) => _values[key] = value;
+  @override
+  void clear() => _values.clear();
+  @override
+  MasterShip? remove(Object? key) => _values.remove(key);
 }

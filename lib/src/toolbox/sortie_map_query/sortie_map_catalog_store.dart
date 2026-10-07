@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -101,22 +103,16 @@ final class FileSortieMapCatalogStore implements SortieMapCatalogInstaller {
         'Sortie archive exceeds the safe input limit.',
       );
     }
-    final files = _decodeArchiveSafely(
+    final prepared = await _prepareArchiveInBackground(
       bytes,
       maximumFiles: maximumFiles,
       maximumUncompressedBytes: maximumUncompressedBytes,
+      expected: expected,
       inflateProgress: inflateProgress,
     );
-
-    final rawCatalog = files['sortie_map_catalog.json'];
-    if (rawCatalog == null) {
-      throw const FormatException('Sortie archive has no catalog.');
-    }
-    final data = SortieMapCatalogData.fromJsonString(utf8.decode(rawCatalog));
-    _validateCatalog(data, files);
-    if (expected != null) _validateExpectation(data, expected);
-    final effectiveExpectation = expected ?? _expectationFrom(data);
-    final metadata = _buildInstallMetadata(effectiveExpectation, files);
+    final files = prepared.files;
+    final data = prepared.data;
+    final metadata = prepared.metadata;
 
     final versionName = data.revision.toString();
     final previousPointer = await _readActivePointer();
@@ -313,6 +309,129 @@ final class FileSortieMapCatalogStore implements SortieMapCatalogInstaller {
         await entity.delete(recursive: true);
       }
     }
+  }
+}
+
+typedef _PreparedArchive = ({
+  Map<String, Uint8List> files,
+  SortieMapCatalogData data,
+  Map<String, Object?> metadata,
+});
+
+typedef _PreparationResult = ({
+  _PreparedArchive? prepared,
+  Object? error,
+  StackTrace? stackTrace,
+});
+
+final class _PreparationInput {
+  const _PreparationInput({
+    required this.bytes,
+    required this.maximumFiles,
+    required this.maximumUncompressedBytes,
+    required this.expected,
+    required this.progress,
+  });
+
+  final List<int> bytes;
+  final int maximumFiles;
+  final int maximumUncompressedBytes;
+  final SortieMapCatalogInstallExpectation? expected;
+  final SendPort? progress;
+}
+
+Future<_PreparedArchive> _prepareArchiveInBackground(
+  List<int> bytes, {
+  required int maximumFiles,
+  required int maximumUncompressedBytes,
+  required SortieMapCatalogInstallExpectation? expected,
+  required void Function(int, int)? inflateProgress,
+}) async {
+  final progress = inflateProgress == null ? null : ReceivePort();
+  final progressDelivered = Completer<void>();
+  Object? progressError;
+  StackTrace? progressErrorStack;
+  final subscription = progress?.listen((message) {
+    if (message == null) {
+      progressDelivered.complete();
+    } else if (progressError == null) {
+      final (consumed, total) = message as (int, int);
+      try {
+        inflateProgress!(consumed, total);
+      } catch (error, stackTrace) {
+        progressError = error;
+        progressErrorStack = stackTrace;
+      }
+    }
+  });
+  try {
+    final result = await _runArchivePreparation(
+      _PreparationInput(
+        bytes: bytes,
+        maximumFiles: maximumFiles,
+        maximumUncompressedBytes: maximumUncompressedBytes,
+        expected: expected,
+        progress: progress?.sendPort,
+      ),
+    );
+    // Progress and its sentinel share one port, so partial progress is delivered
+    // before a validation failure is reported. A failed spawn skips this wait.
+    if (progress != null) await progressDelivered.future;
+    if (progressError case final error?) {
+      Error.throwWithStackTrace(
+        error is FormatException
+            ? error
+            : FormatException('Sortie archive cannot be decoded.', error),
+        progressErrorStack!,
+      );
+    }
+    if (result.error case final error?) {
+      Error.throwWithStackTrace(error, result.stackTrace!);
+    }
+    return result.prepared!;
+  } finally {
+    progress?.close();
+    await subscription?.cancel();
+  }
+}
+
+// Keep this closure separate from the store and callback scopes: only bytes,
+// value parameters, and the optional SendPort enter the worker.
+Future<_PreparationResult> _runArchivePreparation(_PreparationInput input) =>
+    Isolate.run(() => _prepareArchive(input));
+
+_PreparationResult _prepareArchive(_PreparationInput input) {
+  try {
+    final progress = input.progress;
+    final files = _decodeArchiveSafely(
+      input.bytes,
+      maximumFiles: input.maximumFiles,
+      maximumUncompressedBytes: input.maximumUncompressedBytes,
+      inflateProgress: progress == null
+          ? null
+          : (consumed, total) => progress.send((consumed, total)),
+    );
+    final rawCatalog = files['sortie_map_catalog.json'];
+    if (rawCatalog == null) {
+      throw const FormatException('Sortie archive has no catalog.');
+    }
+    final data = SortieMapCatalogData.fromJsonString(utf8.decode(rawCatalog));
+    _validateCatalog(data, files);
+    final expected = input.expected;
+    if (expected != null) _validateExpectation(data, expected);
+    final metadata = _buildInstallMetadata(
+      expected ?? _expectationFrom(data),
+      files,
+    );
+    return (
+      prepared: (files: files, data: data, metadata: metadata),
+      error: null,
+      stackTrace: null,
+    );
+  } catch (error, stackTrace) {
+    return (prepared: null, error: error, stackTrace: stackTrace);
+  } finally {
+    input.progress?.send(null);
   }
 }
 

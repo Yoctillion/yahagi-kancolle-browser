@@ -58,6 +58,32 @@ final class SortieRecordQuery {
   final String? rank;
 }
 
+/// Values are storage identities, independent of translated filter labels.
+final class OperationRecordQuery {
+  const OperationRecordQuery({
+    this.sinceTimestamp,
+    this.success,
+    this.equipmentType,
+    this.secretaryName,
+    this.constructionType,
+    this.shipType,
+    this.retirementType,
+    this.expeditionResult,
+    this.hasRewardItems,
+    this.missions,
+  });
+  final int? sinceTimestamp;
+  final bool? success;
+  final String? equipmentType,
+      secretaryName,
+      constructionType,
+      shipType,
+      retirementType;
+  final int? expeditionResult;
+  final bool? hasRewardItems;
+  final List<({int id, String name})>? missions;
+}
+
 final class MapResourceLogEntry {
   const MapResourceLogEntry({
     required this.eventKey,
@@ -1214,8 +1240,13 @@ class LogbookDatabase extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> getExpeditionRecords({
     int limit = 50,
     int? beforeId,
-  }) =>
-      _getOperationRecords('expedition_logs', limit: limit, beforeId: beforeId);
+    OperationRecordQuery query = const OperationRecordQuery(),
+  }) => _getOperationRecords(
+    'expedition_logs',
+    limit: limit,
+    beforeId: beforeId,
+    query: query,
+  );
 
   Future<int> insertConstructionRecord({
     int dockId = 0,
@@ -1464,10 +1495,12 @@ class LogbookDatabase extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> getConstructionRecords({
     int limit = 50,
     int? beforeId,
+    OperationRecordQuery query = const OperationRecordQuery(),
   }) => _getOperationRecords(
     'construction_logs',
     limit: limit,
     beforeId: beforeId,
+    query: query,
   );
 
   Future<void> insertDevelopmentRecord({
@@ -1515,10 +1548,12 @@ class LogbookDatabase extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> getDevelopmentRecords({
     int limit = 50,
     int? beforeId,
+    OperationRecordQuery query = const OperationRecordQuery(),
   }) => _getOperationRecords(
     'development_logs',
     limit: limit,
     beforeId: beforeId,
+    query: query,
   );
 
   Future<void> insertRetirementRecord({
@@ -1554,19 +1589,106 @@ class LogbookDatabase extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> getRetirementRecords({
     int limit = 50,
     int? beforeId,
-  }) =>
-      _getOperationRecords('retirement_logs', limit: limit, beforeId: beforeId);
+    OperationRecordQuery query = const OperationRecordQuery(),
+  }) => _getOperationRecords(
+    'retirement_logs',
+    limit: limit,
+    beforeId: beforeId,
+    query: query,
+  );
+
+  Future<List<Map<String, dynamic>>> getOperationFilterCatalog(
+    LogbookChangeCategory category,
+  ) async {
+    final (table, columns) = switch (category) {
+      LogbookChangeCategory.expedition => (
+        'expedition_logs',
+        ['expedition_id', 'name'],
+      ),
+      LogbookChangeCategory.construction => (
+        'construction_logs',
+        ['ship_type', 'secretary_name'],
+      ),
+      LogbookChangeCategory.development => (
+        'development_logs',
+        ['equipment_type', 'secretary_name'],
+      ),
+      LogbookChangeCategory.retirement => ('retirement_logs', ['ship_type']),
+      _ => throw ArgumentError.value(category, 'category'),
+    };
+    final db = await database;
+    return db.query(table, columns: columns, distinct: true);
+  }
 
   Future<List<Map<String, dynamic>>> _getOperationRecords(
     String table, {
     required int limit,
     required int? beforeId,
+    required OperationRecordQuery query,
   }) async {
+    final clauses = <String>[];
+    final arguments = <Object?>[];
+    void add(String clause, Object value) {
+      clauses.add(clause);
+      arguments.add(value);
+    }
+
+    if (beforeId != null) add('id < ?', beforeId);
+    if (query.sinceTimestamp case final since?) add('timestamp >= ?', since);
+    if (table == 'development_logs') {
+      if (query.success case final success?) {
+        clauses.add(success ? 'success > 0' : 'success <= 0');
+      }
+      if (query.equipmentType case final value?) {
+        add('equipment_type = ?', value);
+      }
+    }
+    if (table == 'development_logs' || table == 'construction_logs') {
+      if (query.secretaryName case final value?) {
+        add('secretary_name = ?', value);
+      }
+    }
+    if (table == 'construction_logs') {
+      if (query.constructionType case final value?) {
+        add('construction_type = ?', value);
+      }
+    }
+    if (table == 'construction_logs' || table == 'retirement_logs') {
+      if (query.shipType case final value?) add('ship_type = ?', value);
+    }
+    if (table == 'retirement_logs') {
+      if (query.retirementType case final value?) add('type = ?', value);
+    }
+    if (table == 'expedition_logs') {
+      if (query.expeditionResult case final result?) {
+        clauses.add(switch (result) {
+          2 => 'result >= 2',
+          1 => 'result = 1',
+          _ => 'result <= 0',
+        });
+      }
+      if (query.hasRewardItems case final hasItems?) {
+        clauses.add(
+          '${hasItems ? '' : 'NOT '}(COALESCE(item1_count, 0) > 0 OR COALESCE(item2_count, 0) > 0)',
+        );
+      }
+      if (query.missions case final missions?) {
+        clauses.add(
+          missions.isEmpty
+              ? '0 = 1'
+              : '(${missions.map((_) => '(expedition_id = ? AND name = ?)').join(' OR ')})',
+        );
+        for (final mission in missions) {
+          arguments.addAll([mission.id, mission.name]);
+        }
+      }
+    }
+    // Each LogbookDatabase owns one immutable account-specific database file.
     final db = await database;
     return db.query(
       table,
-      where: beforeId == null ? null : 'id < ?',
-      whereArgs: beforeId == null ? null : <Object>[beforeId],
+      where: clauses.isEmpty ? null : clauses.join(' AND '),
+      whereArgs: arguments.isEmpty ? null : arguments,
       orderBy: 'id DESC',
       limit: limit,
     );

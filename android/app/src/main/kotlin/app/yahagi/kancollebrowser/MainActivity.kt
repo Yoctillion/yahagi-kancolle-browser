@@ -68,6 +68,10 @@ import app.yahagi.kancollebrowser.capture.ScreenshotCaptureAttempt
 import app.yahagi.kancollebrowser.capture.ScreenshotCapturePolicy
 import app.yahagi.kancollebrowser.capture.ScreenshotDestination
 import app.yahagi.kancollebrowser.capture.ScreenshotOutput
+import app.yahagi.kancollebrowser.capture.ScreenshotScanCleanup
+import app.yahagi.kancollebrowser.capture.ScreenshotExport
+import app.yahagi.kancollebrowser.capture.ScreenshotExportWorker
+import app.yahagi.kancollebrowser.capture.writeScreenshotExport
 import app.yahagi.kancollebrowser.capture.ScreenshotViewCandidate
 import app.yahagi.kancollebrowser.composition.CompositionImageHandler
 import app.yahagi.kancollebrowser.backup.RecordBackupHandler
@@ -241,6 +245,11 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     private var compositionImageChannel: MethodChannel? = null
     private var activeScreenshotResult: MethodChannel.Result? = null
     private var activeScreenshotOutput: ScreenshotOutput? = null
+    private val screenshotExportHandler = Handler(Looper.getMainLooper())
+    private val screenshotExportWorker = ScreenshotExportWorker(
+        dispatchMain = { action -> screenshotExportHandler.post(action) },
+        reportFailure = { error -> Log.w("YahagiScreenshot", "Screenshot cleanup failed", error) },
+    )
     private val nativeWebViewHandler = Handler(Looper.getMainLooper())
     private var nativeWebViewStartupTimeout: Runnable? = null
     private var nativeWebViewStartup: NativeWebViewActivityStartupCoordinator? = null
@@ -729,6 +738,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             null,
         )
         pendingScreenshotResult = null
+        screenshotExportWorker.close()
         activeScreenshotResult?.error(
             "activity_destroyed",
             "The screenshot request was cancelled.",
@@ -1364,34 +1374,41 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             bitmap.recycle()
             return
         }
-        try {
-            if (activeScreenshotOutput == ScreenshotOutput.MEMORY_PREVIEW) {
-                val bytes = ByteArrayOutputStream().use { stream ->
-                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
-                        "Unable to encode the game preview."
+        val output = activeScreenshotOutput
+        screenshotExportWorker.submit(
+            work = { cancelled ->
+                if (output == ScreenshotOutput.MEMORY_PREVIEW) {
+                    val bytes = ByteArrayOutputStream().use { stream ->
+                        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                            "Unable to encode the game preview."
+                        }
+                        stream.toByteArray()
                     }
-                    stream.toByteArray()
+                    ScreenshotExport(bytes)
+                } else {
+                    val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US)
+                        .format(Date())
+                    saveScreenshotToGallery(bitmap, ScreenshotDestination.create(timestamp), cancelled)
                 }
-                activeScreenshotResult = null
-                activeScreenshotOutput = null
-                result.success(bytes)
-                return
+            },
+            release = bitmap::recycle,
+        ) { exported ->
+            if (activeScreenshotResult !== result) {
+                false
+            } else {
+                exported.fold(
+                    onSuccess = {
+                        activeScreenshotResult = null
+                        activeScreenshotOutput = null
+                        result.success(it.value)
+                    },
+                    onFailure = {
+                        completeScreenshotError(result, "screenshot_failed",
+                            it.message ?: "Unable to save the game screenshot.")
+                    },
+                )
+                true
             }
-            val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US)
-                .format(Date())
-            val destination = ScreenshotDestination.create(timestamp)
-            saveScreenshotToGallery(bitmap, destination)
-            activeScreenshotResult = null
-            activeScreenshotOutput = null
-            result.success(destination.displayLocation)
-        } catch (error: Exception) {
-            completeScreenshotError(
-                result,
-                "screenshot_failed",
-                error.message ?: "Unable to save the game screenshot.",
-            )
-        } finally {
-            bitmap.recycle()
         }
     }
 
@@ -1409,10 +1426,10 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     private fun saveScreenshotToGallery(
         bitmap: Bitmap,
         destination: ScreenshotDestination,
-    ) {
+        cancelled: () -> Boolean,
+    ): ScreenshotExport {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveScreenshotWithMediaStore(bitmap, destination)
-            return
+            return saveScreenshotWithMediaStore(bitmap, destination, cancelled)
         }
 
         @Suppress("DEPRECATION")
@@ -1424,23 +1441,35 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             throw IllegalStateException("Unable to create the gallery directory.")
         }
         val output = File(outputDirectory, destination.fileName)
-        FileOutputStream(output).use { stream ->
-            if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
-                throw IllegalStateException("Unable to encode screenshot.")
+        val scanCleanup = ScreenshotScanCleanup<Uri> { uri ->
+            contentResolver.delete(uri, null, null)
+        }
+        return writeScreenshotExport(destination.displayLocation, discard = {
+            try {
+                scanCleanup.discard()
+            } finally {
+                output.delete()
+            }
+        }) {
+            FileOutputStream(output).use { stream ->
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                    "Unable to encode screenshot."
+                }
+            }
+            check(!cancelled()) { "The screenshot request was cancelled." }
+            MediaScannerConnection.scanFile(
+                this, arrayOf(output.absolutePath), arrayOf("image/png"),
+            ) { _, uri ->
+                runCatching { scanCleanup.onScanned(uri) }
             }
         }
-        MediaScannerConnection.scanFile(
-            this,
-            arrayOf(output.absolutePath),
-            arrayOf("image/png"),
-            null,
-        )
     }
 
     private fun saveScreenshotWithMediaStore(
         bitmap: Bitmap,
         destination: ScreenshotDestination,
-    ) {
+        cancelled: () -> Boolean,
+    ): ScreenshotExport {
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, destination.fileName)
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
@@ -1453,7 +1482,9 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         val uri = contentResolver.insert(collection, values)
             ?: throw IllegalStateException("Unable to create a gallery entry.")
 
-        try {
+        return writeScreenshotExport(destination.displayLocation, discard = {
+            contentResolver.delete(uri, null, null)
+        }) {
             contentResolver.openOutputStream(uri, "w").use { stream ->
                 if (
                     stream == null ||
@@ -1462,12 +1493,12 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
                     throw IllegalStateException("Unable to encode screenshot.")
                 }
             }
+            check(!cancelled()) { "The screenshot request was cancelled." }
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            contentResolver.update(uri, values, null, null)
-        } catch (error: Exception) {
-            contentResolver.delete(uri, null, null)
-            throw error
+            check(contentResolver.update(uri, values, null, null) > 0) {
+                "Unable to publish the gallery entry."
+            }
         }
     }
 

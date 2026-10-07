@@ -58,6 +58,7 @@ class GameNotificationCoordinator {
   final NotificationSettingsController settingsController;
   final NotificationPort notificationPort;
   final AccountSession? accountSession;
+  AccountScope? _accountScope;
   final String _instanceId = DateTime.now().microsecondsSinceEpoch.toString();
   int _memberId = 0;
   int _generation = 0;
@@ -100,6 +101,8 @@ class GameNotificationCoordinator {
   void _onAccountChanged() {
     if (_disposed) return;
     final scope = accountSession!.current;
+    if (identical(_accountScope, scope)) return;
+    _accountScope = scope;
     _clearAccountState(scope.memberId);
     _loadingAccount = true;
     // Immediately replace native state while the game reducer still has the old account.

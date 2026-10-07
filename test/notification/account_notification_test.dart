@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/src/account/account_session.dart';
+import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 import 'package:yahagi_kancolle_browser/src/notification/game_notification_coordinator.dart';
@@ -156,6 +157,19 @@ void main() {
       final oldSessionId = port.latestSnapshot!.sessionId;
       expect(port.latestSnapshot!.memberId, 1001);
       expect(oldTarget, isNotNull);
+      final beforeMetadata = port.applyCount;
+      session.accept(CapturedApiEvent(
+        path: '/kcsapi/api_get_member/basic',
+        responseBody: '{"api_result":1,"api_data":{"api_member_id":1001,"api_nickname":"updated"}}',
+        source: CaptureSource.manual,
+        capturedAt: at,
+      ));
+      await coordinator.accountReady;
+      await Future<void>.delayed(Duration.zero);
+      expect(port.applyCount, beforeMetadata,
+          reason: 'metadata is not a notification session boundary');
+      expect(port.latestSnapshot!.sessionId, oldSessionId);
+      expect(coordinator.moraleRecoveryTimerController.targetForFleet(1), oldTarget);
       session.selectMember(2002);
       await Future<void>.delayed(Duration.zero);
       expect(port.latestSnapshot!.presentation.enabled, isFalse);
@@ -202,6 +216,12 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
       expect(port.deliveredImmediateAlerts.single.key, 'new-account-ship');
+      final beforeRelogin = port.latestSnapshot!.sessionId;
+      session.reset();
+      session.selectMember(1001);
+      await coordinator.accountReady;
+      await Future<void>.delayed(Duration.zero);
+      expect(port.latestSnapshot!.sessionId, isNot(beforeRelogin));
     },
   );
 }

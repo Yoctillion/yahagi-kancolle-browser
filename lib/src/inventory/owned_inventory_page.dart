@@ -980,6 +980,7 @@ class _InventoryDependencies {
     required this.ships,
     required this.fleets,
     required this.slotItems,
+    required this.landBases,
     required this.masterShips,
     required this.masterShipTypes,
     required this.masterSlotItems,
@@ -996,6 +997,7 @@ class _InventoryDependencies {
         ships: state.ships,
         fleets: state.fleets,
         slotItems: state.slotItems,
+        landBases: state.landBases,
         masterShips: state.masterShips,
         masterShipTypes: state.masterShipTypes,
         masterSlotItems: state.masterSlotItems,
@@ -1010,6 +1012,7 @@ class _InventoryDependencies {
   final Object ships;
   final Object fleets;
   final Object slotItems;
+  final Object landBases;
   final Object masterShips;
   final Object masterShipTypes;
   final Object masterSlotItems;
@@ -1030,6 +1033,7 @@ class _InventoryDependencies {
 
   bool matchesEquipmentProjection(_InventoryDependencies other) =>
       identical(ships, other.ships) &&
+      identical(landBases, other.landBases) &&
       identical(slotItems, other.slotItems) &&
       identical(masterShips, other.masterShips) &&
       identical(masterSlotItems, other.masterSlotItems);

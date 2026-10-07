@@ -14,6 +14,7 @@ import 'package:yahagi_kancolle_browser/src/browser/game_browser_controller.dart
 import 'package:yahagi_kancolle_browser/src/browser/game_frame_reload_port.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_launch_config.dart';
 import 'package:yahagi_kancolle_browser/src/browser/network_proxy_channel.dart';
+import 'package:yahagi_kancolle_browser/src/browser/origin_cookie_manager_port.dart';
 import 'package:yahagi_kancolle_browser/src/browser/native_game_surface_slot.dart';
 import 'package:yahagi_kancolle_browser/src/browser/native_game_surface_preview.dart';
 import 'package:yahagi_kancolle_browser/src/browser/native_game_webview_contract.dart';
@@ -1891,7 +1892,7 @@ void main() {
     expect(fixture.statusController.loadState, WebViewLoadState.loading);
   });
 
-  testWidgets('network retry is single-flight and reloads once after success', (
+  testWidgets('network retry resumes initial startup once after success', (
     tester,
   ) async {
     final fixture = _SurfaceFixture();
@@ -1924,12 +1925,75 @@ void main() {
     expect(fixture.orchestrator.applyNetworkCalls, 2);
 
     retry.complete(const GameSurfaceNetworkResult.success());
-    await tester.pump();
-    expect(fixture.port.calls.where((call) => call == 'reload'), hasLength(1));
+    await _pumpUntil(
+      tester,
+      () => fixture.port.calls.any((call) => call.startsWith('load:')),
+    );
+    expect(fixture.port.calls.where((call) => call == 'reload'), isEmpty);
+    expect(
+      fixture.port.calls.where((call) => call.startsWith('load:')),
+      hasLength(1),
+    );
+    expect(fixture.orchestrator.prepareCaptureCalls, 1);
     fixture.networkSettingsController.emitChange();
     await tester.pump();
     expect(fixture.orchestrator.applyNetworkCalls, 2);
   });
+
+  testWidgets(
+    'repeated network failures resume OOI startup and clear its cookies once',
+    (tester) async {
+      final fixture = _SurfaceFixture();
+      final cookies = _RecordingOriginCookies();
+      final browser = GameBrowserController(
+        homeUri: GameLaunchConfig.ooiEntry,
+        originCookieManagerPort: cookies,
+      );
+      addTearDown(fixture.dispose);
+      addTearDown(browser.dispose);
+      fixture.networkSettingsController.settingsValue = const NetworkSettings(
+        mode: NetworkMode.httpProxy,
+        host: '127.0.0.1',
+        port: 8080,
+      );
+      fixture.orchestrator.networkResult = const GameSurfaceNetworkResult(
+        success: false,
+        code: 'offline',
+        message: 'offline',
+      );
+      await fixture.pump(tester, browserController: browser);
+      await _pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('native-game-surface-error'))
+            .evaluate()
+            .isNotEmpty,
+      );
+      fixture.networkSettingsController.emitChange();
+      await tester.pump();
+      await tester.pump();
+      expect(fixture.orchestrator.applyNetworkCalls, 2);
+      expect(fixture.orchestrator.prepareCaptureCalls, 0);
+      expect(cookies.origins, isEmpty);
+      fixture.orchestrator.networkResult =
+          const GameSurfaceNetworkResult.success();
+      fixture.networkSettingsController.emitChange();
+      await _pumpUntil(
+        tester,
+        () => fixture.port.calls.any((call) => call.startsWith('load:')),
+      );
+      fixture.networkSettingsController.emitChange();
+      await tester.pump();
+      expect(fixture.orchestrator.applyNetworkCalls, 3);
+      expect(fixture.orchestrator.prepareCaptureCalls, 1);
+      expect(cookies.origins, <Uri>[GameLaunchConfig.ooiOrigin]);
+      expect(
+        fixture.port.calls.where((call) => call.startsWith('load:')),
+        <String>['load:${GameLaunchConfig.ooiEntry.host}'],
+      );
+      expect(fixture.port.calls.where((call) => call == 'reload'), isEmpty);
+    },
+  );
 
   testWidgets('a failed retry reload remains retryable until one success', (
     tester,
@@ -1941,12 +2005,19 @@ void main() {
       host: '127.0.0.1',
       port: 8080,
     );
-    fixture.orchestrator.networkResult = const GameSurfaceNetworkResult(
+    await fixture.pump(tester);
+    await _pumpUntil(
+      tester,
+      () => fixture.port.calls.any((call) => call.startsWith('load:')),
+    );
+    // A navigation without pageFinished is still an existing page to reload.
+    final replacement = _FakeStartupOrchestrator();
+    replacement.networkResult = const GameSurfaceNetworkResult(
       success: false,
       code: 'failed',
       message: 'failed',
     );
-    await fixture.pump(tester);
+    await fixture.pump(tester, startupOrchestrator: replacement);
     await _pumpUntil(
       tester,
       () => find
@@ -1954,8 +2025,7 @@ void main() {
           .evaluate()
           .isNotEmpty,
     );
-    fixture.orchestrator.networkResult =
-        const GameSurfaceNetworkResult.success();
+    replacement.networkResult = const GameSurfaceNetworkResult.success();
     fixture.port.reloadFailure = StateError('reload failed');
 
     final previousDebugPrint = debugPrint;
@@ -1968,7 +2038,7 @@ void main() {
         find.byKey(const Key('native-game-surface-error')),
         findsOneWidget,
       );
-      expect(fixture.orchestrator.applyNetworkCalls, 2);
+      expect(replacement.applyNetworkCalls, 2);
 
       fixture.port.reloadFailure = null;
       fixture.networkSettingsController.emitChange();
@@ -1978,8 +2048,13 @@ void main() {
       debugPrint = previousDebugPrint;
     }
 
-    expect(fixture.orchestrator.applyNetworkCalls, 3);
+    expect(replacement.applyNetworkCalls, 3);
     expect(fixture.port.successfulReloadCalls, 1);
+    expect(
+      fixture.port.calls.where((call) => call.startsWith('load:')),
+      hasLength(1),
+    );
+    expect(replacement.prepareCaptureCalls, 0);
   });
 
   for (final failureStage in <String>['capture', 'audio']) {
@@ -2099,6 +2174,11 @@ void main() {
         await tester.pump();
 
         expect(fixture.port.calls.where((call) => call == 'reload'), isEmpty);
+        expect(
+          fixture.port.calls.where((call) => call.startsWith('load:')),
+          isEmpty,
+        );
+        expect(fixture.orchestrator.prepareCaptureCalls, 0);
         expect(fixture.statusController.loadState, WebViewLoadState.failed);
       },
     );
@@ -2973,6 +3053,13 @@ final class _FakeNativePort implements NativeActivityGameWebViewPort {
 
   @override
   Future<void> showLocalHome() async {}
+}
+
+final class _RecordingOriginCookies implements OriginCookieManagerPort {
+  final origins = <Uri>[];
+
+  @override
+  Future<void> clearCookiesForOrigin(Uri origin) async => origins.add(origin);
 }
 
 final class _FakeStartupOrchestrator implements GameSurfaceStartupOrchestrator {

@@ -212,6 +212,9 @@ void main() {
     expect(bundled.byGameId(201)?.name, '敵艦隊を撃破せよ！');
     expect(bundled.byGameId(201)?.description, contains('敵艦隊'));
     expect(bundled.byGameId(201)?.description, isNot(contains('敌舰队')));
+    expect(bundled.byGameId(201)?.materials, <int>[50, 50, 0, 0]);
+    expect(bundled.byGameId(201)?.rewards, '開発資材');
+    expect(bundled.byGameId(380)?.materials, <int>[100, 100, 100, 100]);
     expect(bundled.successorsOf(201), isNotEmpty);
     expect(bundled.byGameId(442)?.translatedName, '实施西方联络作战准备！');
     expect(bundled.byGameId(442)?.translatedDescription, contains('「潜水艇派遣作战」'));
@@ -226,6 +229,10 @@ void main() {
           'name': '南西諸島方面「海上警備行動」発令！',
           'desc': '艦隊を南西諸島方面へ出撃させよ！',
           'rewards': '開発資材',
+          'resources': <List<num>>[
+            <num>[50, 50, 0.0, 0],
+            <num>[0, 0, 1, 0],
+          ],
         },
       }),
       relationJson: jsonEncode(<String, Object?>{
@@ -250,6 +257,44 @@ void main() {
     final parsed = QuestCatalogEntry.fromJson(201, entry);
     expect(parsed.translatedName, '南西诸岛方面“海上警备行动”发令！');
     expect(parsed.translatedDescription, '执行「西方海域侦察作战」以及后续远征');
+    expect(parsed.materials, <int>[50, 50, 0, 0]);
+  });
+
+  test('translation fallback preserves current resource rewards', () {
+    final current = QuestCatalog(<QuestCatalogEntry>[
+      QuestCatalogEntry.fromJson(201, <String, Object?>{
+        'code': 'Bd1',
+        'name': '敵艦隊を撃破せよ！',
+        'desc': '',
+        'rewards': '開発資材',
+        'resources': <List<num>>[
+          <num>[50, 60, 70.0, 80],
+          <num>[0, 0, 1, 0],
+        ],
+      }),
+    ]);
+    final fallback = QuestCatalog(const <QuestCatalogEntry>[
+      QuestCatalogEntry(
+        gameId: 201,
+        code: 'Bd1',
+        name: '',
+        description: '',
+        translatedName: '击破敌舰队！',
+        materials: <int>[1, 2, 3, 4],
+      ),
+    ]);
+
+    final entry = current.withTranslationFallbackFrom(fallback).byGameId(201)!;
+
+    expect(entry.materials, <int>[50, 60, 70, 80]);
+    expect(entry.rewards, '開発資材');
+    expect(entry.translatedName, '击破敌舰队！');
+    expect(QuestCatalogEntry.fromJson(1, <String, Object?>{}).materials, <int>[
+      0,
+      0,
+      0,
+      0,
+    ]);
   });
 
   test('uses local quest translations only for missing upstream fields', () {

@@ -82,9 +82,7 @@ class _FrozenDataTableState extends State<FrozenDataTable> {
     } finally {
       _syncingFrozen = false;
     }
-    if (_vertical.position.maxScrollExtent - target <= 120) {
-      widget.onEndReached?.call();
-    }
+    _checkEndReached();
   }
 
   void _syncMainVertical() {
@@ -98,6 +96,13 @@ class _FrozenDataTableState extends State<FrozenDataTable> {
       _vertical.jumpTo(target);
     } finally {
       _syncingMainVertical = false;
+    }
+    _checkEndReached();
+  }
+
+  void _checkEndReached() {
+    if (_vertical.hasClients && _vertical.position.extentAfter <= 120) {
+      widget.onEndReached?.call();
     }
   }
 
