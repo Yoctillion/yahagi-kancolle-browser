@@ -57,6 +57,7 @@ class ActivityWebViewHost internal constructor(
             webView,
             client,
             onPresentation,
+            onPresentationPending = { (client as? NativeGameWebViewClient)?.presentationPending() },
         )
     },
     private val webViewCleanup: NativeGameWebViewCleanup = AndroidNativeGameWebViewCleanup,
@@ -77,6 +78,7 @@ class ActivityWebViewHost internal constructor(
                 webView,
                 client,
                 onPresentation,
+                onPresentationPending = { (client as? NativeGameWebViewClient)?.presentationPending() },
             )
         },
         webViewCleanup = AndroidNativeGameWebViewCleanup,
@@ -142,14 +144,34 @@ class ActivityWebViewHost internal constructor(
                 prepareRenderProcessGone = ::prepareRenderProcessGone,
                 onRenderProcessGone = ::onRenderProcessGone,
             )
-            createStage = NativeGameWebViewCreateStage.CONFIGURE_WEB_VIEW
-            configureWebView(createdWebView, client) { isGame ->
-                mainHandler.post {
-                    if (state.accepts(generation) && ownedResources?.webView === createdWebView) {
-                        eventSink.presentationChanged(generation, isGame)
-                        onPresentationStateChanged(isGame)
+            val presentationQuery = NativeGamePresentationQuery()
+            client.setPresentationHintHandler {
+                if (state.accepts(generation) && ownedResources?.webView === createdWebView) {
+                    val token = presentationQuery.begin(client.documentEpoch)
+                    runCatching {
+                        createdWebView.evaluateJavascript(NativeGamePresentationQuery.SCRIPT) { result ->
+                            if (state.accepts(generation) && ownedResources?.webView === createdWebView) {
+                                when (presentationQuery.resolve(token, client.documentEpoch, result)) {
+                                    "pending" -> eventSink.presentationPending(generation)
+                                    "web" -> {
+                                        eventSink.presentationChanged(generation, false)
+                                        onPresentationStateChanged(false)
+                                    }
+                                    "game" -> {
+                                        eventSink.presentationChanged(generation, true)
+                                        onPresentationStateChanged(true)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            }
+            createStage = NativeGameWebViewCreateStage.CONFIGURE_WEB_VIEW
+            configureWebView(createdWebView, client) { _ ->
+                // A bridge message is only a hint: an old document may have
+                // queued it before navigation. Read the current DOM instead.
+                client.presentationHint()
             }
             if (!isCurrentCreate(resources)) {
                 rollbackCreate(resources)

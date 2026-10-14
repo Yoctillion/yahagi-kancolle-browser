@@ -13,10 +13,89 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.MessageDigest
 
 class GameResourceCacheStoreTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun `file commit hashes the prepared copy when caller source changes`() {
+        val root = temporaryFolder.newFolder("copy-integrity")
+        val source = temporaryFolder.newFile("mutable-source.part").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        var changed = false
+        val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")), 100,
+            fileChecksum = { file ->
+                val hash = MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+                if (!changed) { changed = true; source.writeBytes(byteArrayOf(4, 5, 6)) }
+                hash
+            })
+        val key = GameResourceCacheKey("/kcs2/resources/a.png")
+        store.commitFileWithEviction(key, source, mimeType = "image/png")
+        assertArrayEquals(byteArrayOf(1, 2, 3), store.read(key)?.bytes)
+    }
+
+    @Test
+    fun `startup and index migration defer orphan cleanup until maintenance`() {
+        val root = temporaryFolder.newFolder("deferred-cleanup")
+        root.resolve("tmp").mkdirs()
+        val orphan = root.resolve("tmp/orphan.part").apply { writeBytes(byteArrayOf(9)) }
+        val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")), 100)
+        assertTrue(orphan.exists())
+        store.removeLegacyHostlessEntries()
+        assertTrue(orphan.exists())
+        store.enforcePolicy()
+        assertFalse(orphan.exists())
+    }
+
+    @Test
+    fun `orphan maintenance yields at budget and resumes from its cursor`() {
+        val root = temporaryFolder.newFolder("orphan-budget")
+        var tick = 0L
+        val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")), 100,
+            maintenanceNowNanos = { tick.also { tick += TimeUnit.MILLISECONDS.toNanos(100) } })
+        val orphans = (0..3).map { root.resolve("files/$it.cache").apply { writeBytes(byteArrayOf(9)) } }
+        val temporary = root.resolve("tmp/orphan.part").apply { writeBytes(byteArrayOf(9)) }
+        store.enforcePolicy(250)
+        assertEquals(3, orphans.count { it.exists() })
+        assertTrue(temporary.exists())
+        store.enforcePolicy(250)
+        assertEquals(2, orphans.count { it.exists() })
+        store.enforcePolicy()
+        assertTrue(orphans.none { it.exists() })
+        assertFalse(temporary.exists())
+    }
+
+    @Test
+    fun `periodic commit maintenance also yields instead of draining orphan cleanup`() {
+        val root = temporaryFolder.newFolder("commit-maintenance-budget")
+        var tick = 0L
+        val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")), 10_000,
+            clock = { 1L }, policyProvider = { GameResourceCachePolicy(10_000, maxIdleAgeMs = 1000) },
+            maintenanceNowNanos = { tick.also { tick += TimeUnit.MILLISECONDS.toNanos(100) } })
+        repeat(255) { store.commit(GameResourceCacheKey("/kcs2/resources/$it.png"), byteArrayOf(1), mimeType = "image/png") }
+        val orphans = (0..3).map { root.resolve("files/orphan-$it.cache").apply { writeBytes(byteArrayOf(9)) } }
+        store.commit(GameResourceCacheKey("/kcs2/resources/256.png"), byteArrayOf(1), mimeType = "image/png")
+        assertTrue("periodic commit swept past its maintenance budget", orphans.count { it.exists() } >= 3)
+        assertEquals(256, store.entries().size)
+        store.enforcePolicy()
+        assertTrue(orphans.none { it.exists() })
+        assertEquals(256, store.entries().size)
+    }
+
+    @Test
+    fun `maintenance can yield between expired entries without weakening explicit sweep`() {
+        var now = 1L
+        val root = temporaryFolder.newFolder("maintenance-budget")
+        val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")), 100,
+            clock = { now }, policyProvider = { GameResourceCachePolicy(100, maxIdleAgeMs = 10) })
+        repeat(4) { store.commit(GameResourceCacheKey("/kcs2/resources/$it.png"), byteArrayOf(it.toByte()), mimeType = "image/png") }
+        now = 20
+        store.enforcePolicy(maxDurationMs = 0)
+        assertEquals(4, store.entries().size)
+        store.enforcePolicy()
+        assertTrue(store.entries().isEmpty())
+    }
 
     @Test
     fun `default capacity is fifty decimal gigabytes`() {

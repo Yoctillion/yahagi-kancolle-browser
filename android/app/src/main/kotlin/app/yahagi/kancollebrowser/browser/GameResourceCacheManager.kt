@@ -8,6 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
 import java.util.concurrent.atomic.AtomicLong
 
 class GameResourceCacheManager(
@@ -23,6 +24,10 @@ class GameResourceCacheManager(
     private var pendingManifest: PendingManifest? = null
     private val modeEpoch = AtomicLong(0)
     @Volatile private var policyError = false
+    private val maintenanceLock = Any()
+    private var maintenanceRunning = false
+    private var maintenancePending = false
+    private var lastMaintenanceRequestedAt = 0L
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
@@ -47,10 +52,8 @@ class GameResourceCacheManager(
                         outcome.onSuccess { configured ->
                             if (configured && modeEpoch.get() == capturedEpoch) {
                                 onModeChanged(mode)
-                                policyError = withContext(Dispatchers.IO) {
-                                    runCatching { engine.enforcePolicy() }.isFailure
-                                }
                                 result.success(true)
+                                scheduleMaintenance(force = true)
                             } else {
                                 result.success(false)
                             }
@@ -202,17 +205,16 @@ class GameResourceCacheManager(
     fun dispose() {
         networkMonitor?.dispose()
         scope.cancel()
+        engine.closeMaintenance()
         coordinator.dispose()
     }
 
     private fun statusMap(): Map<String, Any?> {
         val status = coordinator.status()
-        val cache = runCatching { engine.status() }
-            .onSuccess { policyError = false }
-            .getOrElse {
-                policyError = true
-                engine.statusSnapshot()
-            }
+        // Statistics need no policy sweep. Maintenance is coalesced separately;
+        // configure must apply the saved mode before navigation without waiting for it.
+        val cache = engine.statusSnapshot()
+        scheduleMaintenance()
         return mapOf(
             "mode" to modeProvider().wireName,
             "supported" to canInterceptGameRequests(),
@@ -232,6 +234,35 @@ class GameResourceCacheManager(
             "isMetered" to status.isMetered,
             "waitingForWifi" to status.waitingForWifi,
         )
+    }
+
+    private fun scheduleMaintenance(force: Boolean = false) {
+        synchronized(maintenanceLock) {
+            val now = System.nanoTime()
+            if (!force && now - lastMaintenanceRequestedAt < java.util.concurrent.TimeUnit.SECONDS.toNanos(30)) return
+            lastMaintenanceRequestedAt = now
+            maintenancePending = true
+            if (maintenanceRunning) return
+            maintenanceRunning = true
+        }
+        scope.launch(Dispatchers.IO) {
+            try {
+                do {
+                    coroutineContext.ensureActive()
+                    val capturedEpoch = synchronized(maintenanceLock) {
+                        maintenancePending = false
+                        modeEpoch.get()
+                    }
+                    val failed = runCatching { engine.enforcePolicy(250) }.isFailure
+                    if (modeEpoch.get() == capturedEpoch) policyError = failed
+                } while (synchronized(maintenanceLock) {
+                    if (maintenancePending) true else { maintenanceRunning = false; false }
+                })
+            } catch (error: Throwable) {
+                synchronized(maintenanceLock) { maintenanceRunning = false }
+                throw error
+            }
+        }
     }
 
     private fun runIo(result: MethodChannel.Result, action: () -> Any?) {

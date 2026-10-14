@@ -1,6 +1,7 @@
 import 'dart:collection';
 import 'dart:convert';
 
+import '../browser/game_load_event.dart';
 import 'diagnostic_privacy_policy.dart';
 
 enum DiagnosticOutcome { success, failure, skipped }
@@ -46,6 +47,23 @@ final class DiagnosticEvent {
   final DateTime occurredAt;
   final String type;
   final Map<String, Object?> fields;
+
+  factory DiagnosticEvent.gameLoad({
+    required DateTime occurredAt,
+    required GameLoadEvent event,
+    required DiagnosticWebViewHost webViewHost,
+    required String renderingMode,
+    int? generationId,
+  }) => DiagnosticEvent._(
+    occurredAt: occurredAt.toUtc(),
+    type: 'gameLoad',
+    fields: <String, Object?>{
+      ...event.toMap(),
+      'webViewHost': webViewHost.name,
+      'renderingMode': renderingMode,
+      'generationId': ?generationId,
+    },
+  );
 
   factory DiagnosticEvent.lifecycle({
     required DateTime occurredAt,

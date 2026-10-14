@@ -28,6 +28,7 @@ import 'src/battle/live_battle_card.dart';
 import 'src/audio/game_audio_controller.dart';
 import 'src/audio/game_audio_store.dart';
 import 'src/browser/game_browser_controller.dart';
+import 'src/browser/game_load_event.dart';
 import 'src/browser/gadget_bypass_controller.dart';
 import 'src/browser/gadget_bypass_store.dart';
 import 'src/browser/game_browser_overlay.dart';
@@ -265,7 +266,7 @@ Future<void> main() async {
     SharedPreferencesKcwikiReportSettingsStore(),
   );
   final gameResourceCacheController = GameResourceCacheController();
-  await gameResourceCacheController.initialize();
+  await gameResourceCacheController.initialize(loadStatus: false);
   final senkaController = SenkaController(
     accountSession: accountSession,
     store: await SharedPreferencesSenkaStore.create(
@@ -540,15 +541,21 @@ Future<void> main() async {
     recorder: diagnosticRecorder,
   );
   var lastBrowserDiagnosticState = browserController.loadState;
+  DateTime? browserNavigationStartedAt;
   void recordBrowserState() {
     final state = browserController.loadState;
     if (state == lastBrowserDiagnosticState) return;
     lastBrowserDiagnosticState = state;
+    final now = DateTime.now();
+    if (state == GamePageLoadState.loading) browserNavigationStartedAt = now;
+    final elapsed = browserNavigationStartedAt == null
+        ? 0
+        : now.difference(browserNavigationStartedAt!).inMilliseconds;
     diagnosticRecorder.record(
       DiagnosticEvent.webViewState(
-        occurredAt: DateTime.now(),
+        occurredAt: now,
         state: state.name,
-        durationMs: 0,
+        durationMs: elapsed < 0 ? 0 : elapsed,
       ),
     );
   }
@@ -708,6 +715,7 @@ Future<void> main() async {
   void launchMainApp() {
     runApp(app);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(gameResourceCacheController.refresh());
       unawaited(fcdMapController.checkForUpdates());
       unawaited(questCatalogController.checkForUpdates());
       Future<void>.delayed(const Duration(seconds: 2), () {
@@ -1205,6 +1213,10 @@ class YahagiApp extends StatelessWidget {
   Widget _buildNativeActivityGameSurface(Key key) => NativeActivityGameSurface(
     key: key,
     onGenerationChanged: nativeWebViewGenerationSink,
+    onLoadEvent: (event) => _recordGameLoadEvent(
+      event,
+      GameRenderingMode.nativeActivityExperimental,
+    ),
     onRenderProcessGone: (didCrash) => diagnosticController?.recorder.record(
       DiagnosticEvent.fixedError(
         occurredAt: DateTime.now(),
@@ -1228,6 +1240,7 @@ class YahagiApp extends StatelessWidget {
   Widget _buildGameWebView(Key key, {GameRenderingMode? renderingMode}) =>
       GameWebView(
         key: key,
+        onLoadEvent: (event) => _recordGameLoadEvent(event, renderingMode),
         networkSettingsController: networkSettingsController,
         safetySettingsController: safetySettingsController,
         controller: controller,
@@ -1243,6 +1256,31 @@ class YahagiApp extends StatelessWidget {
             gameRenderingModeController?.mode ??
             GameRenderingMode.compatibility,
       );
+
+  void _recordGameLoadEvent(
+    GameLoadEvent event,
+    GameRenderingMode? requestedMode,
+  ) {
+    final diagnostics = diagnosticController;
+    if (diagnostics == null || !diagnostics.recorder.enabled) return;
+    final mode =
+        requestedMode ??
+        gameRenderingModeController?.mode ??
+        GameRenderingMode.compatibility;
+    diagnostics.recorder.record(
+      DiagnosticEvent.gameLoad(
+        occurredAt: DateTime.now(),
+        event: event,
+        webViewHost: mode.usesActivityWebView
+            ? DiagnosticWebViewHost.activityDirect
+            : DiagnosticWebViewHost.flutterPlatformView,
+        renderingMode: mode.name,
+        generationId: mode.usesActivityWebView
+            ? diagnostics.generationId?.call()
+            : null,
+      ),
+    );
+  }
 
   Future<void> _waitForCaptureQueues() async {
     try {
@@ -1797,8 +1835,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                 layoutSettingsController: widget.layoutSettingsController,
                 builder: (context, completedCount) => Column(
                   children: [
-                    Offstage(
-                      offstage: _gameFullscreen,
+                    Visibility(
+                      visible: !_gameFullscreen,
+                      maintainState: true,
+                      maintainFocusability: true,
                       child: AnimatedBuilder(
                         animation: Listenable.merge([
                           widget.toolbarController,
@@ -2205,9 +2245,11 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                         ),
                         children: [
                           if (!panelAlignedNavigation)
-                            Offstage(
+                            Visibility(
                               key: const Key('workspace-navigation-sidebar'),
-                              offstage: _gameFullscreen,
+                              visible: !_gameFullscreen,
+                              maintainState: true,
+                              maintainFocusability: true,
                               child: buildWorkspaceNavigation(completedCount),
                             ),
                           Expanded(

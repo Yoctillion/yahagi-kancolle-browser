@@ -8,6 +8,33 @@ import org.junit.Test
 
 class NativeGameWebViewConfiguratorTest {
     @Test
+    fun retryDocumentReportsPendingEvenWhenPreviousDocumentWasPending() {
+        var pending = 0
+        val bridge = NativeGamePresentationBridge({}, { pending += 1 })
+        bridge.postMessage("pending")
+        bridge.resetForNavigation()
+        bridge.postMessage("pending")
+        bridge.postMessage("pending")
+        assertEquals(2, pending)
+    }
+
+    @Test
+    fun pendingBodyIsReportedWithoutPretendingTheLoginPageIsReady() {
+        val states = mutableListOf<Boolean>()
+        var pending = 0
+        val bridge = NativeGamePresentationBridge(states::add, { pending += 1 })
+        bridge.postMessage("pending")
+        bridge.postMessage("pending")
+        assertEquals(1, pending)
+        assertTrue(states.isEmpty())
+        bridge.postMessage("web")
+        bridge.postMessage("pending")
+        bridge.postMessage("game")
+        assertEquals(2, pending)
+        assertEquals(listOf(false, true), states)
+    }
+
+    @Test
     fun navigationAndExplicitRecoveryRemainIndependentDuringRepeatedTransitions() {
         val states = mutableListOf<Boolean>()
         val bridge = NativeGamePresentationBridge(states::add)

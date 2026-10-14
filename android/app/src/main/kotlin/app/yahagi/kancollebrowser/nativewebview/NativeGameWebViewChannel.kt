@@ -164,6 +164,38 @@ internal class NativeWebViewActivityStartupCoordinator(
     private var timeoutVersion = 0L
     private var hasScheduledTimeout = false
     private var restartRequested = false
+    private var foreground = true
+    private var pausedAtMs: Long? = null
+    private var pausedDurationMs = 0L
+    private var remainingTimeoutMs: Long? = null
+    private var armedAtMs: Long? = null
+
+    fun setForeground(foreground: Boolean) {
+        if (this.foreground == foreground) return
+        val rawNow = nowMs()
+        if (!foreground) {
+            val virtualNow = foregroundNowMs(rawNow)
+            val armedAt = armedAtMs
+            if (armedAt != null) {
+                remainingTimeoutMs = remainingTimeoutMs?.let {
+                    (it - (virtualNow - armedAt).coerceAtLeast(0L)).coerceAtLeast(0L)
+                }
+            }
+            this.foreground = false
+            pausedAtMs = rawNow
+            cancelScheduledTimeout(clearBudget = false)
+        } else {
+            pausedAtMs?.let { pausedDurationMs += (rawNow - it).coerceAtLeast(0L) }
+            pausedAtMs = null
+            this.foreground = true
+            remainingTimeoutMs?.let(::schedule)
+        }
+    }
+
+    private fun foregroundNowMs(rawNow: Long = nowMs()): Long {
+        val currentPause = pausedAtMs?.let { (rawNow - it).coerceAtLeast(0L) } ?: 0L
+        return (rawNow - pausedDurationMs - currentPause).coerceAtLeast(0L)
+    }
 
     fun begin(storedMode: String?): NativeWebViewActivityStartupOutcome {
         // Match Dart GameRenderingModeCodec: missing/unknown preferences use native mode.
@@ -177,7 +209,10 @@ internal class NativeWebViewActivityStartupCoordinator(
                 "Native Activity WebView mode is not active.",
             )
         }
-        return when (val decision = guard.beginAttempt(nowMs())) {
+        // Only this live Activity's idle background intervals are discounted.
+        // Persisted attempts from a different process still use the guard's
+        // normal crash/fallback policy when beginAttempt is first called.
+        return when (val decision = guard.beginAttempt(foregroundNowMs())) {
             is NativeWebViewStartupDecision.Started -> {
                 schedule(NativeWebViewStartupGuard.STARTUP_TIMEOUT_MS)
                 NativeWebViewActivityStartupOutcome.StartHost
@@ -228,19 +263,28 @@ internal class NativeWebViewActivityStartupCoordinator(
 
     private fun schedule(delayMs: Long) {
         if (hasScheduledTimeout) cancelTimeout()
+        remainingTimeoutMs = delayMs.coerceAtLeast(0L)
+        armedAtMs = null
+        if (!foreground) return
         hasScheduledTimeout = true
+        armedAtMs = foregroundNowMs()
         val version = ++timeoutVersion
         scheduleTimeout(delayMs.coerceAtLeast(0L)) {
-            if (version != timeoutVersion) return@scheduleTimeout
-            when (val decision = guard.recordStartupTimeout(nowMs())) {
+            if (version != timeoutVersion || !foreground) return@scheduleTimeout
+            hasScheduledTimeout = false
+            remainingTimeoutMs = null
+            armedAtMs = null
+            when (val decision = guard.recordStartupTimeout(foregroundNowMs())) {
                 is NativeWebViewStartupDecision.NotTimedOut -> schedule(decision.remainingMs)
                 else -> handleTerminalDecision(decision)
             }
         }
     }
 
-    private fun cancelScheduledTimeout() {
+    private fun cancelScheduledTimeout(clearBudget: Boolean = true) {
         timeoutVersion++
+        armedAtMs = null
+        if (clearBudget) remainingTimeoutMs = null
         if (hasScheduledTimeout) {
             hasScheduledTimeout = false
             cancelTimeout()
@@ -370,6 +414,30 @@ internal class NativeGameWebViewChannel(
 
             override fun mainFrameError(generation: Long, errorCode: Int, description: String) =
                 handleMainFrameError(attachmentId, generation, errorCode, description)
+
+            override fun presentationPending(generation: Long) =
+                emitForGeneration(
+                    attachmentId,
+                    generation,
+                    mapOf(
+                        "type" to "presentationChanged",
+                        "generationId" to generation,
+                        "isGame" to false,
+                        "state" to "pending",
+                    ),
+                )
+
+            override fun resourceError(generation: Long, errorCode: Int) =
+                emitForGeneration(
+                    attachmentId,
+                    generation,
+                    mapOf(
+                        "type" to "resourceError",
+                        "generationId" to generation,
+                        "errorCode" to errorCode,
+                        "description" to "",
+                    ),
+                )
 
             override fun navigationBlocked(generation: Long, scheme: String) =
                 handleNavigationBlocked(attachmentId, generation, scheme)

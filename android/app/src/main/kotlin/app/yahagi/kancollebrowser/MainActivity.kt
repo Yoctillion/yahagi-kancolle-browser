@@ -136,7 +136,24 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
 
     override fun onResume() {
         super.onResume()
+        gameSurfacesResumed = true
+        nativeWebViewStartup?.setForeground(true)
+        deferredGameSurfaceRecoveryReason?.let { reason ->
+            deferredGameSurfaceRecoveryReason = null
+            scheduleGameSurfaceRecovery(reason)
+        }
         applyPreferredUiRefreshRate()
+    }
+
+    override fun onPause() {
+        gameSurfacesResumed = false
+        nativeWebViewStartup?.setForeground(false)
+        if (pendingGameSurfaceRecoveryActions.isNotEmpty()) {
+            deferredGameSurfaceRecoveryReason = GameSurfaceRecoveryReason.CONFIGURATION_CHANGED
+        }
+        pendingGameSurfaceRecoveryActions.forEach(gameSurfaceRecoveryHandler::removeCallbacks)
+        pendingGameSurfaceRecoveryActions.clear()
+        super.onPause()
     }
 
     override fun onMultiWindowModeChanged(
@@ -232,6 +249,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     
     private val gameSurfaceRecoveryHandler = Handler(Looper.getMainLooper())
     private val pendingGameSurfaceRecoveryActions = mutableListOf<Runnable>()
+    private var gameSurfacesResumed = false
+    private var deferredGameSurfaceRecoveryReason: GameSurfaceRecoveryReason? = null
     private val gameSurfaceRecoveryTrigger = GameSurfaceRecoveryTrigger(
         ::scheduleGameSurfaceRecovery,
     )
@@ -800,6 +819,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             requestRestart = ::requestActivityRestart,
         )
         nativeWebViewStartup = startup
+        startup.setForeground(gameSurfacesResumed)
         val nativeChannel = nativeGameWebViewChannel ?: return
         val nativeAttachment = nativeGameWebViewAttachment ?: return
         when (val outcome = startup.begin(storedMode)) {
@@ -1677,6 +1697,10 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
 
     private fun scheduleGameSurfaceRecovery(reason: GameSurfaceRecoveryReason) {
         if (isFinishing || isDestroyed) return
+        if (!gameSurfacesResumed) {
+            deferredGameSurfaceRecoveryReason = reason
+            return
+        }
 
         Log.d("GameSurfaceRecovery", "Scheduling recovery for $reason")
         pendingGameSurfaceRecoveryActions.forEach(
@@ -1688,7 +1712,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             lateinit var action: Runnable
             action = Runnable {
                 pendingGameSurfaceRecoveryActions.remove(action)
-                if (!isFinishing && !isDestroyed) {
+                if (gameSurfacesResumed && !isFinishing && !isDestroyed) {
                     recoverGameSurfaces()
                 }
             }

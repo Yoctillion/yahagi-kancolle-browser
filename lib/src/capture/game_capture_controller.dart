@@ -46,6 +46,8 @@ final class GameCaptureController extends ChangeNotifier {
   GameCaptureState _state = GameCaptureState.disabled;
   bool? _configuredEnabled;
   String? _configuredScript;
+  int _bindingRevision = 0;
+  int _configuredBindingRevision = -1;
   String _script = '';
   int _responseBytes = 0;
   int _capturedCount = 0;
@@ -84,12 +86,21 @@ final class GameCaptureController extends ChangeNotifier {
     await _enqueueConfiguration();
   }
 
-  Future<void> configure({required bool enabled, String? script}) async {
+  Future<void> configure({
+    required bool enabled,
+    String? script,
+    bool force = false,
+  }) async {
     if (_disposed) return;
     if (script != null) {
       _script = script;
     }
     _desiredEnabled = enabled;
+    // A channel can outlive its WebView. Require a fresh native binding check
+    // while still accepting current events that arrive before its reply.
+    if (force) {
+      _bindingRevision++;
+    }
     if (!enabled) {
       _state = GameCaptureState.disabled;
       _errorMessage = null;
@@ -132,6 +143,7 @@ final class GameCaptureController extends ChangeNotifier {
     while (!_disposed &&
         (_processedRevision < _configurationRevision || _repairPending)) {
       final revision = _configurationRevision;
+      final bindingRevision = _bindingRevision;
       final port = _desiredPort;
       final enabled = _desiredEnabled;
       final script = _sessionScript;
@@ -190,7 +202,14 @@ final class GameCaptureController extends ChangeNotifier {
       }
 
       if (isRepair) _repairInFlight = true;
-      await _applyConfiguration(revision, port, enabled, script, invalidator);
+      await _applyConfiguration(
+        revision,
+        bindingRevision,
+        port,
+        enabled,
+        script,
+        invalidator,
+      );
       if (isRepair) _repairInFlight = false;
       _processedRevision = revision;
       _completeConfigurationThrough(revision);
@@ -199,6 +218,7 @@ final class GameCaptureController extends ChangeNotifier {
 
   Future<void> _applyConfiguration(
     int revision,
+    int bindingRevision,
     GameCapturePort? port,
     bool enabled,
     String script,
@@ -214,7 +234,8 @@ final class GameCaptureController extends ChangeNotifier {
 
     try {
       if (!enabled) {
-        if (_configuredEnabled != false) {
+        if (_configuredEnabled != false ||
+            _configuredBindingRevision != bindingRevision) {
           final result = await _waitForPortOperation(
             port.configure(enabled: false, script: ''),
             invalidator,
@@ -231,6 +252,7 @@ final class GameCaptureController extends ChangeNotifier {
         if (!_isCurrentConfiguration(revision, port)) return;
         _configuredEnabled = false;
         _configuredScript = '';
+        _configuredBindingRevision = bindingRevision;
         _state = GameCaptureState.disabled;
         _errorMessage = null;
         notifyListeners();
@@ -255,7 +277,9 @@ final class GameCaptureController extends ChangeNotifier {
         return;
       }
       if (!_isCurrentConfiguration(revision, port)) return;
-      if (_configuredEnabled != true || _configuredScript != script) {
+      if (_configuredEnabled != true ||
+          _configuredScript != script ||
+          _configuredBindingRevision != bindingRevision) {
         final result = await _waitForPortOperation(
           port.configure(enabled: true, script: script),
           invalidator,
@@ -272,6 +296,7 @@ final class GameCaptureController extends ChangeNotifier {
       if (!_isCurrentConfiguration(revision, port)) return;
       _configuredEnabled = true;
       _configuredScript = script;
+      _configuredBindingRevision = bindingRevision;
       _state = _latestEvent == null
           ? GameCaptureState.ready
           : GameCaptureState.capturing;

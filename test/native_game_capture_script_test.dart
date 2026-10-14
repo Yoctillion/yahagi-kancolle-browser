@@ -31,6 +31,135 @@ void main() {
       );
     });
 
+    for (final wireMode in ['string', 'binary', 'binary-fallback']) {
+      for (final transport in ['fetch', 'xhr']) {
+        test(
+          'forwards ordinary responses without parsing ($wireMode, $transport)',
+          () {
+            const paths = [
+              '/kcsapi/api_port/port',
+              '/kcsapi/api_start2/getData',
+              '/kcsapi/api_req_sortie/battle',
+            ];
+            const responseBody =
+                'svdata={ "api_result": 1, "api_data": '
+                '{ "label": "矢矧", "values": [1, 2, 3] } }\n';
+            const harness = r'''
+const [script, mode, transport, configuration] = process.argv.slice(1);
+const parse = JSON.parse;
+const { paths, responseBody } = parse(configuration);
+const messages = [];
+const wireTypes = [];
+let parseCount = 0;
+global.window = global;
+window.location = { href: 'https://example.test/kcs2/' };
+Object.defineProperty(global, 'performance', { value: { timeOrigin: 1000 } });
+Math.random = () => 0.25;
+global.YahagiNativeCapture = {
+  postMessage(payload) {
+    if (typeof payload === 'string') {
+      wireTypes.push('string');
+      messages.push(parse(payload));
+      return;
+    }
+    wireTypes.push('binary');
+    if (mode === 'binary-fallback') throw new Error('binary unavailable');
+    const metadataLength = new DataView(payload).getUint32(0, false);
+    const decoder = new TextDecoder();
+    messages.push({
+      ...parse(decoder.decode(new Uint8Array(payload, 4, metadataLength))),
+      responseBody: decoder.decode(new Uint8Array(payload, 4 + metadataLength)),
+    });
+  },
+};
+const response = () => ({
+  ok: true, status: 200,
+  text: async () => responseBody,
+  clone: response,
+});
+window.fetch = async () => response();
+class FakeXMLHttpRequest {
+  constructor() {
+    this.responseType = '';
+    this.responseText = responseBody;
+    this.status = 200;
+    this.listeners = [];
+  }
+  open(method, url) { this.responseURL = url; }
+  addEventListener(type, listener) {
+    if (type === 'loadend') this.listeners.push(listener);
+  }
+  send() { for (const listener of this.listeners) listener.call(this); }
+}
+global.XMLHttpRequest = FakeXMLHttpRequest;
+// Initialize Node's lazy browser APIs before measuring the capture script.
+void Request;
+JSON.parse = (...args) => { parseCount++; return parse(...args); };
+eval(script.replace('__YAHAGI_BINARY_CAPTURE_ENABLED__', String(mode !== 'string')));
+(async () => {
+  for (const path of paths) {
+    const body = 'api_token=secret&api_starttime=123&api_deck_id=1';
+    if (transport === 'fetch') {
+      await window.fetch(path, { method: 'post', body });
+      await new Promise(setImmediate);
+    } else {
+      const xhr = new XMLHttpRequest();
+      xhr.open('post', path);
+      xhr.send(body);
+    }
+  }
+  process.stdout.write(JSON.stringify({ parseCount, messages, wireTypes }));
+})().catch((error) => {
+  process.stderr.write(String(error && error.stack || error));
+  process.exitCode = 1;
+});
+''';
+            final result = Process.runSync(
+              'node',
+              [
+                '-e',
+                harness,
+                nativeGameCaptureScript,
+                wireMode,
+                transport,
+                jsonEncode({'paths': paths, 'responseBody': responseBody}),
+              ],
+              stdoutEncoding: utf8,
+              stderrEncoding: utf8,
+            );
+            expect(result.exitCode, 0, reason: result.stderr.toString());
+            final output =
+                jsonDecode(result.stdout.toString()) as Map<String, dynamic>;
+            expect(output['messages'], [
+              for (final path in paths)
+                {
+                  'version': 1,
+                  'kind': 'kcsapi_response',
+                  'captureSessionId': captureSessionIdPlaceholder,
+                  'captureDocumentId': '1000:9',
+                  'captureDocumentStartedAtEpochMs': 1000,
+                  'method': 'POST',
+                  'path': path,
+                  'requestParams': {'api_deck_id': '1'},
+                  'responseBody': responseBody,
+                  'statusCode': 200,
+                  'transport': transport,
+                },
+            ]);
+            expect(output['wireTypes'], [
+              for (final _ in paths)
+                if (wireMode == 'binary-fallback') ...[
+                  'binary',
+                  'string',
+                ] else
+                  wireMode,
+            ]);
+            expect(output['parseCount'], 0);
+          },
+        );
+      }
+    }
+
     test('embeds the complete interested-path allowlist', () {
       for (final path in GameCapturePathCatalog.all) {
         expect(nativeGameCaptureScript, contains('"$path"'));

@@ -14,15 +14,185 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.MessageDigest
 
 class GameResourceCacheEngineTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
     @Test
+    fun `same key queue wait consumes the request budget`() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val calls = AtomicInteger()
+        val fetcher = object : GameResourceFetcher {
+            override fun budgetMillis(url: String) = 80L
+            override fun fetch(url: String, requestHeaders: Map<String, String>, cached: GameResourceCacheEntry?): GameResourceFetchResult? {
+                calls.incrementAndGet()
+                entered.countDown()
+                release.await(2, TimeUnit.SECONDS)
+                return result(byteArrayOf(1))
+            }
+        }
+        val engine = engine(fetcher)
+        val url = official("/kcs2/version.json")
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val first = executor.submit<GameResourceResponse?> { engine.fetch(url) }
+            assertTrue(entered.await(2, TimeUnit.SECONDS))
+            val queued = executor.submit<GameResourceResponse?> { engine.fetch(url) }
+            assertNull(queued.get(300, TimeUnit.MILLISECONDS))
+            assertEquals(1, calls.get())
+            release.countDown()
+            first.get(2, TimeUnit.SECONDS)
+        } finally {
+            release.countDown()
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `download slot queue wait consumes the request budget`() {
+        val entered = CountDownLatch(2)
+        val release = CountDownLatch(1)
+        val fetcher = object : GameResourceFetcher {
+            override fun budgetMillis(url: String) = 80L
+            override fun fetch(url: String, requestHeaders: Map<String, String>, cached: GameResourceCacheEntry?): GameResourceFetchResult? {
+                entered.countDown()
+                release.await(2, TimeUnit.SECONDS)
+                return result(byteArrayOf(1))
+            }
+        }
+        val engine = engine(fetcher)
+        val urls = (0..100).map { official("/kcs2/resources/$it.png?v=1") }
+            .distinctBy { (checkNotNull(GameResourceCacheKey.from(it)).hashCode() and Int.MAX_VALUE) % 64 }.take(3)
+        val executor = Executors.newFixedThreadPool(3)
+        try {
+            val active = urls.take(2).map { url -> executor.submit<GameResourceResponse?> { engine.fetch(url) } }
+            assertTrue(entered.await(2, TimeUnit.SECONDS))
+            val queued = executor.submit<GameResourceResponse?> { engine.fetch(urls.last(), waitForSlot = true) }
+            assertNull(queued.get(300, TimeUnit.MILLISECONDS))
+            release.countDown()
+            active.forEach { it.get(2, TimeUnit.SECONDS) }
+        } finally {
+            release.countDown()
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `queue time reduces the deadline passed to the fetcher`() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val started = CountDownLatch(1)
+        val remaining = java.util.Collections.synchronizedList(mutableListOf<Long>())
+        val calls = AtomicInteger()
+        val fetcher = object : GameResourceFetcher {
+            override fun budgetMillis(url: String) = 200L
+            override fun fetch(url: String, requestHeaders: Map<String, String>, cached: GameResourceCacheEntry?): GameResourceFetchResult? {
+                if (calls.incrementAndGet() == 1) {
+                    entered.countDown()
+                    release.await(2, TimeUnit.SECONDS)
+                }
+                return result(byteArrayOf(1))
+            }
+            override fun fetchWithinDeadline(url: String, requestHeaders: Map<String, String>, cached: GameResourceCacheEntry?, deadlineNanos: Long): GameResourceFetchResult? {
+                remaining += TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime())
+                return fetch(url, requestHeaders, cached)
+            }
+        }
+        val engine = engine(fetcher)
+        val url = official("/kcs2/version.json")
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val first = executor.submit<GameResourceResponse?> { engine.fetch(url) }
+            assertTrue(entered.await(2, TimeUnit.SECONDS))
+            val queued = executor.submit<GameResourceResponse?> { started.countDown(); engine.fetch(url) }
+            assertTrue(started.await(2, TimeUnit.SECONDS))
+            Thread.sleep(80)
+            release.countDown()
+            first.get(2, TimeUnit.SECONDS)
+            queued.get(2, TimeUnit.SECONDS)
+            assertEquals(2, remaining.size)
+            assertTrue("queue time reset the network budget: ${remaining.last()}", remaining.last() in 1..160)
+        } finally {
+            release.countDown()
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `304 hashes unchanged cached body only once per fetch at resource sizes`() {
+        for (megabytes in listOf(1, 4, 16)) {
+            val root = temporaryFolder.newFolder("hash-$megabytes")
+            val hashes = AtomicInteger()
+            val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")),
+                64L * 1024 * 1024, fileChecksum = { file ->
+                    hashes.incrementAndGet()
+                    MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+                })
+            val url = official("/kcs2/version.json")
+            val bytes = ByteArray(megabytes * 1024 * 1024) { 7 }
+            store.commit(checkNotNull(GameResourceCacheKey.from(url)), bytes, mimeType = "application/json")
+            hashes.set(0)
+            val engine = GameResourceCacheEngine(store, QueueFetcher(result(ByteArray(0), 304))) { GameResourceCacheMode.TEMPORARY }
+            assertArrayEquals(bytes, engine.fetch(url)?.bytes)
+            assertEquals("$megabytes MiB", 1, hashes.get())
+        }
+    }
+
+    @Test
+    fun `304 rejects same-length corruption during validation`() {
+        val root = temporaryFolder.newFolder("304-corruption")
+        val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")), 10_000)
+        val url = official("/kcs2/version.json")
+        val key = checkNotNull(GameResourceCacheKey.from(url))
+        val entry = store.commit(key, byteArrayOf(1, 2, 3), mimeType = "application/json")
+        val fetcher = GameResourceFetcher { _, _, _ ->
+            val file = root.resolve("files/${entry.fileName}")
+            file.writeBytes(byteArrayOf(4, 5, 6))
+            java.nio.file.Files.setLastModifiedTime(file.toPath(), java.nio.file.attribute.FileTime.fromMillis(file.lastModified() + 1000))
+            result(ByteArray(0), 304)
+        }
+        val engine = GameResourceCacheEngine(store, fetcher) { GameResourceCacheMode.TEMPORARY }
+        assertNull(engine.fetch(url))
+        assertFalse(store.contains(key))
+    }
+
+    @Test
+    fun `304 cannot resurrect cleared or replaced cached entry`() {
+        for (clear in listOf(true, false)) {
+            val root = temporaryFolder.newFolder("304-change-$clear")
+            val store = GameResourceCacheStore(root, GameResourceCacheIndex(root.resolve("index.json")), 10_000)
+            val url = official("/kcs2/version.json")
+            val key = checkNotNull(GameResourceCacheKey.from(url))
+            store.commit(key, byteArrayOf(1, 2, 3), mimeType = "application/json")
+            val fetcher = GameResourceFetcher { _, _, _ ->
+                if (clear) store.clear() else store.commit(key, byteArrayOf(4, 5, 6), mimeType = "application/json")
+                result(ByteArray(0), 304)
+            }
+            val engine = GameResourceCacheEngine(store, fetcher) { GameResourceCacheMode.TEMPORARY }
+            assertNull(engine.fetch(url))
+            if (!clear) assertArrayEquals(byteArrayOf(4, 5, 6), store.read(key)?.bytes)
+        }
+    }
+
+    @Test
+    fun `committed network response keeps its verified download until the response closes`() {
+        val file = temporaryFolder.newFile("network.part").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val fetched = result(byteArrayOf(1, 2, 3)).copy(bytes = ByteArray(0), file = file)
+        val engine = engine(QueueFetcher(fetched))
+        val response = checkNotNull(engine.fetch(official("/kcs2/resources/a.png?version=1")))
+        assertTrue(file.isFile)
+        response.openStream().use { assertArrayEquals(byteArrayOf(1, 2, 3), it.readBytes()) }
+        assertFalse(file.exists())
+        assertTrue(engine.hasCached(official("/kcs2/resources/a.png?version=1")))
+    }
+
+    @Test
     fun `legacy and missing modes migrate to supported profiles`() {
         assertEquals(GameResourceCacheMode.TEMPORARY, GameResourceCacheMode.fromWireName(null))
-        assertEquals(GameResourceCacheMode.TEMPORARY, GameResourceCacheMode.fromWireName("none"))
+        assertEquals(GameResourceCacheMode.NONE, GameResourceCacheMode.fromWireName("none"))
         assertEquals(GameResourceCacheMode.TEMPORARY, GameResourceCacheMode.fromWireName("unknown"))
         assertEquals(GameResourceCacheMode.FULL, GameResourceCacheMode.fromWireName("light"))
     }
@@ -243,6 +413,7 @@ class GameResourceCacheEngineTest {
         val engine = GameResourceCacheEngine(store, QueueFetcher()) { GameResourceCacheMode.TEMPORARY }
 
         assertTrue(engine.entries().isEmpty())
+        engine.enforcePolicy()
         assertFalse(cachedFile.exists())
         assertEquals("keep", settings.readText())
     }
@@ -296,6 +467,7 @@ class GameResourceCacheEngineTest {
         ) { GameResourceCacheMode.TEMPORARY }
 
         assertTrue(restarted.entries().isEmpty())
+        restarted.enforcePolicy()
         assertTrue(root.resolve("files").listFiles().orEmpty().isEmpty())
     }
 
@@ -317,6 +489,7 @@ class GameResourceCacheEngineTest {
         ) { GameResourceCacheMode.TEMPORARY }
 
         assertTrue(restarted.entries().isEmpty())
+        restarted.enforcePolicy()
         assertTrue(root.resolve("files").listFiles().orEmpty().isEmpty())
     }
 

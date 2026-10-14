@@ -30,6 +30,9 @@ final class GameResourceCacheController extends ChangeNotifier {
   Future<void>? _refreshFuture;
   bool _refreshPending = false;
   Timer? _timer;
+  bool _disposed = false;
+  int _modeEpoch = 0;
+  Future<void>? _initializationFuture;
 
   GameResourceCacheMode get mode => _mode;
   GameResourceCacheStatus get status => _status;
@@ -39,29 +42,52 @@ final class GameResourceCacheController extends ChangeNotifier {
   String get completenessLine =>
       formatCacheCompleteness(_status.cachedBytes, _status.targetBytes);
 
-  Future<void> initialize() async {
+  Future<void> initialize({bool loadStatus = true}) {
+    if (_disposed) return Future<void>.value();
+    final active = _initializationFuture;
+    if (active != null) return active;
+    final pending = _modeChangeTail.then((_) => _initialize(loadStatus));
+    _initializationFuture = pending;
+    _modeChangeTail = pending;
+    return pending;
+  }
+
+  Future<void> _initialize(bool loadStatus) async {
     try {
-      _mode = await _store.load();
-      if (!await _port.configure(_mode)) {
+      final savedMode = await _store.load();
+      if (_disposed) return;
+      _mode = savedMode;
+      final configured = await _port.configure(_mode);
+      if (_disposed) return;
+      if (!configured) {
+        // A saved off preference must never temporarily enable interception.
+        if (savedMode == GameResourceCacheMode.none) {
+          throw StateError('Local cache configuration failed');
+        }
         _mode = GameResourceCacheMode.temporary;
-        if (!await _port.configure(_mode)) {
+        final fallbackConfigured = await _port.configure(_mode);
+        if (_disposed) return;
+        if (!fallbackConfigured) {
           throw StateError('Local cache configuration failed');
         }
         await _store.save(_mode);
+        if (_disposed) return;
       }
-      _status = await _port.status();
       _initialized = true;
+      if (loadStatus) await refresh();
+      if (_disposed) return;
       _updatePolling();
     } catch (_) {
       // Cache I/O is optional and must not block the browser's startup.
-      _mode = GameResourceCacheMode.temporary;
+      if (_disposed) return;
       _status = GameResourceCacheStatus.empty;
       _initialized = false;
     }
-    notifyListeners();
+    _notify();
   }
 
   Future<bool> setMode(GameResourceCacheMode value) {
+    if (_disposed) return Future<bool>.value(false);
     _beginBusy();
     final pending = _modeChangeTail.then((_) => _applyMode(value));
     _modeChangeTail = pending.then<void>((_) {});
@@ -69,19 +95,25 @@ final class GameResourceCacheController extends ChangeNotifier {
   }
 
   Future<bool> _applyMode(GameResourceCacheMode value) async {
+    if (_disposed) return false;
     if (_mode == value && _initialized) return true;
+    _modeEpoch++;
     final previous = _mode;
     try {
-      if (!await _port.configure(value)) {
+      final configured = await _port.configure(value);
+      if (_disposed) return false;
+      if (!configured) {
         await _restoreNativeMode(previous);
         return false;
       }
       await _store.save(value);
+      if (_disposed) return false;
       _mode = value;
+      _initialized = true;
       try {
         await refresh();
       } catch (_) {
-        notifyListeners();
+        _notify();
       }
       return true;
     } catch (_) {
@@ -91,14 +123,15 @@ final class GameResourceCacheController extends ChangeNotifier {
   }
 
   Future<void> _restoreNativeMode(GameResourceCacheMode previous) async {
+    if (_disposed) return;
     try {
       if (!await _port.configure(previous)) {
         _initialized = false;
-        notifyListeners();
+        _notify();
       }
     } catch (_) {
       _initialized = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -106,23 +139,24 @@ final class GameResourceCacheController extends ChangeNotifier {
     GameResourceManifest manifest, {
     bool Function()? shouldContinue,
   }) async {
+    if (_disposed) return false;
     final submitted = await _port.setManifest(
       manifest,
-      shouldContinue: shouldContinue,
+      shouldContinue: () => !_disposed && (shouldContinue?.call() ?? true),
     );
-    if (!submitted) return false;
+    if (_disposed || !submitted) return false;
     if (_manifestError) {
       _manifestError = false;
-      notifyListeners();
+      _notify();
     }
     await refresh();
     return true;
   }
 
   void reportManifestFailure() {
-    if (_manifestError) return;
+    if (_disposed || _manifestError) return;
     _manifestError = true;
-    notifyListeners();
+    _notify();
   }
 
   Future<bool> startDownload({bool allowMetered = false}) =>
@@ -133,9 +167,12 @@ final class GameResourceCacheController extends ChangeNotifier {
   Future<bool> clear() => _action(_port.clear);
 
   Future<GameResourceCacheStatus> checkIntegrity() async {
+    if (_disposed) return _status;
+    final epoch = _modeEpoch;
     _beginBusy();
     try {
-      _status = await _port.checkIntegrity();
+      final checked = await _port.checkIntegrity();
+      if (!_disposed && epoch == _modeEpoch) _status = checked;
       return _status;
     } finally {
       _endBusy();
@@ -144,6 +181,7 @@ final class GameResourceCacheController extends ChangeNotifier {
   }
 
   Future<void> refresh() {
+    if (_disposed) return Future<void>.value();
     final active = _refreshFuture;
     if (active != null) {
       _refreshPending = true;
@@ -160,21 +198,33 @@ final class GameResourceCacheController extends ChangeNotifier {
   Future<void> _refreshLoop() async {
     do {
       _refreshPending = false;
-      _status = await _port.status();
+      final epoch = _modeEpoch;
+      try {
+        final status = await _port.status();
+        if (_disposed) return;
+        if (epoch != _modeEpoch) continue;
+        _status = status;
+      } catch (_) {
+        // A deferred startup refresh or polling failure keeps the usable mode.
+        if (_disposed) return;
+      }
       _updatePolling();
-      notifyListeners();
-    } while (_refreshPending);
+      _notify();
+    } while (!_disposed && _refreshPending);
   }
 
   void setPageVisible(bool visible) {
+    if (_disposed) return;
     _pageVisible = visible;
     _updatePolling();
   }
 
   Future<bool> _action(Future<bool> Function() action) async {
+    if (_disposed) return false;
     _beginBusy();
     try {
       final result = await action();
+      if (_disposed) return false;
       await refresh();
       return result;
     } catch (_) {
@@ -193,16 +243,17 @@ final class GameResourceCacheController extends ChangeNotifier {
   void _beginBusy() {
     _busyCount++;
     _busy = true;
-    notifyListeners();
+    _notify();
   }
 
   void _endBusy() {
     _busyCount--;
     _busy = _busyCount > 0;
-    notifyListeners();
+    _notify();
   }
 
   void _updatePolling() {
+    if (_disposed) return;
     final shouldPoll = _pageVisible || _status.isRunning;
     if (shouldPoll && _timer == null) {
       _timer = Timer.periodic(const Duration(seconds: 1), (_) => refresh());
@@ -214,8 +265,15 @@ final class GameResourceCacheController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _modeEpoch++;
+    _refreshPending = false;
     _timer?.cancel();
     _timer = null;
     super.dispose();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
   }
 }

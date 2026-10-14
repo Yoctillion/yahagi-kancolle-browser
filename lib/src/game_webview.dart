@@ -22,6 +22,8 @@ import 'browser/game_presentation_state.dart';
 import 'browser/game_toolbar_controller.dart';
 import 'browser/game_webview_compatibility.dart';
 import 'browser/game_navigation_policy.dart';
+import 'browser/game_navigation_watchdog.dart';
+import 'browser/game_load_event.dart';
 import 'browser/network_proxy_channel.dart';
 import 'capture/capture_mode.dart';
 import 'capture/capture_mode_controller.dart';
@@ -267,6 +269,7 @@ final class DefaultGameSurfaceStartupOrchestrator
       SharedGameNetworkSettingsArbiter.instance;
 
   bool _capturePortAttached = false;
+  bool _captureRebindRequired = false;
   bool _audioPortAttached = false;
   bool _disposed = false;
   int _captureRevision = 0;
@@ -301,7 +304,10 @@ final class DefaultGameSurfaceStartupOrchestrator
     return GameCaptureStartupSequence.run(
       waitForPlatformView: waitForSurface,
       configureCapture: () async {
-        if (isActive()) await prepareCapture();
+        if (isActive()) {
+          _captureRebindRequired = true;
+          await prepareCapture();
+        }
       },
       navigate: navigate,
     );
@@ -322,6 +328,8 @@ final class DefaultGameSurfaceStartupOrchestrator
   Future<void> _drainCaptureChanges() async {
     while (!_disposed) {
       final revision = _captureRevision;
+      final rebindRequired = _captureRebindRequired;
+      _captureRebindRequired = false;
       final enabled = captureModeController.mode.installsGameBridge;
       final script = nativeGameCaptureScript;
       if (!_capturePortAttached) {
@@ -333,7 +341,11 @@ final class DefaultGameSurfaceStartupOrchestrator
         if (_disposed) return;
         _capturePortAttached = true;
       } else {
-        await gameCaptureController.configure(enabled: enabled, script: script);
+        await gameCaptureController.configure(
+          enabled: enabled,
+          script: script,
+          force: rebindRequired,
+        );
       }
       if (revision == _captureRevision) return;
     }
@@ -705,6 +717,9 @@ class GameWebView extends StatefulWidget {
     this.mouseWheelSettingsController,
     this.renderingMode = GameRenderingMode.compatibility,
     this.startupTimeout,
+    this.startupOrchestratorFactory,
+    this.navigationTimeout = const Duration(seconds: 45),
+    this.onLoadEvent,
   });
 
   final NetworkSettingsController networkSettingsController;
@@ -719,6 +734,9 @@ class GameWebView extends StatefulWidget {
   final GameMouseWheelSettingsController? mouseWheelSettingsController;
   final GameRenderingMode renderingMode;
   final Duration? startupTimeout;
+  final GameSurfaceStartupOrchestrator Function()? startupOrchestratorFactory;
+  final Duration navigationTimeout;
+  final ValueChanged<GameLoadEvent>? onLoadEvent;
 
   @override
   State<GameWebView> createState() => _GameWebViewState();
@@ -734,6 +752,7 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
   final GameWebViewCaptureUpdateCoordinator _captureUpdates =
       GameWebViewCaptureUpdateCoordinator();
   late final GameWebViewStartupCoordinator _startupCoordinator;
+  late final GameNavigationWatchdog _navigationWatchdog;
   final GameWebViewPageReadiness _pageReadiness = GameWebViewPageReadiness();
   late CaptureMode _activeCaptureMode;
   GameFrameRateRuntimeController? _frameRateRuntimeController;
@@ -745,14 +764,26 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
   int _startupEpoch = 0;
   int _bindingEpoch = 0;
   bool _disposed = false;
+  bool _hasNavigated = false;
+  bool _retryInProgress = false;
+  bool _awaitingNavigationStart = false;
+  bool _documentFinished = false;
+  int? _failedNavigationEpoch;
+  Uri? _navigationUri;
+  DateTime? _navigationStartedAt;
+  GamePresentationState? _presentationState;
+  GamePresentationState? _appliedPresentationState;
+  Future<void>? _presentationInFlight;
+  int? _presentationInFlightEpoch;
+  bool _presentationRefreshRequested = false;
 
   GameStartupState _startupState = GameStartupState.loadingSettings;
   String _startupErrorMessage = '';
 
   void _onNetworkSettingsChanged() {
     if (!mounted || _disposed) return;
-    if (_startupState == GameStartupState.error) {
-      _scheduleStartupSequence();
+    if (_startupState == GameStartupState.error && !_retryInProgress) {
+      unawaited(_retryPage());
     }
   }
 
@@ -763,6 +794,8 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
   GameSurfaceStartupOrchestrator _createStartupOrchestrator(
     GameWebView config,
   ) {
+    final factory = config.startupOrchestratorFactory;
+    if (factory != null) return factory();
     return DefaultGameSurfaceStartupOrchestrator(
       networkSettingsController: config.networkSettingsController,
       captureModeController: config.captureModeController,
@@ -778,6 +811,21 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
     _startupCoordinator = GameWebViewStartupCoordinator(
       stageTimeout: widget.startupTimeout ?? const Duration(seconds: 10),
     );
+    _navigationWatchdog = GameNavigationWatchdog(
+      timeout: widget.navigationTimeout,
+      onTimeout: (epoch) {
+        if (!_isCurrentNavigation(epoch)) return;
+        _failedNavigationEpoch = epoch;
+        _emitLoadEvent(GameLoadPhase.timedOut);
+        _reportRecoverableError(
+          _documentFinished ? '游戏本体加载超时，请重新加载。' : '游戏页面加载超时，请重新加载或检查网络。',
+        );
+      },
+    );
+    _navigationWatchdog.setForeground(
+      WidgetsBinding.instance.lifecycleState == null ||
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
+    );
     WidgetsBinding.instance.addObserver(this);
     _activeCaptureMode = widget.captureModeController.mode;
     _webViewController = WebViewController();
@@ -789,6 +837,7 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       compatibilityReady: _compatibilityReady,
       prepareForRealNavigation: _prepareCapture,
       synchronizeGamePresentation: _synchronizeGamePresentation,
+      beforeNavigation: _beginNavigation,
     );
     _bindings = GameWebViewBindingCoordinator(
       browserController: widget.browserController,
@@ -816,20 +865,23 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
         'YahagiPresentation',
         onMessageReceived: (message) {
           final state = decodeGamePresentationState(message.message);
-          if (state == null || state == GamePresentationState.pending) return;
+          if (state == null) return;
           // Re-read the current document instead of trusting a possibly stale
           // message that was queued immediately before a navigation.
-          _synchronizeGamePresentation().catchError((Object _) {});
+          _synchronizeGamePresentation(
+            refreshAfterCurrent: true,
+          ).catchError((Object _) {});
         },
       )
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: _onNavigationRequest,
           onPageStarted: (url) {
+            if (_disposed || !mounted) return;
             _startupCoordinator.acknowledgeNavigation(Uri.tryParse(url));
-            _pageReadiness.pageStarted();
             _navigationPolicy.onPageStarted(Uri.tryParse(url));
-            _navigationEpoch += 1;
+            _beginNavigation(Uri.tryParse(url));
+            _awaitingNavigationStart = false;
             _frameRateRuntimeController?.onPageStarted();
             widget.controller.onPageStarted(url);
             widget.browserController.onPageStarted(url);
@@ -838,16 +890,58 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
                   ? GameSurfaceStage.localPrototype
                   : GameSurfaceStage.login,
             );
-            if (_startupState == GameStartupState.networkReady) {
-              setState(() => _startupState = GameStartupState.loadingGame);
-            }
           },
           onPageFinished: (url) async {
             await _finishPage(url);
           },
+          onHttpError: (error) {
+            if (!mounted || _disposed) return;
+            final code = error.response?.statusCode;
+            if (code == null) return;
+            final requestedUri = error.request?.uri;
+            // The Flutter Android plugin forwards the URI but omits the
+            // native isForMainFrame flag for HTTP errors.
+            final mainFrame =
+                requestedUri != null &&
+                _navigationUri != null &&
+                canonicalNavigationTarget(requestedUri) ==
+                    canonicalNavigationTarget(_navigationUri!);
+            _emitLoadEvent(
+              GameLoadPhase.failed,
+              errorCode: code,
+              isMainFrame: mainFrame,
+            );
+            if (!mainFrame) return;
+            _failedNavigationEpoch = _navigationEpoch;
+            _navigationWatchdog.complete(_navigationEpoch);
+            _pageReadiness.pageStarted();
+            final message = '游戏页面加载失败 [HTTP $code]，请重新加载或检查网络。';
+            widget.controller.onWebResourceError(message);
+            widget.browserController.onWebResourceError(
+              description: message,
+              isForMainFrame: true,
+            );
+            _reportRecoverableError(message);
+          },
           onWebResourceError: (error) {
+            if (_disposed || !mounted) return;
             final isForMainFrame = error.isForMainFrame ?? true;
+            final errorUri = Uri.tryParse(error.url ?? '');
+            if (isForMainFrame &&
+                errorUri?.hasScheme == true &&
+                _navigationUri != null &&
+                canonicalNavigationTarget(errorUri!) !=
+                    canonicalNavigationTarget(_navigationUri!)) {
+              return;
+            }
+            _emitLoadEvent(
+              GameLoadPhase.failed,
+              errorCode: error.errorCode,
+              isMainFrame: isForMainFrame,
+            );
             if (isForMainFrame) {
+              _failedNavigationEpoch = _navigationEpoch;
+              _navigationWatchdog.complete(_navigationEpoch);
               _pageReadiness.pageStarted();
               widget.controller.onWebResourceError(error.description);
               // Check if it's an SSL error (usually -11 on Android, but flutter maps to description)
@@ -857,8 +951,12 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
                   description: '安全证书错误：可能是岛风GO证书未受信任或网络被劫持。',
                   isForMainFrame: isForMainFrame,
                 );
+                _reportRecoverableError('安全证书错误：可能是岛风GO证书未受信任或网络被劫持。');
                 return;
               }
+              _reportRecoverableError(
+                '游戏页面加载失败 [${error.errorCode}]，请重新加载或检查网络。',
+              );
             }
             widget.browserController.onWebResourceError(
               description: error.description,
@@ -905,6 +1003,13 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
     if (startupContextChanged) {
       _startupEpoch += 1;
       _navigationEpoch += 1;
+      _navigationWatchdog.cancel();
+      if (_hasNavigated && !_pageReadiness.isReady) {
+        _navigationWatchdog.start(
+          _navigationEpoch,
+          timeout: widget.navigationTimeout,
+        );
+      }
     }
     if (startupDependenciesChanged) {
       _bindingEpoch += 1;
@@ -951,10 +1056,11 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _navigationWatchdog.setForeground(state == AppLifecycleState.resumed);
     _frameRateRuntimeController?.onLifecycleChanged(state);
   }
 
-  Future<void> _executeStartupSequence() {
+  Future<void> _executeStartupSequence({bool retryNavigation = false}) {
     final startupEpoch = ++_startupEpoch;
     final orchestrator = _bindings.startupOrchestrator;
     final compatibilityReady = _compatibilityReady;
@@ -969,6 +1075,7 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
         frameRateReady: frameRateReady,
         networkSettings: networkSettings,
         browserController: browserController,
+        retryNavigation: retryNavigation,
       ),
     );
   }
@@ -980,7 +1087,9 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
     required Future<void> frameRateReady,
     required NetworkSettings networkSettings,
     required GameBrowserController browserController,
+    required bool retryNavigation,
   }) async {
+    var waitingForPageCommandResponse = false;
     try {
       if (!_isCurrentStartup(startupEpoch, orchestrator)) return;
       setState(() => _startupState = GameStartupState.applyingNetwork);
@@ -1000,7 +1109,9 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
         return;
       }
 
-      setState(() => _startupState = GameStartupState.networkReady);
+      if (!_pageReadiness.isReady) {
+        setState(() => _startupState = GameStartupState.networkReady);
+      }
 
       final initialAddress = resolveInitialGameAddress(browserController);
 
@@ -1018,10 +1129,20 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
             if (!_isCurrentStartup(startupEpoch, orchestrator)) return;
             await browserController.prepareInitialHome();
             if (!_isCurrentStartup(startupEpoch, orchestrator)) return;
-            await _startupCoordinator.navigateOnce(
-              initialAddress,
-              () => _webViewController.loadRequest(initialAddress),
-            );
+            waitingForPageCommandResponse = true;
+            try {
+              if (retryNavigation && _hasNavigated) {
+                _beginNavigation(_navigationUri ?? initialAddress);
+                await _webViewController.reload();
+              } else {
+                await _startupCoordinator.navigateOnce(initialAddress, () {
+                  _beginNavigation(initialAddress);
+                  return _webViewController.loadRequest(initialAddress);
+                });
+              }
+            } finally {
+              waitingForPageCommandResponse = false;
+            }
           },
         ),
       );
@@ -1031,10 +1152,20 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
           orchestrator.attachAudioPortOnce(),
         );
         if (_isCurrentStartup(startupEpoch, orchestrator)) {
-          setState(() => _startupState = GameStartupState.ready);
+          _completePresentationIfReady();
         }
       }
     } catch (error, stackTrace) {
+      // Document callbacks can arrive before the platform method acknowledges
+      // loadRequest/reload. Once navigation started, its document watchdog owns
+      // the deadline, even if this method response arrives late.
+      if (error is TimeoutException &&
+          waitingForPageCommandResponse &&
+          _isCurrentStartup(startupEpoch, orchestrator) &&
+          _hasNavigated &&
+          !_awaitingNavigationStart) {
+        return;
+      }
       debugPrint('Game WebView startup failed: $error\n$stackTrace');
       if (_isCurrentStartup(startupEpoch, orchestrator)) {
         _reportRecoverableError('游戏页面启动失败：$error');
@@ -1054,6 +1185,11 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
 
   void _reportRecoverableError(String message) {
     if (!mounted || _disposed) return;
+    if (_failedNavigationEpoch != _navigationEpoch) {
+      _emitLoadEvent(GameLoadPhase.failed);
+    }
+    _failedNavigationEpoch = _navigationEpoch;
+    _navigationWatchdog.complete(_navigationEpoch);
     setState(() {
       _startupState = GameStartupState.error;
       _startupErrorMessage = message;
@@ -1066,21 +1202,31 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
 
   Future<void> _finishPage(String url) async {
     final navigationEpoch = _navigationEpoch;
+    if (!_isUsableNavigation(navigationEpoch) || _awaitingNavigationStart) {
+      return;
+    }
+    final finishedUri = Uri.tryParse(url);
+    if (_navigationUri != null &&
+        finishedUri != null &&
+        canonicalNavigationTarget(finishedUri) !=
+            canonicalNavigationTarget(_navigationUri!)) {
+      return;
+    }
     try {
+      _emitLoadEvent(GameLoadPhase.documentFinished);
       widget.controller.onPageFinished(url);
       widget.browserController.onPageFinished(url);
 
       await _startupCoordinator.waitForStage(_synchronizeGamePresentation());
-      if (!_isCurrentNavigation(navigationEpoch)) return;
+      if (!_isUsableNavigation(navigationEpoch)) return;
       await _startupCoordinator.waitForStage(_prepareCapture());
-      if (!_isCurrentNavigation(navigationEpoch)) return;
+      if (!_isUsableNavigation(navigationEpoch)) return;
       await _startupCoordinator.waitForStage(_attachAudioPortOnce());
-      if (!_isCurrentNavigation(navigationEpoch)) return;
+      if (!_isUsableNavigation(navigationEpoch)) return;
 
       _pageReadiness.pageFinished();
-      if (_startupState == GameStartupState.loadingGame) {
-        setState(() => _startupState = GameStartupState.ready);
-      }
+      _documentFinished = true;
+      _completePresentationIfReady();
       final frameReady = _frameRateRuntimeController?.onPageReady(
         samplingEnabled:
             widget.browserController.mode != GameBrowserMode.localPrototype &&
@@ -1091,18 +1237,47 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       }
     } catch (error, stackTrace) {
       debugPrint('Game WebView page finish failed: $error\n$stackTrace');
-      if (_isCurrentNavigation(navigationEpoch)) {
+      if (_isUsableNavigation(navigationEpoch)) {
         _reportRecoverableError('游戏页面准备失败：$error');
       }
     }
   }
 
-  Future<void> _synchronizeGamePresentation() async {
+  Future<void> _synchronizeGamePresentation({
+    bool refreshAfterCurrent = false,
+  }) {
     final navigationEpoch = _navigationEpoch;
+    if (!_isUsableNavigation(navigationEpoch)) return Future<void>.value();
+    if (_presentationInFlightEpoch == navigationEpoch &&
+        _presentationInFlight != null) {
+      if (refreshAfterCurrent) _presentationRefreshRequested = true;
+      return _presentationInFlight!;
+    }
+    _presentationRefreshRequested = false;
+    final operation = _drainGamePresentation(navigationEpoch);
+    _presentationInFlight = operation;
+    _presentationInFlightEpoch = navigationEpoch;
+    return operation.whenComplete(() {
+      if (identical(_presentationInFlight, operation)) {
+        _presentationInFlight = null;
+        _presentationInFlightEpoch = null;
+      }
+    });
+  }
+
+  Future<void> _drainGamePresentation(int navigationEpoch) async {
+    do {
+      _presentationRefreshRequested = false;
+      await _probeGamePresentation(navigationEpoch);
+    } while (_isUsableNavigation(navigationEpoch) &&
+        _presentationRefreshRequested);
+  }
+
+  Future<void> _probeGamePresentation(int navigationEpoch) async {
     final gameSurfaceResult = await _startupCoordinator.waitForStage(
       _webViewController.runJavaScriptReturningResult(gamePageAlignmentScript),
     );
-    if (!_isCurrentNavigation(navigationEpoch)) return;
+    if (!_isUsableNavigation(navigationEpoch)) return;
     await _applyGamePresentation(
       decodeGamePresentationState(gameSurfaceResult),
       navigationEpoch,
@@ -1113,7 +1288,23 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
     GamePresentationState? state,
     int navigationEpoch,
   ) async {
-    if (!_isCurrentNavigation(navigationEpoch)) return;
+    if (!_isUsableNavigation(navigationEpoch)) return;
+    if (state != _presentationState) {
+      _presentationState = state;
+      if (state == GamePresentationState.pending) {
+        _emitLoadEvent(GameLoadPhase.bodyWaiting);
+        if (_documentFinished && _startupState == GameStartupState.ready) {
+          _navigationWatchdog.start(
+            _navigationEpoch,
+            timeout: widget.navigationTimeout,
+          );
+          setState(() => _startupState = GameStartupState.loadingGame);
+        }
+      }
+      if (state == GamePresentationState.game) {
+        _emitLoadEvent(GameLoadPhase.gameDetected);
+      }
+    }
     final action = state?.platformAction ?? GamePresentationPlatformAction.none;
     if (action == GamePresentationPlatformAction.none) return;
     widget.toolbarController.onStageChanged(
@@ -1121,7 +1312,8 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
           ? GameSurfaceStage.game
           : GameSurfaceStage.login,
     );
-    if (_webViewController.platform is AndroidWebViewController) {
+    if (_webViewController.platform is AndroidWebViewController &&
+        state != _appliedPresentationState) {
       switch (action) {
         case GamePresentationPlatformAction.bind:
           await _startupCoordinator.waitForStage(
@@ -1139,16 +1331,91 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       }
       if (!_isCurrentNavigation(navigationEpoch)) return;
     }
-    if (state == GamePresentationState.game) {
+    if (state == GamePresentationState.game &&
+        state != _appliedPresentationState) {
       await _startupCoordinator.waitForStage(
         _webViewController.runJavaScript('''
           if (window.__yahagiMobileAlignGame) window.__yahagiMobileAlignGame();
         '''),
       );
     }
+    if (!_isUsableNavigation(navigationEpoch)) return;
+    _appliedPresentationState = state;
+    _completePresentationIfReady();
   }
 
-  bool _isCurrentNavigation(int epoch) => mounted && epoch == _navigationEpoch;
+  void _beginNavigation(Uri? uri) {
+    if (!mounted || _disposed) return;
+    _hasNavigated = true;
+    _navigationEpoch += 1;
+    _navigationUri = uri ?? _navigationUri;
+    _navigationStartedAt = DateTime.now();
+    _failedNavigationEpoch = null;
+    _awaitingNavigationStart = true;
+    _documentFinished = false;
+    _presentationState = null;
+    _appliedPresentationState = null;
+    _pageReadiness.pageStarted();
+    _navigationWatchdog.start(
+      _navigationEpoch,
+      timeout: widget.navigationTimeout,
+    );
+    _emitLoadEvent(GameLoadPhase.navigationStarted);
+    setState(() {
+      _startupState = GameStartupState.loadingGame;
+      _startupErrorMessage = '';
+    });
+  }
+
+  void _emitLoadEvent(
+    GameLoadPhase phase, {
+    int? errorCode,
+    bool? isMainFrame,
+  }) {
+    final duration = _navigationStartedAt == null
+        ? 0
+        : DateTime.now().difference(_navigationStartedAt!).inMilliseconds;
+    try {
+      widget.onLoadEvent?.call(
+        GameLoadEvent(
+          phase: phase,
+          navigationEpoch: _navigationEpoch,
+          durationMs: duration < 0 ? 0 : duration,
+          pageCategory: classifyGamePage(_navigationUri),
+          errorCode: errorCode,
+          isMainFrame: isMainFrame,
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Game load observer failed: ${error.runtimeType}\n$stackTrace',
+      );
+    }
+  }
+
+  void _completePresentationIfReady() {
+    if (!_isUsableNavigation(_navigationEpoch) ||
+        !_documentFinished ||
+        !_pageReadiness.isReady ||
+        _presentationState == null ||
+        _presentationState == GamePresentationState.pending) {
+      return;
+    }
+    _navigationWatchdog.complete(_navigationEpoch);
+    if (_startupState != GameStartupState.ready) {
+      _emitLoadEvent(
+        _presentationState == GamePresentationState.web
+            ? GameLoadPhase.loginVisible
+            : GameLoadPhase.visible,
+      );
+      setState(() => _startupState = GameStartupState.ready);
+    }
+  }
+
+  bool _isCurrentNavigation(int epoch) =>
+      mounted && !_disposed && epoch == _navigationEpoch;
+  bool _isUsableNavigation(int epoch) =>
+      _isCurrentNavigation(epoch) && _failedNavigationEpoch != epoch;
 
   void _onCaptureModeChanged() {
     final nextMode = widget.captureModeController.mode;
@@ -1161,7 +1428,7 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
     unawaited(
       _captureUpdates.request(
         configure: orchestrator.prepareCapture,
-        reload: _webViewController.reload,
+        reload: _browserPort.reload,
         isActive: () => _isCurrentBinding(bindingEpoch, orchestrator),
         onError: (error, stackTrace) {
           debugPrint('Game WebView capture update failed: $error\n$stackTrace');
@@ -1342,6 +1609,17 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
+            key: const Key('game-webview-page-reload'),
+            onPressed: _retryInProgress ? null : () => unawaited(_retryPage()),
+            icon: const Icon(Icons.refresh),
+            label: Text(
+              (AppLocalizations.of(context) ??
+                      lookupAppLocalizations(const Locale('zh')))
+                  .reloadGame,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
             onPressed: () {
               unawaited(_retryWithSystemNetwork());
             },
@@ -1374,6 +1652,8 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _retryWithSystemNetwork() async {
+    if (_retryInProgress) return;
+    _retryInProgress = true;
     try {
       await _startupCoordinator.waitForStage(
         widget.networkSettingsController.applySettings(
@@ -1383,12 +1663,26 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
         ),
       );
       if (!mounted || _disposed) return;
-      await _executeStartupSequence();
+      _emitLoadEvent(GameLoadPhase.retry);
+      await _executeStartupSequence(retryNavigation: true);
     } catch (error, stackTrace) {
       debugPrint('Game WebView network retry failed: $error\n$stackTrace');
       if (mounted && !_disposed) {
         _reportRecoverableError('网络重试失败：$error');
       }
+    } finally {
+      if (mounted && !_disposed) setState(() => _retryInProgress = false);
+    }
+  }
+
+  Future<void> _retryPage() async {
+    if (_retryInProgress || _disposed || !mounted) return;
+    setState(() => _retryInProgress = true);
+    _emitLoadEvent(GameLoadPhase.retry);
+    try {
+      await _executeStartupSequence(retryNavigation: true);
+    } finally {
+      if (mounted && !_disposed) setState(() => _retryInProgress = false);
     }
   }
 
@@ -1401,7 +1695,10 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       case GameStartupState.networkReady:
         return '网络配置完毕，准备加载游戏...';
       case GameStartupState.loadingGame:
-        return '正在加载游戏页面...';
+        return _documentFinished &&
+                _presentationState == GamePresentationState.pending
+            ? '正在等待游戏本体...'
+            : '正在加载游戏页面...';
       default:
         return '准备就绪...';
     }
@@ -1414,6 +1711,7 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
     _startupEpoch += 1;
     _bindingEpoch += 1;
     _navigationEpoch += 1;
+    _navigationWatchdog.dispose();
     _captureUpdates.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _frameRateRuntimeController?.dispose();
@@ -1452,6 +1750,7 @@ final class WebViewGameBrowserPort implements GameBrowserPort {
     Future<void>? compatibilityReady,
     this.prepareForRealNavigation,
     required this.synchronizeGamePresentation,
+    this.beforeNavigation,
   }) : compatibilityReady = compatibilityReady ?? Future<void>.value();
 
   final WebViewController controller;
@@ -1460,6 +1759,7 @@ final class WebViewGameBrowserPort implements GameBrowserPort {
   final Future<void> compatibilityReady;
   final Future<void> Function()? prepareForRealNavigation;
   final Future<void> Function() synchronizeGamePresentation;
+  final void Function(Uri? uri)? beforeNavigation;
 
   Future<void> configureFrameReload() => gameFrameReloadPort.configure();
 
@@ -1467,25 +1767,35 @@ final class WebViewGameBrowserPort implements GameBrowserPort {
   Future<bool> canGoBack() => controller.canGoBack();
 
   @override
-  Future<void> goBack() => controller.goBack();
+  Future<void> goBack() {
+    beforeNavigation?.call(null);
+    return controller.goBack();
+  }
 
   @override
   Future<void> loadUri(Uri uri) async {
     await compatibilityReady;
     await gameFrameReloadPort.configure();
     await prepareForRealNavigation?.call();
+    beforeNavigation?.call(uri);
     await controller.loadRequest(uri);
   }
 
   @override
-  Future<void> reload() => controller.reload();
+  Future<void> reload() {
+    beforeNavigation?.call(null);
+    return controller.reload();
+  }
 
   @override
   Future<GameFrameReloadResult> reloadGameFrame() =>
       gameFrameReloadPort.reload();
 
   @override
-  Future<void> showLocalHome() => controller.loadHtmlString(localHomeHtml);
+  Future<void> showLocalHome() {
+    beforeNavigation?.call(null);
+    return controller.loadHtmlString(localHomeHtml);
+  }
 
   @override
   Future<void> runJavaScript(String javascript) =>

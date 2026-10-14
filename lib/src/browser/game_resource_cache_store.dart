@@ -8,7 +8,8 @@ extension GameResourceCacheModeWire on GameResourceCacheMode {
   static GameResourceCacheMode fromWireName(String? value) {
     return switch (value) {
       'full' || 'light' => GameResourceCacheMode.full,
-      'temporary' || 'none' || null => GameResourceCacheMode.temporary,
+      'none' => GameResourceCacheMode.none,
+      'temporary' || null => GameResourceCacheMode.temporary,
       _ => GameResourceCacheMode.temporary,
     };
   }

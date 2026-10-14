@@ -1237,6 +1237,93 @@ class NativeGameWebViewChannelTest {
         assertNull(store.snapshot.attemptStartedAtMs)
     }
 
+    @Test
+    fun activityStartupDeadlineCountsOnlyForegroundAndRejectsPausedCallback() {
+        val store = CountingStore(
+            NativeWebViewStartupSnapshot(1, null, null, "nativeActivityExperimental"),
+        )
+        var now = 100L
+        var delay = 0L
+        var callback: (() -> Unit)? = null
+        var cancellations = 0
+        var restarts = 0
+        val coordinator = NativeWebViewActivityStartupCoordinator(
+            guard = NativeWebViewStartupGuard(store, NativeWebViewProcessSessionId("process")),
+            nowMs = { now },
+            scheduleTimeout = { scheduledDelay, operation ->
+                delay = scheduledDelay
+                callback = operation
+            },
+            cancelTimeout = { cancellations++ },
+            requestRestart = { restarts++ },
+        )
+        coordinator.begin("nativeActivityExperimental")
+        val stale = callback
+        now = 20_100L
+        coordinator.setForeground(false)
+        assertEquals(1, cancellations)
+        now = 300_100L
+        stale?.invoke()
+        assertEquals(1, store.snapshot.consecutiveFailures)
+        assertEquals(0, restarts)
+        coordinator.setForeground(true)
+        assertEquals(10_000L, delay)
+        now = 310_100L
+        callback?.invoke()
+        assertEquals(1, restarts)
+        assertEquals("compatibility", store.snapshot.storedRenderingMode)
+    }
+
+    @Test
+    fun readyWhileBackgroundedDoesNotRestartStartupDeadlineOnResume() {
+        val store = CountingStore(
+            NativeWebViewStartupSnapshot(0, null, null, "nativeActivityExperimental"),
+        )
+        var now = 100L
+        var schedules = 0
+        val coordinator = NativeWebViewActivityStartupCoordinator(
+            guard = NativeWebViewStartupGuard(store, NativeWebViewProcessSessionId("process")),
+            nowMs = { now },
+            scheduleTimeout = { _, _ -> schedules++ },
+            cancelTimeout = {},
+            requestRestart = { throw AssertionError("Ready must not restart the Activity") },
+        )
+        coordinator.begin("nativeActivityExperimental")
+        coordinator.setForeground(false)
+        now = 300_100L
+        coordinator.onPageFinished()
+        coordinator.setForeground(true)
+        assertEquals(1, schedules)
+        assertNull(store.snapshot.attemptStartedAtMs)
+    }
+
+    @Test
+    fun startupBegunInBackgroundArmsOnlyWhenForegrounded() {
+        val store = CountingStore(
+            NativeWebViewStartupSnapshot(0, null, null, "nativeActivityExperimental"),
+        )
+        var now = 100L
+        var schedules = 0
+        var delay = 0L
+        val coordinator = NativeWebViewActivityStartupCoordinator(
+            guard = NativeWebViewStartupGuard(store, NativeWebViewProcessSessionId("process")),
+            nowMs = { now },
+            scheduleTimeout = { scheduledDelay, _ ->
+                schedules++
+                delay = scheduledDelay
+            },
+            cancelTimeout = {},
+            requestRestart = {},
+        )
+        coordinator.setForeground(false)
+        coordinator.begin("nativeActivityExperimental")
+        assertEquals(0, schedules)
+        now = 300_100L
+        coordinator.setForeground(true)
+        assertEquals(1, schedules)
+        assertEquals(30_000L, delay)
+    }
+
     private fun activeChannel(
         host: NativeGameWebViewHostOperations,
         dispatchToMain: ((() -> Unit) -> Unit) = { it() },

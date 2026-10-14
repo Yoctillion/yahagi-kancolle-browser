@@ -80,6 +80,42 @@ void main() {
   });
 
   group('NativeGameWebViewEvent.decode', () {
+    test(
+      'pending presentation is distinct and old bool events stay compatible',
+      () {
+        final pending = NativeGameWebViewEvent.decode(<String, Object?>{
+          'type': 'presentationChanged',
+          'generationId': 7,
+          'isGame': false,
+          'state': 'pending',
+        });
+        expect(pending.presentationState, NativeGamePresentationState.pending);
+        final oldGame = NativeGameWebViewEvent.decode(<String, Object?>{
+          'type': 'presentationChanged',
+          'generationId': 7,
+          'isGame': true,
+        });
+        expect(oldGame.presentationState, NativeGamePresentationState.game);
+        final oldWeb = NativeGameWebViewEvent.decode(<String, Object?>{
+          'type': 'presentationChanged',
+          'generationId': 7,
+          'isGame': false,
+        });
+        expect(oldWeb.presentationState, NativeGamePresentationState.web);
+        for (final state in <String>['unknown', 'game']) {
+          expect(
+            () => NativeGameWebViewEvent.decode(<String, Object?>{
+              'type': 'presentationChanged',
+              'generationId': 7,
+              'isGame': false,
+              'state': state,
+            }),
+            throwsA(isA<NativeGameWebViewSchemaException>()),
+          );
+        }
+      },
+    );
+
     test('decodes every event schema and sanitizes page URLs', () {
       final created = NativeGameWebViewEvent.decode(<String, Object?>{
         'type': 'created',

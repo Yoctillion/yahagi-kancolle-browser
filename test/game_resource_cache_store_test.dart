@@ -19,6 +19,7 @@ void main() {
     for (final mode in const <GameResourceCacheMode>[
       GameResourceCacheMode.temporary,
       GameResourceCacheMode.full,
+      GameResourceCacheMode.none,
     ]) {
       await store.save(mode);
       expect(await store.load(), mode);
@@ -30,14 +31,14 @@ void main() {
     );
   });
 
-  test('migrates disabled and missing modes to temporary cache', () {
+  test('preserves disabled mode while migrating missing and unknown modes', () {
     expect(
       GameResourceCacheModeWire.fromWireName(null),
       GameResourceCacheMode.temporary,
     );
     expect(
       GameResourceCacheModeWire.fromWireName('none'),
-      GameResourceCacheMode.temporary,
+      GameResourceCacheMode.none,
     );
     expect(
       GameResourceCacheModeWire.fromWireName('unknown'),

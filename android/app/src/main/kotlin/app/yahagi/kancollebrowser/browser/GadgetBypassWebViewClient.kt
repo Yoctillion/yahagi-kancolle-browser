@@ -68,10 +68,16 @@ class GadgetBypassWebViewClient(
     }
 
     private fun serveFromBypass(url: String): WebResourceResponse? {
+        val startedAt = SystemClock.elapsedRealtime()
+        val path = runCatching { URI(url).rawPath }.getOrNull() ?: "unknown"
         return try {
-            val bytes = engine.fetch(url, endpoint()) ?: return null
+            val bytes = engine.fetch(url, endpoint())
+            if (bytes == null) {
+                Log.d(TAG, "mirror fallback took ${SystemClock.elapsedRealtime() - startedAt}ms for $path")
+                return null
+            }
             val mime = GadgetBypassRules.mimeTypeFor(url)
-            Log.d(TAG, "intercept $url -> ${bytes.size} bytes")
+            Log.d(TAG, "mirror response took ${SystemClock.elapsedRealtime() - startedAt}ms for $path (${bytes.size} bytes)")
             WebResourceResponse(mime.mime, mime.encoding, ByteArrayInputStream(bytes))
         } catch (e: Exception) {
             // Any interception failure must degrade to the default loading path.

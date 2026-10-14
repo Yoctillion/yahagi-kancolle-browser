@@ -7,8 +7,12 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class GadgetBypassEngineTest {
     private lateinit var server: TestHttpServer
@@ -127,5 +131,128 @@ class GadgetBypassEngineTest {
             ),
         )
         assertNull(server.hits["/endpoint"])
+    }
+
+    @Test
+    fun rejectsHtmlErrorBodyEvenWhenScriptMimeIsClaimed() {
+        installEndpointHandler("<!doctype html><html><body>temporarily unavailable</body></html>".toByteArray())
+        server.responseHeaders["/endpoint"] = mapOf("Content-Type" to "application/javascript")
+        val cache = GadgetBypassCache(tempDir, now = { 1000L })
+        val endpoint = "${baseUrl()}/endpoint"
+        assertNull(engine(cache).fetch(originalUrl(), endpoint))
+        assertEquals(0L, cache.sizeBytes())
+    }
+
+    @Test
+    fun rejectsHtmlErrorBodyWithLeadingCommentsAndClaimedScriptMime() {
+        installEndpointHandler("\uFEFF \n<!-- gateway error -->\n<!-- retry later -->\n<!DOCTYPE html><html><body>unavailable</body></html>".toByteArray())
+        server.responseHeaders["/endpoint"] = mapOf("Content-Type" to "application/javascript")
+        val cache = GadgetBypassCache(tempDir, now = { 1000L })
+        assertNull(engine(cache).fetch(originalUrl(), "${baseUrl()}/endpoint"))
+        assertEquals(0L, cache.sizeBytes())
+    }
+
+    @Test
+    fun rejectsIncompatibleMimeAndEmptyScript() {
+        installEndpointHandler("window.ready=true;".toByteArray())
+        server.responseHeaders["/endpoint"] = mapOf("Content-Type" to "image/png")
+        assertNull(engine().fetch(originalUrl(), "${baseUrl()}/endpoint"))
+        installEndpointHandler(ByteArray(0))
+        server.responseHeaders["/endpoint"] = mapOf("Content-Type" to "application/javascript")
+        assertNull(engine().fetch(originalUrl(), "${baseUrl()}/endpoint"))
+    }
+
+    @Test
+    fun invalidLegacyCachedScriptIsNotReused() {
+        val cache = GadgetBypassCache(tempDir, now = { 1000L })
+        val endpoint = "${baseUrl()}/endpoint"
+        cache.put("$endpoint\n${originalUrl()}", "<html>failed</html>".toByteArray())
+        installEndpointHandler("window.ready=true;".toByteArray())
+        assertArrayEquals("window.ready=true;".toByteArray(), engine(cache).fetch(originalUrl(), endpoint))
+        assertEquals(1, server.hits["/endpoint"])
+    }
+
+    @Test
+    fun concurrentSameUrlRequestsShareOneMirrorAttempt() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val content = "window.ready=true;".toByteArray()
+        server.handlers["/endpoint"] = Pair({ entered.countDown(); release.await(2, TimeUnit.SECONDS); content }, 200)
+        val engine = engine()
+        val executor = Executors.newFixedThreadPool(4)
+        try {
+            val first = executor.submit<ByteArray?> { engine.fetch(originalUrl(), "${baseUrl()}/endpoint") }
+            org.junit.Assert.assertTrue(entered.await(2, TimeUnit.SECONDS))
+            val others = (1..3).map { executor.submit<ByteArray?> { engine.fetch(originalUrl(), "${baseUrl()}/endpoint") } }
+            Thread.sleep(100)
+            release.countDown()
+            (listOf(first) + others).forEach { assertArrayEquals(content, it.get(2, TimeUnit.SECONDS)) }
+            assertEquals(1, server.hits["/endpoint"])
+        } finally { release.countDown(); executor.shutdownNow() }
+    }
+
+    @Test
+    fun repeatedFailureFallsBackWithoutAnotherMirrorAttempt() {
+        installEndpointHandler(ByteArray(0), status = 500)
+        val engine = engine()
+        repeat(3) { assertNull(engine.fetch(originalUrl(), "${baseUrl()}/endpoint")) }
+        assertEquals(1, server.hits["/endpoint"])
+    }
+
+    @Test
+    fun mirrorWaitHasTotalBudgetAndLateSuccessCannotEnterCache() {
+        server.handlers["/endpoint"] = Pair({ Thread.sleep(300); "window.ready=true;".toByteArray() }, 200)
+        val cache = GadgetBypassCache(tempDir, now = { 1000L })
+        val engine = GadgetBypassEngine(cache, connectTimeoutMs = 3000, readTimeoutMs = 3000,
+            totalTimeoutMs = 80, endpointValidator = { true })
+        val started = System.nanoTime()
+        assertNull(engine.fetch(originalUrl(), "${baseUrl()}/endpoint"))
+        assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 500)
+        Thread.sleep(350)
+        assertEquals(0L, cache.sizeBytes())
+    }
+
+    @Test
+    fun truncatedMirrorBodyNeverEntersCache() {
+        installEndpointHandler("window.ready=true;".toByteArray())
+        server.responseHeaders["/endpoint"] = mapOf("Content-Type" to "text/javascript", "Content-Length" to "1000")
+        val cache = GadgetBypassCache(tempDir, now = { 1000L })
+        assertNull(engine(cache).fetch(originalUrl(), "${baseUrl()}/endpoint"))
+        assertEquals(0L, cache.sizeBytes())
+    }
+
+    @Test
+    fun clearDuringMirrorDownloadDoesNotRepopulateCache() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val body = "window.ready=true;".toByteArray()
+        server.handlers["/endpoint"] = Pair({ entered.countDown(); release.await(2, TimeUnit.SECONDS); body }, 200)
+        val cache = GadgetBypassCache(tempDir, now = { 1000L })
+        val engine = engine(cache)
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val request = executor.submit<ByteArray?> { engine.fetch(originalUrl(), "${baseUrl()}/endpoint") }
+            assertTrue(entered.await(2, TimeUnit.SECONDS))
+            cache.clear()
+            release.countDown()
+            assertArrayEquals(body, request.get(2, TimeUnit.SECONDS))
+            assertEquals(0L, cache.sizeBytes())
+        } finally { release.countDown(); executor.shutdownNow() }
+    }
+
+    @Test
+    fun failedMirrorCanRetryAfterShortCooldown() {
+        var now = 0L
+        installEndpointHandler(ByteArray(0), status = 500)
+        val engine = GadgetBypassEngine(GadgetBypassCache(tempDir), endpointValidator = { true },
+            failureCooldownMs = 50, nanoTime = { now })
+        val endpoint = "${baseUrl()}/endpoint"
+        assertNull(engine.fetch(originalUrl(), endpoint))
+        assertNull(engine.fetch(originalUrl(), endpoint))
+        assertEquals(1, server.hits["/endpoint"])
+        now = TimeUnit.MILLISECONDS.toNanos(51)
+        installEndpointHandler("window.ready=true;".toByteArray())
+        assertArrayEquals("window.ready=true;".toByteArray(), engine.fetch(originalUrl(), endpoint))
+        assertEquals(2, server.hits["/endpoint"])
     }
 }

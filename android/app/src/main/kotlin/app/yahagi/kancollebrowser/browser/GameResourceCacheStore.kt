@@ -5,13 +5,26 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.UUID
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
+import java.nio.file.DirectoryStream
+import java.nio.file.Path
 
 data class GameResourceCachedValue(
     val bytes: ByteArray,
     val entry: GameResourceCacheEntry,
 )
 
-data class GameResourceCachedFile(val file: File, val entry: GameResourceCacheEntry)
+class GameResourceCachedFile internal constructor(
+    val file: File,
+    val entry: GameResourceCacheEntry,
+    internal val generation: Long = -1,
+    internal val identity: GameResourceFileIdentity? = null,
+)
+
+internal data class GameResourceFileIdentity(
+    val fileKey: String?, val size: Long, val modified: FileTime, val created: FileTime,
+)
 
 enum class GameResourceStoredState { MISSING, VALID, DAMAGED }
 
@@ -40,12 +53,18 @@ class GameResourceCacheStore(
     private val policyProvider: () -> GameResourceCachePolicy = {
         GameResourceCachePolicy(maxBytes = maxBytes)
     },
+    private val fileChecksum: ((File) -> String)? = null,
+    private val maintenanceNowNanos: () -> Long = System::nanoTime,
 ) {
     private val filesDirectory = root.resolve("files")
     private val temporaryDirectory = root.resolve("tmp")
     private var generation = 0L
     private var commitsSincePolicySweep = 0
-    private var orphanCleanupPending = false
+    private var orphanCleanupPending = true
+    private var orphanCleanupPhase = 0
+    private var orphanDirectory: DirectoryStream<Path>? = null
+    private var orphanIterator: Iterator<Path>? = null
+    private val activeTemporaryFiles = hashSetOf<String>()
     val maxBytes: Long
         get() = policyProvider().maxBytes
 
@@ -55,11 +74,8 @@ class GameResourceCacheStore(
     init {
         filesDirectory.mkdirs()
         temporaryDirectory.mkdirs()
-        runCatching {
-            Files.newDirectoryStream(temporaryDirectory.toPath()).use { files ->
-                files.forEach { Files.deleteIfExists(it) }
-            }
-        }
+        // Scanning leftovers belongs to the first background migration/maintenance,
+        // not to native construction before Flutter's first frame.
     }
 
     @Synchronized
@@ -82,25 +98,62 @@ class GameResourceCacheStore(
     fun readFile(key: GameResourceCacheKey): GameResourceCachedFile? {
         // Hashing a cached file must not block unrelated WebView resource reads.
         repeat(2) {
-            val snapshot = synchronized(this) { liveEntry(key, clock()) } ?: return null
+            val (snapshotGeneration, snapshot) = synchronized(this) {
+                generation to (liveEntry(key, clock()) ?: return null)
+            }
             val file = safeFile(snapshot.fileName)
-            val valid = file?.isFile == true && file.length() == snapshot.byteLength &&
+            val identity = file?.let(::fileIdentity)
+            val valid = identity != null && identity.size == snapshot.byteLength &&
                 snapshot.byteLength <= HttpUrlConnectionGameResourceFetcher.MAX_RESOURCE_BYTES &&
-                runCatching { sha256(file) }.getOrNull() == snapshot.sha256
+                runCatching { sha256(checkNotNull(file)) }.getOrNull() == snapshot.sha256 &&
+                fileIdentity(checkNotNull(file)) == identity
             synchronized(this) {
+                if (generation != snapshotGeneration) return null
                 val current = liveEntry(key, clock()) ?: return null
                 if (current.fileName != snapshot.fileName || current.sha256 != snapshot.sha256 ||
                     current.byteLength != snapshot.byteLength) return@synchronized
-                if (!valid || file == null) return invalidateFile(key)
+                if (!valid) return invalidateFile(key)
                 val now = clock()
                 val touched = if (now - current.lastAccessedAt >= ACCESS_TIME_WRITE_INTERVAL_MS) {
                     current.copy(lastAccessedAt = now).also(index::put)
                 } else current
-                return GameResourceCachedFile(file, touched)
+                return GameResourceCachedFile(checkNotNull(file), touched, snapshotGeneration, identity)
             }
         }
         return null
     }
+
+    /** Reuse verification only within this fetch, for exactly the unchanged file. */
+    @Synchronized
+    fun markVerifiedValidated(
+        key: GameResourceCacheKey,
+        verified: GameResourceCachedFile,
+        responseHeaders: Map<String, String>,
+        expectedGeneration: Long,
+    ): GameResourceCachedFile? {
+        if (generation != expectedGeneration || verified.generation != generation) return null
+        val current = liveEntry(key, clock()) ?: return null
+        if (current.fileName != verified.entry.fileName || current.sha256 != verified.entry.sha256 ||
+            current.byteLength != verified.entry.byteLength) return null
+        val identity = fileIdentity(verified.file)
+        if (identity == null) return invalidateFile(key)
+        // Changes, including same-length writes and atomic replacement, require
+        // a fresh checksum. Do not turn this into a process-wide stat cache.
+        val valid = if (verified.identity != null && identity == verified.identity) true else {
+            runCatching { sha256(verified.file) }.getOrNull() == current.sha256 &&
+                fileIdentity(verified.file) == identity
+        }
+        if (!valid) return invalidateFile(key)
+        if (!markValidated(key, responseHeaders, expectedGeneration)) return null
+        return GameResourceCachedFile(verified.file, checkNotNull(index.get(key)), generation, identity)
+    }
+
+    private fun fileIdentity(file: File): GameResourceFileIdentity? = runCatching {
+        val attrs = Files.readAttributes(file.toPath(), BasicFileAttributes::class.java)
+        if (!attrs.isRegularFile) null else GameResourceFileIdentity(
+            attrs.fileKey()?.toString(), attrs.size(), attrs.lastModifiedTime(), attrs.creationTime(),
+        )
+    }.getOrNull()
 
     private fun invalidateFile(key: GameResourceCacheKey): GameResourceCachedFile? {
         remove(key)
@@ -136,7 +189,7 @@ class GameResourceCacheStore(
         responseHeaders: Map<String, String> = emptyMap(),
         expectedGeneration: Long? = null,
     ): GameResourceCacheEntry? = commitInternal(
-        key, bytes.size.toLong(), { sha256(bytes) }, { it.writeBytes(bytes) }, version,
+        key, bytes.size.toLong(), { it.writeBytes(bytes) }, version,
         mimeType, etag, lastModified, responseHeaders, expectedGeneration,
     )
 
@@ -150,14 +203,13 @@ class GameResourceCacheStore(
         responseHeaders: Map<String, String> = emptyMap(),
         expectedGeneration: Long? = null,
     ): GameResourceCacheEntry? = commitInternal(
-        key, source.length(), { sha256(source) }, { source.copyTo(it, overwrite = true) },
+        key, source.length(), { source.copyTo(it, overwrite = true) },
         version, mimeType, etag, lastModified, responseHeaders, expectedGeneration,
     )
 
     private fun commitInternal(
         key: GameResourceCacheKey,
         bodyLength: Long,
-        checksumOfSource: () -> String,
         writeTemporary: (File) -> Unit,
         version: String?,
         mimeType: String,
@@ -168,21 +220,27 @@ class GameResourceCacheStore(
     ): GameResourceCacheEntry? {
         if (bodyLength > HttpUrlConnectionGameResourceFetcher.MAX_RESOURCE_BYTES) return null
         // Prepare the downloaded file outside the index lock so cache hits can proceed.
-        val checksum = checksumOfSource()
-        val fileName = "$checksum.cache"
-        val destination = filesDirectory.resolve(fileName)
         val temporary = temporaryDirectory.resolve("${UUID.randomUUID()}.part")
+        val preparationGeneration = synchronized(this) {
+            activeTemporaryFiles += temporary.name
+            generation
+        }
         try {
             writeTemporary(temporary)
             if (temporary.length() != bodyLength) return null
+            // Verify the exact copy being committed, rather than a caller-owned
+            // source that may change between checksum and copy.
+            val checksum = sha256(temporary)
+            val fileName = "$checksum.cache"
+            val destination = filesDirectory.resolve(fileName)
             return synchronized(this) {
                 // Clear may have run while the temporary file was being written.
-                if (expectedGeneration != null && expectedGeneration != generation) {
+                if ((expectedGeneration ?: preparationGeneration) != generation) {
                     return@synchronized null
                 }
                 val policy = policyProvider()
                 if (policy.maxIdleAgeMs != null && ++commitsSincePolicySweep >= 256) {
-                    enforcePolicy()
+                    enforcePolicy(maxDurationMs = 250)
                     commitsSincePolicySweep = 0
                 }
                 val capacity = maxBytes
@@ -216,7 +274,7 @@ class GameResourceCacheStore(
                 try {
                     index.put(entry)
                 } catch (error: Exception) {
-                    orphanCleanupPending = true
+                    scheduleOrphanCleanup()
                     runCatching {
                         if (!index.isFileReferenced(fileName) && destination.exists() &&
                             !destination.delete()) {
@@ -231,8 +289,9 @@ class GameResourceCacheStore(
                 entry
             }
         } finally {
+            synchronized(this) { activeTemporaryFiles -= temporary.name }
             if (temporary.exists() && !temporary.delete()) {
-                synchronized(this) { orphanCleanupPending = true }
+                synchronized(this) { scheduleOrphanCleanup() }
             }
         }
     }
@@ -265,18 +324,24 @@ class GameResourceCacheStore(
         requiredBytes > maxBytes || totalBytes() > maxBytes - requiredBytes
 
     @Synchronized
-    fun enforcePolicy() {
-        if (orphanCleanupPending) reconcileOrphanFiles()
+    fun enforcePolicy(maxDurationMs: Long = Long.MAX_VALUE) {
+        val started = maintenanceNowNanos()
+        fun budgetAvailable(): Boolean = maxDurationMs == Long.MAX_VALUE ||
+            java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(maintenanceNowNanos() - started) < maxDurationMs
+        if (!budgetAvailable()) return
+        if (orphanCleanupPending && !reconcileOrphanFiles(::budgetAvailable)) return
         val policy = policyProvider()
         val now = clock()
         if (policy.maxIdleAgeMs != null) {
-            index.snapshot()
-                .filter { isExpired(it, now, policy) }
-                .forEach { remove(GameResourceCacheKey(it.key)) }
+            for (entry in index.snapshot()) {
+                if (!budgetAvailable()) return
+                if (isExpired(entry, now, policy)) remove(GameResourceCacheKey(entry.key))
+            }
         }
         var usedBytes = totalBytes()
         if (usedBytes <= policy.maxBytes) return
         for (entry in index.snapshot().sortedBy { it.lastAccessedAt }) {
+            if (!budgetAvailable()) return
             if (usedBytes <= policy.maxBytes) break
             if (remove(GameResourceCacheKey(entry.key))) {
                 usedBytes -= entry.byteLength
@@ -326,42 +391,76 @@ class GameResourceCacheStore(
     @Synchronized
     fun removeLegacyHostlessEntries() {
         val removed = index.removePrefix("/")
-        // A previous process may have crashed after journaling a removal or clear
-        // but before unlinking its files. Reconcile every file on first cache I/O.
-        reconcileOrphanFiles()
-        if (removed.isNotEmpty()) generation++
+        if (removed.isNotEmpty()) {
+            generation++
+            scheduleOrphanCleanup()
+        }
+        // The index migration is required for safe reads. Physical leftovers
+        // are reconciled by budgeted maintenance, away from the first request.
     }
 
-    private fun reconcileOrphanFiles() {
-        Files.newDirectoryStream(filesDirectory.toPath()).use { files ->
-            files.forEach { path ->
-                if (!index.isFileReferenced(path.fileName.toString()) && !Files.deleteIfExists(path)) {
-                    orphanCleanupPending = true
+    private fun reconcileOrphanFiles(budgetAvailable: () -> Boolean): Boolean {
+        try {
+            while (budgetAvailable()) {
+                if (orphanIterator == null) {
+                    val directory = if (orphanCleanupPhase == 0) filesDirectory else temporaryDirectory
+                    orphanDirectory = Files.newDirectoryStream(directory.toPath())
+                    orphanIterator = orphanDirectory!!.iterator()
+                }
+                val files = orphanIterator!!
+                if (!files.hasNext()) {
+                    closeOrphanDirectory()
+                    if (++orphanCleanupPhase == 2) {
+                        orphanCleanupPhase = 0
+                        orphanCleanupPending = false
+                        return true
+                    }
+                    continue
+                }
+                val path = files.next()
+                val fileName = path.fileName.toString()
+                val retained = if (orphanCleanupPhase == 0) index.isFileReferenced(fileName)
+                    else fileName in activeTemporaryFiles
+                if (!retained && !Files.deleteIfExists(path)) {
                     throw IllegalStateException("Cannot remove an orphaned resource cache file")
                 }
             }
+            return false
+        } catch (error: Exception) {
+            scheduleOrphanCleanup()
+            throw error
         }
-        Files.newDirectoryStream(temporaryDirectory.toPath()).use { files ->
-            files.forEach { path ->
-                if (!Files.deleteIfExists(path)) {
-                    orphanCleanupPending = true
-                    throw IllegalStateException("Cannot remove temporary resource cache file")
-                }
-            }
-        }
-        orphanCleanupPending = false
+    }
+
+    private fun closeOrphanDirectory() {
+        runCatching { orphanDirectory?.close() }
+        orphanDirectory = null
+        orphanIterator = null
+    }
+
+    private fun scheduleOrphanCleanup() {
+        closeOrphanDirectory()
+        orphanCleanupPhase = 0
+        orphanCleanupPending = true
+    }
+
+    @Synchronized
+    fun closeMaintenance() {
+        scheduleOrphanCleanup()
     }
 
     @Synchronized
     fun clear() {
         generation++
         index.clear()
+        closeOrphanDirectory()
+        orphanCleanupPhase = 0
         try {
             deleteAllChildren(filesDirectory)
             deleteAllChildren(temporaryDirectory)
             orphanCleanupPending = false
         } catch (error: Exception) {
-            orphanCleanupPending = true
+            scheduleOrphanCleanup()
             throw error
         }
     }
@@ -450,7 +549,7 @@ class GameResourceCacheStore(
         if (index.isFileReferenced(fileName)) return
         val file = safeFile(fileName) ?: throw IllegalStateException("Unsafe resource cache file name")
         if (file.exists() && !file.delete()) {
-            orphanCleanupPending = true
+            scheduleOrphanCleanup()
             throw IllegalStateException("Cannot remove resource cache file")
         }
     }
@@ -478,6 +577,7 @@ class GameResourceCacheStore(
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
     private fun sha256(file: File): String {
+        fileChecksum?.let { return it(file) }
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().buffered().use { input ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)

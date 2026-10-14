@@ -1,9 +1,54 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/src/browser/game_load_event.dart';
 import 'package:yahagi_kancolle_browser/src/diagnostics/diagnostic_event.dart';
+import 'package:yahagi_kancolle_browser/src/diagnostics/diagnostic_privacy_policy.dart';
 
 void main() {
+  test('game loading diagnostics keep phases and safe runtime context', () {
+    final event = DiagnosticEvent.gameLoad(
+      occurredAt: DateTime.utc(2026, 10, 7),
+      event: const GameLoadEvent(
+        phase: GameLoadPhase.failed,
+        navigationEpoch: 8,
+        durationMs: 21000,
+        pageCategory: GamePageCategory.gameEntry,
+        errorCode: -2,
+        isMainFrame: false,
+      ),
+      webViewHost: DiagnosticWebViewHost.activityDirect,
+      renderingMode: 'nativeActivityExperimental',
+      generationId: 17,
+    );
+    expect(event.fields, {
+      'phase': 'failed',
+      'navigationEpoch': 8,
+      'durationMs': 21000,
+      'pageCategory': 'gameEntry',
+      'errorCode': -2,
+      'isMainFrame': false,
+      'webViewHost': 'activityDirect',
+      'renderingMode': 'nativeActivityExperimental',
+      'generationId': 17,
+    });
+    expect(jsonEncode(event.toJson()), isNot(contains('https://')));
+    expect(
+      () => DiagnosticEvent.gameLoad(
+        occurredAt: DateTime.utc(2026, 10, 7),
+        event: const GameLoadEvent(
+          phase: GameLoadPhase.retry,
+          navigationEpoch: 1,
+          durationMs: 0,
+          pageCategory: GamePageCategory.other,
+        ),
+        webViewHost: DiagnosticWebViewHost.flutterPlatformView,
+        renderingMode: 'https://example.invalid/?account=secret',
+      ),
+      throwsA(isA<DiagnosticPrivacyViolation>()),
+    );
+  });
+
   test('slow api event contains metrics but no request or response body', () {
     final event = DiagnosticEvent.slowApi(
       occurredAt: DateTime.utc(2026, 8, 13),

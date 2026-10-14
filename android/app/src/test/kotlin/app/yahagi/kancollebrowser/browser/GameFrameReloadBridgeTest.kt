@@ -84,4 +84,21 @@ class GameFrameReloadBridgeTest {
         assertFalse(coordinator.cancel("blocked"))
         assertEquals(listOf("blocked"), results)
     }
+
+    @Test
+    fun canceledDocumentCannotCompleteTheNextRequest() {
+        var nextId = 0
+        val coordinator = GameFrameReloadRequestCoordinator(
+            requestIdFactory = { "request-${++nextId}" },
+        )
+        val results = mutableListOf<String>()
+        val oldRequest = coordinator.start(results::add)
+        coordinator.cancel("blocked")
+        val currentRequest = coordinator.start(results::add)
+
+        assertFalse(coordinator.complete(oldRequest, "reloaded"))
+        assertTrue(coordinator.hasPending)
+        assertTrue(coordinator.complete(currentRequest, "html_wrap_not_found"))
+        assertEquals(listOf("blocked", "html_wrap_not_found"), results)
+    }
 }

@@ -13,7 +13,8 @@ enum class GameResourceCacheMode(val wireName: String) {
     companion object {
         fun fromWireName(value: String?): GameResourceCacheMode = when (value) {
             "full", "light" -> FULL
-            "temporary", "none", null -> TEMPORARY
+            "none" -> NONE
+            "temporary", null -> TEMPORARY
             else -> TEMPORARY
         }
     }

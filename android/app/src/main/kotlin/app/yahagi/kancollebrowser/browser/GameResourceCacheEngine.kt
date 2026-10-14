@@ -8,6 +8,8 @@ import java.io.FilterInputStream
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 
 enum class GameResourceResponseSource { CACHE, NETWORK }
 
@@ -23,7 +25,7 @@ class GameResourceResponse(
     private val deleteFileOnClose: Boolean = false,
 ) {
     val bytes: ByteArray get() = file?.readBytes() ?: bodyBytes
-    val bodyLength: Long get() = file?.length() ?: bodyBytes.size.toLong()
+    val bodyLength: Long = file?.length() ?: bodyBytes.size.toLong()
 
     fun openStream(): InputStream {
         val resourceFile = file ?: return ByteArrayInputStream(bodyBytes)
@@ -47,19 +49,37 @@ class GameResourceCacheEngine(
     private val clock: () -> Long = System::currentTimeMillis,
     private val modeProvider: () -> GameResourceCacheMode,
 ) {
-    private val locks = Array(64) { Any() }
+    private val locks = Array(64) { ReentrantLock() }
     private val downloadPermits = Semaphore(2)
     private val legacyMigrationDone = AtomicBoolean(false)
+    private val legacyMigrationLock = ReentrantLock()
 
-    private fun ensureLegacyMigration() {
-        if (legacyMigrationDone.get()) return
-        synchronized(legacyMigrationDone) {
-            if (legacyMigrationDone.get()) return
+    private fun ensureLegacyMigration(deadlineNanos: Long = Long.MAX_VALUE): Boolean {
+        if (legacyMigrationDone.get()) return true
+        val acquired = if (deadlineNanos == Long.MAX_VALUE) {
+            legacyMigrationLock.lock()
+            true
+        } else acquireWithinDeadline(legacyMigrationLock, deadlineNanos)
+        if (!acquired) return false
+        try {
+            if (legacyMigrationDone.get()) return true
             // Index loading and migration run on the caller's background I/O path.
             store.removeLegacyHostlessEntries()
             legacyMigrationDone.set(true)
+            return true
+        } finally {
+            legacyMigrationLock.unlock()
         }
     }
+
+    private fun acquireWithinDeadline(lock: ReentrantLock, deadlineNanos: Long): Boolean =
+        try {
+            val remaining = deadlineNanos - System.nanoTime()
+            remaining > 0 && lock.tryLock(remaining, TimeUnit.NANOSECONDS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            false
+        }
 
     fun fetch(
         url: String,
@@ -69,6 +89,7 @@ class GameResourceCacheEngine(
         shouldStore: () -> Boolean = { true },
         waitForSlot: Boolean = false,
     ): GameResourceResponse? {
+        val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(fetcher.budgetMillis(url).coerceAtLeast(1))
         val mode = modeProvider()
         if (!mode.readsCache || requestHeaders.size > 32 ||
             requestHeaders.any { (name, value) -> name.length > 128 || value.length > 8_192 } ||
@@ -79,10 +100,11 @@ class GameResourceCacheEngine(
             requestHeaders.value("Cache-Control").hasDirective("no-store") ||
             requestHeaders.value("Cache-Control").hasDirective("only-if-cached")
         ) return null
-        ensureLegacyMigration()
+        if (!ensureLegacyMigration(deadlineNanos)) return null
         val key = GameResourceCacheKey.from(url, requestHeaders) ?: return null
         val lock = locks[(key.hashCode() and Int.MAX_VALUE) % locks.size]
-        synchronized(lock) {
+        if (!acquireWithinDeadline(lock, deadlineNanos)) return null
+        try {
             val storeGeneration = store.generation()
             val cached = store.readFile(key)
             val cachedLengthMismatch = cached != null && expectedLength != null &&
@@ -100,17 +122,21 @@ class GameResourceCacheEngine(
             if (cached != null && !mustValidate) return cached.toResponse()
             val strictValidation = GameResourceCacheRules.requiresStrictValidation(url)
 
-            val acquired = if (waitForSlot) {
-                downloadPermits.acquire()
-                true
-            } else downloadPermits.tryAcquire()
+            val acquired = try {
+                val remaining = deadlineNanos - System.nanoTime()
+                remaining > 0 && if (waitForSlot) downloadPermits.tryAcquire(remaining, TimeUnit.NANOSECONDS)
+                    else downloadPermits.tryAcquire()
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                false
+            }
             if (!acquired) {
                 return if (strictValidation || forceValidation || cachedLengthMismatch) null
                     else cached?.toResponse()
             }
             try {
             val validationEntry = cached?.entry?.takeUnless { cachedLengthMismatch }
-            val fetched = runCatching { fetcher.fetch(url, requestHeaders, validationEntry) }.getOrNull()
+            val fetched = runCatching { fetcher.fetchWithinDeadline(url, requestHeaders, validationEntry, deadlineNanos) }.getOrNull()
                 ?: return if (strictValidation || forceValidation || cachedLengthMismatch ||
                     store.generation() != storeGeneration) null else cached?.toResponse()
             var retainFetchedFile = false
@@ -125,8 +151,8 @@ class GameResourceCacheEngine(
                     name.lowercase() !in HOP_BY_HOP_HEADERS &&
                         !name.equals("Content-Length", ignoreCase = true)
                 }
-                if (!store.markValidated(key, updatedHeaders, storeGeneration)) return null
-                return store.readFile(key)?.toResponse()
+                if (cached == null) return null
+                return store.markVerifiedValidated(key, cached, updatedHeaders, storeGeneration)?.toResponse()
             }
             if (fetched.statusCode != HttpURLConnection.HTTP_OK) {
                 if (fetched.statusCode == HttpURLConnection.HTTP_PARTIAL) return null
@@ -155,9 +181,8 @@ class GameResourceCacheEngine(
                 ?: mimeInfo.mime
             val matchesManifest = expectedLength == null ||
                 expectedLength == fetched.bodyLength
-            var stored: GameResourceCacheEntry? = null
             if (matchesManifest && cacheableResponse && modeProvider().writesCache && shouldStore()) {
-                stored = try {
+                try {
                     if (fetched.file != null) store.commitFileWithEviction(
                     key = key, source = fetched.file,
                     version = runCatching { URI(url).rawQuery }.getOrNull(),
@@ -180,7 +205,10 @@ class GameResourceCacheEngine(
                     null
                 }
             }
-            val responseFile = if (stored != null) store.readFile(key)?.file ?: fetched.file else fetched.file
+            // The fetched body was already bounded and the store checks its own copy.
+            // Keep the owned download for this response instead of reopening/rehashing
+            // the newly committed cache file. A concurrent clear cannot delete it.
+            val responseFile = fetched.file
             retainFetchedFile = responseFile != null && responseFile == fetched.file
             return GameResourceResponse(
                 bodyBytes = fetched.bytes,
@@ -199,6 +227,8 @@ class GameResourceCacheEngine(
             } finally {
                 downloadPermits.release()
             }
+        } finally {
+            lock.unlock()
         }
     }
 
@@ -217,7 +247,12 @@ class GameResourceCacheEngine(
         )
     }
 
-    fun enforcePolicy() = store.enforcePolicy()
+    fun enforcePolicy(maxDurationMs: Long = Long.MAX_VALUE) {
+        ensureLegacyMigration()
+        store.enforcePolicy(maxDurationMs)
+    }
+
+    fun closeMaintenance() = store.closeMaintenance()
 
     fun clear() = store.clear()
 

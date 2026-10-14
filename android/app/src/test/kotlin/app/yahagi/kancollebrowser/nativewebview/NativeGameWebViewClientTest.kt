@@ -7,6 +7,60 @@ import org.junit.Test
 
 class NativeGameWebViewClientTest {
     @Test
+    fun oldMainDocumentErrorsDoNotFailTheNewerDocument() {
+        val events = mutableListOf<String>()
+        val delegate = delegate(events)
+        delegate.pageStarted("https://game.example/a")
+        delegate.pageStarted("https://game.example/b?token=current")
+        events.clear()
+        delegate.receivedError(true, -2, "old network error", "https://game.example/a")
+        delegate.receivedHttpError(true, 503, "https://game.example/a")
+        assertTrue(events.isEmpty())
+        delegate.receivedHttpError(true, 503, "HTTPS://GAME.EXAMPLE:443/b?token=current#fragment")
+        assertEquals(listOf("error:503:HTTP 503"), events)
+    }
+
+    @Test
+    fun mainAndChildHttpErrorsKeepTheirFrameAttribution() {
+        val events = mutableListOf<String>()
+        val sink = object : NativeGameWebViewEventSink by recordingSink(events) {
+            override fun resourceError(generation: Long, errorCode: Int) {
+                events += "resource:$generation:$errorCode"
+            }
+        }
+        val delegate = NativeGameWebViewClientDelegate(
+            generation = 7,
+            sink = sink,
+            acceptsGeneration = { true },
+            prepareRenderProcessGone = { true },
+            onRenderProcessGone = {},
+        )
+        delegate.receivedHttpError(true, 503)
+        delegate.receivedHttpError(false, 404)
+        delegate.receivedHttpError(true, 304)
+        assertEquals(listOf("error:503:HTTP 503", "resource:7:404"), events)
+    }
+
+    @Test
+    fun childResourceFailureReportsCodeWithoutMainFrameFailureOrPrivateText() {
+        val events = mutableListOf<String>()
+        val sink = object : NativeGameWebViewEventSink by recordingSink(events) {
+            override fun resourceError(generation: Long, errorCode: Int) {
+                events += "resource:$generation:$errorCode"
+            }
+        }
+        val delegate = NativeGameWebViewClientDelegate(
+            generation = 7,
+            sink = sink,
+            acceptsGeneration = { true },
+            prepareRenderProcessGone = { true },
+            onRenderProcessGone = {},
+        )
+        delegate.receivedError(false, -2, "https://private.invalid/token=secret")
+        assertEquals(listOf("resource:7:-2"), events)
+    }
+
+    @Test
     fun reportsPageEventsForTheCurrentGeneration() {
         val events = mutableListOf<String>()
         val delegate = delegate(events)

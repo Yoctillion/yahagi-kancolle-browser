@@ -1,11 +1,94 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_resource_cache_channel.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_resource_cache_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_resource_cache_store.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test('saved off startup waits for native configure before allowing navigation', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      SharedPreferencesGameResourceCacheStore.preferenceKey: 'none',
+    });
+    final port = FakePort()..configureGate = Completer<void>();
+    final controller = GameResourceCacheController(
+      store: SharedPreferencesGameResourceCacheStore(), port: port,
+    );
+    var mayNavigate = false;
+    final startup = controller.initialize(loadStatus: false).then((_) => mayNavigate = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(port.configured, <GameResourceCacheMode>[GameResourceCacheMode.none]);
+    expect(mayNavigate, isFalse);
+    port.configureGate!.complete();
+    await startup;
+    expect(mayNavigate, isTrue);
+    expect(port.nativeMode, GameResourceCacheMode.none);
+    expect(port.statusCalls, 0);
+    controller.dispose();
+  });
+  test('startup can apply saved mode without waiting for status', () async {
+    final port = FakePort()..statusGate = Completer<void>();
+    final controller = GameResourceCacheController(
+      store: MemoryStore(GameResourceCacheMode.none),
+      port: port,
+    );
+    await controller.initialize(loadStatus: false);
+    expect(controller.initialized, isTrue);
+    expect(controller.mode, GameResourceCacheMode.none);
+    expect(port.nativeMode, GameResourceCacheMode.none);
+    expect(port.statusCalls, 0);
+    port.statusGate!.complete();
+    await controller.refresh();
+    expect(port.statusCalls, 1);
+    controller.dispose();
+  });
+
+  test('status captured before a mode change cannot notify stale data', () async {
+    final port = FakePort();
+    final controller = GameResourceCacheController(store: MemoryStore(), port: port);
+    await controller.initialize(loadStatus: false);
+    port.statusGate = Completer<void>();
+    port.statusEntered = Completer<void>();
+    port.nextStatus = GameResourceCacheStatus.fromMap(<Object?, Object?>{
+      'mode': 'full', 'cachedBytes': 777,
+    });
+    final observedBytes = <int>[];
+    controller.addListener(() => observedBytes.add(controller.status.cachedBytes));
+    final stale = controller.refresh();
+    await port.statusEntered!.future;
+    final change = controller.setMode(GameResourceCacheMode.temporary);
+    await Future<void>.delayed(Duration.zero);
+    port.nextStatus = GameResourceCacheStatus.empty;
+    port.statusGate!.complete();
+    await stale;
+    await change;
+    expect(observedBytes, isNot(contains(777)));
+    expect(controller.mode, GameResourceCacheMode.temporary);
+    controller.dispose();
+  });
+
+  test('saved off mode is never replaced by temporary after configure rejection', () async {
+    final port = FakePort()..configureResult = false;
+    final controller = GameResourceCacheController(store: MemoryStore(), port: port);
+    await controller.initialize();
+    expect(controller.mode, GameResourceCacheMode.none);
+    expect(port.configured, <GameResourceCacheMode>[GameResourceCacheMode.none]);
+    controller.dispose();
+  });
+
+  test('late initialize result cannot notify after disposal', () async {
+    final port = FakePort()..configureGate = Completer<void>();
+    final controller = GameResourceCacheController(store: MemoryStore(), port: port);
+    final pending = controller.initialize();
+    await Future<void>.delayed(Duration.zero);
+    controller.dispose();
+    port.configureGate!.complete();
+    await expectLater(pending, completes);
+    expect(port.statusCalls, 0);
+  });
+
   test('formats completeness as one capacity line', () {
     expect(formatCacheCompleteness(6840000000, 8120000000), '6.84 GB');
   });
@@ -261,13 +344,14 @@ final class FakePort implements GameResourceCachePort {
   @override
   Future<GameResourceCacheStatus> status() async {
     statusCalls++;
+    final response = nextStatus;
     final gate = statusGate;
     if (gate != null) {
       final entered = statusEntered;
       if (entered != null && !entered.isCompleted) entered.complete();
       await gate.future;
     }
-    return nextStatus;
+    return response;
   }
 
   @override

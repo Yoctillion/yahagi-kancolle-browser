@@ -15,7 +15,8 @@ internal class TestHttpServer {
 
     /** path prefix -> (handler). Handler returns bytes and status code. */
     val handlers = mutableMapOf<String, Pair<(String) -> ByteArray, Int>>()
-    val hits = mutableMapOf<String, Int>()
+    val hits = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    val responseHeaders = mutableMapOf<String, Map<String, String>>()
 
     /** When true, accepted connections are closed without responding. */
     @Volatile
@@ -73,11 +74,13 @@ internal class TestHttpServer {
         val pair = entry?.value ?: Pair<(String) -> ByteArray, Int>({ ByteArray(0) }, 404)
         val handler = pair.first
         val status = pair.second
-        hits[entry?.key ?: "/unmatched"] = (hits[entry?.key ?: "/unmatched"] ?: 0) + 1
+        hits.merge(entry?.key ?: "/unmatched", 1, Int::plus)
         val body = handler(path)
         val head = "HTTP/1.1 $status OK\r\n" +
             "Content-Length: ${body.size}\r\n" +
-            "Connection: close\r\n\r\n"
+            "Connection: close\r\n" +
+            responseHeaders[entry?.key].orEmpty().entries.joinToString("") { "${it.key}: ${it.value}\r\n" } +
+            "\r\n"
         socket.getOutputStream().use { it.write(head.toByteArray(StandardCharsets.US_ASCII) + body) }
     }
 }

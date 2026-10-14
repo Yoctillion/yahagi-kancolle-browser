@@ -26,52 +26,57 @@ object AppNotificationManager {
     private const val PREFERENCES_NAME = "yahagi_native_notification_snapshot"
     private const val SNAPSHOT_KEY = "snapshot_json"
     private const val ONGOING_CHANNEL_ID = "channel_ongoing"
+    // Bump when channel definitions change; this is independent of snapshot schema.
+    private const val CHANNEL_SCHEMA_VERSION = 1
+    private val channelRegistrar = NotificationChannelRegistrar()
     private val channelTypes = setOf("expedition", "repair", "anchorage", "construction", "morale", "newShip")
 
     fun initChannels(
         context: Context,
         localeCode: String = loadSnapshot(context).presentation.localeCode,
     ) {
-        val strings = NotificationStrings(localeCode)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        val audioAttributes = AudioAttributes.Builder()
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-            .build()
+        channelRegistrar.ensureRegistered(context.packageName, localeCode, CHANNEL_SCHEMA_VERSION) {
+            val strings = NotificationStrings(localeCode)
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build()
 
-        strings.channelNames.forEach { (type, name) ->
-            listOf(false, true).forEach { sound ->
-                listOf(false, true).forEach { vibration ->
-                    manager.createNotificationChannel(
-                        NotificationChannel(
-                            channelId(type, sound, vibration),
-                            strings.channelVariant(name, sound, vibration),
-                            NotificationManager.IMPORTANCE_HIGH,
-                        ).apply {
-                            enableVibration(vibration)
-                            vibrationPattern = if (vibration) VIBRATION_PATTERN else null
-                            setSound(if (sound) soundUri else null, if (sound) audioAttributes else null)
-                            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                            setShowBadge(true)
-                        },
-                    )
+            strings.channelNames.forEach { (type, name) ->
+                listOf(false, true).forEach { sound ->
+                    listOf(false, true).forEach { vibration ->
+                        manager.createNotificationChannel(
+                            NotificationChannel(
+                                channelId(type, sound, vibration),
+                                strings.channelVariant(name, sound, vibration),
+                                NotificationManager.IMPORTANCE_HIGH,
+                            ).apply {
+                                enableVibration(vibration)
+                                vibrationPattern = if (vibration) VIBRATION_PATTERN else null
+                                setSound(if (sound) soundUri else null, if (sound) audioAttributes else null)
+                                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                                setShowBadge(true)
+                            },
+                        )
+                    }
                 }
             }
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    ONGOING_CHANNEL_ID,
+                    strings.ongoingChannelName,
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    enableVibration(false)
+                    setSound(null, null)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    setShowBadge(false)
+                },
+            )
         }
-        manager.createNotificationChannel(
-            NotificationChannel(
-                ONGOING_CHANNEL_ID,
-                strings.ongoingChannelName,
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                enableVibration(false)
-                setSound(null, null)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                setShowBadge(false)
-            },
-        )
     }
 
     @Synchronized

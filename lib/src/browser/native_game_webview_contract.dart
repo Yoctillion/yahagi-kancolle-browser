@@ -65,10 +65,13 @@ enum NativeGameWebViewEventType {
   pageFinished,
   presentationChanged,
   mainFrameError,
+  resourceError,
   navigationBlocked,
   renderProcessGone,
   destroyed,
 }
+
+enum NativeGamePresentationState { pending, web, game }
 
 final class NativeGameWebViewEvent {
   const NativeGameWebViewEvent._({
@@ -81,6 +84,7 @@ final class NativeGameWebViewEvent {
     this.scheme,
     this.didCrash,
     this.isGame,
+    this.presentationState,
   });
 
   final NativeGameWebViewEventType type;
@@ -92,6 +96,7 @@ final class NativeGameWebViewEvent {
   final String? scheme;
   final bool? didCrash;
   final bool? isGame;
+  final NativeGamePresentationState? presentationState;
 
   factory NativeGameWebViewEvent.decode(Object? raw) {
     if (raw is! Map) {
@@ -112,7 +117,13 @@ final class NativeGameWebViewEvent {
     if (type == null) {
       throw const NativeGameWebViewSchemaException('Unknown event type.');
     }
-    _requireKeys(map, _keysForType[type]!);
+    _requireKeys(
+      map,
+      _keysForType[type]!,
+      optional: type == NativeGameWebViewEventType.presentationChanged
+          ? const <String>{'state'}
+          : const <String>{},
+    );
     final generationId = _int(map, 'generationId');
     if (generationId < 0) {
       throw const NativeGameWebViewSchemaException(
@@ -138,6 +149,7 @@ final class NativeGameWebViewEvent {
           navigationUri: uri,
         );
       case NativeGameWebViewEventType.mainFrameError:
+      case NativeGameWebViewEventType.resourceError:
         return NativeGameWebViewEvent._(
           type: type,
           generationId: generationId,
@@ -151,10 +163,28 @@ final class NativeGameWebViewEvent {
             'isGame must be a bool.',
           );
         }
+        final rawState = map['state'];
+        NativeGamePresentationState? state;
+        if (map.containsKey('state')) {
+          for (final candidate in NativeGamePresentationState.values) {
+            if (candidate.name == rawState) state = candidate;
+          }
+          if (state == null ||
+              (state == NativeGamePresentationState.game) != isGame) {
+            throw const NativeGameWebViewSchemaException(
+              'Invalid presentation state.',
+            );
+          }
+        }
         return NativeGameWebViewEvent._(
           type: type,
           generationId: generationId,
           isGame: isGame,
+          presentationState:
+              state ??
+              (isGame
+                  ? NativeGamePresentationState.game
+                  : NativeGamePresentationState.web),
         );
       case NativeGameWebViewEventType.navigationBlocked:
         final scheme = _string(map, 'scheme', maxLength: 32);
@@ -190,6 +220,7 @@ final class NativeGameWebViewEvent {
         'pageFinished': NativeGameWebViewEventType.pageFinished,
         'presentationChanged': NativeGameWebViewEventType.presentationChanged,
         'mainFrameError': NativeGameWebViewEventType.mainFrameError,
+        'resourceError': NativeGameWebViewEventType.resourceError,
         'navigationBlocked': NativeGameWebViewEventType.navigationBlocked,
         'renderProcessGone': NativeGameWebViewEventType.renderProcessGone,
         'destroyed': NativeGameWebViewEventType.destroyed,
@@ -220,6 +251,12 @@ final class NativeGameWebViewEvent {
           'errorCode',
           'description',
         },
+        NativeGameWebViewEventType.resourceError: <String>{
+          'type',
+          'generationId',
+          'errorCode',
+          'description',
+        },
         NativeGameWebViewEventType.navigationBlocked: <String>{
           'type',
           'generationId',
@@ -232,8 +269,15 @@ final class NativeGameWebViewEvent {
         },
       };
 
-  static void _requireKeys(Map<String, Object?> map, Set<String> allowed) {
-    if (map.length != allowed.length || !map.keys.every(allowed.contains)) {
+  static void _requireKeys(
+    Map<String, Object?> map,
+    Set<String> allowed, {
+    Set<String> optional = const <String>{},
+  }) {
+    if (!allowed.every(map.containsKey) ||
+        !map.keys.every(
+          (key) => allowed.contains(key) || optional.contains(key),
+        )) {
       throw const NativeGameWebViewSchemaException(
         'Event keys do not match schema.',
       );

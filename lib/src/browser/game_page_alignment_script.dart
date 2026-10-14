@@ -1,5 +1,13 @@
 const String gamePageAlignmentScript = r'''
 (() => {
+  const runtimeVersion = 2;
+  if (
+    window.__yahagiMobilePresentationRuntimeVersion === runtimeVersion &&
+    typeof window.__yahagiMobileSyncPresentation === 'function' &&
+    typeof window.__yahagiMobileReadPresentation === 'function'
+  ) {
+    return window.__yahagiMobileSyncPresentation(true);
+  }
   const styleId = '__yahagi_mobile_fixed_canvas__';
   const ooiBrowserStyleId = '__yahagi_mobile_ooi_browser__';
   const ooiBrowserFrameWidth = 1280;
@@ -210,36 +218,32 @@ const String gamePageAlignmentScript = r'''
       style.textContent = fixedCanvasCss;
     }
 
-    // Slow pages can be synchronized repeatedly before load. Replace the
-    // pending listener as well as the scroll listener instead of accumulating it.
-    if (window.__yahagiMobileAlignGame) {
-      window.removeEventListener('load', window.__yahagiMobileAlignGame);
-    }
-    window.__yahagiMobileAlignGame = () => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+    if (!window.__yahagiMobileAlignGame) {
+      window.__yahagiMobileAlignGame = () => {
+        window.scrollTo(0, 0);
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
 
-      const gameFrame = document.getElementById('game_frame');
-      if (gameFrame) {
-        gameFrame.setAttribute('scrolling', 'no');
-        try {
-          gameFrame.contentWindow?.scrollTo(0, 0);
-        } catch (_) {
-          // A cross-origin game frame is still locked by touch-action above.
+        const gameFrame = document.getElementById('game_frame');
+        if (gameFrame) {
+          gameFrame.setAttribute('scrolling', 'no');
+          try {
+            gameFrame.contentWindow?.scrollTo(0, 0);
+          } catch (_) {
+            // A cross-origin game frame is still locked by touch-action above.
+          }
         }
-      }
-    };
-
-    if (window.__yahagiMobileScrollLock) {
-      window.removeEventListener('scroll', window.__yahagiMobileScrollLock);
+      };
     }
-    window.__yahagiMobileScrollLock = () => {
-      window.__yahagiMobileAlignGame();
-    };
-    window.addEventListener('scroll', window.__yahagiMobileScrollLock, {
-      passive: true,
-    });
+
+    if (!window.__yahagiMobileScrollLock) {
+      window.__yahagiMobileScrollLock = () => {
+        window.__yahagiMobileAlignGame?.();
+      };
+      window.addEventListener('scroll', window.__yahagiMobileScrollLock, {
+        passive: true,
+      });
+    }
 
     if (document.readyState === 'complete') {
       window.__yahagiMobileAlignGame();
@@ -259,81 +263,125 @@ const String gamePageAlignmentScript = r'''
       style.textContent = ooiBrowserCss;
     }
 
-    window.__yahagiMobileOoiAlignGame = () => {
-      const game = document.getElementById('ooi-game');
-      const frame = game?.querySelector('iframe#externalswf');
-      if (!game || !frame) return;
+    if (!window.__yahagiMobileOoiAlignGame) {
+      window.__yahagiMobileOoiAlignGame = () => {
+        const game = document.getElementById('ooi-game');
+        const frame = game?.querySelector('iframe#externalswf');
+        if (!game || !frame || !document.documentElement) return;
 
-      const viewportWidth = Math.max(
-        1,
-        window.visualViewport?.width || document.documentElement.clientWidth,
-      );
-      const viewportHeight = Math.max(
-        1,
-        window.visualViewport?.height || document.documentElement.clientHeight,
-      );
-      const scale = Math.min(
-        1,
-        viewportWidth / ooiBrowserGameWidth,
-        viewportHeight / ooiBrowserGameHeight,
-      );
-      const left = Math.max(
-        0,
-        (viewportWidth - ooiBrowserGameWidth * scale) / 2,
-      );
-      const top = Math.max(
-        0,
-        (viewportHeight - ooiBrowserGameHeight * scale) / 2,
-      );
-      game.style.setProperty(
-        '--yahagi-ooi-frame-width',
-        `${ooiBrowserFrameWidth}px`,
-      );
-      game.style.setProperty(
-        '--yahagi-ooi-frame-height',
-        `${ooiBrowserFrameHeight}px`,
-      );
-      game.style.setProperty('--yahagi-ooi-scale', String(scale));
-      game.style.setProperty('--yahagi-ooi-left', `${left}px`);
-      game.style.setProperty('--yahagi-ooi-top', `${top}px`);
-    };
+        const viewportWidth = Math.max(
+          1,
+          window.visualViewport?.width || document.documentElement.clientWidth,
+        );
+        const viewportHeight = Math.max(
+          1,
+          window.visualViewport?.height || document.documentElement.clientHeight,
+        );
+        const scale = Math.min(
+          1,
+          viewportWidth / ooiBrowserGameWidth,
+          viewportHeight / ooiBrowserGameHeight,
+        );
+        const left = Math.max(
+          0,
+          (viewportWidth - ooiBrowserGameWidth * scale) / 2,
+        );
+        const top = Math.max(
+          0,
+          (viewportHeight - ooiBrowserGameHeight * scale) / 2,
+        );
+        if (game.style.getPropertyValue('--yahagi-ooi-frame-width') !== `${ooiBrowserFrameWidth}px`) {
+          game.style.setProperty('--yahagi-ooi-frame-width', `${ooiBrowserFrameWidth}px`);
+        }
+        if (game.style.getPropertyValue('--yahagi-ooi-frame-height') !== `${ooiBrowserFrameHeight}px`) {
+          game.style.setProperty('--yahagi-ooi-frame-height', `${ooiBrowserFrameHeight}px`);
+        }
+        if (game.style.getPropertyValue('--yahagi-ooi-scale') !== String(scale)) {
+          game.style.setProperty('--yahagi-ooi-scale', String(scale));
+        }
+        if (game.style.getPropertyValue('--yahagi-ooi-left') !== `${left}px`) {
+          game.style.setProperty('--yahagi-ooi-left', `${left}px`);
+        }
+        if (game.style.getPropertyValue('--yahagi-ooi-top') !== `${top}px`) {
+          game.style.setProperty('--yahagi-ooi-top', `${top}px`);
+        }
+      };
+    }
     window.__yahagiMobileAlignGame = window.__yahagiMobileOoiAlignGame;
 
-    if (window.__yahagiMobileOoiResize) {
-      window.removeEventListener('resize', window.__yahagiMobileOoiResize);
-    }
-    window.__yahagiMobileOoiResize = () => {
-      window.__yahagiMobileOoiAlignGame?.();
-    };
-    window.addEventListener('resize', window.__yahagiMobileOoiResize, {
-      passive: true,
-    });
     window.__yahagiMobileOoiAlignGame();
   };
 
-  window.__yahagiMobileSyncPresentation = (forceFit = false) => {
-    const hasOoiBrowserSurface = Boolean(
+  let scheduledFrame = null;
+  let scheduledTimer = null;
+  const cancelScheduledSync = () => {
+    if (scheduledFrame !== null) {
+      window.cancelAnimationFrame?.(scheduledFrame);
+      scheduledFrame = null;
+    }
+    if (scheduledTimer !== null) {
+      clearTimeout(scheduledTimer);
+      scheduledTimer = null;
+    }
+  };
+  const scheduleSync = () => {
+    if (scheduledFrame !== null || scheduledTimer !== null) return;
+    const synchronize = () => {
+      cancelScheduledSync();
+      window.__yahagiMobileSyncPresentation();
+    };
+    // Animation frames may pause in a hidden/folding WebView. Bound that wait.
+    scheduledTimer = setTimeout(synchronize, 100);
+    if (typeof window.requestAnimationFrame === 'function') {
+      scheduledFrame = window.requestAnimationFrame(synchronize);
+    }
+  };
+
+  const readPresentation = () => {
+    if (!document.documentElement || !document.head || !document.body) {
+      return {state: isGamePage && !isAccountPage ? 'pending' : 'web', unparsed: true};
+    }
+    const hasOoiBrowserSurface = isOoiBrowserPage && Boolean(
       document.querySelector('#ooi-page #ooi-game > iframe#externalswf'),
     );
     if (isOoiBrowserPage && hasOoiBrowserSurface) {
-      cleanupGamePresentation();
-      applyOoiBrowserPresentation();
-      notifyPresentationState('web');
-      return 'web';
+      return {state: 'web', ooi: true};
     }
 
-    cleanupOoiBrowserPresentation();
+    if (!isGamePage || isAccountPage || hasBlockingPageDialog()) {
+      return {state: 'web'};
+    }
     const hasGameSurface =
       Array.from(
         document.querySelectorAll('#game_frame, #game-container'),
       ).some(isVisibleElement) || hasStandaloneGameCanvas();
 
-    if (!isGamePage || isAccountPage || hasBlockingPageDialog()) {
+    return {state: hasGameSurface ? 'game' : 'pending'};
+  };
+  // Native hints may be queued by an older document. Re-read without fitting
+  // or notifying the bridge again, so acknowledgement cannot form a loop.
+  window.__yahagiMobileReadPresentation = () => readPresentation().state;
+
+  window.__yahagiMobileSyncPresentation = (forceFit = false) => {
+    cancelScheduledSync();
+    const presentation = readPresentation();
+    if (presentation.unparsed) {
+      notifyPresentationState(presentation.state);
+      return presentation.state;
+    }
+    if (presentation.ooi) {
+      cleanupGamePresentation();
+      applyOoiBrowserPresentation();
+      notifyPresentationState('web');
+      return 'web';
+    }
+    cleanupOoiBrowserPresentation();
+    if (presentation.state === 'web') {
       cleanupGamePresentation();
       notifyPresentationState('web');
       return 'web';
     }
-    if (!hasGameSurface) {
+    if (presentation.state === 'pending') {
       notifyPresentationState('pending');
       return 'pending';
     }
@@ -344,18 +392,22 @@ const String gamePageAlignmentScript = r'''
   };
 
   window.__yahagiMobilePresentationObserver?.disconnect();
-  if (isGamePage && !isAccountPage) {
+  if ((isGamePage && !isAccountPage) || isOoiBrowserPage) {
     window.__yahagiMobilePresentationObserver = new MutationObserver(() => {
-      window.__yahagiMobileSyncPresentation();
+      scheduleSync();
     });
-    window.__yahagiMobilePresentationObserver.observe(document.documentElement, {
+    window.__yahagiMobilePresentationObserver.observe(document.documentElement || document, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'hidden', 'style', 'width', 'height'],
+      attributeFilter: ['class', 'hidden', 'style', 'width', 'height', 'id', 'open'],
     });
+    window.addEventListener('resize', scheduleSync, {passive: true});
+    window.visualViewport?.addEventListener('resize', scheduleSync, {passive: true});
+    document.addEventListener('DOMContentLoaded', scheduleSync, {once: true});
   }
 
+  window.__yahagiMobilePresentationRuntimeVersion = runtimeVersion;
   return window.__yahagiMobileSyncPresentation(true);
 })();
 ''';

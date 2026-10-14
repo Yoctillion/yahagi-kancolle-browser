@@ -36,14 +36,23 @@ internal object NativeGameWebViewConfigurator {
         webView: WebView,
         client: WebViewClient,
         onPresentationStateChanged: (Boolean) -> Unit = {},
-    ) = configure(webView, client, onPresentationStateChanged) {}
+        onPresentationPending: () -> Unit = {},
+    ) = configureWithPending(webView, client, onPresentationStateChanged, {}, onPresentationPending)
 
-    @SuppressLint("ObsoleteSdkInt", "SetJavaScriptEnabled")
     internal fun configure(
         webView: WebView,
         client: WebViewClient,
         onPresentationStateChanged: (Boolean) -> Unit,
         onApplied: (NativeGameWebViewConfigurationAction) -> Unit,
+    ) = configureWithPending(webView, client, onPresentationStateChanged, onApplied, {})
+
+    @SuppressLint("ObsoleteSdkInt", "SetJavaScriptEnabled")
+    private fun configureWithPending(
+        webView: WebView,
+        client: WebViewClient,
+        onPresentationStateChanged: (Boolean) -> Unit,
+        onApplied: (NativeGameWebViewConfigurationAction) -> Unit,
+        onPresentationPending: () -> Unit,
     ) {
         webView.settings.apply {
             javaScriptEnabled = true
@@ -81,8 +90,10 @@ internal object NativeGameWebViewConfigurator {
                 onApplied(NativeGameWebViewConfigurationAction.ACCEPT_THIRD_PARTY_COOKIES)
             }
         }
+        val presentationBridge = NativeGamePresentationBridge(onPresentationStateChanged, onPresentationPending)
+        (client as? NativeGameWebViewClient)?.attachPresentationBridge(presentationBridge)
         webView.addJavascriptInterface(
-            NativeGamePresentationBridge(onPresentationStateChanged),
+            presentationBridge,
             "YahagiPresentation",
         )
         onApplied(NativeGameWebViewConfigurationAction.PRESENTATION_BRIDGE_SET)
@@ -95,10 +106,17 @@ internal object NativeGameWebViewConfigurator {
 
 internal class NativeGamePresentationBridge(
     private val onPresentationStateChanged: (Boolean) -> Unit,
+    private val onPresentationPending: () -> Unit = {},
 ) {
     private var lastPresentationState: String? = null
 
+    @Synchronized
+    fun resetForNavigation() {
+        lastPresentationState = null
+    }
+
     @JavascriptInterface
+    @Synchronized
     fun postMessage(message: String) {
         // A fit request is an action, not a state transition. Page finish,
         // fullscreen and window recovery must reapply even for game -> game.
@@ -113,7 +131,7 @@ internal class NativeGamePresentationBridge(
         when (message) {
             "game" -> onPresentationStateChanged(true)
             "web" -> onPresentationStateChanged(false)
-            "pending" -> Unit
+            "pending" -> onPresentationPending()
         }
     }
 }

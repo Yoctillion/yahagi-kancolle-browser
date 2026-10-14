@@ -13,6 +13,7 @@ import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_browser_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_frame_reload_port.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_launch_config.dart';
+import 'package:yahagi_kancolle_browser/src/browser/game_load_event.dart';
 import 'package:yahagi_kancolle_browser/src/browser/network_proxy_channel.dart';
 import 'package:yahagi_kancolle_browser/src/browser/origin_cookie_manager_port.dart';
 import 'package:yahagi_kancolle_browser/src/browser/native_game_surface_slot.dart';
@@ -34,6 +35,478 @@ import 'package:yahagi_kancolle_browser/src/settings/network_settings_controller
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_store.dart';
 
 void main() {
+  testWidgets(
+    'native old finished document cannot complete the newer navigation',
+    (tester) async {
+      final fixture = _SurfaceFixture();
+      _addLoadingTearDown(tester, fixture);
+      await fixture.pump(tester, navigationTimeout: const Duration(seconds: 3));
+      await _pumpUntil(
+        tester,
+        () => fixture.port.calls.any((call) => call.startsWith('load:')),
+      );
+      fixture.port.addEvent(
+        _event('pageStarted', generationId: 7, url: 'https://game.example/a'),
+      );
+      fixture.port.addEvent(
+        _event('pageStarted', generationId: 7, url: 'https://game.example/b'),
+      );
+      fixture.port.addEvent(
+        _event('pageFinished', generationId: 7, url: 'https://game.example/a'),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(fixture.statusController.loadState, WebViewLoadState.loading);
+      expect(fixture.orchestrator.attachAudioCalls, 0);
+      await tester.pump(const Duration(seconds: 3));
+      expect(
+        find.byKey(const Key('native-game-surface-error')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'native initial command late reply cannot replace an already ready page',
+    (tester) async {
+      final fixture = _SurfaceFixture();
+      _addLoadingTearDown(tester, fixture);
+      final reply = Completer<void>();
+      fixture.port.loadCompleter = reply;
+      await fixture.pump(tester);
+      await _pumpUntil(
+        tester,
+        () => fixture.port.calls.any((call) => call.startsWith('load:')),
+      );
+      final uri = fixture.browserController.homeUri.toString();
+      fixture.port.addEvent(_event('pageStarted', generationId: 7, url: uri));
+      fixture.port.addEvent(
+        _event(
+          'presentationChanged',
+          generationId: 7,
+          isGame: false,
+          state: 'web',
+        ),
+      );
+      fixture.port.addEvent(_event('pageFinished', generationId: 7, url: uri));
+      await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.byKey(const Key('native-game-surface-error')), findsNothing);
+      expect(fixture.port.calls.last, 'visible:true');
+      reply.complete();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'native body retry still waits when new document has no presentation yet',
+    (tester) async {
+      final fixture = _SurfaceFixture();
+      _addLoadingTearDown(tester, fixture);
+      final events = <GameLoadEvent>[];
+      const gameEntry =
+          'https://www.dmm.com/netgame/social/-/gadgets/=/app_id=854854/';
+      await fixture.pump(
+        tester,
+        onLoadEvent: events.add,
+        navigationTimeout: const Duration(seconds: 3),
+      );
+      await _pumpUntil(
+        tester,
+        () => fixture.port.calls.any((call) => call.startsWith('load:')),
+      );
+      fixture.port.addEvent(
+        _event('pageStarted', generationId: 7, url: gameEntry),
+      );
+      fixture.port.addEvent(
+        _event(
+          'presentationChanged',
+          generationId: 7,
+          isGame: false,
+          state: 'pending',
+        ),
+      );
+      fixture.port.addEvent(
+        _event('pageFinished', generationId: 7, url: gameEntry),
+      );
+      await _pumpUntil(tester, () => fixture.orchestrator.attachAudioCalls > 0);
+      await tester.pump(const Duration(seconds: 3));
+      expect(
+        find.byKey(const Key('native-game-surface-error')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const Key('native-game-surface-page-reload')),
+      );
+      await tester.pump();
+      fixture.port.addEvent(
+        _event('pageStarted', generationId: 7, url: gameEntry),
+      );
+      fixture.port.addEvent(
+        _event('pageFinished', generationId: 7, url: gameEntry),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.byKey(const Key('native-game-surface-body-waiting')),
+        findsOneWidget,
+      );
+      expect(fixture.port.calls.last, isNot('visible:true'));
+      final currentEpoch = events.last.navigationEpoch;
+      expect(
+        events
+            .where((event) => event.navigationEpoch == currentEpoch)
+            .map((event) => event.phase),
+        isNot(contains(GameLoadPhase.loginVisible)),
+      );
+      await tester.pump(const Duration(seconds: 3));
+      expect(
+        find.byKey(const Key('native-game-surface-error')),
+        findsOneWidget,
+      );
+      expect(events.last.phase, GameLoadPhase.timedOut);
+    },
+  );
+
+  testWidgets('native pending body stays hidden until game detection', (
+    tester,
+  ) async {
+    final fixture = _SurfaceFixture();
+    _addLoadingTearDown(tester, fixture);
+    final events = <GameLoadEvent>[];
+    await fixture.pump(tester, onLoadEvent: events.add);
+    await _pumpUntil(
+      tester,
+      () => fixture.port.calls.any((call) => call.startsWith('load:')),
+    );
+    fixture.port.addEvent(
+      _event(
+        'pageStarted',
+        generationId: 7,
+        url: 'https://www.dmm.com/netgame/social/-/gadgets/=/app_id=854854/',
+      ),
+    );
+    fixture.port.addEvent(
+      _event(
+        'presentationChanged',
+        generationId: 7,
+        isGame: false,
+        state: 'pending',
+      ),
+    );
+    fixture.port.addEvent(
+      _event(
+        'pageFinished',
+        generationId: 7,
+        url: 'https://www.dmm.com/netgame/social/-/gadgets/=/app_id=854854/',
+      ),
+    );
+    await _pumpUntil(tester, () => fixture.orchestrator.attachAudioCalls > 0);
+    await tester.pump();
+    expect(fixture.port.calls.last, isNot('visible:true'));
+    expect(
+      find.byKey(const Key('native-game-surface-body-waiting')),
+      findsOneWidget,
+    );
+    expect(
+      events.map((event) => event.phase),
+      contains(GameLoadPhase.bodyWaiting),
+    );
+    expect(
+      events.map((event) => event.phase),
+      isNot(contains(GameLoadPhase.visible)),
+    );
+    expect(
+      events.map((event) => event.phase),
+      isNot(contains(GameLoadPhase.loginVisible)),
+    );
+    fixture.port.addEvent(
+      _event(
+        'presentationChanged',
+        generationId: 7,
+        isGame: true,
+        state: 'game',
+      ),
+    );
+    await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+    expect(
+      events.map((event) => event.phase),
+      contains(GameLoadPhase.gameDetected),
+    );
+    expect(events.last.phase, GameLoadPhase.visible);
+  });
+
+  testWidgets(
+    'native pending body timeout ignores late presentation until retry',
+    (tester) async {
+      final fixture = _SurfaceFixture();
+      _addLoadingTearDown(tester, fixture);
+      final events = <GameLoadEvent>[];
+      await fixture.pump(
+        tester,
+        onLoadEvent: events.add,
+        navigationTimeout: const Duration(seconds: 3),
+      );
+      await _pumpUntil(
+        tester,
+        () => fixture.port.calls.any((call) => call.startsWith('load:')),
+      );
+      fixture.port.addEvent(
+        _event('pageStarted', generationId: 7, url: 'https://game.example/'),
+      );
+      fixture.port.addEvent(
+        _event(
+          'presentationChanged',
+          generationId: 7,
+          isGame: false,
+          state: 'pending',
+        ),
+      );
+      fixture.port.addEvent(
+        _event('pageFinished', generationId: 7, url: 'https://game.example/'),
+      );
+      await _pumpUntil(tester, () => fixture.orchestrator.attachAudioCalls > 0);
+      await tester.pump(const Duration(seconds: 3));
+      expect(
+        find.byKey(const Key('native-game-surface-error')),
+        findsOneWidget,
+      );
+      expect(events.last.phase, GameLoadPhase.timedOut);
+      fixture.port.addEvent(
+        _event(
+          'presentationChanged',
+          generationId: 7,
+          isGame: true,
+          state: 'game',
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const Key('native-game-surface-error')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const Key('native-game-surface-page-reload')),
+      );
+      await tester.pump();
+      fixture.port.addEvent(
+        _event(
+          'pageStarted',
+          generationId: 7,
+          url: 'https://accounts.dmm.com/service/login/password',
+        ),
+      );
+      fixture.port.addEvent(
+        _event(
+          'presentationChanged',
+          generationId: 7,
+          isGame: false,
+          state: 'web',
+        ),
+      );
+      fixture.port.addEvent(
+        _event(
+          'pageFinished',
+          generationId: 7,
+          url: 'https://accounts.dmm.com/service/login/password',
+        ),
+      );
+      await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+      expect(
+        events.map((event) => event.phase),
+        contains(GameLoadPhase.loginVisible),
+      );
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.byKey(const Key('native-game-surface-error')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'native child resource failure is diagnostic and keeps login usable',
+    (tester) async {
+      final fixture = _SurfaceFixture();
+      _addLoadingTearDown(tester, fixture);
+      final events = <GameLoadEvent>[];
+      await fixture.pump(tester, onLoadEvent: events.add);
+      await _pumpUntil(
+        tester,
+        () => fixture.port.calls.any((call) => call.startsWith('load:')),
+      );
+      fixture.port.addEvent(
+        _event(
+          'resourceError',
+          generationId: 7,
+          errorCode: -2,
+          description: 'private subresource address',
+        ),
+      );
+      fixture.port.addEvent(
+        _event('pageFinished', generationId: 7, url: 'https://ooi.moe/'),
+      );
+      await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+      final failed = events.singleWhere(
+        (event) => event.phase == GameLoadPhase.failed,
+      );
+      expect(failed.isMainFrame, false);
+      expect(failed.errorCode, -2);
+      expect(failed.toMap().values.join(' '), isNot(contains('private')));
+      expect(find.byKey(const Key('native-game-surface-error')), findsNothing);
+    },
+  );
+
+  testWidgets('native navigation without a start event times out and retries', (
+    tester,
+  ) async {
+    final fixture = _SurfaceFixture();
+    _addLoadingTearDown(tester, fixture);
+    await fixture.pump(tester);
+    await _pumpUntil(
+      tester,
+      () => fixture.port.calls.any((call) => call.startsWith('load:')),
+    );
+    await tester.pump(const Duration(seconds: 46));
+    expect(find.byKey(const Key('native-game-surface-error')), findsOneWidget);
+    expect(
+      find.byKey(const Key('native-game-surface-page-reload')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('native-game-surface-page-reload')));
+    await tester.pump();
+    expect(fixture.port.calls.where((call) => call == 'reload'), hasLength(1));
+    fixture.port.addEvent(
+      _event('pageStarted', generationId: 7, url: 'https://game.example/'),
+    );
+    fixture.port.addEvent(
+      _event('pageFinished', generationId: 7, url: 'https://game.example/'),
+    );
+    await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+    expect(find.byKey(const Key('native-game-surface-error')), findsNothing);
+  });
+
+  testWidgets('native later document navigation also has a deadline', (
+    tester,
+  ) async {
+    final fixture = _SurfaceFixture();
+    _addLoadingTearDown(tester, fixture);
+    await fixture.pump(tester);
+    await tester.pump();
+    fixture.port.addEvent(
+      _event('pageFinished', generationId: 7, url: 'https://game.example/a'),
+    );
+    await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+    fixture.port.addEvent(
+      _event('pageStarted', generationId: 7, url: 'https://game.example/b'),
+    );
+    await tester.pump(const Duration(seconds: 46));
+    expect(find.byKey(const Key('native-game-surface-error')), findsOneWidget);
+  });
+
+  testWidgets('native document deadline pauses while the app is backgrounded', (
+    tester,
+  ) async {
+    final fixture = _SurfaceFixture();
+    _addLoadingTearDown(tester, fixture);
+    await fixture.pump(tester);
+    await _pumpUntil(
+      tester,
+      () => fixture.port.calls.any((call) => call.startsWith('load:')),
+    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump(const Duration(minutes: 2));
+    expect(find.byKey(const Key('native-game-surface-error')), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 46));
+    expect(find.byKey(const Key('native-game-surface-error')), findsOneWidget);
+  });
+
+  testWidgets('native main frame failure exposes a page retry', (tester) async {
+    final fixture = _SurfaceFixture();
+    _addLoadingTearDown(tester, fixture);
+    await fixture.pump(tester);
+    await tester.pump();
+    fixture.port.addEvent(
+      _event(
+        'mainFrameError',
+        generationId: 7,
+        errorCode: -2,
+        description: 'private error text',
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('native-game-surface-error')), findsOneWidget);
+    expect(
+      find.byKey(const Key('native-game-surface-page-reload')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('late native network reload reply cannot hide a ready page', (
+    tester,
+  ) async {
+    final fixture = _SurfaceFixture();
+    _addLoadingTearDown(tester, fixture);
+    fixture.networkSettingsController.settingsValue = const NetworkSettings(
+      mode: NetworkMode.httpProxy,
+      host: '127.0.0.1',
+      port: 8080,
+    );
+    await fixture.pump(tester);
+    await _pumpUntil(
+      tester,
+      () => fixture.port.calls.any((call) => call.startsWith('load:')),
+    );
+    final replacement = _FakeStartupOrchestrator()
+      ..networkResult = const GameSurfaceNetworkResult(
+        success: false,
+        code: 'failed',
+        message: 'failed',
+      );
+    await fixture.pump(tester, startupOrchestrator: replacement);
+    await _pumpUntil(
+      tester,
+      () => find
+          .byKey(const Key('native-game-surface-error'))
+          .evaluate()
+          .isNotEmpty,
+    );
+    replacement.networkResult = const GameSurfaceNetworkResult.success();
+    final reply = Completer<void>();
+    fixture.port.reloadCompleter = reply;
+    fixture.networkSettingsController.emitChange();
+    await _pumpUntil(tester, () => fixture.port.calls.contains('reload'));
+    fixture.port.addEvent(
+      _event('pageStarted', generationId: 7, url: 'https://game.example/'),
+    );
+    fixture.port.addEvent(
+      _event('pageFinished', generationId: 7, url: 'https://game.example/'),
+    );
+    await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+    reply.complete();
+    await tester.pump();
+    await tester.pump();
+    expect(fixture.port.calls.last, 'visible:true');
+    expect(find.byKey(const Key('native-game-surface-startup')), findsNothing);
+  });
+
+  testWidgets('pausing native resume recovery cancels delayed fits', (
+    tester,
+  ) async {
+    final fixture = _SurfaceFixture();
+    _addLoadingTearDown(tester, fixture);
+    await fixture.pump(tester);
+    await tester.pump();
+    fixture.port.addEvent(
+      _event('pageFinished', generationId: 7, url: 'https://game.example/'),
+    );
+    await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    final fits = fixture.port.calls.where((call) => call == 'fit').length;
+    await tester.pump(const Duration(seconds: 1));
+    expect(fixture.port.calls.where((call) => call == 'fit'), hasLength(fits));
+  });
+
   testWidgets(
     'native game presentation starts retention stage before background',
     (tester) async {
@@ -472,6 +945,215 @@ void main() {
     const kcwikiOnlyPath = '/kcsapi/api_req_kousyou/remodel_slotlist';
     expect(capturePort.scripts, hasLength(1));
     expect(capturePort.scripts.single, contains(kcwikiOnlyPath));
+  });
+
+  test(
+    'default startup reinstalls capture on a replacement WebView before navigation',
+    () async {
+      final calls = <String>[];
+      final capturePort = _RecreatedWebViewCapturePort();
+      final fixture = await _DefaultOrchestratorFixture.create(
+        calls,
+        capturePortFactory: () => capturePort,
+      );
+      addTearDown(fixture.dispose);
+
+      Future<void> startSurface(int sequence) async {
+        await fixture.orchestrator.runCaptureStartup(
+          waitForSurface: () async {},
+          isActive: () => true,
+          navigate: () async => capturePort.emitBattle(sequence),
+        );
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      await startSurface(1);
+      expect(fixture.captureController.latestEvent?.sequence, 1);
+      final previousSession = fixture.captureController.captureSessionId;
+      await fixture.orchestrator.prepareCapture();
+      expect(capturePort.configureCount, 1);
+
+      // Android replaces the WebView while the Dart channel port survives.
+      capturePort.replaceWebView();
+      await startSurface(2);
+
+      expect(capturePort.configureCount, 2);
+      expect(fixture.captureController.latestEvent?.sequence, 2);
+      expect(fixture.captureController.captureSessionId, previousSession);
+      await fixture.orchestrator.prepareCapture();
+      expect(capturePort.configureCount, 2);
+    },
+  );
+
+  testWidgets(
+    'renderer recovery restores capture through the default startup',
+    (tester) async {
+      final surface = _SurfaceFixture();
+      final capturePort = _RecreatedWebViewCapturePort();
+      final startupCalls = <String>[];
+      final startup = await _DefaultOrchestratorFixture.create(
+        startupCalls,
+        capturePortFactory: () => capturePort,
+      );
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        startup.dispose();
+        await surface.dispose();
+      });
+      Future<void> waitForLoads(int expected) async {
+        for (var frame = 0; frame < 40; frame++) {
+          if (surface.port.calls
+                  .where((call) => call.startsWith('load:'))
+                  .length ==
+              expected) {
+            return;
+          }
+          // The shared platform arbiter also runs in preceding non-widget
+          // tests. Settle its real async zone before pumping this fake clock.
+          await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+          await tester.pump(const Duration(milliseconds: 1));
+        }
+        fail(
+          'Expected $expected navigations; calls: ${surface.port.calls}; '
+          'startup: $startupCalls',
+        );
+      }
+
+      await surface.pump(tester, startupOrchestrator: startup.orchestrator);
+      await waitForLoads(1);
+      capturePort.emitBattle(1);
+      await tester.pump();
+      expect(startup.captureController.latestEvent?.sequence, 1);
+
+      for (var recovery = 1; recovery <= 3; recovery++) {
+        final previousGeneration = surface.port.generation;
+        surface.port.addEvent(
+          _event(
+            'renderProcessGone',
+            generationId: previousGeneration,
+            didCrash: false,
+          ),
+        );
+        surface.port.addEvent(
+          _event('destroyed', generationId: previousGeneration),
+        );
+        capturePort.replaceWebView();
+        surface.port.generation++;
+        await tester.pump();
+        expect(
+          find.byKey(const Key('native-game-surface-reload')),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const Key('native-game-surface-reload')));
+        await waitForLoads(recovery + 1);
+        capturePort.emitBattle(recovery + 1);
+        await tester.pump();
+        expect(startup.captureController.latestEvent?.sequence, recovery + 1);
+        expect(capturePort.configureCount, recovery + 1);
+        expect(
+          surface.port.calls.where((call) => call == 'create'),
+          hasLength(recovery + 1),
+        );
+      }
+    },
+  );
+
+  test(
+    'a startup rebind survives an already pending capture preparation',
+    () async {
+      final capturePort = _RecreatedWebViewCapturePort();
+      final fixture = await _DefaultOrchestratorFixture.create(
+        <String>[],
+        capturePortFactory: () => capturePort,
+      );
+      final gate = Completer<bool>();
+      addTearDown(() {
+        if (!gate.isCompleted) gate.complete(true);
+        fixture.dispose();
+      });
+      await fixture.orchestrator.prepareCapture();
+      capturePort.supportGate = gate;
+      final previousPrepare = fixture.orchestrator.prepareCapture();
+      await Future<void>.delayed(Duration.zero);
+      expect(capturePort.supportCalls, 2);
+      capturePort.replaceWebView();
+      var navigated = false;
+      final recovery = fixture.orchestrator.runCaptureStartup(
+        waitForSurface: () async {},
+        isActive: () => true,
+        navigate: () async {
+          navigated = true;
+          capturePort.emitBattle(2);
+        },
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(navigated, isFalse);
+      expect(capturePort.configureCount, 1);
+      gate.complete(true);
+      await Future.wait<void>([previousPrepare, recovery]);
+      await Future<void>.delayed(Duration.zero);
+      expect(navigated, isTrue);
+      expect(capturePort.configureCount, 2);
+      expect(fixture.captureController.latestEvent?.sequence, 2);
+    },
+  );
+
+  test(
+    'browser-only recovery keeps capture disabled until game mode resumes',
+    () async {
+      final capturePort = _RecreatedWebViewCapturePort();
+      final fixture = await _DefaultOrchestratorFixture.create(
+        <String>[],
+        capturePortFactory: () => capturePort,
+      );
+      addTearDown(fixture.dispose);
+      await fixture.captureModeController.setMode(CaptureMode.browserOnly);
+      for (var startup = 0; startup < 2; startup++) {
+        if (startup > 0) capturePort.replaceWebView();
+        await fixture.orchestrator.runCaptureStartup(
+          waitForSurface: () async {},
+          isActive: () => true,
+          navigate: () async => capturePort.emitBattle(startup + 1),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(fixture.captureController.state, GameCaptureState.disabled);
+        expect(fixture.captureController.latestEvent, isNull);
+      }
+      expect(capturePort.configureCount, 2);
+      await fixture.captureModeController.setMode(CaptureMode.game);
+      await fixture.orchestrator.runCaptureStartup(
+        waitForSurface: () async {},
+        isActive: () => true,
+        navigate: () async => capturePort.emitBattle(3),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(fixture.captureController.latestEvent?.sequence, 3);
+      expect(fixture.captureController.state, GameCaptureState.capturing);
+    },
+  );
+
+  test('capture survives twenty consecutive WebView replacements', () async {
+    final capturePort = _RecreatedWebViewCapturePort();
+    final fixture = await _DefaultOrchestratorFixture.create(
+      <String>[],
+      capturePortFactory: () => capturePort,
+    );
+    addTearDown(fixture.dispose);
+    final session = fixture.captureController.captureSessionId;
+    for (var startup = 1; startup <= 21; startup++) {
+      if (startup > 1) capturePort.replaceWebView();
+      await fixture.orchestrator.runCaptureStartup(
+        waitForSurface: () async {},
+        isActive: () => true,
+        navigate: () async => capturePort.emitBattle(startup),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(fixture.captureController.latestEvent?.sequence, startup);
+      expect(fixture.captureController.capturedCount, startup);
+      expect(fixture.captureController.captureSessionId, session);
+      expect(capturePort.configureCount, startup);
+    }
   });
 
   testWidgets(
@@ -1530,6 +2212,15 @@ void main() {
       await tester.pump();
       expect(fixture.statusController.loadState, WebViewLoadState.loading);
 
+      // The redirected document starts before its finish callback. Distinct
+      // old-document finishes must not complete the current navigation.
+      fixture.port.addEvent(
+        _event(
+          'pageStarted',
+          generationId: 7,
+          url: 'https://www.dmm.com/ready?token=secret',
+        ),
+      );
       fixture.port.addEvent(
         _event(
           'pageFinished',
@@ -2545,6 +3236,15 @@ final class _FakeFrameReloadPort implements GameFrameReloadPort {
   }
 }
 
+void _addLoadingTearDown(WidgetTester tester, _SurfaceFixture fixture) {
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await fixture.dispose();
+  });
+}
+
 NativeGameWebViewEvent _event(
   String type, {
   required int generationId,
@@ -2554,6 +3254,7 @@ NativeGameWebViewEvent _event(
   String? scheme,
   bool? didCrash,
   bool? isGame,
+  String? state,
 }) {
   return NativeGameWebViewEvent.decode(<String, Object?>{
     'type': type,
@@ -2564,6 +3265,7 @@ NativeGameWebViewEvent _event(
     'scheme': ?scheme,
     'didCrash': ?didCrash,
     'isGame': ?isGame,
+    'state': ?state,
   });
 }
 
@@ -2668,6 +3370,57 @@ final class _ScriptRecordingCapturePort implements GameCapturePort {
     required bool enabled,
     required String script,
   }) async => scripts.add(script);
+
+  @override
+  void dispose() => unawaited(_events.close());
+}
+
+final class _RecreatedWebViewCapturePort implements GameCapturePort {
+  final StreamController<CapturedApiEvent> _events =
+      StreamController<CapturedApiEvent>.broadcast();
+  int _generation = 0;
+  int? _installedGeneration;
+  String? _installedSession;
+  int configureCount = 0;
+  int supportCalls = 0;
+  Completer<bool>? supportGate;
+
+  @override
+  Stream<CapturedApiEvent> get events => _events.stream;
+
+  @override
+  Future<bool> isSupported() async {
+    supportCalls++;
+    return await supportGate?.future ?? true;
+  }
+
+  @override
+  Future<void> configure({
+    required bool enabled,
+    required String script,
+  }) async {
+    configureCount++;
+    _installedGeneration = enabled ? _generation : null;
+    _installedSession = RegExp(
+      "const captureSessionId = '([^']+)'",
+    ).firstMatch(script)?.group(1);
+  }
+
+  void replaceWebView() => _generation++;
+
+  void emitBattle(int sequence) {
+    if (_installedGeneration != _generation) return;
+    _events.add(
+      CapturedApiEvent(
+        path: '/kcsapi/api_req_sortie/battle',
+        responseBody: '{"api_result":1}',
+        source: CaptureSource.xhr,
+        capturedAt: DateTime.utc(2026, 9, 22),
+        sequence: sequence,
+        captureSessionId: _installedSession,
+      ),
+    );
+  }
 
   @override
   void dispose() => unawaited(_events.close());
@@ -2860,6 +3613,8 @@ final class _SurfaceFixture {
     GameFrameRateSettingsController? frameRateSettingsController,
     GameFrameRateRuntimePort Function()? frameRateRuntimePortFactory,
     void Function(bool didCrash)? onRenderProcessGone,
+    void Function(GameLoadEvent event)? onLoadEvent,
+    Duration navigationTimeout = const Duration(seconds: 45),
   }) {
     if (tester.binding.lifecycleState != AppLifecycleState.resumed) {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
@@ -2883,6 +3638,8 @@ final class _SurfaceFixture {
             frameRateSettingsController: frameRateSettingsController,
             frameRateRuntimePortFactory: frameRateRuntimePortFactory,
             onRenderProcessGone: onRenderProcessGone,
+            onLoadEvent: onLoadEvent,
+            navigationTimeout: navigationTimeout,
             previewPort: previewPort,
             previewDecoder: (bytes, _) async => MemoryImage(bytes),
             cleanupTimeout: cleanupTimeout,
@@ -2939,9 +3696,11 @@ final class _FakeNativePort implements NativeActivityGameWebViewPort {
   Object? disposeFailure;
   Completer<void>? disposeCompleter;
   Object? reloadFailure;
+  Completer<void>? reloadCompleter;
   Completer<void>? loadCompleter;
   Object? loadFailure;
   int successfulReloadCalls = 0;
+  int generation = 7;
   final List<Completer<void>> fitCompleters = <Completer<void>>[];
   Completer<void>? boundsCompleter;
   final List<Object> fitFailures = <Object>[];
@@ -2965,7 +3724,7 @@ final class _FakeNativePort implements NativeActivityGameWebViewPort {
     for (final event in eventsDuringCreate) {
       _events.add(event);
     }
-    return 7;
+    return generation;
   }
 
   @override
@@ -3036,6 +3795,9 @@ final class _FakeNativePort implements NativeActivityGameWebViewPort {
   @override
   Future<void> reload() async {
     calls.add('reload');
+    final blocker = reloadCompleter;
+    reloadCompleter = null;
+    await blocker?.future;
     if (reloadFailure case final failure?) throw failure;
     successfulReloadCalls += 1;
   }

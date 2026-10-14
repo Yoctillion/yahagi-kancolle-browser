@@ -119,13 +119,14 @@ String buildNativeGameCaptureScript() {
         typeof YahagiNativeCapture.postMessage !== 'function'
       ) return;
 
-      const responseEnvelope = decodeKcsapiEnvelope(responseBody);
-      if (
-        questMutationPaths.has(path) &&
-        responseEnvelope !== null &&
-        Number(responseEnvelope.api_result) === 1
-      ) {
-        questMutationGeneration += 1;
+      if (questMutationPaths.has(path)) {
+        const responseEnvelope = decodeKcsapiEnvelope(responseBody);
+        if (
+          responseEnvelope !== null &&
+          Number(responseEnvelope.api_result) === 1
+        ) {
+          questMutationGeneration += 1;
+        }
       }
 
       const event = {
