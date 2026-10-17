@@ -21,6 +21,7 @@ import 'package:yahagi_kancolle_browser/src/browser/native_game_surface_preview.
 import 'package:yahagi_kancolle_browser/src/browser/native_game_webview_contract.dart';
 import 'package:yahagi_kancolle_browser/src/browser/native_game_webview_port.dart';
 import 'package:yahagi_kancolle_browser/src/capture/capture_mode.dart';
+import 'package:yahagi_kancolle_browser/src/capture/android_game_capture_port.dart';
 import 'package:yahagi_kancolle_browser/src/capture/capture_mode_controller.dart';
 import 'package:yahagi_kancolle_browser/src/capture/capture_mode_store.dart';
 import 'package:yahagi_kancolle_browser/src/capture/game_capture_controller.dart';
@@ -1059,45 +1060,138 @@ void main() {
     },
   );
 
-  test(
-    'a startup rebind survives an already pending capture preparation',
-    () async {
-      final capturePort = _RecreatedWebViewCapturePort();
-      final fixture = await _DefaultOrchestratorFixture.create(
-        <String>[],
-        capturePortFactory: () => capturePort,
-      );
-      final gate = Completer<bool>();
-      addTearDown(() {
-        if (!gate.isCompleted) gate.complete(true);
-        fixture.dispose();
-      });
-      await fixture.orchestrator.prepareCapture();
-      capturePort.supportGate = gate;
-      final previousPrepare = fixture.orchestrator.prepareCapture();
-      await Future<void>.delayed(Duration.zero);
-      expect(capturePort.supportCalls, 2);
-      capturePort.replaceWebView();
-      var navigated = false;
-      final recovery = fixture.orchestrator.runCaptureStartup(
-        waitForSurface: () async {},
-        isActive: () => true,
-        navigate: () async {
-          navigated = true;
-          capturePort.emitBattle(2);
-        },
-      );
-      await Future<void>.delayed(Duration.zero);
-      expect(navigated, isFalse);
-      expect(capturePort.configureCount, 1);
-      gate.complete(true);
-      await Future.wait<void>([previousPrepare, recovery]);
-      await Future<void>.delayed(Duration.zero);
-      expect(navigated, isTrue);
-      expect(capturePort.configureCount, 2);
-      expect(fixture.captureController.latestEvent?.sequence, 2);
-    },
-  );
+  test('a startup rebind supersedes retired capture preparation', () async {
+    final capturePort = _RecreatedWebViewCapturePort();
+    final fixture = await _DefaultOrchestratorFixture.create(
+      <String>[],
+      capturePortFactory: () => capturePort,
+    );
+    final gate = Completer<bool>();
+    addTearDown(() {
+      if (!gate.isCompleted) gate.complete(true);
+      fixture.dispose();
+    });
+    await fixture.orchestrator.prepareCapture();
+    capturePort.supportGate = gate;
+    final previousPrepare = fixture.orchestrator.prepareCapture();
+    await Future<void>.delayed(Duration.zero);
+    expect(capturePort.supportCalls, 2);
+    capturePort.replaceWebView();
+    capturePort.supportGate = null;
+    var navigated = false;
+    final recovery = fixture.orchestrator.runCaptureStartup(
+      waitForSurface: () async {},
+      isActive: () => true,
+      navigate: () async {
+        navigated = true;
+        capturePort.emitBattle(2);
+      },
+    );
+    expect(
+      await recovery
+          .then((_) => true)
+          .timeout(const Duration(seconds: 2), onTimeout: () => false),
+      isTrue,
+    );
+    expect(gate.isCompleted, isFalse);
+    expect(navigated, isTrue);
+    expect(capturePort.configureCount, 2);
+    gate.complete(true);
+    await Future.wait<void>([previousPrepare, recovery]);
+    await Future<void>.delayed(Duration.zero);
+    expect(navigated, isTrue);
+    expect(capturePort.configureCount, 2);
+    expect(fixture.captureController.latestEvent?.sequence, 2);
+  });
+
+  for (final boundary in <String>['support', 'configure', 'configure-error']) {
+    test(
+      'native generation rebind bypasses retired $boundary reply within two seconds',
+      () async {
+        final channel = MethodChannel('test/recovery-capture/$boundary');
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        final retiredReply = Completer<void>();
+        final retiredEntered = Completer<void>();
+        var blockNext = false;
+        var generation = 0;
+        var installedGeneration = -1;
+        var configureCalls = 0;
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'isSupported') {
+            if (blockNext && boundary == 'support') {
+              blockNext = false;
+              retiredEntered.complete();
+              await retiredReply.future;
+            }
+            return true;
+          }
+          if (call.method == 'configure') {
+            configureCalls++;
+            final commandGeneration = generation;
+            if (blockNext && boundary != 'support') {
+              blockNext = false;
+              retiredEntered.complete();
+              await retiredReply.future;
+            }
+            installedGeneration = commandGeneration;
+          }
+          return null;
+        });
+        final fixture = await _DefaultOrchestratorFixture.create(
+          <String>[],
+          capturePortFactory: () =>
+              MethodChannelGameCapturePort(channel: channel),
+        );
+        addTearDown(() async {
+          if (!retiredReply.isCompleted) retiredReply.complete();
+          await Future<void>.delayed(Duration.zero);
+          fixture.dispose();
+          messenger.setMockMethodCallHandler(channel, null);
+        });
+        Future<void> start(Future<void> Function() navigate) =>
+            fixture.orchestrator.runCaptureStartup(
+              waitForSurface: () async {},
+              isActive: () => true,
+              navigate: navigate,
+            );
+        await start(() async {});
+        blockNext = true;
+        final retired = boundary == 'support'
+            ? fixture.orchestrator.prepareCapture()
+            : start(() async {});
+        await retiredEntered.future;
+        generation++;
+        var navigated = false;
+        final recovery = start(() async => navigated = true);
+        expect(
+          await recovery
+              .then((_) => true)
+              .timeout(const Duration(seconds: 2), onTimeout: () => false),
+          isTrue,
+        );
+        expect(retiredReply.isCompleted, isFalse);
+        expect(navigated, isTrue);
+        expect(installedGeneration, 1);
+        expect(fixture.captureController.state, GameCaptureState.ready);
+
+        if (boundary == 'configure-error') {
+          retiredReply.completeError(
+            StateError('retired native command failed'),
+          );
+        } else {
+          retiredReply.complete();
+        }
+        await retired;
+        for (var i = 0; i < 8; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        expect(installedGeneration, 1);
+        expect(fixture.captureController.state, GameCaptureState.ready);
+        expect(configureCalls, boundary == 'support' ? 2 : 4);
+      },
+    );
+  }
 
   test(
     'browser-only recovery keeps capture disabled until game mode resumes',
@@ -2401,6 +2495,135 @@ void main() {
     await tester.pump();
     expect(fixture.port.calls, contains('visible:true'));
     fixture.toolbarController.collapse();
+  });
+
+  for (final recreateRenderer in <bool>[false, true]) {
+    testWidgets(
+      '${recreateRenderer ? 'renderer recovery' : 'new document'} does not wait '
+      'for a retired page fit response',
+      (tester) async {
+        final fixture = _SurfaceFixture();
+        final retiredFit = Completer<void>();
+        _addLoadingTearDown(tester, fixture);
+        addTearDown(() {
+          if (!retiredFit.isCompleted) retiredFit.complete();
+        });
+        await fixture.pump(tester);
+        await _pumpUntil(
+          tester,
+          () => fixture.port.calls.any((call) => call.startsWith('load:')),
+        );
+        fixture.port.fitCompleters.add(retiredFit);
+        fixture.port.addEvent(
+          _event(
+            'pageStarted',
+            generationId: 7,
+            url: 'https://game.example/old',
+          ),
+        );
+        fixture.port.addEvent(
+          _event(
+            'pageFinished',
+            generationId: 7,
+            url: 'https://game.example/old',
+          ),
+        );
+        await _pumpUntil(tester, () => fixture.port.calls.contains('fit'));
+
+        if (recreateRenderer) {
+          fixture.port.addEvent(
+            _event('renderProcessGone', generationId: 7, didCrash: false),
+          );
+          fixture.port.addEvent(_event('destroyed', generationId: 7));
+          await tester.pump();
+          fixture.port.generation = 8;
+          await tester.tap(find.byKey(const Key('native-game-surface-reload')));
+          await _pumpUntil(
+            tester,
+            () =>
+                fixture.port.calls
+                    .where((call) => call.startsWith('load:'))
+                    .length ==
+                2,
+          );
+        }
+
+        final generationId = recreateRenderer ? 8 : 7;
+        fixture.port.addEvent(
+          _event(
+            'pageStarted',
+            generationId: generationId,
+            url: 'https://game.example/new',
+          ),
+        );
+        fixture.port.addEvent(
+          _event(
+            'pageFinished',
+            generationId: generationId,
+            url: 'https://game.example/new',
+          ),
+        );
+        for (var i = 0; i < 8; i++) {
+          await tester.pump();
+        }
+
+        expect(retiredFit.isCompleted, isFalse);
+        expect(fixture.port.calls.where((call) => call == 'fit'), hasLength(2));
+        expect(fixture.port.calls.last, 'visible:true');
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        final captureCalls = fixture.orchestrator.prepareCaptureCalls;
+        final audioCalls = fixture.orchestrator.attachAudioCalls;
+        retiredFit.complete();
+        await tester.pump();
+        await tester.pump();
+        expect(fixture.orchestrator.prepareCaptureCalls, captureCalls);
+        expect(fixture.orchestrator.attachAudioCalls, audioCalls);
+        expect(fixture.port.calls.last, 'visible:true');
+      },
+    );
+  }
+
+  testWidgets('renderer recovery releases every frame-rate runtime listener', (
+    tester,
+  ) async {
+    final fixture = _SurfaceFixture();
+    final settings = await GameFrameRateSettingsController.load(
+      MemoryGameFrameRateSettingsStore(),
+    );
+    addTearDown(settings.dispose);
+    _addLoadingTearDown(tester, fixture);
+    await fixture.pump(
+      tester,
+      frameRateSettingsController: settings,
+      frameRateRuntimePortFactory: _FakeNativeFrameRateRuntimePort.new,
+    );
+    await _pumpUntil(
+      tester,
+      () => fixture.port.calls.any((call) => call.startsWith('load:')),
+    );
+    // Inspect the inherited notifier only to prove this listener leak.
+    // ignore: invalid_use_of_protected_member
+    expect(settings.hasListeners, isTrue);
+
+    fixture.port.addEvent(
+      _event('renderProcessGone', generationId: 7, didCrash: false),
+    );
+    fixture.port.addEvent(_event('destroyed', generationId: 7));
+    await tester.pump();
+    fixture.port.generation = 8;
+    await tester.tap(find.byKey(const Key('native-game-surface-reload')));
+    await _pumpUntil(
+      tester,
+      () =>
+          fixture.port.calls.where((call) => call.startsWith('load:')).length ==
+          2,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    // ignore: invalid_use_of_protected_member
+    expect(settings.hasListeners, isFalse);
   });
 
   testWidgets('renderer recovery reload creates one new generation', (

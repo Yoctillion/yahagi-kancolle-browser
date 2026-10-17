@@ -1213,15 +1213,17 @@ class _QuestDetail extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 18,
-                    runSpacing: 9,
+                  Row(
                     children: [
-                      for (var index = 0; index < 4; index++)
-                        _MaterialReward(
-                          assetIndex: index + 1,
-                          value: entry.materials[index],
+                      for (var index = 0; index < 4; index++) ...[
+                        if (index > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: _MaterialReward(
+                            assetIndex: index + 1,
+                            value: entry.materials[index],
+                          ),
                         ),
+                      ],
                     ],
                   ),
                   if (entry.rewardsText.isNotEmpty) ...[
@@ -1440,30 +1442,31 @@ class _MaterialReward extends StatelessWidget {
   final int value;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 78,
-    child: Row(
-      children: [
-        SizedBox(
-          width: 18,
-          height: 18,
-          child: Image.asset(
-            'assets/images/material/${assetIndex.toString().padLeft(2, '0')}.png',
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const SizedBox.shrink(),
-          ),
+  Widget build(BuildContext context) => Row(
+    children: [
+      SizedBox(
+        width: 18,
+        height: 18,
+        child: Image.asset(
+          'assets/images/material/${assetIndex.toString().padLeft(2, '0')}.png',
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => const SizedBox.shrink(),
         ),
-        const SizedBox(width: 6),
-        Expanded(
+      ),
+      const SizedBox(width: 6),
+      Expanded(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
           child: Text(
             '$value',
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            softWrap: false,
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
-      ],
-    ),
+      ),
+    ],
   );
 }
 

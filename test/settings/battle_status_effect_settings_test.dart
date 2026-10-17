@@ -3,6 +3,39 @@ import 'package:yahagi_kancolle_browser/src/fleet/ship_damage_level.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 
 void main() {
+  test(
+    'steady morale follows the master switch and display scope independently of damage',
+    () {
+      const steady = BattleStatusEffectSettings(
+        moraleSparkleMode: MoraleSparkleMode.steady,
+        displayScope: BattleEffectDisplayScope.fleetOnly,
+      );
+      expect(
+        steady.sparkleModeFor(BattleEffectSurface.fleet),
+        MoraleSparkleMode.steady,
+      );
+      expect(
+        steady.sparkleModeFor(BattleEffectSurface.prediction),
+        MoraleSparkleMode.off,
+      );
+      final disabled = steady.copyWith(enabled: false);
+      expect(
+        disabled.sparkleModeFor(BattleEffectSurface.fleet),
+        MoraleSparkleMode.off,
+      );
+      expect(disabled.moraleSparkleMode, MoraleSparkleMode.steady);
+      expect(
+        steady.pulseFilterFor(BattleEffectSurface.fleet),
+        DamagePulseFilter.all,
+      );
+      expect(steady.vibrates(ShipDamageLevel.heavy), isTrue);
+      expect(
+        steady,
+        isNot(steady.copyWith(moraleSparkleMode: MoraleSparkleMode.blinking)),
+      );
+    },
+  );
+
   test('defaults preserve all existing status effects on both surfaces', () {
     const settings = BattleStatusEffectSettings();
 
@@ -16,8 +49,14 @@ void main() {
       settings.pulseFilterFor(BattleEffectSurface.fleet),
       DamagePulseFilter.all,
     );
-    expect(settings.sparkleEnabledFor(BattleEffectSurface.prediction), isTrue);
-    expect(settings.sparkleEnabledFor(BattleEffectSurface.fleet), isTrue);
+    expect(
+      settings.sparkleModeFor(BattleEffectSurface.prediction),
+      MoraleSparkleMode.blinking,
+    );
+    expect(
+      settings.sparkleModeFor(BattleEffectSurface.fleet),
+      MoraleSparkleMode.blinking,
+    );
     expect(settings.vibrates(ShipDamageLevel.moderate), isTrue);
     expect(settings.vibrates(ShipDamageLevel.heavy), isTrue);
   });
@@ -36,8 +75,14 @@ void main() {
       settings.pulseFilterFor(BattleEffectSurface.fleet),
       DamagePulseFilter.off,
     );
-    expect(settings.sparkleEnabledFor(BattleEffectSurface.prediction), isTrue);
-    expect(settings.sparkleEnabledFor(BattleEffectSurface.fleet), isFalse);
+    expect(
+      settings.sparkleModeFor(BattleEffectSurface.prediction),
+      MoraleSparkleMode.blinking,
+    );
+    expect(
+      settings.sparkleModeFor(BattleEffectSurface.fleet),
+      MoraleSparkleMode.off,
+    );
     expect(settings.vibrates(ShipDamageLevel.heavy), isTrue);
   });
 
@@ -52,7 +97,10 @@ void main() {
       settings.pulseFilterFor(BattleEffectSurface.fleet),
       DamagePulseFilter.off,
     );
-    expect(settings.sparkleEnabledFor(BattleEffectSurface.prediction), isFalse);
+    expect(
+      settings.sparkleModeFor(BattleEffectSurface.prediction),
+      MoraleSparkleMode.off,
+    );
     expect(settings.vibrates(ShipDamageLevel.heavy), isFalse);
   });
 
@@ -89,9 +137,14 @@ void main() {
   });
 
   test('morale sparkle switch does not change damage effects', () {
-    const settings = BattleStatusEffectSettings(moraleSparkleEnabled: false);
+    const settings = BattleStatusEffectSettings(
+      moraleSparkleMode: MoraleSparkleMode.off,
+    );
 
-    expect(settings.sparkleEnabledFor(BattleEffectSurface.fleet), isFalse);
+    expect(
+      settings.sparkleModeFor(BattleEffectSurface.fleet),
+      MoraleSparkleMode.off,
+    );
     expect(
       settings.pulseFilterFor(BattleEffectSurface.fleet),
       DamagePulseFilter.all,
@@ -105,13 +158,13 @@ void main() {
       displayScope: BattleEffectDisplayScope.fleetOnly,
       damagePulseFilter: DamagePulseFilter.moderateOnly,
       damageVibrationFilter: DamageVibrationFilter.off,
-      moraleSparkleEnabled: false,
+      moraleSparkleMode: MoraleSparkleMode.off,
     );
 
     expect(updated.displayScope, BattleEffectDisplayScope.fleetOnly);
     expect(updated.damagePulseFilter, DamagePulseFilter.moderateOnly);
     expect(updated.damageVibrationFilter, DamageVibrationFilter.off);
-    expect(updated.moraleSparkleEnabled, isFalse);
+    expect(updated.moraleSparkleMode, MoraleSparkleMode.off);
     expect(settings, const BattleStatusEffectSettings());
   });
 }

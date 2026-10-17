@@ -24,8 +24,10 @@ abstract interface class BackupDocumentPort {
   Future<String> prepareShareFile(String name, Uint8List bytes);
   Future<String> launchShareFile(String token);
   Future<void> discardShareFile(String token);
-  Future<String?> pickSaveLocation(String name);
-  Future<void> writeSavedFile(String token, Uint8List bytes);
+
+  /// Stages the complete archive before opening the picker, then writes and
+  /// verifies the chosen document without depending on a Flutter resume.
+  Future<String?> saveFile(String name, Uint8List bytes);
   Future<void> completeSavedFile(String token);
   Future<void> discardSavedFile(String token);
   Future<Uint8List?> pickImport();
@@ -97,6 +99,9 @@ final class AndroidBackupDocumentPort implements BackupDocumentPort {
       }
       if (bytes == null) continue;
       found = true;
+      // Each slot is still read from disk. Identical bytes have already passed
+      // the complete codec, ownership and SQLite checks in this invocation.
+      if (chosenBytes != null && listEquals(bytes, chosenBytes)) continue;
       BackupArchive archive;
       try {
         archive = await worker.decode(bytes);
@@ -106,6 +111,10 @@ final class AndroidBackupDocumentPort implements BackupDocumentPort {
       if (archive.memberId != memberId) {
         throw StateError('Backup copy belongs to another account');
       }
+      // Older copies cannot replace the highest-priority restorable one. Keep
+      // their read/ownership barriers without repeating SQLite restoration
+      // validation for snapshots that this read will never select or promote.
+      if (chosenBytes != null) continue;
       try {
         await (validateCandidate?.call(archive) ??
             LogbookDatabase.forAccount(
@@ -116,8 +125,8 @@ final class AndroidBackupDocumentPort implements BackupDocumentPort {
         // Such a copy must never replace a healthy older main document.
         continue;
       }
-      chosenSlot ??= slot;
-      chosenBytes ??= bytes;
+      chosenSlot = slot;
+      chosenBytes = bytes;
     }
     if (chosenBytes != null) {
       if (chosenSlot != 'main') {
@@ -162,11 +171,8 @@ final class AndroidBackupDocumentPort implements BackupDocumentPort {
   Future<void> discardShareFile(String token) =>
       channel.invokeMethod<void>('discardShareFile', {'token': token});
   @override
-  Future<String?> pickSaveLocation(String name) =>
-      channel.invokeMethod<String>('pickSaveLocation', {'name': name});
-  @override
-  Future<void> writeSavedFile(String token, Uint8List bytes) => channel
-      .invokeMethod<void>('writeSavedFile', {'token': token, 'bytes': bytes});
+  Future<String?> saveFile(String name, Uint8List bytes) =>
+      channel.invokeMethod<String>('saveFile', {'name': name, 'bytes': bytes});
   @override
   Future<void> completeSavedFile(String token) =>
       channel.invokeMethod<void>('completeSavedFile', {'token': token});
@@ -312,28 +318,52 @@ final class BackupArchive {
     return mapEquals(a, b);
   }
 
-  Uint8List encode() {
-    final payload = utf8.encode(
-      jsonEncode({
+  Uint8List encode({
+    int maxPlainBytes = 250 * 1024 * 1024,
+    int maxEncodedBytes = 100 * 1024 * 1024,
+  }) {
+    // Compress JSON as it is produced. A complete plain JSON String and its
+    // UTF-8 copy can otherwise coexist with the database snapshot and gzip.
+    final output = _BackupByteSink();
+    final compressor = gzip.encoder.startChunkedConversion(
+      _LimitedByteSink(maxEncodedBytes, output),
+    );
+    final encoder = JsonUtf8Encoder(
+      null,
+      null,
+      16 * 1024,
+    ).startChunkedConversion(_LimitedByteSink(maxPlainBytes, compressor));
+    try {
+      encoder.add({
         'memberId': memberId,
         'logbookSchema': logbookArchiveSchema,
         'tables': tables,
         'compositions': compositions.map((record) => record.toJson()).toList(),
         'writerId': writerId,
         'rowIds': rowIds,
-      }),
+      });
+      encoder.close();
+    } catch (error, stack) {
+      // Finish/release the native compressor even if the plain-size barrier
+      // interrupted encoding. The incomplete result is never returned.
+      try {
+        compressor.close();
+      } catch (_) {}
+      Error.throwWithStackTrace(error, stack);
+    }
+    final compressed = output.takeBytes();
+    final envelope = _BackupByteSink();
+    final envelopeEncoder = JsonUtf8Encoder().startChunkedConversion(
+      _LimitedByteSink(maxEncodedBytes, envelope),
     );
-    final compressed = gzip.encode(payload);
-    return Uint8List.fromList(
-      utf8.encode(
-        jsonEncode({
-          'format': 'yahagi-record-backup',
-          'version': 1,
-          'sha256': sha256.convert(compressed).toString(),
-          'payload': base64Encode(compressed),
-        }),
-      ),
-    );
+    envelopeEncoder.add({
+      'format': 'yahagi-record-backup',
+      'version': 1,
+      'sha256': sha256.convert(compressed).toString(),
+      'payload': base64Encode(compressed),
+    });
+    envelopeEncoder.close();
+    return envelope.takeBytes();
   }
 
   static BackupArchive decode(
@@ -343,7 +373,8 @@ final class BackupArchive {
     if (bytes.length > 100 * 1024 * 1024) {
       throw const FormatException('Backup is too large');
     }
-    final outer = jsonDecode(utf8.decode(bytes));
+    final jsonUtf8 = utf8.decoder.fuse(json.decoder);
+    final outer = jsonUtf8.convert(bytes);
     if (outer is! Map ||
         outer['format'] != 'yahagi-record-backup' ||
         outer['version'] != 1 ||
@@ -355,12 +386,15 @@ final class BackupArchive {
     if (sha256.convert(compressed).toString() != outer['sha256']) {
       throw const FormatException('Backup checksum mismatch');
     }
-    final output = _LimitedByteSink(maxPlainBytes);
-    final decoder = gzip.decoder.startChunkedConversion(output);
+    // Feed bounded decompression directly into the incremental JSON parser;
+    // do not retain an expanded byte buffer and a second complete String.
+    final output = _BackupJsonSink();
+    final decoder = gzip.decoder.startChunkedConversion(
+      _LimitedByteSink(maxPlainBytes, jsonUtf8.startChunkedConversion(output)),
+    );
     decoder.add(compressed);
     decoder.close();
-    final plain = output.takeBytes();
-    final value = jsonDecode(utf8.decode(plain));
+    final value = output.value;
     if (value is! Map ||
         value['memberId'] is! int ||
         (value['memberId'] as int) <= 0 ||
@@ -475,24 +509,44 @@ final class BackupArchive {
   }
 }
 
-final class _LimitedByteSink implements ChunkedConversionSink<List<int>> {
-  _LimitedByteSink(this.limit);
+final class _LimitedByteSink implements Sink<List<int>> {
+  _LimitedByteSink(this.limit, this.next);
 
   final int limit;
-  final BytesBuilder _bytes = BytesBuilder(copy: false);
+  final Sink<List<int>> next;
   int _length = 0;
 
   @override
   void add(List<int> chunk) {
     _length += chunk.length;
     if (_length > limit) throw const FormatException('Backup is too large');
-    _bytes.add(chunk);
+    next.add(chunk);
   }
+
+  @override
+  void close() => next.close();
+}
+
+final class _BackupByteSink implements Sink<List<int>> {
+  final BytesBuilder _bytes = BytesBuilder(copy: false);
+
+  @override
+  void add(List<int> chunk) => _bytes.add(chunk);
 
   @override
   void close() {}
 
   Uint8List takeBytes() => _bytes.takeBytes();
+}
+
+final class _BackupJsonSink implements Sink<Object?> {
+  Object? value;
+
+  @override
+  void add(Object? value) => this.value = value;
+
+  @override
+  void close() {}
 }
 
 final class _BackupSourceSnapshot {
@@ -509,23 +563,30 @@ final class BackupRestoreJournal {
   final BackupArchive archive;
   final bool requiresExternal;
 
-  Uint8List encode() => Uint8List.fromList(
-    utf8.encode(
-      jsonEncode({
-        'format': 'yahagi-restore-journal',
-        'version': 1,
-        'memberId': archive.memberId,
-        'requiresExternal': requiresExternal,
-        'archive': base64Encode(archive.encode()),
-      }),
-    ),
-  );
+  Uint8List encode({int maxEncodedBytes = 100 * 1024 * 1024}) {
+    // The journal wraps an archive in base64, so an archive within its own
+    // limit can still exceed the journal reader's limit. Reject before writing
+    // an unreadable recovery journal or mutating the live database.
+    final output = _BackupByteSink();
+    final encoder = JsonUtf8Encoder().startChunkedConversion(
+      _LimitedByteSink(maxEncodedBytes, output),
+    );
+    encoder.add({
+      'format': 'yahagi-restore-journal',
+      'version': 1,
+      'memberId': archive.memberId,
+      'requiresExternal': requiresExternal,
+      'archive': base64Encode(archive.encode()),
+    });
+    encoder.close();
+    return output.takeBytes();
+  }
 
   static BackupRestoreJournal decode(Uint8List bytes) {
     if (bytes.length > 100 * 1024 * 1024) {
       throw const FormatException('Restore journal is too large');
     }
-    final value = jsonDecode(utf8.decode(bytes));
+    final value = utf8.decoder.fuse(json.decoder).convert(bytes);
     if (value is! Map ||
         value['format'] != 'yahagi-restore-journal' ||
         value['version'] != 1 ||
@@ -668,6 +729,7 @@ final class RecordBackupService extends ChangeNotifier {
     this.afterJournalWritten,
     this.afterRestoreStage,
     this.worker = const BackupArchiveWorker(),
+    this.autoSyncDelay = const Duration(seconds: 3),
   }) : compositionStore = compositionStore ?? FileCompositionRecordStore(),
        databaseFor = databaseFor ?? LogbookDatabase.forAccount,
        now = now ?? DateTime.now;
@@ -676,6 +738,9 @@ final class RecordBackupService extends ChangeNotifier {
   final AccountSession session;
   final BackupDocumentPort port;
   final BackupArchiveWorker worker;
+
+  /// A fixed batching window: continuous writes cannot postpone it forever.
+  final Duration autoSyncDelay;
   final RecordBackupEnabledStore enabledStore;
   final FileCompositionRecordStore compositionStore;
   final LogbookDatabase Function(int) databaseFor;
@@ -695,9 +760,12 @@ final class RecordBackupService extends ChangeNotifier {
   final Map<int, String> _accountNames = {};
   final Map<int, int> _pendingCounts = {};
   final Set<int> _dirtyAccounts = {};
+  final Map<int, int> _writeVersions = {};
   final Set<int> _scheduledAccounts = {};
+  final Map<int, Timer> _autoSyncTimers = {};
   final Set<int> _offlineRecoveryScheduled = {};
   final Map<int, String> _lastErrors = {};
+  final Map<int, ({Object error, StackTrace stack})> _syncFailures = {};
   final Map<int, DateTime> _lastSyncs = {};
   bool _hasDirectory = false;
   bool _enabled = false;
@@ -707,6 +775,7 @@ final class RecordBackupService extends ChangeNotifier {
   bool _choosingDirectory = false;
   bool _exportActive = false;
   bool _disposed = false;
+  bool _closing = false;
   int? _maintenanceMemberId;
   Future<void> Function()? onMaintenanceBegin;
   VoidCallback? onMaintenanceEnd;
@@ -824,16 +893,43 @@ final class RecordBackupService extends ChangeNotifier {
       _databaseListeners[memberId] = listener;
       database.backupWrites.addListener(listener);
     }
-    if (_hasDirectory && memberId > 0) _schedule(memberId);
+    if (_hasDirectory && memberId > 0) _schedule(memberId, immediate: true);
     _notifyIfActive();
   }
 
-  void _schedule(int memberId) {
-    if (_disposed || !_enabled || !_hasDirectory || memberId <= 0) return;
+  void _schedule(int memberId, {bool immediate = false, bool changed = true}) {
+    if ((_disposed && !_closing) ||
+        !_enabled ||
+        !_hasDirectory ||
+        memberId <= 0) {
+      return;
+    }
+    if (changed) {
+      _writeVersions[memberId] = (_writeVersions[memberId] ?? 0) + 1;
+    }
     _dirtyAccounts.add(memberId);
     if (!_scheduledAccounts.add(memberId)) return;
     _pendingCounts[memberId] = 1;
     _notifyIfActive();
+    if (immediate || _closing || autoSyncDelay == Duration.zero) {
+      _runAutomaticBackup(memberId);
+    } else {
+      _autoSyncTimers[memberId] = Timer(autoSyncDelay, () {
+        _autoSyncTimers.remove(memberId);
+        _runAutomaticBackup(memberId);
+      });
+    }
+  }
+
+  void _flushScheduledBackups() {
+    final accounts = _autoSyncTimers.keys.toList();
+    for (final memberId in accounts) {
+      _autoSyncTimers.remove(memberId)?.cancel();
+      _runAutomaticBackup(memberId);
+    }
+  }
+
+  void _runAutomaticBackup(int memberId) {
     unawaited(
       _enqueue(() async {
         if (!_enabled) return;
@@ -847,7 +943,7 @@ final class RecordBackupService extends ChangeNotifier {
           if (!_enabled) break;
           await _syncFor(memberId);
         }
-      }).then<void>(
+      }, flushAutomatic: false).then<void>(
         (_) => _finishPending(memberId, retryDirty: true),
         onError: (Object error, StackTrace stack) {
           _lastErrors[memberId] = '$error';
@@ -865,6 +961,8 @@ final class RecordBackupService extends ChangeNotifier {
       _enabled = enabled;
       if (!enabled) {
         _dirtyAccounts.clear();
+        _pendingCounts.clear();
+        _syncFailures.clear();
       } else if (_hasDirectory && session.current.memberId > 0) {
         _schedule(session.current.memberId);
       }
@@ -877,16 +975,42 @@ final class RecordBackupService extends ChangeNotifier {
   }
 
   void _finishPending(int memberId, {required bool retryDirty}) {
-    _pendingCounts.remove(memberId);
     _scheduledAccounts.remove(memberId);
-    if (!retryDirty) _dirtyAccounts.remove(memberId);
+    if (!retryDirty && _enabled && _syncFailures.containsKey(memberId)) {
+      // Keep the failed batch, including writes that arrived during it. A
+      // later explicit barrier retries once; failure must not cause a hot loop.
+      _dirtyAccounts.add(memberId);
+      _pendingCounts[memberId] = 1;
+    } else {
+      _pendingCounts.remove(memberId);
+    }
     _notifyIfActive();
-    if (!_disposed && retryDirty && _dirtyAccounts.contains(memberId)) {
-      _schedule(memberId);
+    if ((!_disposed || _closing) &&
+        retryDirty &&
+        _dirtyAccounts.contains(memberId)) {
+      _schedule(memberId, changed: false);
     }
   }
 
-  Future<T> _enqueue<T>(Future<T> Function() operation) {
+  Future<T> _enqueue<T>(
+    Future<T> Function() operation, {
+    bool flushAutomatic = true,
+    int? replacesAutomaticFor,
+  }) {
+    int? consumedBatch;
+    if (replacesAutomaticFor != null) {
+      final timer = _autoSyncTimers.remove(replacesAutomaticFor);
+      if (timer != null) {
+        // This explicit operation takes a fresh snapshot itself. Consume its
+        // unstarted batch instead of serializing two identical full archives.
+        timer.cancel();
+        _scheduledAccounts.remove(replacesAutomaticFor);
+        consumedBatch = replacesAutomaticFor;
+      }
+    }
+    // Explicit sync/export/restore/cleanup is a durability barrier and must
+    // include batches for accounts that are no longer in the foreground.
+    if (flushAutomatic) _flushScheduledBackups();
     final result = _queue.then((_) async {
       _busy = true;
       _notifyIfActive();
@@ -894,6 +1018,15 @@ final class RecordBackupService extends ChangeNotifier {
         return await operation();
       } finally {
         _busy = false;
+        final memberId = consumedBatch;
+        if (memberId != null &&
+            _dirtyAccounts.contains(memberId) &&
+            !_scheduledAccounts.contains(memberId) &&
+            !_syncFailures.containsKey(memberId)) {
+          // A queued export may reject its captured account before syncing.
+          // Its unacknowledged batch still belongs to that original account.
+          _schedule(memberId, changed: false);
+        }
         _notifyIfActive();
       }
     });
@@ -1223,6 +1356,18 @@ final class RecordBackupService extends ChangeNotifier {
     } catch (error) {
       debugPrint('Old composition image cleanup failed: $error');
     }
+    _acknowledgeRestoredArchive(memberId);
+  }
+
+  void _acknowledgeRestoredArchive(int memberId) {
+    _lastErrors.remove(memberId);
+    _syncFailures.remove(memberId);
+    if (!_scheduledAccounts.contains(memberId)) {
+      _dirtyAccounts.remove(memberId);
+      _pendingCounts.remove(memberId);
+    }
+    _lastSyncs[memberId] = now();
+    _notifyIfActive();
   }
 
   Future<void> _recoverAllRestoreJournals() async {
@@ -1250,20 +1395,32 @@ final class RecordBackupService extends ChangeNotifier {
   Future<BackupArchive> _syncFor(
     int memberId, {
     _BackupSourceSnapshot? sourceSnapshot,
+  }) async =>
+      (await _syncPayloadFor(memberId, sourceSnapshot: sourceSnapshot)).archive;
+
+  Future<BackupArchiveResult> _syncPayloadFor(
+    int memberId, {
+    _BackupSourceSnapshot? sourceSnapshot,
   }) async {
     try {
       return await _performSyncFor(memberId, sourceSnapshot: sourceSnapshot);
-    } catch (error) {
+    } catch (error, stack) {
+      _syncFailures[memberId] = (error: error, stack: stack);
+      if (_enabled) {
+        _dirtyAccounts.add(memberId);
+        _pendingCounts[memberId] = 1;
+      }
       _lastErrors[memberId] = '$error';
       _notifyIfActive();
       rethrow;
     }
   }
 
-  Future<BackupArchive> _performSyncFor(
+  Future<BackupArchiveResult> _performSyncFor(
     int memberId, {
     _BackupSourceSnapshot? sourceSnapshot,
   }) async {
+    final snapshotVersion = _writeVersions[memberId] ?? 0;
     await _recoverRestoreIfNeeded(memberId);
     if (!_hasDirectory) throw StateError('Backup folder has not been selected');
     final name = _name(memberId);
@@ -1292,7 +1449,6 @@ final class RecordBackupService extends ChangeNotifier {
         ...?_deletedCompositions[memberId],
       },
     );
-    final archive = result.archive;
     final bytes = result.bytes;
     if (existing == null || !listEquals(existing, bytes)) {
       await port.writeLive(memberId, '$name.yhb', bytes);
@@ -1311,9 +1467,15 @@ final class RecordBackupService extends ChangeNotifier {
       }
     }
     _lastErrors.remove(memberId);
+    _syncFailures.remove(memberId);
+    if (!_scheduledAccounts.contains(memberId) &&
+        (_writeVersions[memberId] ?? 0) == snapshotVersion) {
+      _dirtyAccounts.remove(memberId);
+      _pendingCounts.remove(memberId);
+    }
     _lastSyncs[memberId] = now();
     _notifyIfActive();
-    return archive;
+    return result;
   }
 
   Future<bool> chooseDirectory() async {
@@ -1373,7 +1535,43 @@ final class RecordBackupService extends ChangeNotifier {
     _requireEnabled();
     final memberId = session.current.memberId;
     if (memberId <= 0) throw StateError('Game account is not verified');
-    await _enqueue(() => _syncFor(memberId));
+    await _enqueue(() => _syncFor(memberId), replacesAutomaticFor: memberId);
+  }
+
+  /// Flushes pending changes without rescanning a clean database. Lifecycle
+  /// transitions (including the document picker) often arrive more than once.
+  Future<void> flush() async {
+    await start();
+    _retryFailedBackups();
+    await _drainBackupQueue();
+    _throwSyncFailure();
+  }
+
+  void _retryFailedBackups() {
+    if (!_enabled || !_hasDirectory) return;
+    for (final memberId in _syncFailures.keys.toList()) {
+      if (!_scheduledAccounts.contains(memberId)) {
+        _schedule(memberId, immediate: true, changed: false);
+      }
+    }
+  }
+
+  void _throwSyncFailure() {
+    if (!_enabled || _syncFailures.isEmpty) return;
+    final failure = _syncFailures.values.first;
+    Error.throwWithStackTrace(failure.error, failure.stack);
+  }
+
+  Future<void> _drainBackupQueue() async {
+    while (true) {
+      _flushScheduledBackups();
+      final pending = _queue;
+      await pending;
+      // _finishPending may enqueue a final batch after a bounded automatic
+      // pass completes. Observe its completion callback before declaring idle.
+      await Future<void>.delayed(Duration.zero);
+      if (identical(pending, _queue) && _autoSyncTimers.isEmpty) return;
+    }
   }
 
   /// A verified backup snapshot is compared with the live database inside a
@@ -1468,13 +1666,10 @@ final class RecordBackupService extends ChangeNotifier {
   ) async {
     final payload = await _enqueue(() async {
       if (!session.isCurrent(scope)) throw StateError('Game account changed');
-      final archive = await _syncFor(scope.memberId);
+      final result = await _syncPayloadFor(scope.memberId);
       if (!session.isCurrent(scope)) throw StateError('Game account changed');
-      return (
-        name: _exportName(scope.memberId),
-        bytes: await worker.encode(archive),
-      );
-    });
+      return (name: _exportName(scope.memberId), bytes: result.bytes);
+    }, replacesAutomaticFor: scope.memberId);
     if (!session.isCurrent(scope)) throw StateError('Game account changed');
     final token = await port.prepareShareFile(payload.name, payload.bytes);
     try {
@@ -1494,18 +1689,19 @@ final class RecordBackupService extends ChangeNotifier {
     scope,
   ) async {
     if (!session.isCurrent(scope)) throw StateError('Game account changed');
-    final token = await port.pickSaveLocation(_exportName(scope.memberId));
+    // Prepare before a provider can create an empty document. Once the picker
+    // opens Android owns the staged bytes and can finish through backgrounding
+    // or process recreation without another Dart write callback.
+    final bytes = await _enqueue(() async {
+      if (!session.isCurrent(scope)) throw StateError('Game account changed');
+      final result = await _syncPayloadFor(scope.memberId);
+      if (!session.isCurrent(scope)) throw StateError('Game account changed');
+      return result.bytes;
+    }, replacesAutomaticFor: scope.memberId);
+    if (!session.isCurrent(scope)) throw StateError('Game account changed');
+    final token = await port.saveFile(_exportName(scope.memberId), bytes);
     if (token == null) return false;
     try {
-      if (!session.isCurrent(scope)) throw StateError('Game account changed');
-      final bytes = await _enqueue(() async {
-        if (!session.isCurrent(scope)) throw StateError('Game account changed');
-        final archive = await _syncFor(scope.memberId);
-        if (!session.isCurrent(scope)) throw StateError('Game account changed');
-        return await worker.encode(archive);
-      });
-      if (!session.isCurrent(scope)) throw StateError('Game account changed');
-      await port.writeSavedFile(token, bytes);
       if (!session.isCurrent(scope)) throw StateError('Game account changed');
       await port.completeSavedFile(token);
       return true;
@@ -1633,9 +1829,7 @@ final class RecordBackupService extends ChangeNotifier {
             'Old composition image cleanup failed after restore: $error',
           );
         }
-        _lastErrors.remove(scope.memberId);
-        _lastSyncs[scope.memberId] = now();
-        _notifyIfActive();
+        _acknowledgeRestoredArchive(scope.memberId);
       });
       await _endMaintenance();
     } catch (error) {
@@ -1696,6 +1890,14 @@ final class RecordBackupService extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    for (final memberId in _autoSyncTimers.keys) {
+      _scheduledAccounts.remove(memberId);
+      _pendingCounts.remove(memberId);
+    }
+    for (final timer in _autoSyncTimers.values) {
+      timer.cancel();
+    }
+    _autoSyncTimers.clear();
     session.removeListener(_accountChanged);
     for (final entry in _observedDatabases.entries) {
       entry.value.backupWrites.removeListener(_databaseListeners[entry.key]!);
@@ -1710,7 +1912,12 @@ final class RecordBackupService extends ChangeNotifier {
   /// Stops event sources and waits for queued file and database work to settle.
   Future<void> close() async {
     final starting = _starting;
-    if (!_disposed) dispose();
+    _closing = true;
+    _retryFailedBackups();
+    if (!_disposed) {
+      _flushScheduledBackups();
+      dispose();
+    }
     if (starting != null) {
       try {
         await starting;
@@ -1718,13 +1925,12 @@ final class RecordBackupService extends ChangeNotifier {
         // The caller of start() owns its error; close still drains resources.
       }
     }
-    await _subscriptionCancellation;
-    while (true) {
-      final pending = _queue;
-      await pending;
-      // Completion callbacks can queue one final pass after the prior pass.
-      await Future<void>.delayed(Duration.zero);
-      if (identical(pending, _queue)) return;
+    try {
+      await _subscriptionCancellation;
+      await _drainBackupQueue();
+      _throwSyncFailure();
+    } finally {
+      _closing = false;
     }
   }
 }

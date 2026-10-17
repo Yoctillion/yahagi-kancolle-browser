@@ -101,10 +101,8 @@ void main() {
         DamagePulseFilter.off,
       );
       expect(
-        tester
-            .widget<ShipMoraleMark>(find.byType(ShipMoraleMark))
-            .sparkleEnabled,
-        isFalse,
+        tester.widget<ShipMoraleMark>(find.byType(ShipMoraleMark)).sparkleMode,
+        MoraleSparkleMode.off,
       );
       expect(tester.takeException(), isNull);
     }

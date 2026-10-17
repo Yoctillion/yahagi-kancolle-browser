@@ -7,11 +7,13 @@ class LogbookFilterField {
     required this.keyName,
     required this.label,
     required this.options,
+    this.optionLabelFormatter,
   });
 
   final String keyName;
   final String label;
   final List<String> options;
+  final String Function(String)? optionLabelFormatter;
 }
 
 Future<Map<String, String>?> showLogbookFilterPanel({
@@ -203,7 +205,10 @@ class _FilterPanelRouteState extends State<_FilterPanelRoute> {
                   DropdownMenuItem<String>(
                     value: option,
                     child: Text(
-                      uiText(context, option),
+                      uiText(
+                        context,
+                        field.optionLabelFormatter?.call(option) ?? option,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

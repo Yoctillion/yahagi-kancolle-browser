@@ -94,10 +94,12 @@ void main() {
     );
     expect(find.text('已归还'), findsOneWidget);
     expect(
-      tester.widget<SecondTickBuilder>(find.byType(SecondTickBuilder)).enabled,
-      isFalse,
+      tester.widget<SecondTickBuilder>(find.byType(SecondTickBuilder)).stopAt,
+      past,
     );
+    final completedText = tester.widget<Text>(find.text('已归还'));
     await tester.pump(const Duration(seconds: 2));
+    expect(tester.widget<Text>(find.text('已归还')), same(completedText));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

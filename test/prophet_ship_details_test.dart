@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/live_battle_card.dart';
 import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_engine.dart';
 import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_executor.dart';
 import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
+import 'package:yahagi_kancolle_browser/src/browser/app_exit_guard.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_workspace_visibility.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
@@ -86,6 +88,7 @@ Future<void> _pumpCard(
   bool compact = false,
   bool collapsed = false,
   bool workspaceActive = true,
+  bool exitGuard = false,
   Rect? panelBounds,
   double textScale = 1,
 }) async {
@@ -104,8 +107,19 @@ Future<void> _pumpCard(
       ),
     ),
   );
+  final body = SafeArea(
+    child: SizedBox.expand(
+      child: panelBounds == null
+          ? panel
+          : Stack(
+              children: [Positioned.fromRect(rect: panelBounds, child: panel)],
+            ),
+    ),
+  );
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
@@ -113,17 +127,13 @@ Future<void> _pumpCard(
         child: child!,
       ),
       home: Scaffold(
-        body: SafeArea(
-          child: SizedBox.expand(
-            child: panelBounds == null
-                ? panel
-                : Stack(
-                    children: [
-                      Positioned.fromRect(rect: panelBounds, child: panel),
-                    ],
-                  ),
-          ),
-        ),
+        body: exitGuard
+            ? AppExitGuard(
+                fullscreen: false,
+                onExitFullscreen: () {},
+                child: body,
+              )
+            : body,
       ),
     ),
   );
@@ -459,6 +469,77 @@ void main() {
     expect(_popover, findsNothing);
     expect(find.byType(LiveBattleCard), findsOneWidget);
   });
+
+  testWidgets('Back dismisses ship details before root exit confirmation', (
+    tester,
+  ) async {
+    final controller = _controller();
+    await _startBattle(controller);
+    await _pumpCard(tester, controller, exitGuard: true);
+    await tester.tap(_row('friend', 0));
+    await tester.pump();
+    expect(_popover, findsOneWidget);
+
+    final card = tester.element(find.byType(LiveBattleCard));
+    final route = ModalRoute.of(card)!;
+    expect(route.willHandlePopInternally, isTrue);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(find.byKey(const Key('app-exit-confirm-dialog')), findsNothing);
+    expect(_popover, findsNothing);
+    expect(find.byType(LiveBattleCard), findsOneWidget);
+    expect(tester.element(find.byType(LiveBattleCard)), same(card));
+    expect(route.willHandlePopInternally, isFalse);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(find.byKey(const Key('app-exit-confirm-dialog')), findsOneWidget);
+    expect(find.byType(LiveBattleCard), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final dismissal in ['close button', 'outside click']) {
+    testWidgets('$dismissal of ship details restores root exit confirmation', (
+      tester,
+    ) async {
+      final controller = _controller();
+      await _startBattle(controller);
+      await _pumpCard(tester, controller, exitGuard: true);
+      await tester.tap(_row('friend', 0));
+      await tester.pump();
+      expect(_popover, findsOneWidget);
+
+      final route = ModalRoute.of(tester.element(find.byType(LiveBattleCard)))!;
+      expect(route.willHandlePopInternally, isTrue);
+
+      if (dismissal == 'close button') {
+        await tester.tap(find.byKey(const Key('battle-ship-details-close')));
+      } else {
+        await tester.tapAt(const Offset(790, 590));
+      }
+      await tester.pump();
+
+      expect(_popover, findsNothing);
+      expect(route.willHandlePopInternally, isFalse);
+      expect(find.byKey(const Key('app-exit-confirm-dialog')), findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+
+      expect(find.byKey(const Key('app-exit-confirm-dialog')), findsOneWidget);
+      expect(find.byType(LiveBattleCard), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('missing enemy fields stay unknown', (tester) async {
     final controller = _controller();

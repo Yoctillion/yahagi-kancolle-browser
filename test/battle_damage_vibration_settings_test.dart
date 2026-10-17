@@ -6,6 +6,71 @@ import 'package:yahagi_kancolle_browser/src/settings/safety_settings_store.dart'
 
 void main() {
   test(
+    'saved morale mode takes priority over the legacy sparkle switch',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'battle.statusEffects.moraleSparkleMode': 'off',
+        'battle.statusEffects.moraleSparkleEnabled': true,
+      });
+      final settings = await SharedPreferencesSafetySettingsStore()
+          .loadBattleStatusEffects();
+      expect(settings.moraleSparkleMode, MoraleSparkleMode.off);
+    },
+  );
+
+  for (final legacyEnabled in [true, false]) {
+    test(
+      'legacy morale switch $legacyEnabled migrates to its matching mode',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{
+          'battle.statusEffects.moraleSparkleEnabled': legacyEnabled,
+        });
+        final settings = await SharedPreferencesSafetySettingsStore()
+            .loadBattleStatusEffects();
+        expect(
+          settings.moraleSparkleMode,
+          legacyEnabled ? MoraleSparkleMode.blinking : MoraleSparkleMode.off,
+        );
+      },
+    );
+  }
+
+  for (final mode in MoraleSparkleMode.values) {
+    test(
+      'morale mode ${mode.name} persists and overrides legacy state',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{
+          'battle.statusEffects.moraleSparkleEnabled':
+              mode == MoraleSparkleMode.off,
+        });
+        var controller = await SafetySettingsController.load(
+          SharedPreferencesSafetySettingsStore(),
+        );
+        await controller.setMoraleSparkleMode(mode);
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+          prefs.getString('battle.statusEffects.moraleSparkleMode'),
+          mode.name,
+        );
+        controller = await SafetySettingsController.load(
+          SharedPreferencesSafetySettingsStore(),
+        );
+        expect(controller.battleStatusEffects.moraleSparkleMode, mode);
+      },
+    );
+  }
+
+  test('unknown morale mode falls back to legacy disabled state', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'battle.statusEffects.moraleSparkleMode': 'unknown',
+      'battle.statusEffects.moraleSparkleEnabled': false,
+    });
+    final settings = await SharedPreferencesSafetySettingsStore()
+        .loadBattleStatusEffects();
+    expect(settings.moraleSparkleMode, MoraleSparkleMode.off);
+  });
+
+  test(
     'battle status effects default to the backwards-compatible all state',
     () async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -33,7 +98,7 @@ void main() {
         displayScope: BattleEffectDisplayScope.fleetOnly,
         damagePulseFilter: DamagePulseFilter.moderateOnly,
         damageVibrationFilter: DamageVibrationFilter.heavyOnly,
-        moraleSparkleEnabled: false,
+        moraleSparkleMode: MoraleSparkleMode.off,
       ),
     );
     controller = await SafetySettingsController.load(
@@ -47,7 +112,7 @@ void main() {
         displayScope: BattleEffectDisplayScope.fleetOnly,
         damagePulseFilter: DamagePulseFilter.moderateOnly,
         damageVibrationFilter: DamageVibrationFilter.heavyOnly,
-        moraleSparkleEnabled: false,
+        moraleSparkleMode: MoraleSparkleMode.off,
       ),
     );
     final prefs = await SharedPreferences.getInstance();
@@ -111,7 +176,7 @@ void main() {
     await controller.setDamageVibrationFilter(
       DamageVibrationFilter.moderateOnly,
     );
-    await controller.setMoraleSparkleEnabled(false);
+    await controller.setMoraleSparkleMode(MoraleSparkleMode.off);
     await controller.setBattleStatusEffectsEnabled(false);
 
     expect(
@@ -121,7 +186,7 @@ void main() {
         displayScope: BattleEffectDisplayScope.predictionOnly,
         damagePulseFilter: DamagePulseFilter.minorOnly,
         damageVibrationFilter: DamageVibrationFilter.moderateOnly,
-        moraleSparkleEnabled: false,
+        moraleSparkleMode: MoraleSparkleMode.off,
       ),
     );
   });

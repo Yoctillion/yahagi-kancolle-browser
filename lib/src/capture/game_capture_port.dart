@@ -22,6 +22,11 @@ abstract interface class GameCapturePort {
   void dispose();
 }
 
+/// A surviving channel can retire commands belonging to a replaced WebView.
+abstract interface class GameCaptureRebindPort {
+  void rebindWebView();
+}
+
 abstract final class AndroidCaptureEvent {
   static Object? decode(Object? value) {
     if (value is! Map) {

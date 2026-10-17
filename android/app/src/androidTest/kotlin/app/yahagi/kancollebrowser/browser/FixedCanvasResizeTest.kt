@@ -36,12 +36,12 @@ class FixedCanvasResizeTest {
                 view.settings.loadWithOverviewMode = false
                 view.settings.builtInZoomControls = true
                 view.layout(0, 0, 1200, 720)
-                bridge = NativeGamePresentationBridge { game ->
+                bridge = NativeGamePresentationBridge(onPresentationStateChanged = { game ->
                     if (game) {
                         policy.nextScalePercent(view.width, view.height, 1200, 720, force = true)
                             ?.let(view::setInitialScale)
                     }
-                }
+                })
                 bridge.postMessage("game")
                 view.webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {

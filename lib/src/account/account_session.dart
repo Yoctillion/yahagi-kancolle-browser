@@ -79,9 +79,12 @@ final class AccountSession extends ChangeNotifier
       final raw = basic['api_member_id'];
       final memberId = raw is num ? raw.toInt() : int.tryParse('$raw');
       if (memberId != null && memberId > 0) {
+        final accountChanged = memberId != _current.memberId;
+        final previousAdmiralName = _admiralName;
+        final previousServerName = _serverName;
         // Publish the verified ID and its display metadata together. Backup
         // listeners must not observe an intermediate unnamed account.
-        if (memberId != _current.memberId) {
+        if (accountChanged) {
           _admiralName = '';
           _serverName = '';
           _current = AccountScope(
@@ -95,7 +98,11 @@ final class AccountSession extends ChangeNotifier
         }
         final host = Uri.tryParse(event.sourceOrigin)?.host ?? '';
         if (host.isNotEmpty) _serverName = host;
-        notifyListeners();
+        if (accountChanged ||
+            _admiralName != previousAdmiralName ||
+            _serverName != previousServerName) {
+          notifyListeners();
+        }
       }
     } on FormatException {
       // Invalid responses cannot establish or replace an account.

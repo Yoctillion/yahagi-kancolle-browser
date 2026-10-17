@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
+import 'package:yahagi_kancolle_browser/src/bridge/native_game_capture_script.dart';
 import 'package:yahagi_kancolle_browser/src/capture/game_capture_controller.dart';
 import 'package:yahagi_kancolle_browser/src/capture/game_capture_port.dart';
 
@@ -25,6 +26,66 @@ void main() {
       expect(controller.latestEvent?.sequence, 1);
       expect(controller.capturedCount, 1);
       expect(forwarded.single.sequence, 1);
+    });
+
+    test('clearing events preserves the installed capture session', () async {
+      final port = _FakeGameCapturePort(supported: true);
+      final forwarded = <CapturedApiEvent>[];
+      final controller = GameCaptureController(onAcceptedEvent: forwarded.add);
+      addTearDown(() async {
+        controller.dispose();
+        await port.close();
+      });
+      await controller.attach(
+        port,
+        enabled: true,
+        script: nativeGameCaptureScript,
+      );
+      final sessionId = controller.captureSessionId;
+      final installedScript = port.appliedScript;
+
+      CapturedApiEvent documentEvent(String documentId, int sequence) =>
+          CapturedApiEvent(
+            path: '/kcsapi/api_port/port',
+            responseBody: '{}',
+            source: CaptureSource.xhr,
+            capturedAt: DateTime.utc(2026, 10, 17),
+            sequence: sequence,
+            captureSessionId: sessionId,
+            captureDocumentId: documentId,
+            captureDocumentStartedAtEpochMs: sequence * 1000.0,
+          );
+
+      port.emit(documentEvent('before-reload', 1));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.latestEvent?.captureDocumentId, 'before-reload');
+      expect(controller.capturedCount, 1);
+      expect(controller.responseBytes, 2);
+
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      controller.clearCapturedEvents();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.latestEvent, isNull);
+      expect(controller.capturedCount, 0);
+      expect(controller.responseBytes, 0);
+      expect(controller.captureSessionId, sessionId);
+      expect(notifications, 1);
+      expect(port.configureCalls, 1);
+      expect(port.supportCalls, 1);
+      expect(port.appliedScript, installedScript);
+
+      port.emit(documentEvent('after-reload', 2));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.latestEvent?.captureDocumentId, 'after-reload');
+      expect(controller.capturedCount, 1);
+      expect(controller.responseBytes, 2);
+      expect(forwarded.map((event) => event.sequence), <int>[1, 2]);
+      expect(controller.captureSessionId, sessionId);
+      expect(port.configureCalls, 1);
+      expect(port.appliedScript, installedScript);
     });
 
     test('browser-only mode rejects events arriving after disable', () async {

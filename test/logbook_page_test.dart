@@ -1345,7 +1345,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('logbook-filter-field-map')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('历史海域 (9-9)').last);
+      await tester.tap(find.text('(9-9) 历史海域').last);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('logbook-filter-apply')));
       await tester.pumpAndSettle();

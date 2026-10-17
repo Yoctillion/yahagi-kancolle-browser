@@ -182,14 +182,34 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         ),
                       ),
                       const Divider(height: 1, color: Color(0xff294052)),
-                      buildSwitchTile(
+                      _StatusEffectRow(
                         title: l10n.battleMoraleSparkle,
                         subtitle: l10n.battleMoraleSparkleDesc,
-                        switchKey: const Key('moraleSparkleSwitch'),
-                        value: settings.moraleSparkleEnabled,
-                        onChanged: childrenEnabled
-                            ? safetySettingsController.setMoraleSparkleEnabled
-                            : null,
+                        enabled: childrenEnabled,
+                        trailing: DropdownButton<MoraleSparkleMode>(
+                          key: const Key('moraleSparkleModeDropdown'),
+                          value: settings.moraleSparkleMode,
+                          underline: const SizedBox(),
+                          alignment: AlignmentDirectional.centerEnd,
+                          items: MoraleSparkleMode.values
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(
+                                    _moraleSparkleModeLabel(l10n, value),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: childrenEnabled
+                              ? (value) {
+                                  if (value != null) {
+                                    safetySettingsController
+                                        .setMoraleSparkleMode(value);
+                                  }
+                                }
+                              : null,
+                        ),
                       ),
                     ],
                   );
@@ -221,6 +241,13 @@ String _pulseFilterLabel(AppLocalizations l10n, DamagePulseFilter filter) =>
       DamagePulseFilter.moderateOnly => l10n.battleEffectModerateOnly,
       DamagePulseFilter.heavyOnly => l10n.battleEffectHeavyOnly,
       DamagePulseFilter.all => l10n.battleEffectAll,
+    };
+
+String _moraleSparkleModeLabel(AppLocalizations l10n, MoraleSparkleMode mode) =>
+    switch (mode) {
+      MoraleSparkleMode.blinking => l10n.battleMoraleSparkleBlinking,
+      MoraleSparkleMode.steady => l10n.battleMoraleSparkleSteady,
+      MoraleSparkleMode.off => l10n.battleEffectOff,
     };
 
 String _scopeLabel(AppLocalizations l10n, BattleEffectDisplayScope scope) =>

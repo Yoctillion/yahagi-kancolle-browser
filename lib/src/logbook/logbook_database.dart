@@ -14,6 +14,20 @@ import '../game_state/game_state.dart';
 const String _unknownAirSuperiority = '未知';
 const String sortieResourceStatusToken = 'resource';
 
+final class _BackupTableSchema {
+  const _BackupTableSchema(this.columns, this.uniqueKeys);
+
+  final Map<String, Map<String, Object?>> columns;
+  final List<List<String>> uniqueKeys;
+}
+
+final class _BackupSnapshotValidation {
+  const _BackupSnapshotValidation(this.tables, this.schemas);
+
+  final Map<String, List<Map<String, Object?>>> tables;
+  final Map<String, _BackupTableSchema> schemas;
+}
+
 enum LogbookChangeCategory {
   battle,
   resource,
@@ -428,22 +442,67 @@ class LogbookDatabase extends ChangeNotifier {
     DatabaseExecutor executor,
     Map<String, List<Map<String, Object?>>> tables,
   ) async {
+    if (tables.keys.toSet().difference(backupTables.toSet()).isNotEmpty ||
+        backupTables.any((table) => !tables.containsKey(table))) {
+      throw const FormatException('Invalid logbook tables');
+    }
+    // Read SQLite metadata on its owning isolate (and transaction for restore).
+    // Only detached schema values and archive rows are sent to the CPU worker.
+    final schemas = <String, _BackupTableSchema>{};
+    for (final table in backupTables) {
+      final schema = await executor.rawQuery('PRAGMA table_info($table)');
+      final columns = <String, Map<String, Object?>>{
+        for (final column in schema)
+          if (column['name'] is String)
+            column['name'] as String: Map<String, Object?>.of(column),
+      };
+      final uniqueKeys = <List<String>>[];
+      final primary =
+          schema.where((column) => (column['pk'] as int? ?? 0) > 0).toList()
+            ..sort((a, b) => (a['pk'] as int).compareTo(b['pk'] as int));
+      if (primary.isNotEmpty) {
+        uniqueKeys.add([
+          for (final column in primary) column['name'] as String,
+        ]);
+      }
+      final indexes = await executor.rawQuery('PRAGMA index_list($table)');
+      for (final index in indexes) {
+        if (index['unique'] != 1) continue;
+        final rawName = index['name'];
+        if (rawName is! String) {
+          throw FormatException('Invalid index in $table');
+        }
+        final quotedName = rawName.replaceAll('"', '""');
+        // Android sqflite returns a read-only QueryResultSet. Sort an owned
+        // list instead of mutating that result, including composite indexes.
+        final info = (await executor.rawQuery(
+          'PRAGMA index_info("$quotedName")',
+        )).toList();
+        info.sort((a, b) => (a['seqno'] as int).compareTo(b['seqno'] as int));
+        if (info.isEmpty || info.any((entry) => entry['name'] is! String)) {
+          throw FormatException('Unsupported unique index in $table');
+        }
+        uniqueKeys.add([for (final entry in info) entry['name'] as String]);
+      }
+      schemas[table] = _BackupTableSchema(columns, uniqueKeys);
+    }
+    await compute(
+      _validateBackupRows,
+      _BackupSnapshotValidation(tables, schemas),
+      debugLabel: 'logbook-backup-validation',
+    );
+  }
+
+  static void _validateBackupRows(_BackupSnapshotValidation request) {
+    final tables = request.tables;
     // LogbookPage adds JST (+9h) after constructing a UTC DateTime. Keep the
     // result inside Dart's supported epoch-millisecond interval.
     const maxDateTimeMs = 8640000000000000;
     const jstOffsetMs = 9 * 60 * 60 * 1000;
     // Preserve room for later AUTOINCREMENT inserts after an imported row.
     const maxSafeAutoId = 9223372036854775807 - 1000000;
-    if (tables.keys.toSet().difference(backupTables.toSet()).isNotEmpty ||
-        backupTables.any((table) => !tables.containsKey(table))) {
-      throw const FormatException('Invalid logbook tables');
-    }
     for (final table in backupTables) {
-      final schema = await executor.rawQuery('PRAGMA table_info($table)');
-      final columns = {
-        for (final column in schema)
-          if (column['name'] is String) column['name'] as String: column,
-      };
+      final columns = request.schemas[table]!.columns;
       for (final row in tables[table]!) {
         // Snapshots come from SELECT * and must preserve nullable columns as
         // explicit nulls. An omitted key would be filled by SQLite on restore
@@ -487,33 +546,7 @@ class LogbookDatabase extends ChangeNotifier {
           }
         }
       }
-      final uniqueKeys = <List<String>>[];
-      final primary =
-          schema.where((column) => (column['pk'] as int? ?? 0) > 0).toList()
-            ..sort((a, b) => (a['pk'] as int).compareTo(b['pk'] as int));
-      if (primary.isNotEmpty) {
-        uniqueKeys.add([
-          for (final column in primary) column['name'] as String,
-        ]);
-      }
-      final indexes = await executor.rawQuery('PRAGMA index_list($table)');
-      for (final index in indexes) {
-        if (index['unique'] != 1) continue;
-        final rawName = index['name'];
-        if (rawName is! String) {
-          throw FormatException('Invalid index in $table');
-        }
-        final quotedName = rawName.replaceAll('"', '""');
-        final info = await executor.rawQuery(
-          'PRAGMA index_info("$quotedName")',
-        );
-        info.sort((a, b) => (a['seqno'] as int).compareTo(b['seqno'] as int));
-        if (info.isEmpty || info.any((entry) => entry['name'] is! String)) {
-          throw FormatException('Unsupported unique index in $table');
-        }
-        uniqueKeys.add([for (final entry in info) entry['name'] as String]);
-      }
-      for (final columns in uniqueKeys) {
+      for (final columns in request.schemas[table]!.uniqueKeys) {
         final seen = <String>{};
         for (final row in tables[table]!) {
           final values = [for (final column in columns) row[column]];

@@ -66,12 +66,19 @@ final class GameCaptureController extends ChangeNotifier {
   Future<void> invalidateSession() {
     if (_disposed) return Future<void>.value();
     _captureSessionId = _newSessionId();
+    clearCapturedEvents();
+    return _enqueueConfiguration();
+  }
+
+  /// Clears event state without reconfiguring the installed capture bridge.
+  /// Callers retaining a WebView must separately reject stale document events.
+  void clearCapturedEvents() {
+    if (_disposed) return;
     _latestEvent = null;
     _responseBytes = 0;
     _capturedCount = 0;
     _eventActivity.value = 0;
     notifyListeners();
-    return _enqueueConfiguration();
   }
 
   Future<void> attach(

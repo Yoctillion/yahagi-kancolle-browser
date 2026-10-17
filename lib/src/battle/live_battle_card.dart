@@ -12,6 +12,7 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
+import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
 import '../settings/module_display_settings.dart';
 import 'detailed_battle_panel.dart';
@@ -30,6 +31,7 @@ class LiveBattleCard extends StatefulWidget {
     this.damagePulseMode = DamagePulseFilter.all,
     this.showEnemyPortraits = true,
     this.showLastFormationHint = true,
+    this.enemyPreviewPosition = EnemyPreviewPosition.above,
     this.showLogo = true,
     this.showTitle = true,
     this.onOpenDisplaySettings,
@@ -41,6 +43,7 @@ class LiveBattleCard extends StatefulWidget {
   final DamagePulseFilter damagePulseMode;
   final bool showEnemyPortraits;
   final bool showLastFormationHint;
+  final EnemyPreviewPosition enemyPreviewPosition;
   final bool showLogo;
   final bool showTitle;
   final VoidCallback? onOpenDisplaySettings;
@@ -124,6 +127,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                   damagePulseMode: widget.damagePulseMode,
                   showEnemyPortraits: widget.showEnemyPortraits,
                   showLastFormationHint: widget.showLastFormationHint,
+                  enemyPreviewPosition: widget.enemyPreviewPosition,
                 )
               else
                 BattleShipDetailsHost(
@@ -134,6 +138,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                     gameState: widget.controller.gameStateSnapshot,
                     damagePulseMode: widget.damagePulseMode,
                     showLastFormationHint: widget.showLastFormationHint,
+                    enemyPreviewPosition: widget.enemyPreviewPosition,
                   ),
                 ),
             ],
@@ -225,12 +230,14 @@ class _CompactBattlePanel extends StatelessWidget {
     required this.gameState,
     required this.damagePulseMode,
     required this.showLastFormationHint,
+    required this.enemyPreviewPosition,
   });
 
   final LiveBattle battle;
   final GameState gameState;
   final DamagePulseFilter damagePulseMode;
   final bool showLastFormationHint;
+  final EnemyPreviewPosition enemyPreviewPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -292,6 +299,17 @@ class _CompactBattlePanel extends StatelessWidget {
       final raid = battle.landBaseRaid;
       final previewShips =
           battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
+      final previewBelow =
+          enemyPreviewPosition == EnemyPreviewPosition.below &&
+          previewShips.isNotEmpty;
+      final enemyPreview = OfficialEnemyPreview(
+        ships: previewShips,
+        combined: battle.enemyPreviewCombined,
+      );
+      final friendlyFleets = NavigationFriendlyFleets(
+        battle: battle,
+        damagePulseMode: damagePulseMode,
+      );
       return Column(
         key: const Key('compact-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -299,20 +317,14 @@ class _CompactBattlePanel extends StatelessWidget {
           navigationHeader,
           if (previewShips.isNotEmpty) ...<Widget>[
             const SizedBox(height: 7),
-            OfficialEnemyPreview(
-              ships: previewShips,
-              combined: battle.enemyPreviewCombined,
-            ),
+            if (previewBelow) friendlyFleets else enemyPreview,
           ],
           if (raid != null) ...<Widget>[
             const SizedBox(height: 7),
             LandBaseRaidPanel(result: raid, compact: true),
           ],
           const SizedBox(height: 9),
-          NavigationFriendlyFleets(
-            battle: battle,
-            damagePulseMode: damagePulseMode,
-          ),
+          if (previewBelow) enemyPreview else friendlyFleets,
         ],
       );
     }

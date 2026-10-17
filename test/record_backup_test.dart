@@ -31,6 +31,40 @@ class _GatedEnabledStore extends _EnabledStore {
   Future<bool> load() => gate.future;
 }
 
+class _GatedExportWorker extends BackupArchiveWorker {
+  final started = Completer<void>();
+  final gate = Completer<void>();
+  bool armed = false;
+  bool failNext = false;
+
+  @override
+  Future<BackupArchiveResult> mergeAndEncode({
+    required int memberId,
+    required Uint8List? existing,
+    required Map<String, List<Map<String, Object?>>> tables,
+    required List<CompositionRecord> compositions,
+    required String writerId,
+    required Set<String> deletedCompositions,
+  }) async {
+    if (armed) {
+      if (!started.isCompleted) started.complete();
+      await gate.future;
+      if (failNext) {
+        failNext = false;
+        throw const FormatException('Simulated export encoding failure');
+      }
+    }
+    return super.mergeAndEncode(
+      memberId: memberId,
+      existing: existing,
+      tables: tables,
+      compositions: compositions,
+      writerId: writerId,
+      deletedCompositions: deletedCompositions,
+    );
+  }
+}
+
 class _MemoryDocumentPort implements BackupDocumentPort {
   bool directory = true;
   final Map<int, Uint8List> live = {};
@@ -125,24 +159,21 @@ class _MemoryDocumentPort implements BackupDocumentPort {
   }
 
   @override
-  Future<String?> pickSaveLocation(String name) async {
+  Future<String?> saveFile(String name, Uint8List bytes) async {
     savePickerPaused?.complete();
     await savePickerGate?.future;
     if (!saveResult) return null;
     pendingSavedName = name;
-    return 'selected-location';
-  }
-
-  @override
-  Future<void> writeSavedFile(String token, Uint8List bytes) async {
-    expect(token, 'selected-location');
     if (failNextSave) {
       failNextSave = false;
+      pendingSavedName = null;
+      discardedSaves++;
       throw const FileSystemException('simulated local save failure');
     }
     pendingSavedBytes = Uint8List.fromList(bytes);
     saveWritePaused?.complete();
     await saveWriteGate?.future;
+    return 'selected-location';
   }
 
   @override
@@ -203,9 +234,7 @@ class _MigratingDocumentPort implements BackupDocumentPort {
   @override
   Future<void> discardShareFile(String token) async {}
   @override
-  Future<String?> pickSaveLocation(String name) async => null;
-  @override
-  Future<void> writeSavedFile(String token, Uint8List bytes) async {}
+  Future<String?> saveFile(String name, Uint8List bytes) async => null;
   @override
   Future<void> completeSavedFile(String token) async {}
   @override
@@ -720,9 +749,120 @@ void main() {
     expect(await saving, isTrue);
     expect(
       BackupArchive.decode(port.lastSavedBytes!).tables['retirement_logs'],
-      hasLength(1),
+      isEmpty,
     );
   });
+
+  test(
+    'local export prepares all bytes before creating a destination',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      const owner = 914020;
+      final root = await Directory.systemTemp.createTemp(
+        'yahagi-save-prepare-',
+      );
+      final db = await LogbookDatabase.openForTesting();
+      final session = AccountSession(initialMemberId: owner);
+      final port = _MemoryDocumentPort()..savePickerPaused = Completer<void>();
+      final encoder = _GatedExportWorker();
+      final service = RecordBackupService(
+        enabledStore: _EnabledStore(),
+        session: session,
+        port: port,
+        worker: encoder,
+        compositionStore: FileCompositionRecordStore(
+          rootDirectory: () async => root,
+        ),
+        databaseFor: (_) => db,
+        installationId: 'save-prepare-test',
+      );
+      addTearDown(() async {
+        await service.close();
+        session.dispose();
+        await db.close();
+        await root.delete(recursive: true);
+      });
+      await service.sync();
+      encoder.armed = true;
+      final saving = service.saveExport();
+      await Future.any([encoder.started.future, port.savePickerPaused!.future]);
+      final openedBeforeDataWasReady = port.savePickerPaused!.isCompleted;
+      encoder.gate.complete();
+      expect(await saving, isTrue);
+      expect(
+        openedBeforeDataWasReady,
+        isFalse,
+        reason:
+            'The provider must not create an empty document while encoding.',
+      );
+      expect(BackupArchive.decode(port.lastSavedBytes!).memberId, owner);
+    },
+  );
+
+  test(
+    'failed export preparation creates no document and allows retry',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      const owner = 914021;
+      final root = await Directory.systemTemp.createTemp('yahagi-save-retry-');
+      final db = await LogbookDatabase.openForTesting();
+      final session = AccountSession(initialMemberId: owner);
+      final port = _MemoryDocumentPort()..savePickerPaused = Completer<void>();
+      final encoder = _GatedExportWorker()..failNext = true;
+      encoder.gate.complete();
+      final service = RecordBackupService(
+        enabledStore: _EnabledStore(),
+        session: session,
+        port: port,
+        worker: encoder,
+        compositionStore: FileCompositionRecordStore(
+          rootDirectory: () async => root,
+        ),
+        databaseFor: (_) => db,
+        installationId: 'save-retry-test',
+      );
+      addTearDown(() async {
+        await service.close();
+        session.dispose();
+        await db.close();
+        await root.delete(recursive: true);
+      });
+      await service.sync();
+      encoder.armed = true;
+      await expectLater(service.saveExport(), throwsFormatException);
+      expect(port.savePickerPaused!.isCompleted, isFalse);
+      expect(port.discardedSaves, 0);
+      expect(service.busy, isFalse);
+      expect(await db.backupSnapshot(), isNotEmpty);
+      expect(await service.saveExport(), isTrue);
+      expect(service.busy, isFalse);
+      expect(BackupArchive.decode(port.lastSavedBytes!).memberId, owner);
+    },
+  );
+
+  test(
+    'Android local export hands complete bytes to one native operation',
+    () async {
+      const channel = MethodChannel('test/prepared-backup-export');
+      final calls = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return call.method == 'saveFile' ? 'native-verified-export' : null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      final port = AndroidBackupDocumentPort(channel: channel);
+      final bytes = Uint8List.fromList([1, 2, 3]);
+      final token = await port.saveFile('prepared.yhb', bytes);
+      await port.completeSavedFile(token!);
+      expect(calls.map((call) => call.method), [
+        'saveFile',
+        'completeSavedFile',
+      ]);
+      expect(calls.first.arguments, {'name': 'prepared.yhb', 'bytes': bytes});
+    },
+  );
 
   test('account switch during local write discards the written file', () async {
     SharedPreferences.setMockInitialValues({});
@@ -2000,6 +2140,107 @@ void main() {
     );
     expect(service.pending, isFalse);
   });
+
+  test(
+    'automatic writes wait for a batch and close durably flushes it',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      const owner = 903228;
+      final root = await Directory.systemTemp.createTemp(
+        'yahagi-backup-batch-',
+      );
+      final db = await LogbookDatabase.openForTesting();
+      final session = AccountSession(initialMemberId: owner);
+      final port = _MemoryDocumentPort();
+      final service = RecordBackupService(
+        session: session,
+        port: port,
+        enabledStore: _EnabledStore(),
+        compositionStore: FileCompositionRecordStore(
+          rootDirectory: () async => root,
+        ),
+        databaseFor: (_) => db,
+        installationId: 'batch-test',
+      );
+      addTearDown(() async {
+        await service.close();
+        session.dispose();
+        await db.close();
+        await root.delete(recursive: true);
+      });
+      await service.sync();
+      port.reads = 0;
+      for (var i = 0; i < 12; i++) {
+        await db.insertRetirementRecord(
+          timestamp: i + 1,
+          type: '解体',
+          shipType: '驱逐舰',
+          shipName: 'batched $i',
+          level: 1,
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+      final readsDuringBurst = port.reads;
+      final pendingDuringBurst = service.pending;
+      await service.close();
+      expect(
+        readsDuringBurst,
+        0,
+        reason: 'Port writes should settle before starting a full archive.',
+      );
+      expect(pendingDuringBurst, isTrue);
+      expect(
+        BackupArchive.decode(port.live[owner]!).tables['retirement_logs'],
+        hasLength(12),
+      );
+    },
+  );
+
+  test(
+    'repeated lifecycle flushes do not rescan clean record history',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      const owner = 903229;
+      final root = await Directory.systemTemp.createTemp('yahagi-clean-flush-');
+      final db = await LogbookDatabase.openForTesting();
+      final session = AccountSession(initialMemberId: owner);
+      final port = _MemoryDocumentPort();
+      final service = RecordBackupService(
+        session: session,
+        port: port,
+        enabledStore: _EnabledStore(),
+        compositionStore: FileCompositionRecordStore(
+          rootDirectory: () async => root,
+        ),
+        databaseFor: (_) => db,
+        installationId: 'flush-test',
+      );
+      addTearDown(() async {
+        await service.close();
+        session.dispose();
+        await db.close();
+        await root.delete(recursive: true);
+      });
+      await service.sync();
+      port.reads = 0;
+      await Future.wait([service.flush(), service.flush()]);
+      expect(port.reads, 0);
+      await db.insertRetirementRecord(
+        timestamp: 1,
+        type: '解体',
+        shipType: '驱逐舰',
+        shipName: 'before pause',
+        level: 1,
+      );
+      await Future.wait([service.flush(), service.flush()]);
+      expect(port.reads, 2);
+      expect(
+        BackupArchive.decode(port.live[owner]!).tables['retirement_logs'],
+        hasLength(1),
+      );
+      expect(service.pending, isFalse);
+    },
+  );
 
   test('continuous writes do not starve a queued manual sync', () async {
     const owner = 903224;

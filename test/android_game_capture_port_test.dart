@@ -145,6 +145,134 @@ void main() {
     });
   });
 
+  test(
+    'ordinary same-port settings still wait for the preceding command',
+    () async {
+      final retiredReply = Completer<void>();
+      final scripts = <String>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'configure') {
+          scripts.add((call.arguments as Map)['script'] as String);
+          if (scripts.length == 1) await retiredReply.future;
+        }
+        return null;
+      });
+      final port = MethodChannelGameCapturePort(channel: channel);
+      addTearDown(() {
+        if (!retiredReply.isCompleted) retiredReply.complete();
+        port.dispose();
+      });
+      final first = port.configure(enabled: true, script: 'first');
+      await Future<void>.delayed(Duration.zero);
+      final second = port.configure(enabled: false, script: 'second');
+      await Future<void>.delayed(Duration.zero);
+      expect(scripts, <String>['first']);
+      retiredReply.complete();
+      await Future.wait<void>(<Future<void>>[first, second]);
+      expect(scripts, <String>['first', 'second']);
+    },
+  );
+
+  test(
+    'WebView rebind skips queued retired commands and repairs late completion',
+    () async {
+      final retiredReply = Completer<void>();
+      final scripts = <String>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'configure') {
+          scripts.add((call.arguments as Map)['script'] as String);
+          if (scripts.length == 1) await retiredReply.future;
+        }
+        return null;
+      });
+      final port = MethodChannelGameCapturePort(channel: channel);
+      addTearDown(() {
+        if (!retiredReply.isCompleted) retiredReply.complete();
+        port.dispose();
+      });
+      final retired = port.configure(enabled: true, script: 'retired');
+      await Future<void>.delayed(Duration.zero);
+      final queued = port.configure(enabled: true, script: 'retired-queued');
+      port.rebindWebView();
+      await port
+          .configure(enabled: true, script: 'current')
+          .timeout(const Duration(seconds: 2));
+      expect(scripts, <String>['retired', 'current']);
+      expect(retiredReply.isCompleted, isFalse);
+      retiredReply.complete();
+      await Future.wait<void>(<Future<void>>[retired, queued]);
+      for (var i = 0; i < 8; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(scripts, <String>['retired', 'current', 'current']);
+    },
+  );
+
+  test(
+    'late retired reply keeps queued current installation awaited',
+    () async {
+      final retiredReply = Completer<void>();
+      final predecessorReply = Completer<void>();
+      final currentReply = Completer<void>();
+      final retiredEntered = Completer<void>();
+      final predecessorEntered = Completer<void>();
+      final currentEntered = Completer<void>();
+      final scripts = <String>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'configure') {
+          final script = (call.arguments as Map)['script'] as String;
+          scripts.add(script);
+          if (script == 'retired') {
+            retiredEntered.complete();
+            await retiredReply.future;
+          } else if (script == 'current-predecessor') {
+            predecessorEntered.complete();
+            await predecessorReply.future;
+          } else if (script == 'current') {
+            if (!currentEntered.isCompleted) currentEntered.complete();
+            await currentReply.future;
+          }
+        }
+        return null;
+      });
+      final port = MethodChannelGameCapturePort(channel: channel);
+      addTearDown(() {
+        if (!retiredReply.isCompleted) retiredReply.complete();
+        if (!predecessorReply.isCompleted) predecessorReply.complete();
+        if (!currentReply.isCompleted) currentReply.complete();
+        port.dispose();
+      });
+      final retired = port.configure(enabled: true, script: 'retired');
+      await retiredEntered.future;
+      port.rebindWebView();
+      final predecessor = port.configure(
+        enabled: true,
+        script: 'current-predecessor',
+      );
+      await predecessorEntered.future;
+      var navigationStarted = false;
+      final navigation = port.configure(enabled: true, script: 'current').then((
+        _,
+      ) {
+        navigationStarted = true;
+      });
+      retiredReply.complete();
+      for (var i = 0; i < 8; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      predecessorReply.complete();
+      await currentEntered.future;
+      for (var i = 0; i < 8; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(navigationStarted, isFalse);
+      expect(scripts, <String>['retired', 'current-predecessor', 'current']);
+      currentReply.complete();
+      await Future.wait<void>(<Future<void>>[retired, predecessor, navigation]);
+      expect(navigationStarted, isTrue);
+    },
+  );
+
   test('converts a native onCaptureEvent call into an event stream', () async {
     messenger.setMockMethodCallHandler(channel, (_) async => null);
     final port = MethodChannelGameCapturePort(channel: channel);

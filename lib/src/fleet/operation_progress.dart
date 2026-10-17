@@ -69,7 +69,7 @@ class OperationCountdownText extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return SecondTickBuilder(
-      enabled: !operationIsCompleted(completionTime),
+      // Stop and render against the same tick, including after background gaps.
       stopAt: completionTime,
       builder: (context, now, _) => _buildText(completionTime, now),
     );

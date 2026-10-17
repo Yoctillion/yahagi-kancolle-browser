@@ -340,7 +340,7 @@ class ShipMoraleMark extends StatelessWidget {
     required this.shipId,
     required this.value,
     required this.sparklePulse,
-    this.sparkleEnabled = true,
+    this.sparkleMode = MoraleSparkleMode.blinking,
     this.showTextBadge = true,
     this.repairLabel,
     this.layout = ShipMoraleMarkLayout.brief,
@@ -349,7 +349,7 @@ class ShipMoraleMark extends StatelessWidget {
   final int shipId;
   final int value;
   final Animation<double> sparklePulse;
-  final bool sparkleEnabled;
+  final MoraleSparkleMode sparkleMode;
   final bool showTextBadge;
   final String? repairLabel;
   final ShipMoraleMarkLayout layout;
@@ -373,8 +373,12 @@ class ShipMoraleMark extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
-            if (sparkleEnabled && value >= 50)
-              _ShipSparkleLayer(shipId: shipId, animation: sparklePulse),
+            if (sparkleMode != MoraleSparkleMode.off && value >= 50)
+              _ShipSparkleLayer(
+                shipId: shipId,
+                animation: sparklePulse,
+                mode: sparkleMode,
+              ),
             if (value < 30)
               _fatigueFace(constraints.maxHeight, placeOnLeft: isDetail),
             if (repairLabel != null)
@@ -498,7 +502,11 @@ class ShipMoraleMark extends StatelessWidget {
 }
 
 class _ShipSparkleLayer extends StatelessWidget {
-  const _ShipSparkleLayer({required this.shipId, required this.animation});
+  const _ShipSparkleLayer({
+    required this.shipId,
+    required this.animation,
+    required this.mode,
+  });
 
   static const points = <({double x, double y, double size})>[
     (x: 0.07, y: 0.18, size: 10),
@@ -511,6 +519,7 @@ class _ShipSparkleLayer extends StatelessWidget {
 
   final int shipId;
   final Animation<double> animation;
+  final MoraleSparkleMode mode;
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
@@ -527,38 +536,44 @@ class _ShipSparkleLayer extends StatelessWidget {
               top:
                   constraints.maxHeight * points[index].y -
                   points[index].size / 2,
-              child: AnimatedBuilder(
-                animation: animation,
-                child: Icon(
-                  index.isEven
-                      ? Icons.auto_awesome_rounded
-                      : Icons.star_rounded,
-                  size: points[index].size,
-                  color: const Color(0xfffff7a4),
-                  shadows: const [
-                    Shadow(color: Colors.white, blurRadius: 3),
-                    Shadow(color: Color(0xffffcf3f), blurRadius: 8),
-                  ],
-                ),
-                builder: (context, child) {
-                  final phase = animation.value;
-                  final opacity = switch (phase) {
-                    < 0.16 => 0.0,
-                    < 0.24 => (phase - 0.16) / 0.08,
-                    < 0.31 => 1.0,
-                    < 0.38 => 1 - (phase - 0.31) / 0.07,
-                    _ => 0.0,
-                  };
-                  return Transform.scale(
-                    key: Key('fleet-sparkle-$shipId-$index'),
-                    scale: 0.55 + opacity * 0.7,
-                    child: Opacity(opacity: opacity, child: child),
-                  );
-                },
-              ),
+              child: mode == MoraleSparkleMode.steady
+                  ? Opacity(
+                      key: Key('fleet-sparkle-$shipId-$index'),
+                      opacity: 1,
+                      child: _starIcon(index),
+                    )
+                  : AnimatedBuilder(
+                      animation: animation,
+                      child: _starIcon(index),
+                      builder: (context, child) {
+                        final phase = animation.value;
+                        final opacity = switch (phase) {
+                          < 0.16 => 0.0,
+                          < 0.24 => (phase - 0.16) / 0.08,
+                          < 0.31 => 1.0,
+                          < 0.38 => 1 - (phase - 0.31) / 0.07,
+                          _ => 0.0,
+                        };
+                        return Transform.scale(
+                          key: Key('fleet-sparkle-$shipId-$index'),
+                          scale: 0.55 + opacity * 0.7,
+                          child: Opacity(opacity: opacity, child: child),
+                        );
+                      },
+                    ),
             ),
         ],
       ),
     ),
+  );
+
+  Widget _starIcon(int index) => Icon(
+    index.isEven ? Icons.auto_awesome_rounded : Icons.star_rounded,
+    size: points[index].size,
+    color: const Color(0xfffff7a4),
+    shadows: const [
+      Shadow(color: Colors.white, blurRadius: 3),
+      Shadow(color: Color(0xffffcf3f), blurRadius: 8),
+    ],
   );
 }

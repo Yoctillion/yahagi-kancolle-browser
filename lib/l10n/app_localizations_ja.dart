@@ -9,6 +9,33 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
+  String get operationProtectionTitle => '誤操作防止';
+
+  @override
+  String get confirmBeforeExitTitle => 'アプリを離れる前に確認';
+
+  @override
+  String get confirmBeforeExitDescription => '戻るキーや戻るジェスチャーでアプリを離れる前に確認します。';
+
+  @override
+  String get confirmBeforeExitSaveFailed => '確認設定を保存できませんでした。もう一度お試しください。';
+
+  @override
+  String get appExitConfirmTitle => 'ホーム画面に戻りますか？';
+
+  @override
+  String get appExitConfirmDescription => 'プレイ中のゲームはバックグラウンドに移ります。';
+
+  @override
+  String get appExitStay => 'ゲームを続ける';
+
+  @override
+  String get appExitToDesktop => 'ホーム画面に戻る';
+
+  @override
+  String get appExitFailed => 'ホーム画面に戻れませんでした。もう一度お試しください。';
+
+  @override
   String get enterGameFullscreen => 'ゲームを全画面表示';
 
   @override
@@ -1780,7 +1807,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get battleMoraleSparkleDesc =>
-      'Cond 50 以上で艦娘画像の周囲に星のアニメーションを表示します。疲労顔と疲労警告には影響しません。';
+      'Cond 50 以上で艦娘画像の周囲に点滅または常時点灯する星を表示します。疲労顔と疲労警告には影響しません。';
+
+  @override
+  String get battleMoraleSparkleBlinking => '点滅';
+
+  @override
+  String get battleMoraleSparkleSteady => '常時点灯';
 
   @override
   String get battleEffectOff => 'オフ';
@@ -1812,6 +1845,18 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get battleLastFormationHintDesc =>
       '出撃マス到達時に、そのマスで前回使用した陣形を戦闘予測に表示します。';
+
+  @override
+  String get battleEnemyPreviewPosition => '戦闘前の敵艦予測の位置';
+
+  @override
+  String get battleEnemyPreviewPositionDesc => '戦闘前の敵艦予測を味方HPバーの上または下に表示します。';
+
+  @override
+  String get battleEnemyPreviewPositionAbove => '上';
+
+  @override
+  String get battleEnemyPreviewPositionBelow => '下';
 
   @override
   String battleLastFormation(String formation) {

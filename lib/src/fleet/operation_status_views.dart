@@ -286,9 +286,17 @@ class _ConstructionDockCard extends StatelessWidget {
         label: AppLocalizations.of(context)?.notConstructing ?? '未建造',
       );
     }
+    return SecondTickBuilder(
+      enabled: dock.state != 3 && dock.completionTime != null,
+      stopAt: dock.completionTime,
+      builder: (context, now, _) => _buildCard(context, now),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, DateTime now) {
     final master = state.masterShips[dock.createdShipMasterId];
     final portraitWidth = _operationPortraitWidth(context);
-    final completed = dock.isCompletedAt(DateTime.now().toUtc());
+    final completed = dock.isCompletedAt(now);
     final calculatedStart =
         dock.completionTime != null && (master?.buildTimeMinutes ?? 0) > 0
         ? dock.completionTime!.subtract(
@@ -540,7 +548,6 @@ class _TimedProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SecondTickBuilder(
-      enabled: !operationIsCompleted(end),
       stopAt: end,
       builder: (context, now, _) {
         final progress = operationProgress(now: now, start: start, end: end);

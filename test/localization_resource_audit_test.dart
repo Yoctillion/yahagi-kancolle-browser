@@ -239,6 +239,9 @@ void main() {
       'battleLastFormation',
       // “全部” is the compact all-surfaces scope label in both Chinese scripts.
       'battleEffectScopeAll',
+      // These two compact direction labels share the same Chinese spelling.
+      'battleEnemyPreviewPositionAbove',
+      'battleEnemyPreviewPositionBelow',
       // “最小/最大” are standard range labels shared by both Chinese scripts.
       'minimumValue',
       'maximumValue',

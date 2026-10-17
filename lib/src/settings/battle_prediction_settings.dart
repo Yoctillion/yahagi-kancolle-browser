@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum EnemyPreviewPosition { above, below }
+
 abstract interface class BattlePredictionSettingsStore {
   Future<void> initialize();
 
@@ -11,6 +13,10 @@ abstract interface class BattlePredictionSettingsStore {
   Future<bool> loadLastFormationHintEnabled();
 
   Future<void> saveLastFormationHintEnabled(bool enabled);
+
+  Future<EnemyPreviewPosition> loadEnemyPreviewPosition();
+
+  Future<void> saveEnemyPreviewPosition(EnemyPreviewPosition position);
 }
 
 final class SharedPreferencesBattlePredictionSettingsStore
@@ -19,6 +25,7 @@ final class SharedPreferencesBattlePredictionSettingsStore
   static const String _enemyPortraitsKey =
       'battle.enemyPreviewPortraitsEnabled';
   static const String _lastFormationHintKey = 'battle.lastFormationHintEnabled';
+  static const String _enemyPreviewPositionKey = 'battle.enemyPreviewPosition';
 
   @override
   Future<void> initialize() async {
@@ -60,6 +67,26 @@ final class SharedPreferencesBattlePredictionSettingsStore
     );
     if (!saved) throw StateError('last formation hint setting was not saved');
   }
+
+  @override
+  Future<EnemyPreviewPosition> loadEnemyPreviewPosition() async {
+    final value = (await SharedPreferences.getInstance()).getString(
+      _enemyPreviewPositionKey,
+    );
+    return EnemyPreviewPosition.values.firstWhere(
+      (position) => position.name == value,
+      orElse: () => EnemyPreviewPosition.above,
+    );
+  }
+
+  @override
+  Future<void> saveEnemyPreviewPosition(EnemyPreviewPosition position) async {
+    final saved = await (await SharedPreferences.getInstance()).setString(
+      _enemyPreviewPositionKey,
+      position.name,
+    );
+    if (!saved) throw StateError('enemy preview position was not saved');
+  }
 }
 
 final class MemoryBattlePredictionSettingsStore
@@ -67,10 +94,12 @@ final class MemoryBattlePredictionSettingsStore
   MemoryBattlePredictionSettingsStore([
     this._enemyPortraitsEnabled = true,
     this._lastFormationHintEnabled = true,
+    this._enemyPreviewPosition = EnemyPreviewPosition.above,
   ]);
 
   bool _enemyPortraitsEnabled;
   bool _lastFormationHintEnabled;
+  EnemyPreviewPosition _enemyPreviewPosition;
 
   @override
   Future<void> initialize() async {}
@@ -91,6 +120,15 @@ final class MemoryBattlePredictionSettingsStore
   Future<void> saveLastFormationHintEnabled(bool enabled) async {
     _lastFormationHintEnabled = enabled;
   }
+
+  @override
+  Future<EnemyPreviewPosition> loadEnemyPreviewPosition() async =>
+      _enemyPreviewPosition;
+
+  @override
+  Future<void> saveEnemyPreviewPosition(EnemyPreviewPosition position) async {
+    _enemyPreviewPosition = position;
+  }
 }
 
 final class BattlePredictionSettingsController extends ChangeNotifier {
@@ -99,9 +137,11 @@ final class BattlePredictionSettingsController extends ChangeNotifier {
   final BattlePredictionSettingsStore _store;
   bool _enemyPortraitsEnabled = true;
   bool _lastFormationHintEnabled = true;
+  EnemyPreviewPosition _enemyPreviewPosition = EnemyPreviewPosition.above;
 
   bool get enemyPortraitsEnabled => _enemyPortraitsEnabled;
   bool get lastFormationHintEnabled => _lastFormationHintEnabled;
+  EnemyPreviewPosition get enemyPreviewPosition => _enemyPreviewPosition;
 
   static Future<BattlePredictionSettingsController> load(
     BattlePredictionSettingsStore store,
@@ -115,6 +155,7 @@ final class BattlePredictionSettingsController extends ChangeNotifier {
     controller._enemyPortraitsEnabled = await store.loadEnemyPortraitsEnabled();
     controller._lastFormationHintEnabled = await store
         .loadLastFormationHintEnabled();
+    controller._enemyPreviewPosition = await store.loadEnemyPreviewPosition();
     return controller;
   }
 
@@ -129,6 +170,13 @@ final class BattlePredictionSettingsController extends ChangeNotifier {
     if (_lastFormationHintEnabled == enabled) return;
     await _store.saveLastFormationHintEnabled(enabled);
     _lastFormationHintEnabled = enabled;
+    notifyListeners();
+  }
+
+  Future<void> setEnemyPreviewPosition(EnemyPreviewPosition position) async {
+    if (_enemyPreviewPosition == position) return;
+    await _store.saveEnemyPreviewPosition(position);
+    _enemyPreviewPosition = position;
     notifyListeners();
   }
 }

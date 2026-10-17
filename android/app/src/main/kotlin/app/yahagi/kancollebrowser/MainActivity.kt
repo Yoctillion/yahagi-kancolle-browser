@@ -92,6 +92,7 @@ import app.yahagi.kancollebrowser.nativewebview.NativeWebViewStartupGuard
 import app.yahagi.kancollebrowser.nativewebview.SharedPreferencesNativeWebViewStartupStore
 import app.yahagi.kancollebrowser.notification.AppNotificationManager
 import app.yahagi.kancollebrowser.notification.NotificationProgressService
+import app.yahagi.kancollebrowser.navigation.AppNavigationChannel
 import java.io.File
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
@@ -218,6 +219,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     private var gameFrameRateManager: GameFrameRateManager? = null
     private var gameMouseWheelChannel: GameMouseWheelChannel? = null
     private var gameFullscreenChannel: GameFullscreenChannel? = null
+    private var appNavigationChannel: MethodChannel? = null
     private var gameFrameReloadManager: GameFrameReloadManager? = null
     private var gameFrameReloadChannel: MethodChannel? = null
     private var gameResourceCacheEngine: GameResourceCacheEngine? = null
@@ -320,6 +322,14 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        appNavigationChannel?.setMethodCallHandler(null)
+        appNavigationChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            AppNavigationChannel.METHOD_CHANNEL_NAME,
+        ).also {
+            it.setMethodCallHandler(AppNavigationChannel { moveTaskToBack(true) })
+        }
 
         recordBackupHandler?.dispose()
         recordBackupHandler = RecordBackupHandler(this, launch = { intent, requestCode ->
@@ -710,6 +720,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     }
 
     override fun onDestroy() {
+        appNavigationChannel?.setMethodCallHandler(null)
+        appNavigationChannel = null
         gameFullscreenChannel?.dispose()
         gameFullscreenChannel = null
         disposeCompositionImageHandler()
@@ -769,6 +781,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        appNavigationChannel?.setMethodCallHandler(null)
+        appNavigationChannel = null
         gameFullscreenChannel?.dispose()
         gameFullscreenChannel = null
         gameMouseWheelChannel?.dispose()

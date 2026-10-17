@@ -8,26 +8,34 @@ import 'package:yahagi_kancolle_browser/src/browser/game_resource_cache_store.da
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  test('saved off startup waits for native configure before allowing navigation', () async {
-    SharedPreferences.setMockInitialValues(<String, Object>{
-      SharedPreferencesGameResourceCacheStore.preferenceKey: 'none',
-    });
-    final port = FakePort()..configureGate = Completer<void>();
-    final controller = GameResourceCacheController(
-      store: SharedPreferencesGameResourceCacheStore(), port: port,
-    );
-    var mayNavigate = false;
-    final startup = controller.initialize(loadStatus: false).then((_) => mayNavigate = true);
-    await Future<void>.delayed(Duration.zero);
-    expect(port.configured, <GameResourceCacheMode>[GameResourceCacheMode.none]);
-    expect(mayNavigate, isFalse);
-    port.configureGate!.complete();
-    await startup;
-    expect(mayNavigate, isTrue);
-    expect(port.nativeMode, GameResourceCacheMode.none);
-    expect(port.statusCalls, 0);
-    controller.dispose();
-  });
+  test(
+    'saved off startup waits for native configure before allowing navigation',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        SharedPreferencesGameResourceCacheStore.preferenceKey: 'none',
+      });
+      final port = FakePort()..configureGate = Completer<void>();
+      final controller = GameResourceCacheController(
+        store: SharedPreferencesGameResourceCacheStore(),
+        port: port,
+      );
+      var mayNavigate = false;
+      final startup = controller
+          .initialize(loadStatus: false)
+          .then((_) => mayNavigate = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(port.configured, <GameResourceCacheMode>[
+        GameResourceCacheMode.none,
+      ]);
+      expect(mayNavigate, isFalse);
+      port.configureGate!.complete();
+      await startup;
+      expect(mayNavigate, isTrue);
+      expect(port.nativeMode, GameResourceCacheMode.none);
+      expect(port.statusCalls, 0);
+      controller.dispose();
+    },
+  );
   test('startup can apply saved mode without waiting for status', () async {
     final port = FakePort()..statusGate = Completer<void>();
     final controller = GameResourceCacheController(
@@ -45,42 +53,62 @@ void main() {
     controller.dispose();
   });
 
-  test('status captured before a mode change cannot notify stale data', () async {
-    final port = FakePort();
-    final controller = GameResourceCacheController(store: MemoryStore(), port: port);
-    await controller.initialize(loadStatus: false);
-    port.statusGate = Completer<void>();
-    port.statusEntered = Completer<void>();
-    port.nextStatus = GameResourceCacheStatus.fromMap(<Object?, Object?>{
-      'mode': 'full', 'cachedBytes': 777,
-    });
-    final observedBytes = <int>[];
-    controller.addListener(() => observedBytes.add(controller.status.cachedBytes));
-    final stale = controller.refresh();
-    await port.statusEntered!.future;
-    final change = controller.setMode(GameResourceCacheMode.temporary);
-    await Future<void>.delayed(Duration.zero);
-    port.nextStatus = GameResourceCacheStatus.empty;
-    port.statusGate!.complete();
-    await stale;
-    await change;
-    expect(observedBytes, isNot(contains(777)));
-    expect(controller.mode, GameResourceCacheMode.temporary);
-    controller.dispose();
-  });
+  test(
+    'status captured before a mode change cannot notify stale data',
+    () async {
+      final port = FakePort();
+      final controller = GameResourceCacheController(
+        store: MemoryStore(),
+        port: port,
+      );
+      await controller.initialize(loadStatus: false);
+      port.statusGate = Completer<void>();
+      port.statusEntered = Completer<void>();
+      port.nextStatus = GameResourceCacheStatus.fromMap(<Object?, Object?>{
+        'mode': 'full',
+        'cachedBytes': 777,
+      });
+      final observedBytes = <int>[];
+      controller.addListener(
+        () => observedBytes.add(controller.status.cachedBytes),
+      );
+      final stale = controller.refresh();
+      await port.statusEntered!.future;
+      final change = controller.setMode(GameResourceCacheMode.temporary);
+      await Future<void>.delayed(Duration.zero);
+      port.nextStatus = GameResourceCacheStatus.empty;
+      port.statusGate!.complete();
+      await stale;
+      await change;
+      expect(observedBytes, isNot(contains(777)));
+      expect(controller.mode, GameResourceCacheMode.temporary);
+      controller.dispose();
+    },
+  );
 
-  test('saved off mode is never replaced by temporary after configure rejection', () async {
-    final port = FakePort()..configureResult = false;
-    final controller = GameResourceCacheController(store: MemoryStore(), port: port);
-    await controller.initialize();
-    expect(controller.mode, GameResourceCacheMode.none);
-    expect(port.configured, <GameResourceCacheMode>[GameResourceCacheMode.none]);
-    controller.dispose();
-  });
+  test(
+    'saved off mode is never replaced by temporary after configure rejection',
+    () async {
+      final port = FakePort()..configureResult = false;
+      final controller = GameResourceCacheController(
+        store: MemoryStore(),
+        port: port,
+      );
+      await controller.initialize();
+      expect(controller.mode, GameResourceCacheMode.none);
+      expect(port.configured, <GameResourceCacheMode>[
+        GameResourceCacheMode.none,
+      ]);
+      controller.dispose();
+    },
+  );
 
   test('late initialize result cannot notify after disposal', () async {
     final port = FakePort()..configureGate = Completer<void>();
-    final controller = GameResourceCacheController(store: MemoryStore(), port: port);
+    final controller = GameResourceCacheController(
+      store: MemoryStore(),
+      port: port,
+    );
     final pending = controller.initialize();
     await Future<void>.delayed(Duration.zero);
     controller.dispose();

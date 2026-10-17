@@ -4,6 +4,8 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import '../audio/game_audio_controller.dart';
 import '../browser/game_toolbar_display_controller.dart';
 import 'background_game_retention_controller.dart';
+import 'app_exit_settings.dart';
+import 'app_exit_settings_section.dart';
 import 'display_mode_controller.dart';
 import 'display_mode_section.dart';
 import 'game_frame_rate_settings.dart';
@@ -30,6 +32,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
     this.toolbarDisplayController,
     this.gameFrameRateSettingsController,
     this.screenAwakeController,
+    this.appExitSettingsController,
     this.gameMouseWheelSettingsController,
     this.gameFrameRefreshShortcutSettings,
     this.gameRenderingModeController,
@@ -43,6 +46,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
   final GameToolbarDisplayController? toolbarDisplayController;
   final GameFrameRateSettingsController? gameFrameRateSettingsController;
   final ScreenAwakeController? screenAwakeController;
+  final AppExitSettingsController? appExitSettingsController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final GameRenderingModeController? gameRenderingModeController;
@@ -371,6 +375,11 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                 ),
               ),
             ),
+            if (appExitSettingsController case final exit?) ...<Widget>[
+              const SizedBox(height: 24),
+              buildSectionTitle(l10n.operationProtectionTitle),
+              buildCard(child: AppExitSettingsSection(controller: exit)),
+            ],
             const SizedBox(height: 24),
             buildSectionTitle(l10n.topNoticeSectionTitle),
             buildCard(

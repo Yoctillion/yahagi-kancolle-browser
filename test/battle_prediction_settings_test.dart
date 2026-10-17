@@ -27,6 +27,48 @@ void main() {
     expect(await store.loadEnemyPortraitsEnabled(), isTrue);
   });
 
+  for (final stored in <String?>[null, 'unknown-position']) {
+    test('enemy preview position defaults above for $stored', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'battle.enemyPreviewPosition': ?stored,
+      });
+      final controller = await BattlePredictionSettingsController.load(
+        SharedPreferencesBattlePredictionSettingsStore(),
+      );
+      addTearDown(controller.dispose);
+
+      expect(controller.enemyPreviewPosition, EnemyPreviewPosition.above);
+    });
+  }
+
+  test(
+    'controller persists preview position and notifies only changes',
+    () async {
+      final store = MemoryBattlePredictionSettingsStore();
+      final controller = await BattlePredictionSettingsController.load(store);
+      addTearDown(controller.dispose);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      await controller.setEnemyPreviewPosition(EnemyPreviewPosition.below);
+      expect(controller.enemyPreviewPosition, EnemyPreviewPosition.below);
+      expect(
+        await store.loadEnemyPreviewPosition(),
+        EnemyPreviewPosition.below,
+      );
+      expect(notifications, 1);
+
+      await controller.setEnemyPreviewPosition(EnemyPreviewPosition.below);
+      expect(notifications, 1);
+      await controller.setEnemyPreviewPosition(EnemyPreviewPosition.above);
+      expect(
+        await store.loadEnemyPreviewPosition(),
+        EnemyPreviewPosition.above,
+      );
+      expect(notifications, 2);
+    },
+  );
+
   test('enemy portrait setting loads a saved disabled value', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
       'battle.enemyPreviewPortraitsEnabled': false,
@@ -112,4 +154,11 @@ final class _FailingLegacyCleanupStore
 
   @override
   Future<void> saveLastFormationHintEnabled(bool enabled) async {}
+
+  @override
+  Future<EnemyPreviewPosition> loadEnemyPreviewPosition() async =>
+      EnemyPreviewPosition.above;
+
+  @override
+  Future<void> saveEnemyPreviewPosition(EnemyPreviewPosition position) async {}
 }

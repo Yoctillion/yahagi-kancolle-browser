@@ -1,0 +1,13 @@
+#!/bin/sh
+# Enable for this checkout: git config core.hooksPath .githooks
+set -eu
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+for python_command in python3 python; do
+    if command -v "$python_command" >/dev/null 2>&1 &&
+       "$python_command" -c 'import sys; sys.exit(sys.version_info < (3, 8))' >/dev/null 2>&1; then
+        exec "$python_command" tool/check_repository_hygiene.py --staged
+    fi
+done
+echo 'Repository hygiene: Python 3.8+ is required; commit blocked.' >&2
+exit 1

@@ -1,11 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_settings_page.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/safety_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/safety_settings_store.dart';
 
 void main() {
+  for (final (locale, labels) in <(Locale, List<String>)>[
+    (const Locale('zh'), ['闪烁', '常亮', '关闭']),
+    (
+      const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      ['閃爍', '恆亮', '關閉'],
+    ),
+    (const Locale('ja'), ['点滅', '常時点灯', 'オフ']),
+  ]) {
+    testWidgets('morale mode choices are localized for $locale', (
+      tester,
+    ) async {
+      final controller = await SafetySettingsController.load(
+        MemorySafetySettingsStore(),
+      );
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BattleSettingsPage(safetySettingsController: controller),
+        ),
+      );
+      final dropdown = tester.widget<DropdownButton<MoraleSparkleMode>>(
+        find.byKey(const Key('moraleSparkleModeDropdown')),
+      );
+      expect(dropdown.value, MoraleSparkleMode.blinking);
+      expect(dropdown.items!.map((item) => (item.child as Text).data), labels);
+    });
+  }
+
   testWidgets('battle settings show the approved status effect controls', (
     tester,
   ) async {
@@ -39,7 +71,7 @@ void main() {
       find.byKey(const Key('damageVibrationFilterDropdown')),
       findsOneWidget,
     );
-    expect(find.byKey(const Key('moraleSparkleSwitch')), findsOneWidget);
+    expect(find.byKey(const Key('moraleSparkleModeDropdown')), findsOneWidget);
 
     final scopeDropdownWidget = tester
         .widget<DropdownButton<BattleEffectDisplayScope>>(
@@ -82,7 +114,7 @@ void main() {
           displayScope: BattleEffectDisplayScope.fleetOnly,
           damagePulseFilter: DamagePulseFilter.minorOnly,
           damageVibrationFilter: DamageVibrationFilter.heavyOnly,
-          moraleSparkleEnabled: false,
+          moraleSparkleMode: MoraleSparkleMode.off,
         ),
       ),
     );
@@ -109,7 +141,10 @@ void main() {
       controller.battleStatusEffects.damageVibrationFilter,
       DamageVibrationFilter.heavyOnly,
     );
-    expect(controller.battleStatusEffects.moraleSparkleEnabled, isFalse);
+    expect(
+      controller.battleStatusEffects.moraleSparkleMode,
+      MoraleSparkleMode.off,
+    );
 
     final pulseDropdown = tester.widget<DropdownButton<DamagePulseFilter>>(
       find.byKey(const Key('damagePulseFilterDropdown')),
@@ -118,12 +153,12 @@ void main() {
         .widget<DropdownButton<DamageVibrationFilter>>(
           find.byKey(const Key('damageVibrationFilterDropdown')),
         );
-    final moraleSwitch = tester.widget<Switch>(
-      find.byKey(const Key('moraleSparkleSwitch')),
+    final moraleDropdown = tester.widget<DropdownButton<MoraleSparkleMode>>(
+      find.byKey(const Key('moraleSparkleModeDropdown')),
     );
     expect(pulseDropdown.onChanged, isNull);
     expect(vibrationDropdown.onChanged, isNull);
-    expect(moraleSwitch.onChanged, isNull);
+    expect(moraleDropdown.onChanged, isNull);
   });
 
   testWidgets('scope and filter controls update independent fields', (
@@ -169,5 +204,18 @@ void main() {
       controller.battleStatusEffects.damageVibrationFilter,
       DamageVibrationFilter.heavyOnly,
     );
+    final moraleDropdown = tester.widget<DropdownButton<MoraleSparkleMode>>(
+      find.byKey(const Key('moraleSparkleModeDropdown')),
+    );
+    expect(
+      moraleDropdown.items!.map((item) => item.value),
+      MoraleSparkleMode.values,
+    );
+    expect(moraleDropdown.alignment, AlignmentDirectional.centerEnd);
+    for (final mode in MoraleSparkleMode.values) {
+      moraleDropdown.onChanged!(mode);
+      await tester.pump();
+      expect(controller.battleStatusEffects.moraleSparkleMode, mode);
+    }
   });
 }

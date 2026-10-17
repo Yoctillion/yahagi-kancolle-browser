@@ -28,7 +28,7 @@ class FleetSummaryCard extends StatefulWidget {
     required this.onToggleCollapse,
     required this.onOpenFleet,
     this.damagePulseFilter = DamagePulseFilter.all,
-    this.moraleSparkleEnabled = true,
+    this.moraleSparkleMode = MoraleSparkleMode.blinking,
     this.moraleRecoveryTimerController,
     this.clock,
     this.visible = defaultFields,
@@ -44,7 +44,7 @@ class FleetSummaryCard extends StatefulWidget {
   final VoidCallback onToggleCollapse;
   final ValueChanged<int> onOpenFleet;
   final DamagePulseFilter damagePulseFilter;
-  final bool moraleSparkleEnabled;
+  final MoraleSparkleMode moraleSparkleMode;
   final MoraleRecoveryTimerController? moraleRecoveryTimerController;
   final DateTime Function()? clock;
   final Set<String> visible;
@@ -177,9 +177,10 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                                   widget.visible.contains('portrait')
                                   ? widget.damagePulseFilter
                                   : DamagePulseFilter.off,
-                              moraleSparkleEnabled:
-                                  widget.visible.contains('portrait') &&
-                                  widget.moraleSparkleEnabled,
+                              moraleSparkleMode:
+                                  widget.visible.contains('portrait')
+                                  ? widget.moraleSparkleMode
+                                  : MoraleSparkleMode.off,
                               repairStatus: repairStatuses[ship.id],
                               specialAttack: ship == ships.first
                                   ? specialAttack

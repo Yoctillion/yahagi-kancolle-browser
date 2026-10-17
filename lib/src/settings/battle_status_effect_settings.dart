@@ -10,6 +10,8 @@ enum DamagePulseFilter { off, minorOnly, moderateOnly, heavyOnly, all }
 
 enum DamageVibrationFilter { off, moderateOnly, heavyOnly, all }
 
+enum MoraleSparkleMode { blinking, steady, off }
+
 extension BattleEffectDisplayScopeBehavior on BattleEffectDisplayScope {
   bool includes(BattleEffectSurface surface) => switch (this) {
     BattleEffectDisplayScope.predictionOnly =>
@@ -49,14 +51,14 @@ class BattleStatusEffectSettings {
     this.displayScope = BattleEffectDisplayScope.all,
     this.damagePulseFilter = DamagePulseFilter.all,
     this.damageVibrationFilter = DamageVibrationFilter.all,
-    this.moraleSparkleEnabled = true,
+    this.moraleSparkleMode = MoraleSparkleMode.blinking,
   });
 
   final bool enabled;
   final BattleEffectDisplayScope displayScope;
   final DamagePulseFilter damagePulseFilter;
   final DamageVibrationFilter damageVibrationFilter;
-  final bool moraleSparkleEnabled;
+  final MoraleSparkleMode moraleSparkleMode;
 
   DamagePulseFilter pulseFilterFor(BattleEffectSurface surface) {
     if (!enabled || !displayScope.includes(surface)) {
@@ -65,8 +67,10 @@ class BattleStatusEffectSettings {
     return damagePulseFilter;
   }
 
-  bool sparkleEnabledFor(BattleEffectSurface surface) =>
-      enabled && moraleSparkleEnabled && displayScope.includes(surface);
+  MoraleSparkleMode sparkleModeFor(BattleEffectSurface surface) =>
+      enabled && displayScope.includes(surface)
+      ? moraleSparkleMode
+      : MoraleSparkleMode.off;
 
   bool vibrates(ShipDamageLevel level) =>
       enabled && damageVibrationFilter.matches(level);
@@ -76,7 +80,7 @@ class BattleStatusEffectSettings {
     BattleEffectDisplayScope? displayScope,
     DamagePulseFilter? damagePulseFilter,
     DamageVibrationFilter? damageVibrationFilter,
-    bool? moraleSparkleEnabled,
+    MoraleSparkleMode? moraleSparkleMode,
   }) {
     return BattleStatusEffectSettings(
       enabled: enabled ?? this.enabled,
@@ -84,7 +88,7 @@ class BattleStatusEffectSettings {
       damagePulseFilter: damagePulseFilter ?? this.damagePulseFilter,
       damageVibrationFilter:
           damageVibrationFilter ?? this.damageVibrationFilter,
-      moraleSparkleEnabled: moraleSparkleEnabled ?? this.moraleSparkleEnabled,
+      moraleSparkleMode: moraleSparkleMode ?? this.moraleSparkleMode,
     );
   }
 
@@ -96,7 +100,7 @@ class BattleStatusEffectSettings {
           displayScope == other.displayScope &&
           damagePulseFilter == other.damagePulseFilter &&
           damageVibrationFilter == other.damageVibrationFilter &&
-          moraleSparkleEnabled == other.moraleSparkleEnabled;
+          moraleSparkleMode == other.moraleSparkleMode;
 
   @override
   int get hashCode => Object.hash(
@@ -104,6 +108,6 @@ class BattleStatusEffectSettings {
     displayScope,
     damagePulseFilter,
     damageVibrationFilter,
-    moraleSparkleEnabled,
+    moraleSparkleMode,
   );
 }

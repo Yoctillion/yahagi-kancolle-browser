@@ -109,8 +109,8 @@ final class GameApiEventPipeline {
   }
 
   void resumeAfterMaintenance() {
-    // The game surface is recreated after this point. A delayed response from
-    // the disposed surface retains its old document-start timestamp.
+    // The game document is reloaded after this point. A delayed response from
+    // the previous document retains its old document-start timestamp.
     final resumedAt = DateTime.now().millisecondsSinceEpoch.toDouble();
     if (_maintenanceDocumentCutoff == null ||
         resumedAt > _maintenanceDocumentCutoff!) {

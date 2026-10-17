@@ -19,6 +19,7 @@ import 'safety_settings_controller.dart';
 import 'network_settings_controller.dart';
 import 'release_check_service.dart';
 import 'screen_awake_controller.dart';
+import 'app_exit_settings.dart';
 import 'game_mouse_wheel_settings.dart';
 import 'game_frame_refresh_shortcut_settings.dart';
 import '../battle/fcd_map_controller.dart';
@@ -62,6 +63,7 @@ class SettingsPage extends StatelessWidget {
     required this.currentVersion,
     this.releaseChecker,
     this.screenAwakeController,
+    this.appExitSettingsController,
     this.gameMouseWheelSettingsController,
     this.gameFrameRefreshShortcutSettings,
     this.toolbarDisplayController,
@@ -102,6 +104,7 @@ class SettingsPage extends StatelessWidget {
   final String currentVersion;
   final ReleaseChecker? releaseChecker;
   final ScreenAwakeController? screenAwakeController;
+  final AppExitSettingsController? appExitSettingsController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final GameToolbarDisplayController? toolbarDisplayController;
@@ -133,6 +136,7 @@ class SettingsPage extends StatelessWidget {
           toolbarDisplayController: toolbarDisplayController,
           gameFrameRateSettingsController: gameFrameRateSettingsController,
           screenAwakeController: screenAwakeController,
+          appExitSettingsController: appExitSettingsController,
           gameMouseWheelSettingsController: gameMouseWheelSettingsController,
           gameFrameRefreshShortcutSettings: gameFrameRefreshShortcutSettings,
           gameRenderingModeController: gameRenderingModeController,

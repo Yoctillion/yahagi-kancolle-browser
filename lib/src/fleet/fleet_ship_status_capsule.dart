@@ -29,7 +29,7 @@ class FleetShipStatusCapsule extends StatefulWidget {
     required this.state,
     required this.ship,
     this.damagePulseFilter = DamagePulseFilter.all,
-    this.moraleSparkleEnabled = true,
+    this.moraleSparkleMode = MoraleSparkleMode.blinking,
     this.repairStatus,
     this.specialAttack,
     this.onTap,
@@ -40,7 +40,7 @@ class FleetShipStatusCapsule extends StatefulWidget {
   final GameState state;
   final OwnedShip ship;
   final DamagePulseFilter damagePulseFilter;
-  final bool moraleSparkleEnabled;
+  final MoraleSparkleMode moraleSparkleMode;
   final ShipRepairStatus? repairStatus;
   final EquipmentMechanismDisplay? specialAttack;
   final VoidCallback? onTap;
@@ -54,13 +54,16 @@ class FleetShipStatusCapsule extends StatefulWidget {
 class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
     with SingleTickerProviderStateMixin {
   late final AnimationController _sparklePulse;
+  MoraleSparkleMode get effectiveSparkleMode =>
+      show('portrait') ? widget.moraleSparkleMode : MoraleSparkleMode.off;
   bool get effectiveSparkleEnabled =>
-      show('portrait') && widget.moraleSparkleEnabled;
+      effectiveSparkleMode != MoraleSparkleMode.off;
   DamagePulseFilter get effectiveDamagePulseFilter =>
       show('portrait') ? widget.damagePulseFilter : DamagePulseFilter.off;
 
   void _syncSparkleAnimation() {
-    if (effectiveSparkleEnabled && widget.ship.condition >= 50) {
+    if (effectiveSparkleMode == MoraleSparkleMode.blinking &&
+        widget.ship.condition >= 50) {
       if (!_sparklePulse.isAnimating) _sparklePulse.repeat();
     } else {
       _sparklePulse.stop();
@@ -361,8 +364,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                             shipId: ship.id,
                                             value: ship.condition,
                                             sparklePulse: _sparklePulse,
-                                            sparkleEnabled:
-                                                effectiveSparkleEnabled,
+                                            sparkleMode: effectiveSparkleMode,
                                             showTextBadge: false,
                                             repairLabel:
                                                 widget.repairStatus?.label,
@@ -393,8 +395,8 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                                   shipId: ship.id,
                                                   value: ship.condition,
                                                   sparklePulse: _sparklePulse,
-                                                  sparkleEnabled:
-                                                      effectiveSparkleEnabled,
+                                                  sparkleMode:
+                                                      effectiveSparkleMode,
                                                   showTextBadge: false,
                                                 ),
                                               ),
@@ -591,7 +593,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                 shipId: ship.id,
                 value: ship.condition,
                 sparklePulse: _sparklePulse,
-                sparkleEnabled: effectiveSparkleEnabled,
+                sparkleMode: effectiveSparkleMode,
                 showTextBadge: false,
               ),
             ),

@@ -740,6 +740,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
                 ? _records.map(_fullMapLabel)
                 : _sortieMapsByLabel.keys,
           ),
+          optionLabelFormatter: _formatMapFilterLabel,
         ),
         LogbookFilterField(
           keyName: 'status',
@@ -1362,6 +1363,12 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
       _formatMapLabel(row, truncateName: true);
 
   String _fullMapLabel(Map<String, dynamic> row) => _formatMapLabel(row);
+
+  String _formatMapFilterLabel(String label) {
+    final suffix = RegExp(r' \((\d+-\d+(?: [甲乙丙丁])?)\)$').firstMatch(label);
+    if (suffix == null) return label;
+    return '(${suffix[1]}) ${label.substring(0, suffix.start)}';
+  }
 
   String _expeditionLabel(Map<String, dynamic> row) {
     final id = row['expedition_id'] as int? ?? 0;

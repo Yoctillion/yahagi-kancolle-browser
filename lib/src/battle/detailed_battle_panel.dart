@@ -7,6 +7,7 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
+import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'battle_models.dart';
 import 'battle_pills.dart';
@@ -24,6 +25,7 @@ class DetailedBattlePanel extends StatelessWidget {
     this.damagePulseMode = DamagePulseFilter.all,
     this.showEnemyPortraits = true,
     this.showLastFormationHint = true,
+    this.enemyPreviewPosition = EnemyPreviewPosition.above,
   });
 
   final LiveBattle battle;
@@ -32,12 +34,27 @@ class DetailedBattlePanel extends StatelessWidget {
   final DamagePulseFilter damagePulseMode;
   final bool showEnemyPortraits;
   final bool showLastFormationHint;
+  final EnemyPreviewPosition enemyPreviewPosition;
 
   @override
   Widget build(BuildContext context) {
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     final enemyPreviewShips =
         battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
+    final previewBelow =
+        enemyPreviewPosition == EnemyPreviewPosition.below &&
+        enemyPreviewShips.isNotEmpty;
+    final enemyPreview = OfficialEnemyPreview(
+      ships: enemyPreviewShips,
+      combined: battle.enemyPreviewCombined,
+      showPortraits: showEnemyPortraits,
+      masterShips: gameState.masterShips,
+      serverOrigin: gameState.serverOrigin,
+    );
+    final friendlyFleets = NavigationFriendlyFleets(
+      battle: battle,
+      damagePulseMode: damagePulseMode,
+    );
     final friendMainTitle = battle.friendFormation > 0
         ? '我方主力（${formationLabel(battle.friendFormation)}）'
         : '我方主力';
@@ -60,13 +77,7 @@ class DetailedBattlePanel extends StatelessWidget {
             _BattleOverview(battle: battle, gameState: gameState),
           if (navigation && enemyPreviewShips.isNotEmpty) ...[
             const SizedBox(height: 7),
-            OfficialEnemyPreview(
-              ships: enemyPreviewShips,
-              combined: battle.enemyPreviewCombined,
-              showPortraits: showEnemyPortraits,
-              masterShips: gameState.masterShips,
-              serverOrigin: gameState.serverOrigin,
-            ),
+            if (previewBelow) friendlyFleets else enemyPreview,
           ],
           if (navigation && battle.landBaseRaid != null) ...[
             const SizedBox(height: 7),
@@ -74,10 +85,7 @@ class DetailedBattlePanel extends StatelessWidget {
           ],
           const SizedBox(height: 9),
           if (navigation)
-            NavigationFriendlyFleets(
-              battle: battle,
-              damagePulseMode: damagePulseMode,
-            )
+            if (previewBelow) enemyPreview else friendlyFleets
           else
             Row(
               key: const Key('battle-side-by-side-fleets'),

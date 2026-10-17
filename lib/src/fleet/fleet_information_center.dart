@@ -58,7 +58,7 @@ class FleetInformationCenter extends StatefulWidget {
     this.expeditionMode,
     this.onExpeditionModeChanged,
     this.damagePulseMode = DamagePulseFilter.all,
-    this.moraleSparkleEnabled = true,
+    this.moraleSparkleMode = MoraleSparkleMode.blinking,
     this.clock,
     this.constructionMode = ConstructionCenterMode.construction,
     this.developmentRepository,
@@ -82,7 +82,7 @@ class FleetInformationCenter extends StatefulWidget {
   final ExpeditionSummaryMode? expeditionMode;
   final ValueChanged<ExpeditionSummaryMode>? onExpeditionModeChanged;
   final DamagePulseFilter damagePulseMode;
-  final bool moraleSparkleEnabled;
+  final MoraleSparkleMode moraleSparkleMode;
   final DateTime Function()? clock;
   final ConstructionCenterMode constructionMode;
   final DevelopmentRepository? developmentRepository;
@@ -154,7 +154,7 @@ class _FleetInformationCenterState extends State<FleetInformationCenter> {
                         now: now,
                         selectedFleetId: _selectedFleetId,
                         damagePulseMode: widget.damagePulseMode,
-                        moraleSparkleEnabled: widget.moraleSparkleEnabled,
+                        moraleSparkleMode: widget.moraleSparkleMode,
                         onFleetSelected: (id) {
                           setState(() => _selectedFleetId = id);
                         },
@@ -307,7 +307,7 @@ class _FleetView extends StatefulWidget {
     required this.now,
     required this.selectedFleetId,
     required this.damagePulseMode,
-    required this.moraleSparkleEnabled,
+    required this.moraleSparkleMode,
     required this.onFleetSelected,
     required this.showContextHeader,
     required this.moraleRecoveryTimerController,
@@ -321,7 +321,7 @@ class _FleetView extends StatefulWidget {
   final DateTime now;
   final int selectedFleetId;
   final DamagePulseFilter damagePulseMode;
-  final bool moraleSparkleEnabled;
+  final MoraleSparkleMode moraleSparkleMode;
   final ValueChanged<int> onFleetSelected;
   final bool showContextHeader;
   final MoraleRecoveryTimerController? moraleRecoveryTimerController;
@@ -482,8 +482,7 @@ class _FleetViewState extends State<_FleetView> {
                                 repairStatuses: repairStatuses,
                                 selectedShipId: selectedShip!.id,
                                 damagePulseMode: widget.damagePulseMode,
-                                moraleSparkleEnabled:
-                                    widget.moraleSparkleEnabled,
+                                moraleSparkleMode: widget.moraleSparkleMode,
                                 onSelected: (shipId) {
                                   setState(() {
                                     _selectedShipId = shipId;
@@ -585,7 +584,7 @@ class _FleetRosterPanel extends StatefulWidget {
     required this.repairStatuses,
     required this.selectedShipId,
     required this.damagePulseMode,
-    required this.moraleSparkleEnabled,
+    required this.moraleSparkleMode,
     required this.onSelected,
   });
 
@@ -594,7 +593,7 @@ class _FleetRosterPanel extends StatefulWidget {
   final Map<int, ShipRepairStatus> repairStatuses;
   final int selectedShipId;
   final DamagePulseFilter damagePulseMode;
-  final bool moraleSparkleEnabled;
+  final MoraleSparkleMode moraleSparkleMode;
   final ValueChanged<int> onSelected;
 
   @override
@@ -640,7 +639,9 @@ class _FleetRosterPanelState extends State<_FleetRosterPanel>
           top < _rosterHeight &&
           top + _shipHeight > 0;
     });
-    if (_tickerEnabled && widget.moraleSparkleEnabled && visibleSparkle) {
+    if (_tickerEnabled &&
+        widget.moraleSparkleMode == MoraleSparkleMode.blinking &&
+        visibleSparkle) {
       if (!_sparklePulse.isAnimating) _sparklePulse.repeat();
     } else {
       _sparklePulse.stop();
@@ -689,7 +690,7 @@ class _FleetRosterPanelState extends State<_FleetRosterPanel>
                       repairStatus: widget.repairStatuses[ship.id],
                       selected: ship.id == widget.selectedShipId,
                       damagePulseMode: widget.damagePulseMode,
-                      moraleSparkleEnabled: widget.moraleSparkleEnabled,
+                      moraleSparkleMode: widget.moraleSparkleMode,
                       sparklePulse: _sparklePulse,
                       onTap: () => widget.onSelected(ship.id),
                     );
@@ -711,7 +712,7 @@ class _FleetRosterShipCapsule extends StatelessWidget {
     required this.repairStatus,
     required this.selected,
     required this.damagePulseMode,
-    required this.moraleSparkleEnabled,
+    required this.moraleSparkleMode,
     required this.sparklePulse,
     required this.onTap,
   });
@@ -721,7 +722,7 @@ class _FleetRosterShipCapsule extends StatelessWidget {
   final ShipRepairStatus? repairStatus;
   final bool selected;
   final DamagePulseFilter damagePulseMode;
-  final bool moraleSparkleEnabled;
+  final MoraleSparkleMode moraleSparkleMode;
   final Animation<double> sparklePulse;
   final VoidCallback onTap;
 
@@ -818,7 +819,7 @@ class _FleetRosterShipCapsule extends StatelessWidget {
                   shipId: ship.id,
                   value: ship.condition,
                   sparklePulse: sparklePulse,
-                  sparkleEnabled: moraleSparkleEnabled,
+                  sparkleMode: moraleSparkleMode,
                   repairLabel: repairStatus?.label,
                   layout: ShipMoraleMarkLayout.detail,
                 ),

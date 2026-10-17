@@ -61,7 +61,8 @@ class SafetySettingsController extends ChangeNotifier {
         _battleStatusEffects.copyWith(damageVibrationFilter: filter),
       );
 
-  Future<void> setMoraleSparkleEnabled(bool enabled) => setBattleStatusEffects(
-    _battleStatusEffects.copyWith(moraleSparkleEnabled: enabled),
-  );
+  Future<void> setMoraleSparkleMode(MoraleSparkleMode mode) =>
+      setBattleStatusEffects(
+        _battleStatusEffects.copyWith(moraleSparkleMode: mode),
+      );
 }

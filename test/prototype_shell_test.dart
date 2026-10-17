@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/main.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
+import 'package:yahagi_kancolle_browser/src/battle/live_battle_card.dart';
+import 'package:yahagi_kancolle_browser/src/settings/battle_prediction_settings.dart';
 import 'package:yahagi_kancolle_browser/src/audio/game_audio_controller.dart';
 import 'package:yahagi_kancolle_browser/src/audio/game_audio_store.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_channel.dart';
@@ -20,11 +22,13 @@ import 'package:yahagi_kancolle_browser/src/settings/display_mode_controller.dar
 import 'package:yahagi_kancolle_browser/src/settings/display_mode_store.dart';
 import 'package:yahagi_kancolle_browser/src/settings/safety_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/safety_settings_store.dart';
+import 'package:yahagi_kancolle_browser/src/settings/app_exit_settings.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_controller.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_page.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_state.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_store.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_browser_controller.dart';
+import 'package:yahagi_kancolle_browser/src/browser/game_workspace_visibility.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_toolbar_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_toolbar_display_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_screenshot_controller.dart';
@@ -64,7 +68,91 @@ Future<void> _tapWorkspaceNavigationItem(
 }
 
 void main() {
-  testWidgets('backup maintenance preserves shell and restarts game surface', (
+  testWidgets(
+    'preview position controller updates the live shell immediately',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final timersWereDisabled = GameStateController.disableTimerForTest;
+      GameStateController.disableTimerForTest = true;
+      addTearDown(
+        () => GameStateController.disableTimerForTest = timersWereDisabled,
+      );
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1000, 800);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final game = GameStateController();
+      final toolbar = GameToolbarController();
+      final capture = GameCaptureController();
+      final battle = BattleController(gameState: () => game.state);
+      final layout = await LayoutSettingsController.load(
+        _MemoryLayoutSettingsStore().._dashboardCardOrder = ['battle'],
+      );
+      final prediction = await BattlePredictionSettingsController.load(
+        MemoryBattlePredictionSettingsStore(),
+      );
+      addTearDown(game.dispose);
+      addTearDown(toolbar.dispose);
+      addTearDown(capture.dispose);
+      addTearDown(battle.dispose);
+      addTearDown(layout.dispose);
+      addTearDown(prediction.dispose);
+
+      await tester.pumpWidget(
+        YahagiApp(
+          layoutSettingsController: layout,
+          battlePredictionSettingsController: prediction,
+          networkSettingsController: NetworkSettingsController(
+            store: _MemoryNetworkSettingsStore(),
+          ),
+          gadgetBypassController: GadgetBypassController(
+            store: _MemoryGadgetBypassStore(),
+            port: _FakeGadgetBypassPort(),
+          ),
+          safetySettingsController: await SafetySettingsController.load(
+            MemorySafetySettingsStore(),
+          ),
+          displayModeController: await DisplayModeController.load(
+            MemoryDisplayModeStore(),
+          ),
+          controller: PrototypeStatusController(),
+          browserController: GameBrowserController(port: _NoopBrowserPort()),
+          captureModeController: await CaptureModeController.load(
+            _MemoryModeStore(),
+          ),
+          gameCaptureController: capture,
+          gameStateController: game,
+          battleController: battle,
+          audioController: await GameAudioController.load(_MemoryAudioStore()),
+          toolbarController: toolbar,
+          gameSurface: const SizedBox(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final card = find.byType(LiveBattleCard);
+      expect(card, findsOneWidget);
+      expect(
+        tester.widget<LiveBattleCard>(card).enemyPreviewPosition,
+        EnemyPreviewPosition.above,
+      );
+
+      await prediction.setEnemyPreviewPosition(EnemyPreviewPosition.below);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<LiveBattleCard>(card).enemyPreviewPosition,
+        EnemyPreviewPosition.below,
+      );
+      await prediction.setEnemyPreviewPosition(EnemyPreviewPosition.above);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<LiveBattleCard>(card).enemyPreviewPosition,
+        EnemyPreviewPosition.above,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('backup maintenance and recovery preserve the game surface', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -124,15 +212,40 @@ void main() {
     );
     await tester.pumpAndSettle();
     final shellState = tester.state(find.byType(YahagiShell));
-    maintenance.value = const Scaffold(body: Text('Recovering backup'));
-    await tester.pumpAndSettle();
-    expect(tester.state(find.byType(YahagiShell)), same(shellState));
-    expect(surfaceDisposals, 1);
-    expect(find.text('Recovering backup'), findsOneWidget);
-    maintenance.value = null;
-    await tester.pumpAndSettle();
-    expect(tester.state(find.byType(YahagiShell)), same(shellState));
-    expect(find.byType(_LifecycleProbe), findsOneWidget);
+    final surfaceState = tester.state(find.byType(_LifecycleProbe));
+
+    void expectPreservedGameSurface() {
+      expect(tester.state(find.byType(YahagiShell)), same(shellState));
+      expect(find.byType(_LifecycleProbe), findsOneWidget);
+      expect(tester.state(find.byType(_LifecycleProbe)), same(surfaceState));
+      expect(surfaceDisposals, 0);
+      expect(
+        GameWorkspaceActive.of(tester.element(find.byType(_LifecycleProbe))),
+        maintenance.value == null,
+      );
+      expect(tester.takeException(), isNull);
+    }
+
+    expectPreservedGameSurface();
+    for (var attempt = 0; attempt < 3; attempt++) {
+      maintenance.value = const Scaffold(body: Text('Recovering backup'));
+      await tester.pumpAndSettle();
+      expectPreservedGameSurface();
+      expect(find.text('Recovering backup'), findsOneWidget);
+      expect(find.text('Retry backup recovery'), findsNothing);
+
+      maintenance.value = const Scaffold(body: Text('Retry backup recovery'));
+      await tester.pumpAndSettle();
+      expectPreservedGameSurface();
+      expect(find.text('Retry backup recovery'), findsOneWidget);
+      expect(find.text('Recovering backup'), findsNothing);
+
+      maintenance.value = null;
+      await tester.pumpAndSettle();
+      expectPreservedGameSurface();
+      expect(find.text('Recovering backup'), findsNothing);
+      expect(find.text('Retry backup recovery'), findsNothing);
+    }
   });
 
   testWidgets('quest listener survives navigation and orientation changes', (
@@ -481,8 +594,11 @@ void main() {
     addTearDown(battle.dispose);
     var deactivations = 0;
     var disposals = 0;
+    final appExitSettings = await AppExitSettingsController.load();
+    addTearDown(appExitSettings.dispose);
     await tester.pumpWidget(
       YahagiApp(
+        appExitSettingsController: appExitSettings,
         layoutSettingsController: await LayoutSettingsController.load(
           _MemoryLayoutSettingsStore(),
         ),
@@ -577,6 +693,27 @@ void main() {
     expect(tester.element(panel), same(panelElement));
     expect(deactivations, 0);
     expect(disposals, 0);
+
+    // A subsequent Back must ask before leaving the app, even with no stored
+    // preference (including upgrades from versions without this setting).
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('app-exit-confirm-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('app-exit-stay')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('app-exit-confirm-dialog')), findsNothing);
+    expect(tester.element(game), same(gameElement));
+    expect(deactivations, 0);
+    expect(disposals, 0);
+
+    // The production app and its root guard share the same persisted setting.
+    final route = ModalRoute.of(tester.element(game))!;
+    await appExitSettings.setEnabled(false);
+    await tester.pumpAndSettle();
+    expect(route.popDisposition, RoutePopDisposition.bubble);
+    await appExitSettings.setEnabled(true);
+    await tester.pumpAndSettle();
+    expect(route.popDisposition, RoutePopDisposition.doNotPop);
   });
 
   test('startup restores formation memory and wires its display setting', () {

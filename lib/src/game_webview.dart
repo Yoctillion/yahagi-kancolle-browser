@@ -273,6 +273,7 @@ final class DefaultGameSurfaceStartupOrchestrator
   bool _audioPortAttached = false;
   bool _disposed = false;
   int _captureRevision = 0;
+  int _captureEpoch = 0;
   Future<void>? _captureInFlight;
   Future<void>? _audioAttachInFlight;
 
@@ -305,7 +306,14 @@ final class DefaultGameSurfaceStartupOrchestrator
       waitForPlatformView: waitForSurface,
       configureCapture: () async {
         if (isActive()) {
+          // Startup belongs to a new WebView. Its capture install must not
+          // await a response from the retired renderer on the same channel.
+          _captureEpoch += 1;
           _captureRebindRequired = true;
+          _captureInFlight = null;
+          if (_gameCapturePort case final GameCaptureRebindPort port) {
+            port.rebindWebView();
+          }
           await prepareCapture();
         }
       },
@@ -326,7 +334,8 @@ final class DefaultGameSurfaceStartupOrchestrator
   }
 
   Future<void> _drainCaptureChanges() async {
-    while (!_disposed) {
+    final epoch = _captureEpoch;
+    while (!_disposed && epoch == _captureEpoch) {
       final revision = _captureRevision;
       final rebindRequired = _captureRebindRequired;
       _captureRebindRequired = false;
@@ -338,7 +347,7 @@ final class DefaultGameSurfaceStartupOrchestrator
           enabled: enabled,
           script: script,
         );
-        if (_disposed) return;
+        if (_disposed || epoch != _captureEpoch) return;
         _capturePortAttached = true;
       } else {
         await gameCaptureController.configure(
@@ -347,6 +356,7 @@ final class DefaultGameSurfaceStartupOrchestrator
           force: rebindRequired,
         );
       }
+      if (epoch != _captureEpoch) return;
       if (revision == _captureRevision) return;
     }
   }

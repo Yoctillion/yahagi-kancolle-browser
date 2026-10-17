@@ -3,6 +3,16 @@
 # Some are stable model values, internal diagnostics, Chinese fallback branches,
 # or app labels localized by the reviewed dictionaries at their display boundary.
 # Remove entries when the source literal is removed; never add new UI debt here.
+# Retroactive inventory of existing loading/watchdog source literals (2026-10-17).
+# All eight already use runtime_message_text.dart at their display boundary.
+"lib/src/game_webview.dart|游戏本体加载超时，请重新加载。"
+"lib/src/game_webview.dart|游戏页面加载超时，请重新加载或检查网络。"
+"lib/src/game_webview.dart|游戏页面加载失败 [HTTP $code]，请重新加载或检查网络。"
+"lib/src/game_webview.dart|游戏页面加载失败 [${error.errorCode}]，请重新加载或检查网络。"
+"lib/src/game_webview.dart|正在等待游戏本体..."
+"lib/src/native_activity_game_surface.dart|游戏页面加载超时，请重试。"
+"lib/src/native_activity_game_surface.dart|游戏本体加载超时，请重试。"
+"lib/src/native_activity_game_surface.dart|正在等待游戏本体..."
 "lib/main.dart|FCD 数据目录不可用，改用内置数据: $error"
 "lib/main.dart|FCD 本地数据降级: $error"
 "lib/main.dart|任务资料目录不可用，改用内置数据: $error"

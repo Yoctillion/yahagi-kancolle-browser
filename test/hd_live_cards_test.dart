@@ -73,7 +73,7 @@ void main() {
                           onToggleCollapse: () {},
                           onOpenFleet: (id) => openedFleet = id,
                           damagePulseFilter: DamagePulseFilter.off,
-                          moraleSparkleEnabled: false,
+                          moraleSparkleMode: MoraleSparkleMode.off,
                         ),
                       ),
                     ),

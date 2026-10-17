@@ -49,11 +49,12 @@ class _SecondTickScopeState extends State<SecondTickScope>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    // Inactive views are still visible (for example an unfocused split screen).
+    if (state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive) {
       _notifier.value = _now();
       _startTimer();
-    } else if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden ||
+    } else if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       _stopTimer();

@@ -895,6 +895,7 @@ final class _NativeActivityGameSurfaceState
         return;
       case NativeGameWebViewEventType.pageStarted:
         _pendingPageFinish = null;
+        _pageFinishFuture = null;
         _frameRateRuntimeController?.onPageStarted();
         final startedUri = event.navigationUri;
         if (_navigationIssued &&
@@ -1041,8 +1042,12 @@ final class _NativeActivityGameSurfaceState
   }
 
   Future<void> _drainPageFinishes() async {
+    final operationEpoch = _operationEpoch;
+    final pageEpoch = _pageEpoch;
     while (_active &&
         mounted &&
+        _operationEpoch == operationEpoch &&
+        _pageEpoch == pageEpoch &&
         _appLifecycleState == AppLifecycleState.resumed) {
       final pending = _pendingPageFinish;
       if (pending == null) return;
@@ -1296,7 +1301,12 @@ final class _NativeActivityGameSurfaceState
     _bodyWatchdog.cancel();
     _bodyDeadlineEpoch = null;
     _pendingPageFinish = null;
+    // Retired WebView commands can wait until their platform timeout. They
+    // must not hold the replacement document's initialization queue open.
+    _pageFinishFuture = null;
     if (fatal) {
+      _frameRateRuntimeController?.dispose();
+      _frameRateRuntimeController = null;
       _fatal = true;
       _awaitingNewPageStart = false;
     }

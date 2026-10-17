@@ -9,6 +9,33 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get operationProtectionTitle => '操作保护';
+
+  @override
+  String get confirmBeforeExitTitle => '防误退';
+
+  @override
+  String get confirmBeforeExitDescription => '使用返回键或返回手势离开应用前，需要确认。';
+
+  @override
+  String get confirmBeforeExitSaveFailed => '防误退设置保存失败，请重试。';
+
+  @override
+  String get appExitConfirmTitle => '返回桌面？';
+
+  @override
+  String get appExitConfirmDescription => '当前游戏将切换到后台。';
+
+  @override
+  String get appExitStay => '继续游戏';
+
+  @override
+  String get appExitToDesktop => '返回桌面';
+
+  @override
+  String get appExitFailed => '无法返回桌面，请重试。';
+
+  @override
   String get enterGameFullscreen => '游戏全屏';
 
   @override
@@ -1766,7 +1793,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get battleMoraleSparkle => '士气闪光效果';
 
   @override
-  String get battleMoraleSparkleDesc => 'Cond ≥ 50 时在舰娘头像周围显示星光动画；不影响疲劳脸和疲劳警告。';
+  String get battleMoraleSparkleDesc =>
+      'Cond ≥ 50 时在舰娘头像周围显示闪烁或常亮星光；不影响疲劳脸和疲劳警告。';
+
+  @override
+  String get battleMoraleSparkleBlinking => '闪烁';
+
+  @override
+  String get battleMoraleSparkleSteady => '常亮';
 
   @override
   String get battleEffectOff => '关闭';
@@ -1797,6 +1831,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get battleLastFormationHintDesc => '到达出击节点时，在未卜先知中提示该点上次使用的阵形。';
+
+  @override
+  String get battleEnemyPreviewPosition => '战前敌舰预测位置';
+
+  @override
+  String get battleEnemyPreviewPositionDesc => '选择战前敌舰预测显示在我方血条的上方或下方。';
+
+  @override
+  String get battleEnemyPreviewPositionAbove => '上方';
+
+  @override
+  String get battleEnemyPreviewPositionBelow => '下方';
 
   @override
   String battleLastFormation(String formation) {
@@ -3410,6 +3456,33 @@ class AppLocalizationsZh extends AppLocalizations {
 /// The translations for Chinese, using the Han script (`zh_Hant`).
 class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
+
+  @override
+  String get operationProtectionTitle => '操作保護';
+
+  @override
+  String get confirmBeforeExitTitle => '防止誤離開';
+
+  @override
+  String get confirmBeforeExitDescription => '使用返回鍵或返回手勢離開應用程式前，需要確認。';
+
+  @override
+  String get confirmBeforeExitSaveFailed => '防止誤離開設定儲存失敗，請重試。';
+
+  @override
+  String get appExitConfirmTitle => '返回主畫面？';
+
+  @override
+  String get appExitConfirmDescription => '目前的遊戲將切換至背景。';
+
+  @override
+  String get appExitStay => '繼續遊戲';
+
+  @override
+  String get appExitToDesktop => '返回主畫面';
+
+  @override
+  String get appExitFailed => '無法返回主畫面，請重試。';
 
   @override
   String get enterGameFullscreen => '遊戲全螢幕';
@@ -5171,7 +5244,14 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get battleMoraleSparkle => '士氣閃光效果';
 
   @override
-  String get battleMoraleSparkleDesc => 'Cond ≥ 50 時在艦娘頭像周圍顯示星光動畫；不影響疲勞臉和疲勞警告。';
+  String get battleMoraleSparkleDesc =>
+      'Cond ≥ 50 時在艦娘頭像周圍顯示閃爍或恆亮星光；不影響疲勞臉和疲勞警告。';
+
+  @override
+  String get battleMoraleSparkleBlinking => '閃爍';
+
+  @override
+  String get battleMoraleSparkleSteady => '恆亮';
 
   @override
   String get battleEffectOff => '關閉';
@@ -5202,6 +5282,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get battleLastFormationHintDesc => '抵達出擊節點時，在未卜先知中提示該點上次使用的陣形。';
+
+  @override
+  String get battleEnemyPreviewPosition => '戰前敵艦預測位置';
+
+  @override
+  String get battleEnemyPreviewPositionDesc => '選擇戰前敵艦預測顯示在我方血條的上方或下方。';
+
+  @override
+  String get battleEnemyPreviewPositionAbove => '上方';
+
+  @override
+  String get battleEnemyPreviewPositionBelow => '下方';
 
   @override
   String battleLastFormation(String formation) {

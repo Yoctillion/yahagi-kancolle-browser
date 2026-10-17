@@ -25,6 +25,8 @@ class SharedPreferencesSafetySettingsStore implements SafetySettingsStore {
       'battle.statusEffects.damageVibrationFilter';
   static const String _moraleSparkleEnabledKey =
       'battle.statusEffects.moraleSparkleEnabled';
+  static const String _moraleSparkleModeKey =
+      'battle.statusEffects.moraleSparkleMode';
 
   @override
   Future<BattleWarningMode> loadWarningMode() async {
@@ -65,7 +67,13 @@ class SharedPreferencesSafetySettingsStore implements SafetySettingsStore {
             ? DamageVibrationFilter.all
             : DamageVibrationFilter.off,
       ),
-      moraleSparkleEnabled: prefs.getBool(_moraleSparkleEnabledKey) ?? true,
+      moraleSparkleMode: _enumByName(
+        MoraleSparkleMode.values,
+        prefs.getString(_moraleSparkleModeKey),
+        (prefs.getBool(_moraleSparkleEnabledKey) ?? true)
+            ? MoraleSparkleMode.blinking
+            : MoraleSparkleMode.off,
+      ),
     );
   }
 
@@ -82,7 +90,7 @@ class SharedPreferencesSafetySettingsStore implements SafetySettingsStore {
         _damageVibrationFilterKey,
         settings.damageVibrationFilter.name,
       ),
-      prefs.setBool(_moraleSparkleEnabledKey, settings.moraleSparkleEnabled),
+      prefs.setString(_moraleSparkleModeKey, settings.moraleSparkleMode.name),
     ]);
   }
 }

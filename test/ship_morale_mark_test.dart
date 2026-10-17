@@ -1,8 +1,104 @@
+import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_status_visuals.dart';
 
 void main() {
+  for (final mode in MoraleSparkleMode.values) {
+    testWidgets(
+      '${mode.name} keeps fatigue and repair marks and the Cond 50 threshold',
+      (tester) async {
+        Future<void> render(int condition) => tester.pumpWidget(
+          MaterialApp(
+            home: Center(
+              child: SizedBox(
+                width: 160,
+                height: 72,
+                child: ShipMoraleMark(
+                  shipId: 40,
+                  value: condition,
+                  sparklePulse: const AlwaysStoppedAnimation<double>(.28),
+                  sparkleMode: mode,
+                  repairLabel: '入渠',
+                ),
+              ),
+            ),
+          ),
+        );
+        await render(18);
+        expect(find.byKey(const Key('fleet-fatigue-face-18')), findsOneWidget);
+        expect(find.byKey(const Key('fleet-fatigue-badge-40')), findsOneWidget);
+        expect(find.byKey(const Key('fleet-repair-badge-40')), findsOneWidget);
+        expect(find.byKey(const Key('fleet-morale-stars-40')), findsNothing);
+        await render(49);
+        expect(find.byKey(const Key('fleet-morale-stars-40')), findsNothing);
+        expect(find.byKey(const Key('fleet-repair-badge-40')), findsOneWidget);
+        await render(50);
+        expect(
+          find.byKey(const Key('fleet-morale-stars-40')),
+          mode == MoraleSparkleMode.off ? findsNothing : findsOneWidget,
+        );
+        expect(find.byKey(const Key('fleet-fatigue-badge-40')), findsOneWidget);
+        expect(find.byKey(const Key('fleet-repair-badge-40')), findsOneWidget);
+      },
+    );
+  }
+
+  testWidgets(
+    'steady stars keep their glyphs and brightness without animation builders',
+    (tester) async {
+      final pulse = AnimationController(
+        vsync: tester,
+        duration: const Duration(milliseconds: 1100),
+      );
+      addTearDown(pulse.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 160,
+              height: 72,
+              child: ShipMoraleMark(
+                shipId: 40,
+                value: 50,
+                sparklePulse: pulse,
+                sparkleMode: MoraleSparkleMode.steady,
+              ),
+            ),
+          ),
+        ),
+      );
+      final stars = find.byKey(const Key('fleet-morale-stars-40'));
+      expect(stars, findsOneWidget);
+      expect(
+        find.descendant(of: stars, matching: find.byType(Icon)),
+        findsNWidgets(6),
+      );
+      expect(
+        find.descendant(of: stars, matching: find.byType(AnimatedBuilder)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: stars, matching: find.byType(Transform)),
+        findsNothing,
+      );
+      final opacity = find.descendant(
+        of: stars,
+        matching: find.byType(Opacity),
+      );
+      expect(
+        tester.widgetList<Opacity>(opacity).map((widget) => widget.opacity),
+        everyElement(1.0),
+      );
+      pulse.value = .8;
+      await tester.pump();
+      expect(
+        tester.widgetList<Opacity>(opacity).map((widget) => widget.opacity),
+        everyElement(1.0),
+      );
+    },
+  );
+
   testWidgets('sparkle animation reuses star glyphs while changing phase', (
     tester,
   ) async {
@@ -54,7 +150,7 @@ void main() {
             shipId: 40,
             value: 55,
             sparklePulse: AlwaysStoppedAnimation<double>(0.2),
-            sparkleEnabled: false,
+            sparkleMode: MoraleSparkleMode.off,
           ),
         ),
       ),
@@ -70,7 +166,7 @@ void main() {
             shipId: 40,
             value: 18,
             sparklePulse: AlwaysStoppedAnimation<double>(0.2),
-            sparkleEnabled: false,
+            sparkleMode: MoraleSparkleMode.off,
           ),
         ),
       ),

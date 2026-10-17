@@ -34,6 +34,8 @@ import 'src/browser/gadget_bypass_store.dart';
 import 'src/browser/game_browser_overlay.dart';
 import 'src/browser/game_browser_toolbar.dart';
 import 'src/browser/game_fullscreen_controls.dart';
+import 'src/browser/app_exit_guard.dart';
+import 'src/settings/app_exit_settings.dart';
 import 'src/browser/game_frame_reload_port.dart';
 import 'src/browser/game_refresh_dialog.dart';
 import 'src/browser/game_toolbar_controller.dart';
@@ -223,6 +225,7 @@ Future<void> main() async {
       await BackgroundGameRetentionController.load(
         SharedPreferencesBackgroundGameRetentionStore(),
       );
+  final appExitSettingsController = await AppExitSettingsController.load();
   applyOrientationPolicy(
     currentWindowSize(),
     displayModeController.displayMode,
@@ -674,6 +677,7 @@ Future<void> main() async {
     gameRenderingModeController: gameRenderingModeController,
     gameConnectorController: gameConnectorController,
     backgroundGameRetentionController: backgroundGameRetentionController,
+    appExitSettingsController: appExitSettingsController,
     displayModeController: displayModeController,
     controller: controller,
     browserController: browserController,
@@ -712,7 +716,9 @@ Future<void> main() async {
       diagnosticNativeWebViewGeneration = value;
     },
   );
+  var mainAppLaunched = false;
   void launchMainApp() {
+    mainAppLaunched = true;
     runApp(app);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(gameResourceCacheController.refresh());
@@ -726,25 +732,39 @@ Future<void> main() async {
     });
   }
 
+  Future<void> finishBackupMaintenance() async {
+    // Keep the document cutoff before reload so only the new game's responses
+    // can write to the restored records. The WebView itself stays mounted.
+    gameApiEventPipeline.resumeAfterMaintenance();
+    try {
+      if (mainAppLaunched) await browserController.reload();
+      backupMaintenanceOverlay.value = null;
+    } catch (error) {
+      backupMaintenanceOverlay.value = _BackupRecoveryGate(
+        service: backupService!,
+        initialError: error,
+        onRecovered: () => unawaited(finishBackupMaintenance()),
+      );
+    }
+  }
+
   backupService?.configureMaintenance(
     begin: () async {
       gameApiEventPipeline.pauseForMaintenance();
-      final captureInvalidation = gameCaptureController.invalidateSession();
+      // Keep the live WebView's native message listener installed. The pipeline
+      // drops old-document responses and reload starts a new document below.
+      gameCaptureController.clearCapturedEvents();
       backupMaintenanceOverlay.value = const _BackupMaintenanceScreen();
       await WidgetsBinding.instance.endOfFrame;
-      await captureInvalidation;
       await gameApiEventPipeline.idle;
       await gameStateController.logbookIdle;
     },
-    end: () {
-      gameApiEventPipeline.resumeAfterMaintenance();
-      backupMaintenanceOverlay.value = null;
-    },
+    end: () => unawaited(finishBackupMaintenance()),
     blocked: (error) {
       backupMaintenanceOverlay.value = _BackupRecoveryGate(
         service: backupService!,
         initialError: error,
-        onRecovered: () => backupMaintenanceOverlay.value = null,
+        onRecovered: () => unawaited(finishBackupMaintenance()),
       );
     },
   );
@@ -798,7 +818,7 @@ class _BackupLifecycleFlushObserver with WidgetsBindingObserver {
     try {
       await pipeline.idle;
       await gameState.logbookIdle;
-      await service.sync();
+      await service.flush();
     } catch (error) {
       debugPrint('Backup lifecycle flush failed: $error');
     }
@@ -948,6 +968,7 @@ class YahagiApp extends StatelessWidget {
     this.gameRenderingModeController,
     this.gameConnectorController,
     this.backgroundGameRetentionController,
+    this.appExitSettingsController,
     required this.displayModeController,
     required this.controller,
     required this.browserController,
@@ -997,6 +1018,7 @@ class YahagiApp extends StatelessWidget {
   final GameRenderingModeController? gameRenderingModeController;
   final GameConnectorController? gameConnectorController;
   final BackgroundGameRetentionController? backgroundGameRetentionController;
+  final AppExitSettingsController? appExitSettingsController;
   final DisplayModeController displayModeController;
   final PrototypeStatusController controller;
   final GameBrowserController browserController;
@@ -1115,6 +1137,7 @@ class YahagiApp extends StatelessWidget {
                   gameConnectorController: gameConnectorController,
                   backgroundGameRetentionController:
                       backgroundGameRetentionController,
+                  appExitSettingsController: appExitSettingsController,
                   displayModeController: displayModeController,
                   controller: controller,
                   browserController: browserController,
@@ -1149,9 +1172,14 @@ class YahagiApp extends StatelessWidget {
                   showDeveloperDiagnostics: showDeveloperDiagnostics,
                   diagnosticController: diagnosticController,
                   telemetryController: telemetryController,
-                  gameSurface: backupMaintenanceOverlay?.value == null
-                      ? _buildGameSurface()
-                      : const SizedBox.shrink(),
+                  gameSurface: Builder(
+                    builder: (context) => GameWorkspaceActive(
+                      active:
+                          GameWorkspaceActive.of(context) &&
+                          backupMaintenanceOverlay?.value == null,
+                      child: _buildGameSurface(),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1324,6 +1352,7 @@ class YahagiShell extends StatefulWidget {
     this.gameConnectorController,
     this.backgroundGameRetentionController,
     this.backgroundGameRetentionPort,
+    this.appExitSettingsController,
     required this.displayModeController,
     required this.controller,
     required this.browserController,
@@ -1370,6 +1399,7 @@ class YahagiShell extends StatefulWidget {
   final GameConnectorController? gameConnectorController;
   final BackgroundGameRetentionController? backgroundGameRetentionController;
   final BackgroundGameRetentionPort? backgroundGameRetentionPort;
+  final AppExitSettingsController? appExitSettingsController;
   final DisplayModeController displayModeController;
   final PrototypeStatusController controller;
   final GameBrowserController browserController;
@@ -1803,11 +1833,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: PopScope(
-        canPop: !_gameFullscreen,
-        onPopInvokedWithResult: (didPop, result) {
-          if (!didPop && _gameFullscreen) _setGameFullscreen(false);
-        },
+      body: AppExitGuard(
+        settingsController: widget.appExitSettingsController,
+        fullscreen: _gameFullscreen,
+        onExitFullscreen: () => _setGameFullscreen(false),
         child: SafeArea(
           left: false,
           right: false,
@@ -2738,10 +2767,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                         .pulseFilterFor(
                                           BattleEffectSurface.fleet,
                                         ),
-                                    moraleSparkleEnabled: widget
+                                    moraleSparkleMode: widget
                                         .safetySettingsController
                                         .battleStatusEffects
-                                        .sparkleEnabledFor(
+                                        .sparkleModeFor(
                                           BattleEffectSurface.fleet,
                                         ),
                                     page: FleetInformationPage.fleet,
@@ -2887,6 +2916,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                         widget.gameConnectorController,
                                     backgroundGameRetentionController: widget
                                         .backgroundGameRetentionController,
+                                    appExitSettingsController:
+                                        widget.appExitSettingsController,
                                     isBattleActive:
                                         widget.battleController.session !=
                                             null &&
@@ -3477,10 +3508,10 @@ class _InformationPanelState extends State<_InformationPanel> {
                     .safetySettingsController
                     .battleStatusEffects
                     .pulseFilterFor(BattleEffectSurface.fleet),
-                moraleSparkleEnabled: widget
+                moraleSparkleMode: widget
                     .safetySettingsController
                     .battleStatusEffects
-                    .sparkleEnabledFor(BattleEffectSurface.fleet),
+                    .sparkleModeFor(BattleEffectSurface.fleet),
                 collapsed: isCollapsed,
                 onToggleCollapse: editing ? () {} : toggle,
                 onOpenFleet: widget.onOpenFleet,
@@ -3627,6 +3658,11 @@ class _InformationPanelState extends State<_InformationPanel> {
                         .battlePredictionSettingsController
                         ?.lastFormationHintEnabled ??
                     true,
+                enemyPreviewPosition:
+                    widget
+                        .battlePredictionSettingsController
+                        ?.enemyPreviewPosition ??
+                    EnemyPreviewPosition.above,
                 damagePulseMode: widget
                     .safetySettingsController
                     .battleStatusEffects

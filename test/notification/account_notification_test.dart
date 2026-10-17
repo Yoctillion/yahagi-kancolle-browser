@@ -158,18 +158,27 @@ void main() {
       expect(port.latestSnapshot!.memberId, 1001);
       expect(oldTarget, isNotNull);
       final beforeMetadata = port.applyCount;
-      session.accept(CapturedApiEvent(
-        path: '/kcsapi/api_get_member/basic',
-        responseBody: '{"api_result":1,"api_data":{"api_member_id":1001,"api_nickname":"updated"}}',
-        source: CaptureSource.manual,
-        capturedAt: at,
-      ));
+      session.accept(
+        CapturedApiEvent(
+          path: '/kcsapi/api_get_member/basic',
+          responseBody:
+              '{"api_result":1,"api_data":{"api_member_id":1001,"api_nickname":"updated"}}',
+          source: CaptureSource.manual,
+          capturedAt: at,
+        ),
+      );
       await coordinator.accountReady;
       await Future<void>.delayed(Duration.zero);
-      expect(port.applyCount, beforeMetadata,
-          reason: 'metadata is not a notification session boundary');
+      expect(
+        port.applyCount,
+        beforeMetadata,
+        reason: 'metadata is not a notification session boundary',
+      );
       expect(port.latestSnapshot!.sessionId, oldSessionId);
-      expect(coordinator.moraleRecoveryTimerController.targetForFleet(1), oldTarget);
+      expect(
+        coordinator.moraleRecoveryTimerController.targetForFleet(1),
+        oldTarget,
+      );
       session.selectMember(2002);
       await Future<void>.delayed(Duration.zero);
       expect(port.latestSnapshot!.presentation.enabled, isFalse);

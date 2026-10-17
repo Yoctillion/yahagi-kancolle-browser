@@ -99,6 +99,60 @@ abstract class AppLocalizations {
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
 
+  /// No description provided for @operationProtectionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作保护'**
+  String get operationProtectionTitle;
+
+  /// No description provided for @confirmBeforeExitTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'防误退'**
+  String get confirmBeforeExitTitle;
+
+  /// No description provided for @confirmBeforeExitDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用返回键或返回手势离开应用前，需要确认。'**
+  String get confirmBeforeExitDescription;
+
+  /// No description provided for @confirmBeforeExitSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'防误退设置保存失败，请重试。'**
+  String get confirmBeforeExitSaveFailed;
+
+  /// No description provided for @appExitConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回桌面？'**
+  String get appExitConfirmTitle;
+
+  /// No description provided for @appExitConfirmDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前游戏将切换到后台。'**
+  String get appExitConfirmDescription;
+
+  /// No description provided for @appExitStay.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续游戏'**
+  String get appExitStay;
+
+  /// No description provided for @appExitToDesktop.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回桌面'**
+  String get appExitToDesktop;
+
+  /// No description provided for @appExitFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法返回桌面，请重试。'**
+  String get appExitFailed;
+
   /// No description provided for @enterGameFullscreen.
   ///
   /// In zh, this message translates to:
@@ -3428,8 +3482,20 @@ abstract class AppLocalizations {
   /// No description provided for @battleMoraleSparkleDesc.
   ///
   /// In zh, this message translates to:
-  /// **'Cond ≥ 50 时在舰娘头像周围显示星光动画；不影响疲劳脸和疲劳警告。'**
+  /// **'Cond ≥ 50 时在舰娘头像周围显示闪烁或常亮星光；不影响疲劳脸和疲劳警告。'**
   String get battleMoraleSparkleDesc;
+
+  /// No description provided for @battleMoraleSparkleBlinking.
+  ///
+  /// In zh, this message translates to:
+  /// **'闪烁'**
+  String get battleMoraleSparkleBlinking;
+
+  /// No description provided for @battleMoraleSparkleSteady.
+  ///
+  /// In zh, this message translates to:
+  /// **'常亮'**
+  String get battleMoraleSparkleSteady;
 
   /// No description provided for @battleEffectOff.
   ///
@@ -3490,6 +3556,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'到达出击节点时，在未卜先知中提示该点上次使用的阵形。'**
   String get battleLastFormationHintDesc;
+
+  /// No description provided for @battleEnemyPreviewPosition.
+  ///
+  /// In zh, this message translates to:
+  /// **'战前敌舰预测位置'**
+  String get battleEnemyPreviewPosition;
+
+  /// No description provided for @battleEnemyPreviewPositionDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择战前敌舰预测显示在我方血条的上方或下方。'**
+  String get battleEnemyPreviewPositionDesc;
+
+  /// No description provided for @battleEnemyPreviewPositionAbove.
+  ///
+  /// In zh, this message translates to:
+  /// **'上方'**
+  String get battleEnemyPreviewPositionAbove;
+
+  /// No description provided for @battleEnemyPreviewPositionBelow.
+  ///
+  /// In zh, this message translates to:
+  /// **'下方'**
+  String get battleEnemyPreviewPositionBelow;
 
   /// No description provided for @battleLastFormation.
   ///

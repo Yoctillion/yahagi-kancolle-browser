@@ -18,7 +18,8 @@ GameCapturePort createPlatformGameCapturePort() {
   return const UnsupportedGameCapturePort();
 }
 
-final class MethodChannelGameCapturePort implements GameCapturePort {
+final class MethodChannelGameCapturePort
+    implements GameCapturePort, GameCaptureRebindPort {
   MethodChannelGameCapturePort({
     this.channel = _defaultGameCaptureChannel,
     this.configurationTimeout = const Duration(seconds: 10),
@@ -75,6 +76,12 @@ final class MethodChannelGameCapturePort implements GameCapturePort {
     } on PlatformException {
       return false;
     }
+  }
+
+  @override
+  void rebindWebView() {
+    if (_disposed) return;
+    _configurationArbiter.rebindWebView(_handlerOwner);
   }
 
   @override
@@ -146,6 +153,7 @@ final class _CaptureConfigurationArbiter {
   int _pending = 0;
   int _revision = 0;
   _CaptureConfigurationCommand? _desired;
+  Completer<void>? _activeWebViewInvalidator;
   void Function()? _onIdle;
 
   void claim(Object owner) {
@@ -153,6 +161,14 @@ final class _CaptureConfigurationArbiter {
     _revision += 1;
     _desired = null;
     _onIdle = null;
+  }
+
+  void rebindWebView(Object owner) {
+    if (!identical(_activeOwner, owner)) return;
+    _revision += 1;
+    _desired = null;
+    final invalidator = _activeWebViewInvalidator;
+    if (invalidator != null && !invalidator.isCompleted) invalidator.complete();
   }
 
   Future<void> run(
@@ -176,12 +192,15 @@ final class _CaptureConfigurationArbiter {
     _pending += 1;
     final scheduled = _tail.then<void>((_) async {
       if (!_isCurrent(command)) return;
-      var timedOut = false;
+      command.started = true;
+      var retired = false;
+      final webViewInvalidator = Completer<void>();
+      _activeWebViewInvalidator = webViewInvalidator;
       final raw = Future<void>.sync(command.operation);
       unawaited(
         raw.then<void>(
           (_) {
-            if (timedOut) {
+            if (retired) {
               MethodChannelGameCapturePort._replayCurrentAfterLateCompletion(
                 channelName,
                 this,
@@ -190,7 +209,7 @@ final class _CaptureConfigurationArbiter {
             }
           },
           onError: (Object _, StackTrace _) {
-            if (timedOut) {
+            if (retired) {
               MethodChannelGameCapturePort._replayCurrentAfterLateCompletion(
                 channelName,
                 this,
@@ -201,20 +220,27 @@ final class _CaptureConfigurationArbiter {
         ),
       );
       try {
-        await raw.timeout(
-          command.timeout,
-          onTimeout: () {
-            timedOut = true;
-            throw TimeoutException(
-              'Capture configuration timed out',
-              command.timeout,
-            );
-          },
-        );
+        await Future.any<void>(<Future<void>>[
+          raw.timeout(
+            command.timeout,
+            onTimeout: () {
+              retired = true;
+              throw TimeoutException(
+                'Capture configuration timed out',
+                command.timeout,
+              );
+            },
+          ),
+          webViewInvalidator.future.then((_) => retired = true),
+        ]);
       } on TimeoutException {
         if (_isCurrent(command)) rethrow;
       } catch (_) {
         if (_isCurrent(command)) rethrow;
+      } finally {
+        if (identical(_activeWebViewInvalidator, webViewInvalidator)) {
+          _activeWebViewInvalidator = null;
+        }
       }
     });
     _tail = scheduled.catchError((Object _, StackTrace _) {}).whenComplete(() {
@@ -237,6 +263,9 @@ final class _CaptureConfigurationArbiter {
   void _replayCurrent() {
     final current = _desired;
     if (current == null || !_isCurrent(current)) return;
+    // A queued current install will run after the stale command. Replacing it
+    // would complete its waiter before the replacement install has replied.
+    if (!current.started) return;
     _desired = _CaptureConfigurationCommand(
       owner: current.owner,
       revision: ++_revision,
@@ -260,7 +289,7 @@ final class _CaptureConfigurationArbiter {
 }
 
 final class _CaptureConfigurationCommand {
-  const _CaptureConfigurationCommand({
+  _CaptureConfigurationCommand({
     required this.owner,
     required this.revision,
     required this.timeout,
@@ -271,6 +300,7 @@ final class _CaptureConfigurationCommand {
   final int revision;
   final Duration timeout;
   final Future<void> Function() operation;
+  bool started = false;
 }
 
 final class UnsupportedGameCapturePort implements GameCapturePort {

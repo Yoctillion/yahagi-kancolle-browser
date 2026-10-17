@@ -5,10 +5,7 @@ void main() {
   test('1.0.8 stable supersedes 1.0.7 and every 1.0.8 beta', () {
     expect(isNewerRelease('v1.0.8', currentTag: 'v1.0.7'), isTrue);
     for (var beta = 1; beta <= 5; beta++) {
-      expect(
-        isNewerRelease('v1.0.8', currentTag: 'v1.0.8-beta.$beta'),
-        isTrue,
-      );
+      expect(isNewerRelease('v1.0.8', currentTag: 'v1.0.8-beta.$beta'), isTrue);
     }
   });
 

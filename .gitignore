@@ -136,3 +136,18 @@ test/*/fixtures/
 *.pem
 *.p8
 *.mobileprovision
+
+# Local database sidecars, record backups, and captured diagnostics.
+**/local.properties
+*.db-*
+*.sqlite-*
+*.sqlite3-*
+*.yhb
+*.yhb.*
+!test/fixtures/record_backup_v12_empty.yhb
+*.har
+*.pcap
+*.pcapng
+*.hprof
+*.dmp
+*.pfx

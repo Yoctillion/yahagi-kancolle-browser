@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
+import '../performance/second_tick_scope.dart';
 import 'dashboard_card.dart';
 import '../settings/module_display_settings.dart';
 import 'fleet_ui_strings.dart';
@@ -73,6 +74,24 @@ class ConstructionSummaryCard extends StatelessWidget {
     GameState state,
     int position,
   ) {
+    return SecondTickBuilder(
+      enabled:
+          dock != null &&
+          dock.isBuilding &&
+          dock.state != 3 &&
+          dock.completionTime != null,
+      stopAt: dock?.completionTime,
+      builder: (context, now, _) =>
+          _buildConstructionSlotAt(dock, state, position, now),
+    );
+  }
+
+  Widget _buildConstructionSlotAt(
+    ConstructionDock? dock,
+    GameState state,
+    int position,
+    DateTime now,
+  ) {
     String name = '未知';
     bool active = false;
     bool disabled = true;
@@ -102,10 +121,7 @@ class ConstructionSummaryCard extends StatelessWidget {
             ? 96.0
             : (available - 42).clamp(32.0, 96.0).toDouble();
         final iconWidth = portraitWidth < 32 ? portraitWidth : 32.0;
-        final completed =
-            active &&
-            dock != null &&
-            dock.isCompletedAt(DateTime.now().toUtc());
+        final completed = active && dock != null && dock.isCompletedAt(now);
         final statusDotColor = completed
             ? const Color(0xff4caf50)
             : const Color(0xffffc940);
@@ -198,13 +214,20 @@ class ConstructionSummaryCard extends StatelessWidget {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
-                              child: OperationCountdownText(
-                                completionTime: dock.completionTime,
-                                completedText: fleetText(context, '已完成'),
-                                completedColor: const Color(0xff4caf50),
-                                countingColor: const Color(0xffd4a85f),
-                                style: operationSummaryTimeStyle,
-                              ),
+                              child: completed
+                                  ? Text(
+                                      fleetText(context, '已完成'),
+                                      style: operationSummaryTimeStyle.copyWith(
+                                        color: const Color(0xff4caf50),
+                                      ),
+                                    )
+                                  : OperationCountdownText(
+                                      completionTime: dock.completionTime,
+                                      completedText: fleetText(context, '已完成'),
+                                      completedColor: const Color(0xff4caf50),
+                                      countingColor: const Color(0xffd4a85f),
+                                      style: operationSummaryTimeStyle,
+                                    ),
                             ),
                           )
                         else ...[

@@ -1,3 +1,4 @@
+import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -136,7 +137,7 @@ void main() {
             collapsed: false,
             onToggleCollapse: () {},
             onOpenFleet: (_) {},
-            moraleSparkleEnabled: false,
+            moraleSparkleMode: MoraleSparkleMode.off,
           ),
         ),
       ),
