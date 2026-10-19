@@ -34,6 +34,18 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
   bool? supported;
   String? errorCode;
   bool loading = false, busy = false;
+  GameModsOperationProgress? operationProgress;
+  final _progressClock = Stopwatch();
+  int get operationElapsedMillis {
+    final native = operationProgress?.elapsedMillis ?? 0;
+    final local = _progressClock.elapsedMilliseconds;
+    return native > local ? native : local;
+  }
+
+  Timer? _progressPoll;
+  int? _progressRequestEpoch;
+  String? _progressKind;
+  final _retiredProgressIds = <String>{};
   bool get saving => _saves > 0;
   bool get saveFailed => _saveFailed;
   bool get canEdit => supported == true && !busy && !loading;
@@ -257,7 +269,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
     await _run(() async {
       if (!await _ensureLibrary()) return;
       preflight = await _port.pickAndPreflightArchive();
-    });
+    }, operation: 'import');
   }
 
   Future<bool> _ensureLibrary() async {
@@ -293,7 +305,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
       if (!selected) return;
       _status = await _port.status();
       _revision++;
-    });
+    }, operation: 'directory');
     return selected && errorCode == null && _status.library.available;
   }
 
@@ -325,7 +337,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
       }
       libraryScan = candidate;
       lastApplyResult = null;
-    });
+    }, operation: 'scan');
   }
 
   Future<void> cancelLibraryScan() async {
@@ -373,7 +385,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
           if (committed) rethrow;
         }
       }
-    });
+    }, operation: 'import');
   }
 
   // A missing optional library API must not disable already working game mods.
@@ -413,7 +425,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
       preflight = null;
       _status = await _port.status();
       _revision++;
-    });
+    }, operation: 'import');
   }
 
   Future<void> removePackage(String id) async {
@@ -493,19 +505,103 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
     });
   }
 
-  Future<void> _run(Future<void> Function() action) async {
-    _operationEpoch++;
+  Future<void> _run(Future<void> Function() action, {String? operation}) async {
+    if (_disposed || busy) return;
+    final epoch = ++_operationEpoch;
     busy = true;
+    if (operation != null) _beginProgress(operation, epoch);
     errorCode = null;
     _notify();
     try {
-      await action();
+      final task = action();
+      if (operation != null) unawaited(_readProgress(epoch));
+      await task;
     } catch (error) {
       _error(error);
     } finally {
+      _endProgress();
       busy = false;
       _notify();
     }
+  }
+
+  void _beginProgress(String operation, int epoch) {
+    _progressKind = operation;
+    operationProgress = GameModsOperationProgress(
+      operationId: '',
+      operation: operation,
+      phase: operation == 'scan' ? 'discover' : 'read',
+      active: true,
+    );
+    _progressClock.reset();
+    _progressClock.start();
+    _progressPoll = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      _notify();
+      unawaited(_readProgress(epoch));
+    });
+  }
+
+  Future<void> _readProgress(int epoch) async {
+    if (_disposed ||
+        !busy ||
+        epoch != _operationEpoch ||
+        _progressRequestEpoch == epoch ||
+        _port is! GameModsProgressPort) {
+      return;
+    }
+    _progressRequestEpoch = epoch;
+    try {
+      final snapshot = await (_port as GameModsProgressPort)
+          .operationProgress();
+      if (_disposed ||
+          !busy ||
+          epoch != _operationEpoch ||
+          snapshot == null ||
+          !snapshot.active ||
+          snapshot.operationId.isEmpty ||
+          _retiredProgressIds.contains(snapshot.operationId)) {
+        return;
+      }
+      final current = operationProgress;
+      if (snapshot.operation != _progressKind &&
+          snapshot.operation != 'directory') {
+        return;
+      }
+      if (current != null &&
+          current.operationId.isNotEmpty &&
+          current.operationId != snapshot.operationId) {
+        // Choosing a missing library may precede the requested scan/import.
+        if (current.operation != 'directory' ||
+            snapshot.operation != _progressKind) {
+          return;
+        }
+        _retiredProgressIds.add(current.operationId);
+      }
+      if (current?.operationId == snapshot.operationId &&
+          snapshot.elapsedMillis < current!.elapsedMillis) {
+        return;
+      }
+      operationProgress = snapshot;
+      _notify();
+    } on MissingPluginException {
+      // Older platforms retain the modal phase indicator and local elapsed time.
+    } on PlatformException {
+      // Progress telemetry must never change the result of the actual operation.
+    } catch (_) {
+      // Treat malformed optional telemetry in the same way as an unavailable API.
+    } finally {
+      if (_progressRequestEpoch == epoch) _progressRequestEpoch = null;
+    }
+  }
+
+  void _endProgress() {
+    final id = operationProgress?.operationId;
+    if (id != null && id.isNotEmpty) _retiredProgressIds.add(id);
+    _progressPoll?.cancel();
+    _progressPoll = null;
+    _progressClock.stop();
+    operationProgress = null;
+    _progressKind = null;
   }
 
   bool _saved() {
@@ -539,6 +635,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     _disposed = true;
+    _endProgress();
     portraits.removeListener(_notify);
     if (_ownsPortraits) portraits.dispose();
     _poll?.cancel();

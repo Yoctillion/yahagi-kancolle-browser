@@ -13,7 +13,7 @@ import java.net.URI
 import java.util.UUID
 
 /** Private mod storage, durable drafts and immutable request sessions. */
-class GameModRepository(root: File) {
+class GameModRepository @JvmOverloads constructor(root: File, private val progress: GameModProgress? = null) {
     /** Applied software-image inventory. This never counts as a game resource request. */
     @Synchronized fun portraitSnapshot(): Map<String, Any?> = linkedMapOf(
         "token" to active.token,
@@ -114,6 +114,7 @@ class GameModRepository(root: File) {
     fun preflightLibrary(input: InputStream, sourceName: String): Map<String, Any?> = preflightChecked(input, sourceName, true)
 
     private fun preflightChecked(input: InputStream, sourceName: String, library: Boolean): Map<String, Any?> {
+        progress?.update(phase = "validate", currentPackage = sourceName)
         val token = UUID.randomUUID().toString()
         val directory = child("staging/$token")
         synchronized(this) {
@@ -122,7 +123,7 @@ class GameModRepository(root: File) {
         }
         try {
             val parsed = input.use {
-                val archive = GameModArchive()
+                val archive = GameModArchive(progress)
                 if (library) archive.unpackLibrary(it, sourceName, directory) else archive.unpack(it, sourceName, directory)
             }
             synchronized(this) { staging[token] = StagedImport(directory, parsed) }
@@ -140,6 +141,7 @@ class GameModRepository(root: File) {
     @Synchronized fun commitImport(token: String): Map<String, Any?> {
         requireIdle()
         val staged = staging[token] ?: throw GameModException("invalid_token", "Import preview has expired")
+        progress?.update(phase = "import", currentPackage = staged.result.name)
         val id = UUID.randomUUID().toString()
         val destination = child("packages/$id")
         val resources = staged.result.resources.mapIndexed { index, resource ->
@@ -176,6 +178,7 @@ class GameModRepository(root: File) {
             throw GameModException("invalid_config", "Invalid library package identity")
         }
         val staged = staging[token] ?: throw GameModException("invalid_token", "Import preview has expired")
+        progress?.update(phase = "import", currentPackage = staged.result.name)
         val existing = state.packages.firstOrNull { it.id == id }
         if (existing?.pendingRemoval == true) throw GameModException("invalid_config", "Cancel pending removal before updating this package")
         val oldResources = existing?.resources.orEmpty().associateBy { it.path }
@@ -206,7 +209,10 @@ class GameModRepository(root: File) {
             val next = state.copy(packages = packages, draft = draft)
             persist(next); state = next; staging.remove(token)
             // A housekeeping failure must not move the newly committed revision back to staging.
-            try { collectGarbage(discover = true) } catch (_: Exception) { /* Retry on the next lease release or startup. */ }
+            // This import can only obsolete revisions belonging to its own package.
+            // Avoid rediscovering every package for every item in a large scan batch.
+            pendingCleanup.add(id)
+            try { collectGarbage() } catch (_: Exception) { /* Retry on the next lease release or startup. */ }
             return packageMap(entry)
         } catch (error: Exception) {
             if (destination.exists() && !staged.directory.exists()) {
@@ -270,6 +276,7 @@ class GameModRepository(root: File) {
     /** Materialize a checked import in a caller-owned empty directory before saving it to SAF. */
     @Synchronized fun exportPreflightTree(token: String, directory: File): Map<String, Any?> {
         val staged = staging[token] ?: throw GameModException("invalid_token", "Import preview has expired")
+        progress?.startPackage("save", staged.result.name, 0, 1)
         val resources = staged.result.resources.mapIndexed { index, resource ->
             Resource("preview:$index", resource.path, resource.kind, resource.label, resource.supported, resource.reason,
                 resource.groupId, resource.relativeFile, inside(staged.directory, resource.relativeFile).length(),
@@ -303,7 +310,11 @@ class GameModRepository(root: File) {
         val exportRoot = directory.canonicalFile
         val used = mutableSetOf<String>()
         val warnings = originalWarnings.toMutableSet()
-        resources.forEach { resource ->
+        var completedBytes = 0L
+        progress?.update(phase = "save")
+        progress?.files(0, resources.size, null, 0, null)
+        resources.forEachIndexed { index, resource ->
+            progress?.files(index, resources.size, resource.path, completedBytes, null)
             val coordinate = resource.kind == "coordinates" && resource.coordinateShipId != null
             val path = when {
                 coordinate -> "kcs2/resources/ship/config/${resource.coordinateShipId.padStart(4, '0')}.config.json"
@@ -326,6 +337,8 @@ class GameModRepository(root: File) {
                 if (!file.isFile || file.length() != resource.sizeBytes) throw GameModException("storage_error", "A private mod resource is missing or changed")
                 file.inputStream().use { input -> target.outputStream().use { input.copyTo(it) } }
             }
+            completedBytes += target.length()
+            progress?.files(index + 1, resources.size, resource.path, completedBytes, null)
         }
         return warnings.toList()
     }
@@ -709,6 +722,7 @@ class GameModRepository(root: File) {
         anchored.canonicalFile != anchored.absoluteFile
     } catch (_: IOException) { true }
     private fun persist(next: State) {
+        progress?.update(phase = "save")
         val temporary = writeStateTemporary(next)
         try {
             move(temporary, child("state.json"))

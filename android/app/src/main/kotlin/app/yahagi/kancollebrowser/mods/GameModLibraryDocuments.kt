@@ -3,6 +3,7 @@ package app.yahagi.kancollebrowser.mods
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.DocumentsContract
+import java.io.FilterOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -12,8 +13,7 @@ internal class GameModDocumentLibraryStore(
     val treeUri: Uri,
     val rootDocumentId: String = DocumentsContract.getTreeDocumentId(treeUri),
 ) : GameModLibraryStore {
-    private data class Document(val id: String, val name: String, val directory: Boolean, val size: Long, val modified: Long)
-    private val directories = mutableMapOf("" to rootDocumentId)
+    private val readSessions = GameModLibraryReadSessions(rootDocumentId, ::children, ::documentUri)
     override val displayName: String get() = rootDocumentId.substringAfter(':', rootDocumentId)
     override val identity: String get() = GameModLibraryDirectoryPolicy.libraryIdentity(treeUri.authority.orEmpty(), rootDocumentId)
     val rootUri: Uri get() = DocumentsContract.buildDocumentUriUsingTree(treeUri, rootDocumentId)
@@ -28,16 +28,18 @@ internal class GameModDocumentLibraryStore(
 
     override fun list(relative: String): List<GameModLibraryEntry> {
         checkPath(relative, true)
-        return children(resolve(relative, directory = true)).map { GameModLibraryEntry(it.name, it.directory, it.size, it.modified) }
+        return readSessions.list(relative).map { GameModLibraryEntry(it.name, it.directory, it.size, it.modified) }
     }
+
+    override fun <T> withReadSession(block: () -> T): T = readSessions.withReadSession(block)
 
     override fun openRead(relative: String): InputStream {
         checkPath(relative)
-        return resolver.openInputStream(uri(resolve(relative)))
+        return resolver.openInputStream(readSessions.resolveUri(relative))
             ?: throw GameModException("library_unavailable", "Cannot read a library file")
     }
 
-    override fun openWrite(relative: String): OutputStream {
+    override fun openWrite(relative: String): OutputStream = mutate {
         checkPath(relative)
         val parent = relative.substringBeforeLast('/', "")
         createDirectory(parent)
@@ -48,16 +50,21 @@ internal class GameModDocumentLibraryStore(
         val target = existing?.let { uri(it.id) } ?: DocumentsContract.createDocument(resolver, uri(parentId), mime(name), name)
             ?: throw GameModException("library_write_failed", "Cannot create a library file")
         requireWithin(rootDocumentId, DocumentsContract.getDocumentId(target))
-        return resolver.openOutputStream(target, "wt")
+        val output = resolver.openOutputStream(target, "wt")
             ?: throw GameModException("library_write_failed", "Cannot write a library file")
+        // Size/mtime may change after openWrite returns; release any view collected while writing.
+        object : FilterOutputStream(output) {
+            override fun write(bytes: ByteArray, offset: Int, length: Int) = out.write(bytes, offset, length)
+            override fun close() {
+                try { super.close() } finally { readSessions.invalidate() }
+            }
+        }
     }
 
-    override fun createDirectory(relative: String) {
+    override fun createDirectory(relative: String) = mutate {
         checkPath(relative, true)
         var parentId = rootDocumentId
-        var prefix = ""
         for (name in relative.split('/').filter(String::isNotEmpty)) {
-            prefix = if (prefix.isEmpty()) name else "$prefix/$name"
             val existing = children(parentId).singleOrNull { it.name == name }
             if (existing != null) {
                 if (!existing.directory) throw GameModException("library_write_failed", "A file blocks the library directory")
@@ -68,7 +75,6 @@ internal class GameModDocumentLibraryStore(
                 parentId = DocumentsContract.getDocumentId(created)
                 requireWithin(rootDocumentId, parentId)
             }
-            directories[prefix] = parentId
         }
     }
 
@@ -76,48 +82,41 @@ internal class GameModDocumentLibraryStore(
         checkPath(relative)
         val parent = relative.substringBeforeLast('/', "")
         val name = relative.substringAfterLast('/')
-        return try {
-            val target = children(resolve(parent, directory = true)).singleOrNull { it.name == name } ?: return true
-            val result = DocumentsContract.deleteDocument(resolver, uri(target.id))
-            directories.clear(); directories[""] = rootDocumentId
-            result
-        } catch (_: Exception) { false }
+        return mutate {
+            try {
+                val target = children(resolve(parent, directory = true)).singleOrNull { it.name == name } ?: return@mutate true
+                DocumentsContract.deleteDocument(resolver, uri(target.id))
+            } catch (_: Exception) { false }
+        }
     }
 
     override fun rename(from: String, to: String): Boolean {
         checkPath(from); checkPath(to)
         if (from.substringBeforeLast('/', "") != to.substringBeforeLast('/', "")) return false
-        return try {
-            val parent = resolve(from.substringBeforeLast('/', ""), directory = true)
-            val entries = children(parent)
-            if (entries.any { it.name == to.substringAfterLast('/') }) return false
-            val source = entries.singleOrNull { it.name == from.substringAfterLast('/') } ?: return false
-            val renamed = DocumentsContract.renameDocument(resolver, uri(source.id), to.substringAfterLast('/')) ?: return false
-            requireWithin(rootDocumentId, DocumentsContract.getDocumentId(renamed))
-            directories.clear(); directories[""] = rootDocumentId
-            true
-        } catch (_: Exception) { false }
-    }
-
-    private fun resolve(relative: String, directory: Boolean = false): String {
-        var parentId = rootDocumentId
-        var prefix = ""
-        val parts = relative.split('/').filter(String::isNotEmpty)
-        parts.forEachIndexed { index, name ->
-            val child = children(parentId).singleOrNull { it.name == name }
-                ?: throw GameModException("library_source_missing", "A library file or directory is missing")
-            if ((index < parts.lastIndex || directory) && !child.directory) throw GameModException("library_unavailable", "A library directory is not readable")
-            parentId = child.id
-            prefix = if (prefix.isEmpty()) name else "$prefix/$name"
-            if (child.directory) directories[prefix] = parentId
+        return mutate {
+            try {
+                val parent = resolve(from.substringBeforeLast('/', ""), directory = true)
+                val entries = children(parent)
+                if (entries.any { it.name == to.substringAfterLast('/') }) return@mutate false
+                val source = entries.singleOrNull { it.name == from.substringAfterLast('/') } ?: return@mutate false
+                val renamed = DocumentsContract.renameDocument(resolver, uri(source.id), to.substringAfterLast('/')) ?: return@mutate false
+                requireWithin(rootDocumentId, DocumentsContract.getDocumentId(renamed))
+                true
+            } catch (_: Exception) { false }
         }
-        return parentId
     }
 
-    private fun children(parent: String): List<Document> {
+    private fun resolve(relative: String, directory: Boolean = false): String = readSessions.resolve(relative, directory)
+
+    private inline fun <T> mutate(block: () -> T): T {
+        readSessions.invalidate()
+        try { return block() } finally { readSessions.invalidate() }
+    }
+
+    private fun children(parent: String): List<GameModLibraryDocument> {
         requireWithin(rootDocumentId, parent)
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parent)
-        val result = mutableListOf<Document>()
+        val result = mutableListOf<GameModLibraryDocument>()
         resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE,
             DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED), null, null, null)?.use { cursor ->
@@ -125,7 +124,7 @@ internal class GameModDocumentLibraryStore(
                 val id = cursor.getString(0); val name = cursor.getString(1)
                 requireWithin(rootDocumentId, id)
                 checkPath(name)
-                result.add(Document(id, name, cursor.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR,
+                result.add(GameModLibraryDocument(id, name, cursor.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR,
                     if (cursor.isNull(3)) 0 else cursor.getLong(3), if (cursor.isNull(4)) 0 else cursor.getLong(4)))
             }
         } ?: throw GameModException("library_unavailable", "The selected library is not available")
@@ -133,7 +132,8 @@ internal class GameModDocumentLibraryStore(
     }
 
     private fun checkPath(relative: String, allowRoot: Boolean = false) = GameModLibraryDirectoryPolicy.relativePath(relative, allowRoot)
-    private fun uri(id: String): Uri { requireWithin(rootDocumentId, id); return DocumentsContract.buildDocumentUriUsingTree(treeUri, id) }
+    private fun uri(id: String): Uri = readSessions.uri(id)
+    private fun documentUri(id: String): Uri { requireWithin(rootDocumentId, id); return DocumentsContract.buildDocumentUriUsingTree(treeUri, id) }
     private fun requireWithin(parent: String, candidate: String) {
         if (candidate != parent && !candidate.startsWith("$parent/")) throw GameModException("unsafe_path", "Document escaped the selected mod library")
     }

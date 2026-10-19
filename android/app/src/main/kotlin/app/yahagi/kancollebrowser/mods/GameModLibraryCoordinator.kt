@@ -6,10 +6,11 @@ import java.io.FileOutputStream
 import java.util.UUID
 
 /** Connects the user-owned source library to immutable game revisions. Called on the IO mutation queue. */
-class GameModLibraryCoordinator(
+class GameModLibraryCoordinator @JvmOverloads constructor(
     private val repository: GameModRepository,
     private val library: GameModLibrary,
     private val workspace: File,
+    private val progress: GameModProgress? = null,
 ) {
     private val gson = Gson()
     private val restores = mutableMapOf<String, Boolean>()
@@ -34,19 +35,22 @@ class GameModLibraryCoordinator(
         val applied = repository.status()["applied"] as Map<*, *>
         val appliedIds = (applied["order"] as List<*>).filterIsInstance<String>().toSet()
         var count = 0
-        for (pack in packages()) {
+        val existing = packages()
+        for ((index, pack) in existing.withIndex()) {
             val id = pack["id"] as String
             // Published deletions may still have private metadata after a crash or a
             // deferred cleanup. Only an unapplied deletion can remain active/migratable.
             if (pack["pendingRemoval"] == true && id !in appliedIds) continue
             // The public source may have been edited since the last import. Never overwrite it on reattachment.
             if (id in known) continue
+            progress?.startPackage("save", pack["name"] as String, index, existing.size)
             val directory = temporary("migration")
             try {
                 repository.exportPackageTree(id, directory)
                 val saved = library.savePackage(id, pack["name"] as String, directory)
                 repository.attachLibraryFingerprint(id, saved["contentHash"] as String)
                 count++
+                progress?.update(completedPackages = index + 1)
             } finally { directory.deleteRecursively() }
         }
         if (library.appliedConfiguration() == null && packages().isNotEmpty()) library.saveAppliedConfiguration(repository.exportAppliedConfiguration())
@@ -61,6 +65,7 @@ class GameModLibraryCoordinator(
             val fingerprint = library.fingerprintLocalTree(directory)
             packages().firstOrNull { it["sourceFingerprint"] == fingerprint }?.let { duplicate ->
                 repository.discardImport(token)
+                progress?.update(completedPackages = 1, totalPackages = 1)
                 return duplicate + ("duplicate" to true)
             }
             // Reinstallation can leave a complete public library before the first scan.
@@ -68,10 +73,14 @@ class GameModLibraryCoordinator(
             val savedPackage = (library.status()["packages"] as? List<*>).orEmpty()
                 .filterIsInstance<Map<*, *>>().firstOrNull { it["contentHash"] == fingerprint }
             val existingId = savedPackage?.get("id") as? String
-            if (existingId != null) return repository.commitLibraryImport(token, existingId, fingerprint)
+            if (existingId != null) return repository.commitLibraryImport(token, existingId, fingerprint).also {
+                progress?.update(completedPackages = 1, totalPackages = 1)
+            }
             val id = UUID.randomUUID().toString()
             val saved = library.savePackage(id, exported["name"] as String, directory)
-            return repository.commitLibraryImport(token, id, saved["contentHash"] as String)
+            return repository.commitLibraryImport(token, id, saved["contentHash"] as String).also {
+                progress?.update(completedPackages = 1, totalPackages = 1)
+            }
         } finally { directory.deleteRecursively() }
     }
 
@@ -114,15 +123,19 @@ class GameModLibraryCoordinator(
             val changed = candidates.filter { current[it.id]?.get("sourceFingerprint") != it.contentHash }
             // Validate the whole batch before changing repository metadata, releasing each
             // preview immediately. The repository deliberately limits concurrent previews.
-            for (candidate in changed) {
+            for ((index, candidate) in changed.withIndex()) {
+                progress?.startPackage("validate", candidate.name, index, changed.size)
                 val preview = candidate.archive.inputStream().use { repository.preflightLibrary(it, "${candidate.name}.zip") }
                 repository.discardImport(preview["token"] as String)
+                progress?.update(completedPackages = index + 1)
             }
-            for (candidate in changed) {
+            for ((index, candidate) in changed.withIndex()) {
+                progress?.startPackage("import", candidate.name, index, changed.size)
                 val preview = candidate.archive.inputStream().use { repository.preflightLibrary(it, "${candidate.name}.zip") }
                 val importToken = preview["token"] as String
                 try { repository.commitLibraryImport(importToken, candidate.id, candidate.contentHash) }
                 finally { repository.discardImport(importToken) }
+                progress?.update(completedPackages = index + 1)
             }
             if (restores[token] == true) library.appliedConfiguration()?.let(repository::restoreLibraryConfiguration)
             errorCode = if (library.completeScan(token).isEmpty()) null else "library_cleanup_failed"

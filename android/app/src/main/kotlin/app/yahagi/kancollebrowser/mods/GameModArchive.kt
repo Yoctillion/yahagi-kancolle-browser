@@ -28,7 +28,7 @@ internal data class ArchiveResource(
     val coordinateGraph: Map<String, List<Int>> = emptyMap(),
 )
 
-internal class GameModArchive {
+internal class GameModArchive(private val progress: GameModProgress? = null) {
     fun unpackLibrary(input: InputStream, sourceName: String, directory: File): ArchiveResult =
         unpackChecked(input, sourceName, directory, GAME_MOD_LIBRARY_ARCHIVE_LIMIT)
 
@@ -43,6 +43,8 @@ internal class GameModArchive {
         val files = File(directory, "files")
         val written = mutableListOf<File>()
         try {
+            progress?.update(phase = "read")
+            progress?.files(0, null, null, 0L, null)
             archive.outputStream().buffered().use { output ->
                 val buffer = ByteArray(8192)
                 var compressed = 0L
@@ -53,6 +55,7 @@ internal class GameModArchive {
                     compressed += count
                     requireQuota(compressed <= archiveLimit, if (archiveLimit == MAX_ARCHIVE_BYTES) "ZIP 不能超过 256 MiB。" else "魔改库内部检查文件超过限额。")
                     output.write(buffer, 0, count)
+                    progress?.files(0, null, null, compressed, null)
                 }
             }
             val expectedEntries = checkCentralDirectory(archive)
@@ -63,6 +66,12 @@ internal class GameModArchive {
             var decoded = 0L
             if (!files.mkdir()) throw GameModException("invalid_archive", "无法创建导入目录。")
             ZipFile(archive).use { zip ->
+                val fileTotal = zip.entries().asSequence().count { !it.name.replace('\\', '/').endsWith('/') }
+                val byteTotal = zip.entries().asSequence().filter { !it.name.replace('\\', '/').endsWith('/') }
+                    .sumOf { it.size.coerceAtLeast(0L) }.takeIf { it <= MAX_EXPANDED_BYTES }
+                var completedFiles = 0
+                progress?.update(phase = "validate")
+                progress?.files(0, fileTotal, null, 0L, byteTotal)
                 val entries = zip.entries()
                 var count = 0
                 while (entries.hasMoreElements()) {
@@ -87,6 +96,7 @@ internal class GameModArchive {
                     val extension = sourcePath.substringAfterLast('.', "bin").takeIf { it.matches(Regex("[A-Za-z0-9]{1,8}")) } ?: "bin"
                     val relativeFile = "files/${resources.size}.$extension"
                     val target = File(directory, relativeFile)
+                    progress?.files(completedFiles, fileTotal, path, expanded, byteTotal)
                     written.add(target)
                     var actual = 0L
                     val crc = CRC32()
@@ -105,6 +115,7 @@ internal class GameModArchive {
                                     "文件实际解压比例超过 200。")
                                 crc.update(buffer, 0, read)
                                 output.write(buffer, 0, read)
+                                progress?.files(completedFiles, fileTotal, path, expanded, byteTotal)
                             }
                         }
                     }
@@ -120,6 +131,8 @@ internal class GameModArchive {
                     if (wav) GameModWav.validate(target)
                     else if (AUDIO_PATH.matches(path)) GameModMp3.validate(target)
                     resources.add(classify(path, relativeFile).copy(sourcePaths = listOf(entry.name.replace('\\', '/'))))
+                    completedFiles++
+                    progress?.files(completedFiles, fileTotal, path, expanded, byteTotal)
                 }
                 if (count != expectedEntries) throw GameModException("invalid_archive", "ZIP 目录不完整。")
             }

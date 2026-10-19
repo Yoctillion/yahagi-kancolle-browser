@@ -25,14 +25,27 @@ abstract interface class GameModsLibraryPort {
   Future<void> discardLibraryScan(String token);
 }
 
+/// Optional polling API; it does not replace the channel's portrait callbacks.
+abstract interface class GameModsProgressPort {
+  Future<GameModsOperationProgress?> operationProgress();
+}
+
 final class MethodChannelGameModsPort
-    implements GameModsPort, GameModsLibraryPort {
+    implements GameModsPort, GameModsLibraryPort, GameModsProgressPort {
   const MethodChannelGameModsPort([
     this.channel = const MethodChannel(
       'app.yahagi.kancollebrowser/mod_manager',
     ),
   ]);
   final MethodChannel channel;
+  @override
+  Future<GameModsOperationProgress?> operationProgress() async {
+    final value = await channel.invokeMethod<Object?>('operationProgress');
+    return value == null
+        ? null
+        : GameModsOperationProgress.fromMap(gameModsMap(value));
+  }
+
   @override
   Future<GameModsCapabilities> capabilities() async =>
       GameModsCapabilities.fromMap(

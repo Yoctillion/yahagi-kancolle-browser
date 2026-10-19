@@ -23,6 +23,96 @@ class GameModsStrings {
               : zh,
       };
   String get title => _t('魔改管理', '魔改管理', 'MOD管理', 'Mod manager', '모드 관리');
+  String progressTitle(String operation) => switch (operation) {
+    'scan' => _t(
+      '正在扫描魔改包',
+      '正在掃描魔改包',
+      'MODをスキャン中',
+      'Scanning mod packages',
+      '모드 패키지 스캔 중',
+    ),
+    'directory' => _t(
+      '正在准备资源文件夹',
+      '正在準備資源資料夾',
+      '素材フォルダーを準備中',
+      'Preparing mod folder',
+      '리소스 폴더 준비 중',
+    ),
+    _ => _t(
+      '正在处理魔改包',
+      '正在處理魔改包',
+      'MODを処理中',
+      'Processing mod packages',
+      '모드 패키지 처리 중',
+    ),
+  };
+  String progressPhase(String phase) => switch (phase) {
+    'read' => _t('读取文件', '讀取檔案', 'ファイルを読み込み中', 'Reading files', '파일 읽는 중'),
+    'validate' => _t(
+      '校验资源',
+      '驗證資源',
+      '素材を検証中',
+      'Validating resources',
+      '리소스 검사 중',
+    ),
+    'import' => _t(
+      '导入资源',
+      '匯入資源',
+      '素材をインポート中',
+      'Importing resources',
+      '리소스 가져오는 중',
+    ),
+    'save' => _t('保存结果', '儲存結果', '結果を保存中', 'Saving changes', '결과 저장 중'),
+    'complete' => _t('正在完成', '正在完成', '完了処理中', 'Finishing up', '마무리 중'),
+    _ => _t('查找魔改包', '尋找魔改包', 'MODを検索中', 'Finding mod packages', '모드 패키지 찾는 중'),
+  };
+  String progressPackages(int done, int? total) {
+    final count = total == null ? '$done' : '$done / $total';
+    return _t(
+      '已处理 $count 个包',
+      '已處理 $count 個包',
+      '処理済み $count パッケージ',
+      'Packages processed: $count',
+      '처리한 패키지: $count',
+    );
+  }
+
+  String get progressCurrentPackage =>
+      _t('当前包', '目前套件', '現在のMOD', 'Current package', '현재 패키지');
+  String get progressCurrentFile =>
+      _t('当前文件', '目前檔案', '現在のファイル', 'Current file', '현재 파일');
+  String progressFiles(int done, int? total) {
+    final count = total == null ? '$done' : '$done / $total';
+    return _t(
+      '已处理 $count 个文件',
+      '已處理 $count 個檔案',
+      '処理済み $count ファイル',
+      'Files processed: $count',
+      '처리한 파일: $count',
+    );
+  }
+
+  String progressBytes(String value) => _t(
+    '已读取 $value',
+    '已讀取 $value',
+    '読み込み済み $value',
+    'Data read: $value',
+    '읽은 데이터: $value',
+  );
+  String progressElapsed(String value) => _t(
+    '已用时间 $value',
+    '已用時間 $value',
+    '経過時間 $value',
+    'Elapsed time $value',
+    '경과 시간 $value',
+  );
+  String get progressWorking => _t(
+    '正在处理中，完成后会自动关闭。',
+    '正在處理中，完成後會自動關閉。',
+    '処理中です。完了すると自動的に閉じます。',
+    'Processing. This window closes automatically when finished.',
+    '처리 중입니다. 완료되면 자동으로 닫힙니다.',
+  );
   String get libraryTitle => _t(
     '魔改资源文件夹',
     '魔改資源資料夾',

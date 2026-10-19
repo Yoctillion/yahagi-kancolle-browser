@@ -23,6 +23,8 @@ interface GameModLibraryStore {
     fun createDirectory(relative: String)
     fun delete(relative: String): Boolean
     fun rename(from: String, to: String): Boolean
+    /** Reuse provider lookups within one read pass; never across a source recheck. */
+    fun <T> withReadSession(block: () -> T): T = block()
 }
 
 data class GameModLibraryEntry(val name: String, val isDirectory: Boolean, val size: Long = 0, val modified: Long = 0)
@@ -34,11 +36,18 @@ data class GameModLibraryScan(val token: String, val items: List<Map<String, Any
     fun toMap(): Map<String, Any?> = mapOf("token" to token, "items" to items, "cleanupCount" to cleanupCount)
 }
 
-class GameModLibrary(private val store: GameModLibraryStore, private val workspace: File) {
+class GameModLibrary @JvmOverloads constructor(
+    private val store: GameModLibraryStore,
+    private val workspace: File,
+    private val progress: GameModProgress? = null,
+) {
     private val gson = Gson()
     private var generation = 0L
     private var state: LibraryState
     private val scans = linkedMapOf<String, ScanPreview>()
+    // Only this process's successful byte validation can populate this bounded cache.
+    // Public marker hashes, timestamps and persisted indexes never establish trust.
+    private val validations = linkedMapOf<String, ValidationSummary>()
 
     init {
         if (!workspace.isDirectory && !workspace.mkdirs()) fail("storage_error", "无法创建魔改库检查目录。")
@@ -64,13 +73,19 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
         val archives = mutableListOf<SourceArchive>()
         val items = mutableListOf<MutableMap<String, Any?>>()
         val root = store.list().sortedBy { it.name }
+        val directories = root.filter { it.isDirectory && !it.name.startsWith(".yahagi-") }
+        val zipFiles = root.filter { !it.isDirectory && it.name.endsWith(".zip", true) }
+        val totalPackages = directories.size + zipFiles.size
+        var completedPackages = 0
+        progress?.update(phase = "discover", completedPackages = 0, totalPackages = totalPackages)
         val known = state.packages.associateBy { it.id }
         val discovered = linkedMapOf<String, Prepared>()
         val seen = mutableSetOf<String>()
         var itemNumber = 0
 
-        root.filter { it.isDirectory && !it.name.startsWith(".yahagi-") }.forEach { entry ->
+        directories.forEach { entry ->
             val path = safe(entry.name)
+            progress?.startPackage("read", entry.name, completedPackages, totalPackages)
             try {
                 val marker = readMarker(path)
                 val located = state.packages.firstOrNull { it.path == path }
@@ -94,14 +109,15 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
                 if (hashTree(path) != hash) fail("library_changed", "扫描期间文件发生变化，请复制完成后重试。")
                 val archive = File(local, "package.zip")
                 zipTree(tree, archive)
-                val checked = validate(archive, marker?.name ?: entry.name, File(local, "validate"))
+                val checked = validations[hash] ?: validate(archive, marker?.name ?: entry.name, File(local, "validate"))
+                    .summary().also { rememberValidation(hash, it) }
                 val record = PackageRecord(id, marker?.name ?: previous?.name ?: entry.name, path, hash,
                     marker?.sourceZip ?: previous?.sourceZip, marker?.sourceHash ?: previous?.sourceHash,
                     sourceConsumed = marker?.sourceConsumed == true || previous?.sourceConsumed == true)
                 val kind = if ((previous?.contentHash ?: marker?.contentHash) == hash) "unchanged"
                     else if (previous != null || marker != null) "updated" else "new"
                 val row = item(id, record.name, path, kind, hash).apply {
-                    put("resourceCount", checked.resources.size); put("supportedCount", checked.resources.count { it.supported })
+                    put("resourceCount", checked.resourceCount); put("supportedCount", checked.supportedCount)
                 }
                 val result = Prepared(record, archive, tree, path, hash, false, kind, row)
                 prepared.add(result); discovered[id] = result; items.add(row)
@@ -109,15 +125,25 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
                 val old = state.packages.firstOrNull { it.path == path }
                 old?.let { seen.add(it.id) }
                 items.add(item(old?.id, old?.name ?: entry.name, path, "invalid", null, message(error)))
+            } finally {
+                completedPackages++
+                progress?.update(completedPackages = completedPackages)
             }
         }
 
-        root.filter { !it.isDirectory && it.name.endsWith(".zip", true) }.forEach { entry ->
+        zipFiles.forEach { entry ->
             val path = safe(entry.name)
+            progress?.startPackage("read", entry.name, completedPackages, totalPackages)
             try {
                 val local = File(directory, "${itemNumber++}").apply { mkdirs() }
                 val archive = File(local, "package.zip")
-                val sourceHash = store.openRead(path).use { source -> archive.outputStream().use { copyHashed(source, it, MAX_ARCHIVE) } }
+                progress?.files(0, 1, path, 0, null)
+                val sourceHash = store.withReadSession {
+                    store.openRead(path).use { source -> archive.outputStream().use { output ->
+                        copyHashed(source, output, MAX_ARCHIVE) { bytes -> progress?.files(0, 1, path, bytes, null) }
+                    } }
+                }
+                progress?.files(1, 1, path, archive.length(), null)
                 if (hashFile(path, MAX_ARCHIVE) != sourceHash) fail("library_changed", "ZIP 仍在复制，请完成后重新扫描。")
                 if (state.tombstones.any { !it.cleaned && it.sourceZip == path && it.sourceHash == sourceHash }) return@forEach
                 val previous = state.packages.firstOrNull { it.sourceZip == path && (!it.sourceConsumed || it.sourceHash == sourceHash) }
@@ -131,6 +157,7 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
                 val tree = File(local, "tree").apply { mkdirs() }
                 extractValidated(archive, tree)
                 val hash = localHash(tree)
+                rememberValidation(hash, checked.summary())
                 val duplicate = discovered.values.firstOrNull { it.record.contentHash == hash && it.record.id != previous?.id }
                 if (duplicate != null) {
                     items.add(item(duplicate.record.id, checked.name, path, "duplicate", hash, "内容与已有魔改包相同，已跳过。"))
@@ -157,6 +184,9 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
             } catch (error: Exception) {
                 val old = state.packages.firstOrNull { it.sourceZip == path }
                 items.add(item(old?.id, old?.name ?: entry.name, path, "invalid", null, message(error)))
+            } finally {
+                completedPackages++
+                progress?.update(completedPackages = completedPackages)
             }
         }
 
@@ -179,18 +209,22 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
     /** Recheck before accepting: a preview never gives permission to use subsequently changed files. */
     @Synchronized fun acceptScan(token: String): List<GameModLibraryCandidate> {
         val preview = scans[token] ?: fail("invalid_token", "扫描预览已失效，请重新扫描。")
-        preview.prepared.forEach {
-            val current = if (it.zip) hashFile(it.sourcePath, MAX_ARCHIVE) else hashTree(it.sourcePath)
-            if (current != it.sourceHash) fail("library_changed", "预览后魔改文件发生变化，请重新扫描。")
+        preview.prepared.forEachIndexed { index, candidate ->
+            progress?.startPackage("read", candidate.record.name, index, preview.prepared.size)
+            val current = if (candidate.zip) hashFile(candidate.sourcePath, MAX_ARCHIVE) else hashTree(candidate.sourcePath)
+            if (current != candidate.sourceHash) fail("library_changed", "预览后魔改文件发生变化，请重新扫描。")
+            progress?.update(completedPackages = index + 1)
         }
         val results = mutableListOf<GameModLibraryCandidate>()
-        preview.prepared.forEach { candidate ->
+        preview.prepared.forEachIndexed { index, candidate ->
+            progress?.startPackage("save", candidate.record.name, index, preview.prepared.size)
             val record = if (candidate.zip) saveTree(candidate.record, candidate.tree) else {
                 writeMarker(candidate.record)
                 updateRecord(candidate.record)
                 candidate.record
             }
             results.add(GameModLibraryCandidate(record.id, record.name, candidate.archive, candidate.kind, record.contentHash, record.path))
+            progress?.update(completedPackages = index + 1)
         }
         // Keep returned local archives alive until the next preview/discard, for repository preflight.
         return results
@@ -475,35 +509,49 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
         if (!HASH.matches(it)) fail("library_metadata_invalid", "魔改包来源校验无效。")
     }
 
-    private fun copyTree(path: String, destination: File): String {
+    private fun copyTree(path: String, destination: File): String = store.withReadSession {
         val files = treeFiles(path)
         val digest = MessageDigest.getInstance("SHA-256")
         var total = 0L
-        files.forEach { relative ->
+        progress?.files(0, files.size, null, 0, null)
+        files.forEachIndexed { index, relative ->
+            progress?.files(index, files.size, relative, total, null)
             val file = File(destination, relative).apply { parentFile?.mkdirs() }
             digestName(digest, relative)
             val fileDigest = MessageDigest.getInstance("SHA-256")
+            val before = total
             store.openRead("$path/$relative").use { source -> file.outputStream().use { output ->
-                val size = copyDigest(source, output, fileDigest, MAX_FILE); total += size
+                val size = copyDigest(source, output, fileDigest, MAX_FILE) { bytes ->
+                    progress?.files(index, files.size, relative, before + bytes, null)
+                }; total += size
                 if (total > MAX_TREE) fail("quota_exceeded", "魔改包总大小不能超过 1 GiB。")
             } }
             digest.update(fileDigest.digest())
             digest.update(0)
+            progress?.files(index + 1, files.size, relative, total, null)
         }
-        return hex(digest.digest())
+        hex(digest.digest())
     }
 
-    private fun hashTree(path: String): String {
+    private fun hashTree(path: String): String = store.withReadSession {
         val digest = MessageDigest.getInstance("SHA-256"); var total = 0L
-        treeFiles(path).forEach { relative ->
+        val files = treeFiles(path)
+        progress?.update(phase = "read")
+        progress?.files(0, files.size, null, 0, null)
+        files.forEachIndexed { index, relative ->
+            progress?.files(index, files.size, relative, total, null)
             digestName(digest, relative)
             val fileDigest = MessageDigest.getInstance("SHA-256")
-            store.openRead("$path/$relative").use { total += copyDigest(it, null, fileDigest, MAX_FILE) }
+            val before = total
+            store.openRead("$path/$relative").use { total += copyDigest(it, null, fileDigest, MAX_FILE) { bytes ->
+                progress?.files(index, files.size, relative, before + bytes, null)
+            } }
             if (total > MAX_TREE) fail("quota_exceeded", "魔改包总大小不能超过 1 GiB。")
             digest.update(fileDigest.digest())
             digest.update(0)
+            progress?.files(index + 1, files.size, relative, total, null)
         }
-        return hex(digest.digest())
+        hex(digest.digest())
     }
 
     private fun treeFiles(path: String): List<String> {
@@ -530,12 +578,12 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
         return files.sorted()
     }
 
-    private fun localHash(directory: File): String = hashLocal(directory).first
-    private fun hashLocal(directory: File): Pair<String, List<File>> {
+    /** Enumerate safely without reading every byte merely to obtain a file list. */
+    private fun localFiles(directory: File): List<File> {
         val fileStore = GameModFileLibraryStore(directory)
         val files = mutableListOf<File>()
-        val digest = MessageDigest.getInstance("SHA-256"); var total = 0L
         var count = 0
+        var total = 0L
         fun visit(path: String, depth: Int) {
             if (depth > 64) fail("quota_exceeded", "魔改目录层级过多。")
             val entries = fileStore.list(path).sortedBy { it.name }
@@ -544,12 +592,24 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
             entries.forEach { entry ->
                 val relative = if (path.isEmpty()) entry.name else "$path/${entry.name}"
                 if (relative == MARKER) return@forEach
-                if (entry.isDirectory) visit(relative, depth + 1) else files.add(File(directory, relative))
+                if (entry.isDirectory) visit(relative, depth + 1) else {
+                    if (entry.size > MAX_FILE) fail("quota_exceeded", "单个魔改文件不能超过 64 MiB。")
+                    total += entry.size
+                    if (total > MAX_TREE) fail("quota_exceeded", "魔改包总大小不能超过 1 GiB。")
+                    files.add(File(directory, relative))
+                }
             }
         }
         visit("", 0)
         if (files.isEmpty() || files.size > MAX_ENTRIES) fail("quota_exceeded", "魔改包文件数量无效。")
         files.sortBy { it.relativeTo(directory).invariantSeparatorsPath }
+        return files
+    }
+
+    private fun localHash(directory: File): String {
+        val fileStore = GameModFileLibraryStore(directory)
+        val files = localFiles(directory)
+        val digest = MessageDigest.getInstance("SHA-256"); var total = 0L
         files.forEach { file ->
             val relative = file.relativeTo(directory).invariantSeparatorsPath
             digestName(digest, relative)
@@ -559,29 +619,34 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
             digest.update(fileDigest.digest())
             digest.update(0)
         }
-        return hex(digest.digest()) to files
+        return hex(digest.digest())
     }
 
     private fun zipTree(tree: File, archive: File) {
-        val files = hashLocal(tree).second
+        val files = localFiles(tree)
+        var total = 0L
         ZipOutputStream(archive.outputStream().buffered()).use { zip ->
             // Compression-free staging avoids imposing extra ratio restrictions on already validated images.
             zip.setLevel(0)
             files.forEach { file ->
                 zip.putNextEntry(ZipEntry(file.relativeTo(tree).invariantSeparatorsPath))
-                file.inputStream().use { it.copyTo(zip) }; zip.closeEntry()
+                file.inputStream().use { total += copyDigest(it, zip, null, MAX_FILE) }
+                if (total > MAX_TREE) fail("quota_exceeded", "魔改包总大小不能超过 1 GiB。")
+                zip.closeEntry()
             }
         }
         if (archive.length() > GAME_MOD_LIBRARY_ARCHIVE_LIMIT) fail("quota_exceeded", "魔改库内部检查文件超过限额。")
     }
 
     private fun validate(archive: File, name: String, directory: File): ArchiveResult {
-        val result = archive.inputStream().use { GameModArchive().unpackLibrary(it, "$name.zip", directory) }
+        progress?.update(phase = "validate")
+        val result = archive.inputStream().use { GameModArchive(progress).unpackLibrary(it, "$name.zip", directory) }
         if (result.resources.none { it.supported }) fail("unsupported_archive", "未找到受支持的游戏资源，请保留 kcs/kcs2 文件夹结构。")
         return result
     }
 
     private fun extractValidated(archive: File, tree: File) {
+        var total = 0L
         ZipFile(archive).use { zip ->
             val entries = zip.entries()
             while (entries.hasMoreElements()) {
@@ -592,17 +657,30 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
                 val normalized = safe(path.joinToString("/").replace(Regex("\\.hack\\.([A-Za-z0-9]+)$"), ".$1"))
                 if (normalized == MARKER) fail("unsafe_path", "ZIP 不能覆盖魔改包标记。")
                 val destination = File(tree, normalized).apply { parentFile?.mkdirs() }
-                zip.getInputStream(entry).use { source -> destination.outputStream().use { copyDigest(source, it, MessageDigest.getInstance("SHA-256"), MAX_FILE) } }
+                zip.getInputStream(entry).use { source -> destination.outputStream().use { total += copyDigest(source, it, null, MAX_FILE) } }
+                if (total > MAX_TREE) fail("quota_exceeded", "魔改包总大小不能超过 1 GiB。")
             }
         }
     }
 
     private fun copyLocalToStore(tree: File, destination: String) {
-        hashLocal(tree).second.forEach { file ->
+        val files = localFiles(tree)
+        var total = 0L
+        progress?.update(phase = "save")
+        progress?.files(0, files.size, null, 0, null)
+        files.forEachIndexed { index, file ->
             val relative = file.relativeTo(tree).invariantSeparatorsPath
+            progress?.files(index, files.size, relative, total, null)
             val parent = relative.substringBeforeLast('/', "")
             if (parent.isNotEmpty()) store.createDirectory("$destination/$parent")
-            file.inputStream().use { source -> store.openWrite("$destination/$relative").use { source.copyTo(it) } }
+            val before = total
+            file.inputStream().use { source -> store.openWrite("$destination/$relative").use { output ->
+                total += copyDigest(source, output, null, MAX_FILE) { bytes ->
+                    progress?.files(index, files.size, relative, before + bytes, null)
+                }
+            } }
+            if (total > MAX_TREE) fail("quota_exceeded", "魔改包总大小不能超过 1 GiB。")
+            progress?.files(index + 1, files.size, relative, total, null)
         }
     }
 
@@ -610,7 +688,17 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
         val checked = safe(path)
         return store.list(checked.substringBeforeLast('/', "")).any { it.name == checked.substringAfterLast('/') }
     }
-    private fun hashFile(path: String, limit: Long): String = store.openRead(safe(path)).use { copyHashed(it, null, limit) }
+    private fun hashFile(path: String, limit: Long): String = store.withReadSession {
+        progress?.update(phase = "read")
+        progress?.files(0, 1, path, 0, null)
+        var size = 0L
+        val hash = store.openRead(safe(path)).use { input -> copyHashed(input, null, limit) { bytes ->
+            size = bytes
+            progress?.files(0, 1, path, bytes, null)
+        } }
+        progress?.files(1, 1, path, size, null)
+        hash
+    }
     private fun writeBytes(path: String, bytes: ByteArray) = store.openWrite(safe(path)).use { it.write(bytes) }
     private fun readText(path: String): String = store.openRead(safe(path)).use { it.readBytesLimited(MAX_METADATA).toString(Charsets.UTF_8) }
     private fun stage(name: String): File = File(workspace, "$name-${UUID.randomUUID()}").apply { if (!mkdirs()) fail("storage_error", "无法准备魔改库临时目录。") }
@@ -627,6 +715,12 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
     private data class Prepared(val record: PackageRecord, val archive: File, val tree: File, val sourcePath: String, val sourceHash: String, val zip: Boolean, val kind: String, val row: MutableMap<String, Any?>)
     private data class SourceArchive(val id: String, val path: String, val hash: String, val contentHash: String)
     private data class ScanPreview(val directory: File, val prepared: List<Prepared>, val archives: List<SourceArchive>)
+    private data class ValidationSummary(val resourceCount: Int, val supportedCount: Int)
+    private fun ArchiveResult.summary() = ValidationSummary(resources.size, resources.count { it.supported })
+    private fun rememberValidation(hash: String, summary: ValidationSummary) {
+        validations[hash] = summary
+        if (validations.size > 256) validations.remove(validations.keys.first())
+    }
 
     private companion object {
         const val MARKER = ".yahagi-package.json"
@@ -647,18 +741,19 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
         fun digest(bytes: ByteArray): String = hex(MessageDigest.getInstance("SHA-256").digest(bytes))
         fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it.toInt() and 255) }
         fun digestName(digest: MessageDigest, name: String) { digest.update(name.toByteArray(Charsets.UTF_8)); digest.update(0) }
-        fun copyHashed(input: InputStream, output: OutputStream?, limit: Long): String {
-            val digest = MessageDigest.getInstance("SHA-256"); copyDigest(input, output, digest, limit); return hex(digest.digest())
+        fun copyHashed(input: InputStream, output: OutputStream?, limit: Long, onProgress: ((Long) -> Unit)? = null): String {
+            val digest = MessageDigest.getInstance("SHA-256"); copyDigest(input, output, digest, limit, onProgress); return hex(digest.digest())
         }
-        fun copyDigest(input: InputStream, output: OutputStream?, digest: MessageDigest, limit: Long): Long {
+        fun copyDigest(input: InputStream, output: OutputStream?, digest: MessageDigest?, limit: Long, onProgress: ((Long) -> Unit)? = null): Long {
             val buffer = ByteArray(32 * 1024); var total = 0L
             while (true) { val count = input.read(buffer); if (count < 0) break; if (count == 0) continue
                 total += count; if (total > limit) fail("quota_exceeded", "魔改文件超过大小限制。")
-                digest.update(buffer, 0, count); output?.write(buffer, 0, count)
+                digest?.update(buffer, 0, count); output?.write(buffer, 0, count)
+                onProgress?.invoke(total)
             }
             return total
         }
-        fun InputStream.readBytesLimited(limit: Long): ByteArray = java.io.ByteArrayOutputStream().also { copyDigest(this, it, MessageDigest.getInstance("SHA-256"), limit) }.toByteArray()
+        fun InputStream.readBytesLimited(limit: Long): ByteArray = java.io.ByteArrayOutputStream().also { copyDigest(this, it, null, limit) }.toByteArray()
         fun String.removeSuffixIgnoreCase(suffix: String): String = if (endsWith(suffix, true)) dropLast(suffix.length) else this
     }
 }

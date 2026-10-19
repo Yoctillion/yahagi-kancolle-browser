@@ -10,6 +10,68 @@ List<String> _strings(Object? value) => value is List
     : const [];
 int _int(Object? value) => value is num ? value.toInt() : 0;
 
+/// A read-only native snapshot. Null totals mean discovery is still in progress.
+class GameModsOperationProgress {
+  const GameModsOperationProgress({
+    required this.operationId,
+    required this.operation,
+    required this.phase,
+    required this.active,
+    this.completedPackages = 0,
+    this.totalPackages,
+    this.currentPackage,
+    this.currentFile,
+    this.completedFiles,
+    this.totalFiles,
+    this.completedBytes,
+    this.totalBytes,
+    this.elapsedMillis = 0,
+  });
+  final String operationId, operation, phase;
+  final bool active;
+  final int completedPackages, elapsedMillis;
+  final int? totalPackages,
+      completedFiles,
+      totalFiles,
+      completedBytes,
+      totalBytes;
+  final String? currentPackage, currentFile;
+
+  factory GameModsOperationProgress.fromMap(Map<String, dynamic> map) {
+    int? count(String key) =>
+        map[key] is num ? (map[key] as num).toInt().clamp(0, 1 << 62) : null;
+    return GameModsOperationProgress(
+      operationId: map['operationId'] as String? ?? '',
+      operation: map['operation'] as String? ?? '',
+      phase: map['phase'] as String? ?? 'discover',
+      active: map['active'] == true,
+      completedPackages: count('completedPackages') ?? 0,
+      totalPackages: count('totalPackages'),
+      currentPackage: map['currentPackage'] as String?,
+      currentFile: map['currentFile'] as String?,
+      completedFiles: count('completedFiles'),
+      totalFiles: count('totalFiles'),
+      completedBytes: count('completedBytes'),
+      totalBytes: count('totalBytes'),
+      elapsedMillis: count('elapsedMillis') ?? 0,
+    );
+  }
+
+  double? get fraction {
+    if (phase == 'discover') return null;
+    for (final (done, total) in [
+      (completedBytes, totalBytes),
+      (completedFiles, totalFiles),
+      (completedPackages, totalPackages),
+    ]) {
+      if (done != null && total != null && total > 0) {
+        return (done / total).clamp(0, 1);
+      }
+    }
+    return null;
+  }
+}
+
 class GameModsCapabilities {
   const GameModsCapabilities({required this.supported, this.reason});
   final bool supported;

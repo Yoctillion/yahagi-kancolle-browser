@@ -36,12 +36,16 @@ internal class GameModManager(
         // Retained native WebViews and in-flight streams can outlive an Activity.
         // Keep one repository per private root so their snapshots and leases stay coherent.
         private val repositories = mutableMapOf<String, GameModRepository>()
+        private val progressReporters = mutableMapOf<String, GameModProgress>()
+        @Synchronized private fun progressFor(root: File): GameModProgress =
+            progressReporters.getOrPut(root.absolutePath) { GameModProgress() }
         @Synchronized private fun repositoryFor(root: File): GameModRepository =
-            repositories.getOrPut(root.absolutePath) { GameModRepository(root) }
+            repositories.getOrPut(root.absolutePath) { GameModRepository(root, progressFor(root)) }
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val mutations = Mutex()
+    private val progress = progressFor(File(activity.applicationContext.filesDir, "mod_manager"))
     private val ready = CountDownLatch(1)
     private val replies = mutableSetOf<Reply>()
     private var picker: Reply? = null
@@ -99,8 +103,9 @@ internal class GameModManager(
             "pickAndPreflightArchive" -> pickArchive(reply)
             "chooseLibraryDirectory" -> chooseLibrary(reply)
             "openLibraryDirectory" -> openLibrary(reply)
-            "scanLibrary" -> runIo(reply) { requireLibrary().scan().also { libraryError = null } }
-            "commitLibraryScan" -> runIo(reply) { requireLibrary().commitScan(argument(call, "token")); null }
+            "operationProgress" -> reply.success(progress.snapshot())
+            "scanLibrary" -> runIo(reply, progressOperation = "scan") { requireLibrary().scan().also { libraryError = null } }
+            "commitLibraryScan" -> runIo(reply, progressOperation = "import") { requireLibrary().commitScan(argument(call, "token")); null }
             "discardLibraryScan" -> runIo(reply) { libraryCoordinator?.discardScan(argument(call, "token")); null }
             "status" -> runIo(reply, notifyStateChange = false) { status() + mapOf("supported" to true, "library" to libraryStatus()) }
             "portraitSnapshot" -> runReadIo(reply) { portraitSnapshot() }
@@ -110,7 +115,7 @@ internal class GameModManager(
                 val resourceId = arguments?.get("resourceId") as? String
                 if (token == null || resourceId == null) null else readPortrait(token, resourceId)
             }
-            "commitImport" -> runIo(reply) { requireLibrary().commitImport(argument(call, "token")) }
+            "commitImport" -> runIo(reply, progressOperation = "import") { requireLibrary().commitImport(argument(call, "token")) }
             "discardImport" -> runIo(reply) { discardImport(argument(call, "token")); null }
             "saveDraft" -> runIo(reply) {
                 saveDraft(call.argument<Map<*, *>>("config") ?: throw GameModException("invalid_config", "Missing configuration"))
@@ -128,12 +133,19 @@ internal class GameModManager(
         call.argument<String>(name)?.takeIf { it.isNotEmpty() }
             ?: throw GameModException("invalid_argument", "Missing $name")
 
-    private fun runIo(reply: Reply, notifyStateChange: Boolean = true, operation: GameModRepository.() -> Any?) {
+    private fun runIo(reply: Reply, notifyStateChange: Boolean = true, progressOperation: String? = null, operation: GameModRepository.() -> Any?) {
         scope.launch {
             try {
                 val value = mutations.withLock {
                     val repo = initialization.await()
-                    withContext(Dispatchers.IO) { operation(repo) }
+                    val operationId = progressOperation?.let(progress::begin)
+                    try {
+                        withContext(Dispatchers.IO) {
+                            if (operationId == null) operation(repo)
+                            else progress.withOperation(operationId) { operation(repo) }
+                        }
+                    }
+                    finally { operationId?.let(progress::finish) }
                 }
                 if (notifyStateChange) onStateChanged()
                 reply.success(value)
@@ -155,8 +167,8 @@ internal class GameModManager(
 
     private fun coordinatorFor(repo: GameModRepository, store: GameModDocumentLibraryStore): GameModLibraryCoordinator {
         val key = UUID.nameUUIDFromBytes(store.identity.toByteArray(Charsets.UTF_8)).toString()
-        val core = GameModLibrary(store, File(activity.cacheDir, "mod_library_scans/$key"))
-        return GameModLibraryCoordinator(repo, core, File(activity.filesDir, "mod_library_sync/$key"))
+        val core = GameModLibrary(store, File(activity.cacheDir, "mod_library_scans/$key"), progress)
+        return GameModLibraryCoordinator(repo, core, File(activity.filesDir, "mod_library_sync/$key"), progress)
     }
 
     private fun loadLibrary(repo: GameModRepository) {
@@ -331,7 +343,7 @@ internal class GameModManager(
         val uri = data?.data
         if (resultCode != Activity.RESULT_OK || uri == null) { reply.success(if (requestCode == PICK_LIBRARY_REQUEST) false else null); return true }
         if (requestCode == PICK_LIBRARY_REQUEST) {
-            runIo(reply) {
+            runIo(reply, progressOperation = "directory") {
                 val permissions = (data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))
                 if (permissions != (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)) {
                     throw GameModException("library_permission_denied", "Read and write access to the mod folder is required")
@@ -366,12 +378,13 @@ internal class GameModManager(
             }
             return true
         }
-        runIo(reply) {
+        runIo(reply, progressOperation = "import") {
             requireLibrary()
             val resolver = activity.contentResolver
             val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) cursor.getString(0)?.take(240) else null
             } ?: "cache.zip"
+            progress.startPackage("read", name, 0, 1)
             resolver.openInputStream(uri)?.use { preflight(it, name) }
                 ?: throw GameModException("archive_unreadable", "Unable to read selected archive")
         }

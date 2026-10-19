@@ -27,6 +27,8 @@ class GameModsPage extends StatefulWidget {
 
 class _GameModsPageState extends State<GameModsPage> {
   String _filter = 'all';
+  DialogRoute<void>? _progressRoute;
+  bool _progressScheduled = false;
   GameModsController? _ownedController;
   GameModsController get c =>
       widget.controller ?? (_ownedController ??= GameModsController());
@@ -39,25 +41,87 @@ class _GameModsPageState extends State<GameModsPage> {
   @override
   void initState() {
     super.initState();
+    c.addListener(_queueProgressDialog);
     c.setVisible(widget.visible);
     unawaited(c.initialize());
+    _queueProgressDialog();
   }
 
   @override
   void didUpdateWidget(GameModsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      (oldWidget.controller ?? _ownedController)?.setVisible(false);
+      final previous = oldWidget.controller ?? _ownedController;
+      previous?.removeListener(_queueProgressDialog);
+      previous?.setVisible(false);
+      _removeProgressDialog();
+      c.addListener(_queueProgressDialog);
       unawaited(c.initialize());
+      _queueProgressDialog();
     }
     c.setVisible(widget.visible);
   }
 
   @override
   void dispose() {
+    c.removeListener(_queueProgressDialog);
     c.setVisible(false);
+    final route = _progressRoute;
+    _progressRoute = null;
+    if (route != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final navigator = route.navigator;
+        if (navigator != null && navigator.mounted && route.isActive) {
+          navigator.removeRoute(route);
+        }
+      });
+    }
     _ownedController?.dispose();
     super.dispose();
+  }
+
+  void _queueProgressDialog() {
+    if (_progressScheduled || !mounted) return;
+    _progressScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _progressScheduled = false;
+      if (!mounted) return;
+      if (c.operationProgress == null) {
+        _removeProgressDialog();
+        return;
+      }
+      if (_progressRoute != null) return;
+      final controller = c;
+      final route = DialogRoute<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black.withValues(alpha: .72),
+        settings: const RouteSettings(name: 'game-mods-progress'),
+        builder: (context) => PopScope(
+          canPop: false,
+          child: AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) =>
+                _GameModsProgressDialog(controller: controller),
+          ),
+        ),
+      );
+      _progressRoute = route;
+      unawaited(Navigator.of(context, rootNavigator: true).push(route));
+    });
+  }
+
+  void _removeProgressDialog() {
+    final route = _progressRoute;
+    _progressRoute = null;
+    final navigator = route?.navigator;
+    if (route != null &&
+        navigator != null &&
+        navigator.mounted &&
+        route.isActive) {
+      // Remove this exact route, even if the review dialog has already opened.
+      navigator.removeRoute(route);
+    }
   }
 
   @override
@@ -1853,6 +1917,160 @@ class _GameModsPageState extends State<GameModsPage> {
   String _size(int bytes) => bytes >= 1024 * 1024
       ? '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB'
       : '${(bytes / 1024).toStringAsFixed(1)} KB';
+}
+
+class _GameModsProgressDialog extends StatelessWidget {
+  const _GameModsProgressDialog({required this.controller});
+  final GameModsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = GameModsStrings.of(context);
+    final progress = controller.operationProgress;
+    final seconds = controller.operationElapsedMillis ~/ 1000;
+    final minutes = seconds ~/ 60;
+    final elapsed = minutes >= 60
+        ? '${minutes ~/ 60}:${(minutes % 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}'
+        : '$minutes:${(seconds % 60).toString().padLeft(2, '0')}';
+    final bytes = progress?.completedBytes;
+    String size(int value) => value >= 1024 * 1024
+        ? '${(value / (1024 * 1024)).toStringAsFixed(1)} MB'
+        : value >= 1024
+        ? '${(value / 1024).toStringAsFixed(1)} KB'
+        : '$value B';
+    Widget current(String label, String value, String key) => Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            key: Key(key),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+    return Theme(
+      data: Theme.of(context).copyWith(
+        brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          primary: _gold,
+          surface: _surface,
+          onSurface: _ink,
+        ),
+      ),
+      child: Dialog(
+        key: const Key('game-mods-operation-progress'),
+        backgroundColor: _surface,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: _border),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: DefaultTextStyle(
+              style: const TextStyle(color: _ink, fontSize: 14, height: 1.4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    color: _gold,
+                    size: 30,
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    s.progressTitle(progress?.operation ?? 'import'),
+                    style: const TextStyle(
+                      color: _gold,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      s.progressPhase(progress?.phase ?? 'complete'),
+                      key: const Key('game-mods-progress-phase'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  LinearProgressIndicator(
+                    value: progress?.fraction,
+                    color: _gold,
+                    backgroundColor: _border,
+                    minHeight: 5,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    s.progressPackages(
+                      progress?.completedPackages ?? 0,
+                      progress?.totalPackages,
+                    ),
+                    key: const Key('game-mods-progress-packages'),
+                  ),
+                  if (progress?.currentPackage?.isNotEmpty ?? false)
+                    current(
+                      s.progressCurrentPackage,
+                      progress!.currentPackage!,
+                      'game-mods-progress-package',
+                    ),
+                  if (progress?.currentFile?.isNotEmpty ?? false)
+                    current(
+                      s.progressCurrentFile,
+                      progress!.currentFile!,
+                      'game-mods-progress-file',
+                    ),
+                  if (progress?.completedFiles != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      s.progressFiles(
+                        progress!.completedFiles!,
+                        progress.totalFiles,
+                      ),
+                    ),
+                  ],
+                  if (bytes != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      s.progressBytes(
+                        progress!.totalBytes == null
+                            ? size(bytes)
+                            : '${size(bytes)} / ${size(progress.totalBytes!)}',
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Text(
+                    s.progressElapsed(elapsed),
+                    key: const Key('game-mods-progress-elapsed'),
+                    style: const TextStyle(color: _muted, fontSize: 12),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Divider(height: 1, color: _border),
+                  ),
+                  Text(
+                    s.progressWorking,
+                    style: const TextStyle(color: _muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _DetailGroup {
