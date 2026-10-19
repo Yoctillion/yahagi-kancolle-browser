@@ -30,10 +30,7 @@ if (releaseTaskRequested && !releaseSigningAvailable) {
 
 dependencies {
     implementation("androidx.webkit:webkit:1.16.0")
-    implementation("com.google.code.gson:gson:2.11.0") {
-        // Compile-time analysis annotations are not needed on the device.
-        exclude(group = "com.google.errorprone", module = "error_prone_annotations")
-    }
+    implementation("com.google.code.gson:gson:2.11.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20250517")
     androidTestImplementation("androidx.test:core:1.7.0")
