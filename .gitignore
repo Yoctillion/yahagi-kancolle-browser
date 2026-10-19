@@ -120,6 +120,19 @@ test/fixtures/poi_ezexped/*
 !test/fixtures/poi_ezexped/expedition_rules.json
 test/*/fixtures/
 
+# Handcrafted parser examples are public; captured pages/master data stay local.
+!test/akashi_bonus/fixtures/
+test/akashi_bonus/fixtures/*
+!test/akashi_bonus/fixtures/README.md
+!test/akashi_bonus/fixtures/single_bonus.html
+!test/akashi_bonus/fixtures/count_bonus.html
+!test/akashi_bonus/fixtures/conditional_only_bonus.html
+!test/akashi_bonus/fixtures/improvement_bonus.html
+!test/akashi_bonus/fixtures/synergy_bonus.html
+!test/akashi_bonus/fixtures/negative_bonus.html
+!test/akashi_bonus/fixtures/unknown_ship_group.html
+!test/akashi_bonus/fixtures/missing_bonus_contents.html
+
 # Generated sortie data release packages
 /data/sortie/dist/
 
