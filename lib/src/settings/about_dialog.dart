@@ -204,7 +204,7 @@ class AboutContentWidget extends StatelessWidget {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: const Color(0xff3c586b),
                           width: 2,
@@ -217,10 +217,12 @@ class AboutContentWidget extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: ClipOval(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
                         child: Image.asset(
                           'assets/app_icon.png',
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.none,
                         ),
                       ),
                     ),

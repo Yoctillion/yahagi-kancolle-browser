@@ -1985,11 +1985,17 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Image.asset(
-                                              'assets/app_icon.png',
-                                              width: isCompact ? 18 : 22,
-                                              height: isCompact ? 18 : 22,
-                                              fit: BoxFit.contain,
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              child: Image.asset(
+                                                'assets/app_icon.png',
+                                                width: isCompact ? 18 : 22,
+                                                height: isCompact ? 18 : 22,
+                                                fit: BoxFit.contain,
+                                                filterQuality:
+                                                    FilterQuality.none,
+                                              ),
                                             ),
                                             SizedBox(width: isCompact ? 6 : 8),
                                             Text(
