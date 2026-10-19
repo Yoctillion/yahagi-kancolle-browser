@@ -330,6 +330,7 @@ class GameModLibrary @JvmOverloads constructor(
         if (exists(destination)) destination += "-${UUID.randomUUID().toString().take(8)}"
         val temporary = ".yahagi-import-${UUID.randomUUID()}"
         store.createDirectory(temporary)
+        var incompleteDestination: String? = null
         try {
             copyLocalToStore(tree, temporary)
             val staged = record.copy(path = temporary)
@@ -338,9 +339,14 @@ class GameModLibrary @JvmOverloads constructor(
             if (!store.rename(temporary, destination)) {
                 // Providers without rename still publish only after every resource has been verified.
                 store.createDirectory(destination)
+                incompleteDestination = destination
+                // An unsupported marker version keeps a failed partial copy unimportable,
+                // even when the provider also refuses cleanup or the process is interrupted.
+                writeMarker(record.copy(path = destination, schemaVersion = 0))
                 copyLocalToStore(tree, destination)
                 if (hashTree(destination) != record.contentHash) fail("storage_error", "魔改库写入校验失败。")
                 writeMarker(record.copy(path = destination))
+                incompleteDestination = null
                 store.delete(temporary)
             }
             val saved = record.copy(path = destination)
@@ -349,10 +355,22 @@ class GameModLibrary @JvmOverloads constructor(
             if (ownsPrevious && previous != null && previous.path != saved.path) store.delete(previous.path)
             return saved
         } catch (error: Exception) {
-            store.delete(temporary)
+            runCatching { store.delete(temporary) }
+            incompleteDestination?.let(::discardIncompleteTree)
             // A complete public directory is intentionally retained if only its index write failed.
             if (error is GameModException) throw error
             fail("storage_error", "无法保存公共魔改文件：${message(error)}")
+        }
+    }
+
+    private fun discardIncompleteTree(path: String) {
+        runCatching {
+            // Recursive provider deletes may remove the marker before a locked resource.
+            // Keep that guard until every resource has been removed successfully.
+            for (entry in store.list(path).filter { it.name != MARKER }) {
+                if (!store.delete("$path/${safe(entry.name)}")) return@runCatching
+            }
+            if (store.list(path).all { it.name == MARKER }) store.delete(path)
         }
     }
 
