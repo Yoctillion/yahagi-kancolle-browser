@@ -1978,9 +1978,11 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                           ? widget.toolbarController.toggle
                                           : null,
                                       child: Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: isCompact ? 6 : 8,
-                                          vertical: isCompact ? 2 : 6,
+                                        padding: EdgeInsetsDirectional.fromSTEB(
+                                          isCompact ? 2 : 4,
+                                          isCompact ? 2 : 6,
+                                          isCompact ? 6 : 8,
+                                          isCompact ? 2 : 6,
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -1990,14 +1992,14 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                   BorderRadius.circular(4),
                                               child: Image.asset(
                                                 'assets/app_icon.png',
-                                                width: isCompact ? 18 : 22,
-                                                height: isCompact ? 18 : 22,
+                                                width: isCompact ? 26 : 30,
+                                                height: isCompact ? 26 : 30,
                                                 fit: BoxFit.contain,
                                                 filterQuality:
                                                     FilterQuality.none,
                                               ),
                                             ),
-                                            SizedBox(width: isCompact ? 6 : 8),
+                                            SizedBox(width: isCompact ? 2 : 4),
                                             Text(
                                               'ヤハギ',
                                               style: TextStyle(
