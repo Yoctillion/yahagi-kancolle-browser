@@ -172,6 +172,6 @@ flutter_icons:
   image_path: "assets/app_icon.png"
   adaptive_icon_background: "#0471E3"
   adaptive_icon_foreground: "assets/app_icon.png"
-  # Keep the full wordmark inside the Android adaptive icon safe area.
-  adaptive_icon_foreground_inset: 22
+  # Fill the launcher viewport; Android supplies the final icon mask.
+  adaptive_icon_foreground_inset: 16
 
