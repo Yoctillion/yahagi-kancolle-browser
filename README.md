@@ -229,6 +229,12 @@
 
 [通过 GitHub Sponsors 支持 Yahagi](https://github.com/sponsors/yamatosaki)
 
+也可以通过支付宝或微信支持项目，点击二维码可查看原图。
+
+| 支付宝 | 微信支付 |
+| :---: | :---: |
+| <a href="docs/images/sponsors/alipay.jpg"><img src="docs/images/sponsors/alipay.jpg" width="220" alt="支付宝赞助收款码"></a> | <a href="docs/images/sponsors/wechat-pay.png"><img src="docs/images/sponsors/wechat-pay.png" width="220" alt="微信支付赞助收款码"></a> |
+
 感谢您对 Yahagi 项目的支持！❤️
 
 您的赞助是对我莫大的鼓励，也是我持续开发和改进这个开源项目的重要动力。

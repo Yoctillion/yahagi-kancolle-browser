@@ -229,6 +229,12 @@ Flutter、WebView Flutter、各依存ライブラリのメンテナー、そし�
 
 [GitHub Sponsors で Yahagi を支援する](https://github.com/sponsors/yamatosaki)
 
+Alipay または WeChat Pay でもご支援いただけます。QR コードをクリックすると元の画像を表示できます。
+
+| Alipay（支付宝） | WeChat Pay（微信支付） |
+| :---: | :---: |
+| <a href="docs/images/sponsors/alipay.jpg"><img src="docs/images/sponsors/alipay.jpg" width="220" alt="Alipay の支援用 QR コード"></a> | <a href="docs/images/sponsors/wechat-pay.png"><img src="docs/images/sponsors/wechat-pay.png" width="220" alt="WeChat Pay の支援用 QR コード"></a> |
+
 Yahagi プロジェクトへのご支援、ありがとうございます！❤️
 
 皆様からのご支援は私にとって大きな励みであり、このオープンソースプロジェクトの開発と改善を続ける大切な原動力です。

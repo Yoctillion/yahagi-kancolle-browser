@@ -229,6 +229,12 @@
 
 [透過 GitHub Sponsors 支持 Yahagi](https://github.com/sponsors/yamatosaki)
 
+也可以透過支付寶或微信支持專案，點擊 QR Code 可檢視原圖。
+
+| 支付寶 | 微信支付 |
+| :---: | :---: |
+| <a href="docs/images/sponsors/alipay.jpg"><img src="docs/images/sponsors/alipay.jpg" width="220" alt="支付寶贊助收款碼"></a> | <a href="docs/images/sponsors/wechat-pay.png"><img src="docs/images/sponsors/wechat-pay.png" width="220" alt="微信支付贊助收款碼"></a> |
+
 感謝您對 Yahagi 專案的支持！❤️
 
 您的贊助是對我莫大的鼓勵，也是我持續開發和改進這個開源專案的重要動力。
