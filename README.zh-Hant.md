@@ -13,6 +13,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://www.android.com/)
+[![iOS（第三方移植）](https://img.shields.io/badge/Platform-iOS-000000?logo=apple)](https://github.com/yamatosaki/yahagi-kancolle-browser/releases)
 [![CI](https://github.com/yamatosaki/yahagi-kancolle-browser/actions/workflows/ci.yml/badge.svg)](https://github.com/yamatosaki/yahagi-kancolle-browser/actions/workflows/ci.yml)
 
 </div>
@@ -223,3 +224,13 @@
 同時感謝 Flutter、WebView Flutter 及各相依套件的維護者，以及每一位參與測試、回報問題和貢獻程式碼的提督。
 
 ヤハギ是獨立開發的專案，專案觀點與實作不代表上述專案或社群的官方立場。
+
+## 贊助支持
+
+[透過 GitHub Sponsors 支持 Yahagi](https://github.com/sponsors/yamatosaki)
+
+感謝您對 Yahagi 專案的支持！❤️
+
+您的贊助是對我莫大的鼓勵，也是我持續開發和改進這個開源專案的重要動力。
+
+衷心感謝您的支持！
