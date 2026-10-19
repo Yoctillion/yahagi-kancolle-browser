@@ -7,7 +7,7 @@
 
 《함대 컬렉션》 플레이어를 위한 모바일 브라우저 및 정보 보조 도구입니다.
 
-[앱 다운로드](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [업데이트 내역](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [문제 제보](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
+[공식 웹사이트](https://yahagi.xyz/?lang=ko) · [앱 다운로드](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [업데이트 내역](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [문제 제보](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
 
 [简体中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.md) ｜ [繁體中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.zh-Hant.md) ｜ [日本語](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ja.md) ｜ [English](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.en.md) ｜ 한국어
 

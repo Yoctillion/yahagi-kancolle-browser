@@ -7,7 +7,7 @@
 
 A mobile browser and companion information app for *Kantai Collection* players.
 
-[Download](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [Release notes](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [Report an issue](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
+[Official website](https://yahagi.xyz/?lang=en) · [Download](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [Release notes](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [Report an issue](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
 
 [简体中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.md) ｜ [繁體中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.zh-Hant.md) ｜ [日本語](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ja.md) ｜ English ｜ [한국어](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ko.md)
 

@@ -7,7 +7,7 @@
 
 『艦隊これくしょん -艦これ-』のプレイヤーに向けた、モバイルブラウザ兼情報支援ツールです。
 
-[アプリをダウンロード](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [リリース情報](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [不具合・要望](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
+[公式サイト](https://yahagi.xyz/?lang=ja) · [アプリをダウンロード](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [リリース情報](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [不具合・要望](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
 
 [简体中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.md) ｜ [繁體中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.zh-Hant.md) ｜ 日本語 ｜ [English](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.en.md) ｜ [한국어](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ko.md)
 

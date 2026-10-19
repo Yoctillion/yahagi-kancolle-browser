@@ -7,7 +7,7 @@
 
 面向《舰队 Collection》玩家的移动端浏览器及信息辅助工具。
 
-[下载应用](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [版本更新](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [问题反馈](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
+[官方网站](https://yahagi.xyz/?lang=zh-CN) · [下载应用](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [版本更新](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [问题反馈](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
 
 简体中文 ｜ [繁體中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.zh-Hant.md) ｜ [日本語](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ja.md) ｜ [English](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.en.md) ｜ [한국어](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ko.md)
 
