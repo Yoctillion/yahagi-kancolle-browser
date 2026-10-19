@@ -30,6 +30,12 @@ class _GameModsPageState extends State<GameModsPage> {
   GameModsController? _ownedController;
   GameModsController get c =>
       widget.controller ?? (_ownedController ??= GameModsController());
+  String? get _libraryErrorCode =>
+      c.librarySupported &&
+          !c.saveFailed &&
+          (c.errorCode?.startsWith('library_') ?? false)
+      ? c.errorCode
+      : null;
   @override
   void initState() {
     super.initState();
@@ -275,7 +281,7 @@ class _GameModsPageState extends State<GameModsPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (c.errorCode != null)
+                        if (c.errorCode != null && _libraryErrorCode == null)
                           _notice(
                             context,
                             s.reason(c.errorCode),
@@ -390,6 +396,12 @@ class _GameModsPageState extends State<GameModsPage> {
 
   Widget _libraryPanel(BuildContext context) {
     final s = GameModsStrings.of(context), library = c.status.library;
+    final errorCode =
+        _libraryErrorCode ??
+        library.error ??
+        (library.configured && !library.available
+            ? 'library_unavailable'
+            : null);
     final identity = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -531,17 +543,13 @@ class _GameModsPageState extends State<GameModsPage> {
                 identity,
               const SizedBox(height: 3),
               Text(
-                !library.configured
-                    ? s.libraryUnconfigured
-                    : !library.available || library.error != null
-                    ? s.reason(library.error ?? 'library_unavailable')
-                    : s.libraryHint,
+                errorCode != null
+                    ? s.reason(errorCode)
+                    : library.configured
+                    ? s.libraryHint
+                    : s.libraryUnconfigured,
                 style: TextStyle(
-                  color:
-                      library.configured &&
-                          (!library.available || library.error != null)
-                      ? _gold
-                      : _muted,
+                  color: errorCode != null ? _gold : _muted,
                   fontSize: 11,
                 ),
               ),

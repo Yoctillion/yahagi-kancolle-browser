@@ -497,6 +497,66 @@ void main() {
     Locale('en'),
     Locale('ko'),
   ]) {
+    for (final errorCode in const [
+      'library_metadata_invalid',
+      'library_directory_required',
+    ]) {
+      for (final entryPoint in const ['choose', 'import']) {
+        testWidgets(
+          '$entryPoint directory failure stays in the folder panel for '
+          '$errorCode in ${locale.toLanguageTag()}',
+          (tester) async {
+            final port = _LibraryPort()..chooseError = errorCode;
+            final c = GameModsController(port: port);
+            addTearDown(c.dispose);
+            final s = GameModsStrings(locale);
+            await tester.pumpWidget(
+              MaterialApp(
+                locale: locale,
+                supportedLocales: [locale],
+                localizationsDelegates: GlobalMaterialLocalizations.delegates,
+                home: Scaffold(
+                  body: GameModsPage(controller: c, visible: false),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+            final before = c.status.toMap();
+            final entry = find.byKey(
+              Key(
+                entryPoint == 'choose'
+                    ? 'game-mods-library-choose'
+                    : 'game-mods-import',
+              ),
+            );
+            await tester.ensureVisible(entry);
+            await tester.tap(entry);
+            await tester.pumpAndSettle();
+            await tester.tap(
+              find.descendant(
+                of: find.byType(AlertDialog),
+                matching: find.widgetWithText(FilledButton, s.libraryChoose),
+              ),
+            );
+            await tester.pumpAndSettle();
+
+            final panel = find.byKey(const Key('game-mods-library'));
+            final error = find.text(s.reason(errorCode));
+            expect(find.descendant(of: panel, matching: error), findsOneWidget);
+            expect(error, findsOneWidget);
+            expect(find.text(errorCode), findsNothing);
+            expect(find.byType(AlertDialog), findsNothing);
+            expect(c.errorCode, errorCode);
+            expect(c.status.toMap(), before);
+            expect(port.chooseCalls, 1);
+            expect(port.pickerCalls, 0);
+            expect(port.scanCalls, 0);
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
+
     testWidgets(
       'library scan review works at 360px large text in ${locale.toLanguageTag()}',
       (tester) async {
@@ -576,6 +636,7 @@ class _LibraryPort extends FakeGameModsPort implements GameModsLibraryPort {
   int chooseCalls = 0, pickerCalls = 0, scanCalls = 0, cleanupCount = 0;
   final committed = <String>[], discardedScans = <String>[];
   Completer<void>? scanGate;
+  String? chooseError;
   void setLibrary({bool configured = true, bool available = true}) {
     current = GameModsStatus.fromMap({
       ...current.toMap(),
@@ -591,6 +652,7 @@ class _LibraryPort extends FakeGameModsPort implements GameModsLibraryPort {
   @override
   Future<bool> chooseLibraryDirectory() async {
     chooseCalls++;
+    if (chooseError != null) throw PlatformException(code: chooseError!);
     if (chooseResult) setLibrary();
     return chooseResult;
   }

@@ -720,7 +720,8 @@ class GameModRepository(root: File) {
     private fun writeStateTemporary(next: State): File {
         val temporary = child("state-${UUID.randomUUID()}.tmp")
         try {
-            FileOutputStream(temporary).use { it.write(gson.toJson(next).toByteArray(Charsets.UTF_8)); it.fd.sync() }
+            // Persist string-keyed maps so R8 cannot rename or remove JSON fields.
+            FileOutputStream(temporary).use { it.write(gson.toJson(stateMap(next)).toByteArray(Charsets.UTF_8)); it.fd.sync() }
             return temporary
         } catch (error: Exception) {
             temporary.delete()
@@ -732,14 +733,19 @@ class GameModRepository(root: File) {
         if (!file.exists()) return State()
         try {
             if (file.length() > 64L * 1024 * 1024) throw IOException("Mod index is too large")
-            val json = JsonParser.parseString(file.readText()).asJsonObject
+            val json = storedObject(JsonParser.parseString(file.readText()).asJsonObject,
+                listOf("version", "packages", "draft", "applied", "sessionId", "appliedPackages"))
             if (json["version"].asInt != 1) throw IOException("Unsupported mod index version")
             fun packages(name: String): List<ModPackage> = json[name].asJsonArray.map { node ->
-                val entry = node.asJsonObject; val id = entry.text("id")
+                val entry = storedObject(node.asJsonObject,
+                    listOf("id", "name", "sizeBytes", "importedAt", "resources", "warnings", "pendingRemoval", "sourceFingerprint"))
+                val id = entry.text("id")
                 if (!Regex("[0-9a-f-]{36}").matches(id)) throw IOException("Invalid package identity")
                 child("packages/$id")
                 val resources = entry["resources"].asJsonArray.map { item ->
-                    val r = item.asJsonObject; val relativeFile = r.text("relativeFile")
+                    val r = storedObject(item.asJsonObject,
+                        listOf("id", "path", "kind", "label", "supported", "reason", "groupId", "relativeFile", "sizeBytes", "sourcePaths", "coordinateShipId", "coordinateGraph"))
+                    val relativeFile = r.text("relativeFile")
                     child("packages/$id/$relativeFile")
                     val path = r.text("path"); val resourceId = r.text("id")
                     if (path.startsWith('/') || '\\' in path || path.split('/').any { it == "." || it == ".." } ||
@@ -762,13 +768,14 @@ class GameModRepository(root: File) {
             val packages = packages("packages")
             if (packages.map { it.id }.distinct().size != packages.size) throw IOException("Duplicate package")
             fun config(name: String, available: List<ModPackage>): Config {
-                val c = json[name].asJsonObject
+                val c = storedObject(json[name].asJsonObject, listOf("master", "order", "enabledPackages", "enabledResources"))
                 return parseConfig(mapOf("master" to c["master"].asBoolean, "order" to c["order"].asJsonArray.map { it.asString },
                     "enabledPackages" to c["enabledPackages"].asJsonArray.map { it.asString },
                     "enabledResources" to c["enabledResources"].asJsonArray.map { it.asString }), available)
             }
             val draft = config("draft", packages.filterNot { it.pendingRemoval })
-            val appliedOrder = json["applied"].asJsonObject["order"].asJsonArray.map { it.asString }.toSet()
+            val appliedOrder = storedObject(json["applied"].asJsonObject,
+                listOf("master", "order", "enabledPackages", "enabledResources"))["order"].asJsonArray.map { it.asString }.toSet()
             // Older indexes shared package metadata with their applied configuration.
             // New indexes keep revisions separate so a pending update survives process death.
             val appliedPackages = if (json.has("appliedPackages")) packages("appliedPackages") else packages.filter { it.id in appliedOrder }.map { it.copy(pendingRemoval = false) }
@@ -780,6 +787,35 @@ class GameModRepository(root: File) {
     }
     private fun JsonObject.text(name: String): String = this[name].asString
     private fun JsonObject.optionalText(name: String): String? = this[name]?.takeUnless { it.isJsonNull }?.asString
+
+    /** The shipped beta3 used these positional R8 names; normalize only this object's schema. */
+    private fun storedObject(value: JsonObject, names: List<String>): JsonObject {
+        val shortNames = names.indices.map { ('a' + it).toString() }
+        val canonical = names.any(value::has)
+        val legacy = shortNames.any(value::has)
+        if (canonical && legacy) throw IOException("Ambiguous mod configuration fields")
+        if (!legacy) return value
+        if (value.keySet().any { it !in shortNames }) throw IOException("Unknown beta3 mod configuration field")
+        return JsonObject().apply {
+            names.forEachIndexed { index, name -> value[shortNames[index]]?.let { add(name, it) } }
+        }
+    }
+
+    private fun stateMap(value: State): Map<String, Any> = linkedMapOf(
+        "version" to value.version, "packages" to value.packages.map(::storedPackageMap),
+        "draft" to value.draft.toMap(), "applied" to value.applied.toMap(),
+        "sessionId" to value.sessionId, "appliedPackages" to value.appliedPackages.map(::storedPackageMap))
+
+    private fun storedPackageMap(value: ModPackage): Map<String, Any> = linkedMapOf(
+        "id" to value.id, "name" to value.name, "sizeBytes" to value.sizeBytes,
+        "importedAt" to value.importedAt, "resources" to value.resources.map { resource ->
+            linkedMapOf("id" to resource.id, "path" to resource.path, "kind" to resource.kind,
+                "label" to resource.label, "supported" to resource.supported, "reason" to resource.reason,
+                "groupId" to resource.groupId, "relativeFile" to resource.relativeFile, "sizeBytes" to resource.sizeBytes,
+                "sourcePaths" to resource.sourcePaths, "coordinateShipId" to resource.coordinateShipId,
+                "coordinateGraph" to resource.coordinateGraph)
+        }, "warnings" to value.warnings, "pendingRemoval" to value.pendingRemoval,
+        "sourceFingerprint" to value.sourceFingerprint)
 
     private data class Config(val master: Boolean = false, val order: List<String> = emptyList(),
         val enabledPackages: List<String> = emptyList(), val enabledResources: List<String> = emptyList()) {

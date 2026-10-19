@@ -328,18 +328,14 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
     }
 
     private fun writeMarker(record: PackageRecord) {
-        writeBytes("${safe(record.path)}/$MARKER", gson.toJson(record).toByteArray(Charsets.UTF_8))
+        writeBytes("${safe(record.path)}/$MARKER", gson.toJson(recordMetadata(record)).toByteArray(Charsets.UTF_8))
     }
 
     private fun readMarker(directory: String): PackageRecord? {
         val entry = store.list(directory).firstOrNull { it.name == MARKER } ?: return null
         if (entry.isDirectory || entry.size > MAX_METADATA) fail("library_metadata_invalid", "魔改包标记文件无效。")
         try {
-            val value = gson.fromJson(readText("$directory/$MARKER"), PackageRecord::class.java)
-            requireUuid(value.id)
-            if (value.schemaVersion != 1 || value.name.isBlank() || !HASH.matches(value.contentHash)) fail("library_metadata_invalid", "魔改包标记文件版本或内容无效。")
-            value.sourceZip?.let { if (safe(it).contains('/') || !it.endsWith(".zip", true)) fail("unsafe_path", "魔改包来源路径无效。") }
-            value.sourceHash?.let { if (!HASH.matches(it)) fail("library_metadata_invalid", "魔改包来源校验无效。") }
+            val value = readRecordMetadata(JsonParser.parseString(readText("$directory/$MARKER")).asJsonObject, optionalVersion = false)
             return value.copy(path = directory)
         } catch (error: Exception) {
             if (error is GameModException) throw error
@@ -356,10 +352,8 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
                 val payload = envelope.getAsJsonObject("state")
                 val encoded = payload.toString().toByteArray(Charsets.UTF_8)
                 if (envelope["schemaVersion"].asInt != 1 || envelope["sha256"].asString != digest(encoded)) return@mapNotNull null
-                val decoded = gson.fromJson(payload, LibraryState::class.java)
-                if (decoded.schemaVersion != 1 || payload["packages"]?.isJsonArray != true || payload["tombstones"]?.isJsonArray != true) return@mapNotNull null
-                decoded.packages.forEach { requireUuid(it.id); safe(it.path); if (!HASH.matches(it.contentHash)) fail("library_metadata_invalid", "魔改库记录校验无效。") }
-                decoded.tombstones.forEach { requireUuid(it.id); safe(it.path) }
+                // Verify the untouched payload before recognizing the beta3 field aliases.
+                val decoded = readStateMetadata(payload)
                 envelope["generation"].asLong to decoded
             } catch (_: Exception) { null }
         }.maxByOrNull { it.first } ?: fail("library_metadata_invalid", "魔改库配置已损坏，公共资源仍保留，请恢复 library.json 备份。")
@@ -369,7 +363,7 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
 
     private fun saveState(next: LibraryState) {
         val nextGeneration = generation + 1
-        val payload = gson.toJsonTree(next).asJsonObject
+        val payload = stateMetadata(next)
         val envelope = JsonObject().apply {
             addProperty("schemaVersion", 1); addProperty("generation", nextGeneration)
             addProperty("sha256", digest(payload.toString().toByteArray(Charsets.UTF_8))); add("state", payload)
@@ -384,6 +378,101 @@ class GameModLibrary(private val store: GameModLibraryStore, private val workspa
             fail("storage_error", "无法保存魔改库配置：${message(error)}")
         }
         state = next; generation = nextGeneration
+    }
+
+    // Persist literal JSON keys rather than Kotlin field names: R8 may rename or remove fields.
+    private fun recordMetadata(record: PackageRecord): Map<String, Any?> = record.toMap() + mapOf(
+        "schemaVersion" to record.schemaVersion, "sourceConsumed" to record.sourceConsumed,
+    )
+
+    private fun stateMetadata(value: LibraryState): JsonObject = JsonObject().apply {
+        addProperty("schemaVersion", value.schemaVersion)
+        add("packages", gson.toJsonTree(value.packages.map(::recordMetadata)))
+        value.applied?.let { add("applied", gson.toJsonTree(it)) }
+        add("tombstones", gson.toJsonTree(value.tombstones.map { tombstone -> linkedMapOf(
+            "id" to tombstone.id, "path" to tombstone.path, "sourceZip" to tombstone.sourceZip,
+            "sourceHash" to tombstone.sourceHash, "cleaned" to tombstone.cleaned,
+        ) }))
+    }
+
+    private fun readStateMetadata(payload: JsonObject): LibraryState {
+        val aliases = mapOf("packages" to "a", "applied" to "b", "tombstones" to "c")
+        val legacy = aliases.values.any(payload::has)
+        val fields = metadataFields(payload, aliases, setOf("schemaVersion"))
+        // beta3 optimized this constant field away. The verified envelope still declares v1.
+        if (legacy) fields.addProperty("schemaVersion", 1)
+        metadataVersion(fields)
+        val packages = fields["packages"]?.takeIf { it.isJsonArray }?.asJsonArray
+            ?: fail("library_metadata_invalid", "魔改库包列表无效。")
+        val tombstones = fields["tombstones"]?.takeIf { it.isJsonArray }?.asJsonArray
+            ?: fail("library_metadata_invalid", "魔改库删除记录无效。")
+        @Suppress("UNCHECKED_CAST")
+        val applied = fields["applied"]?.takeUnless { it.isJsonNull }?.let {
+            if (!it.isJsonObject) fail("library_metadata_invalid", "已保存搭配无效。")
+            // Map keys are already literal JSON keys, including any nested user-visible names.
+            gson.fromJson(it, Map::class.java) as Map<String, Any?>
+        }
+        return LibraryState(packages = packages.map { readRecordMetadata(it.asJsonObject) },
+            applied = applied, tombstones = tombstones.map { readTombstoneMetadata(it.asJsonObject) })
+    }
+
+    private fun readRecordMetadata(value: JsonObject, optionalVersion: Boolean = true): PackageRecord {
+        val fields = metadataFields(value, mapOf("id" to "a", "name" to "b", "path" to "c",
+            "contentHash" to "d", "sourceZip" to "e", "sourceHash" to "f",
+            "schemaVersion" to "g", "sourceConsumed" to "h"))
+        metadataVersion(fields, optional = optionalVersion)
+        val id = metadataText(fields, "id").also(::requireUuid)
+        val name = metadataText(fields, "name").also { if (it.isBlank()) fail("library_metadata_invalid", "魔改包名称无效。") }
+        val path = safe(metadataText(fields, "path"))
+        val contentHash = metadataText(fields, "contentHash").also { if (!HASH.matches(it)) fail("library_metadata_invalid", "魔改库记录校验无效。") }
+        return PackageRecord(id, name, path, contentHash, metadataSource(fields), metadataHash(fields),
+            sourceConsumed = metadataBoolean(fields, "sourceConsumed"))
+    }
+
+    private fun readTombstoneMetadata(value: JsonObject): Tombstone {
+        val fields = metadataFields(value, mapOf("id" to "a", "path" to "b", "sourceZip" to "c",
+            "sourceHash" to "d", "cleaned" to "e"))
+        return Tombstone(metadataText(fields, "id").also(::requireUuid), safe(metadataText(fields, "path")),
+            metadataSource(fields), metadataHash(fields), metadataBoolean(fields, "cleaned"))
+    }
+
+    private fun metadataFields(value: JsonObject, aliases: Map<String, String>, extraKeys: Set<String> = emptySet()): JsonObject {
+        val canonical = (aliases.keys + extraKeys).any(value::has)
+        val legacy = aliases.values.any(value::has)
+        if (canonical && legacy) fail("library_metadata_invalid", "魔改库记录混用了不同版本的字段。")
+        if (!legacy) return value
+        if (value.keySet().any { it !in aliases.values }) fail("library_metadata_invalid", "旧版魔改库记录字段无效。")
+        return JsonObject().apply { aliases.forEach { (name, alias) -> if (value.has(alias)) add(name, value[alias]) } }
+    }
+
+    private fun metadataVersion(value: JsonObject, optional: Boolean = false) {
+        val version = value["schemaVersion"] ?: if (optional) return else fail("library_metadata_invalid", "魔改库记录缺少版本。")
+        if (!version.isJsonPrimitive || !version.asJsonPrimitive.isNumber || version.asBigDecimal.compareTo(java.math.BigDecimal.ONE) != 0) {
+            fail("library_metadata_invalid", "魔改库记录版本无效。")
+        }
+    }
+
+    private fun metadataText(value: JsonObject, key: String): String {
+        val text = value[key]
+        if (text == null || !text.isJsonPrimitive || !text.asJsonPrimitive.isString) fail("library_metadata_invalid", "魔改库记录字段无效。")
+        return text.asString
+    }
+
+    private fun metadataOptionalText(value: JsonObject, key: String): String? =
+        value[key]?.takeUnless { it.isJsonNull }?.let { metadataText(value, key) }
+
+    private fun metadataBoolean(value: JsonObject, key: String): Boolean {
+        val flag = value[key] ?: return false
+        if (!flag.isJsonPrimitive || !flag.asJsonPrimitive.isBoolean) fail("library_metadata_invalid", "魔改库记录开关无效。")
+        return flag.asBoolean
+    }
+
+    private fun metadataSource(value: JsonObject): String? = metadataOptionalText(value, "sourceZip")?.also {
+        if (safe(it).contains('/') || !it.endsWith(".zip", true)) fail("unsafe_path", "魔改包来源路径无效。")
+    }
+
+    private fun metadataHash(value: JsonObject): String? = metadataOptionalText(value, "sourceHash")?.also {
+        if (!HASH.matches(it)) fail("library_metadata_invalid", "魔改包来源校验无效。")
     }
 
     private fun copyTree(path: String, destination: File): String {
