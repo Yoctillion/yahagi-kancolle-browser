@@ -158,11 +158,13 @@ class EquipmentWearing {
   const EquipmentWearing({
     required this.shipId,
     required this.shipName,
+    this.shipMasterId,
     required this.level,
     required this.count,
   });
   final int shipId;
   final String shipName;
+  final int? shipMasterId;
   final int level;
   final int count;
 }
@@ -183,8 +185,18 @@ class EquipmentInventoryGroup {
 }
 
 class OwnedInventoryProjection {
-  const OwnedInventoryProjection(this.state);
+  const OwnedInventoryProjection(
+    this.state, {
+    this.shipNameResolver,
+    this.shipNameWithIdResolver,
+    this.shipTypeNameResolver,
+    this.equipmentNameResolver,
+  });
   final GameState state;
+  final String Function(String)? shipNameResolver;
+  final String Function(String, int)? shipNameWithIdResolver;
+  final String Function(String)? shipTypeNameResolver;
+  final String Function(String)? equipmentNameResolver;
 
   int? fleetNumberForShip(int shipId) {
     for (final fleet in state.fleets) {
@@ -234,8 +246,16 @@ class OwnedInventoryProjection {
     ShipInventorySortField field,
   ) {
     Comparable<Object> value(ShipInventoryRow row) => switch (field) {
-      ShipInventorySortField.name => row.master?.name ?? '',
-      ShipInventorySortField.type => row.type?.name ?? '',
+      ShipInventorySortField.name =>
+        row.master == null
+            ? ''
+            : shipNameWithIdResolver?.call(row.master!.name, row.master!.id) ??
+                  shipNameResolver?.call(row.master!.name) ??
+                  row.master!.name,
+      ShipInventorySortField.type =>
+        shipTypeNameResolver?.call(row.type?.name ?? '') ??
+            row.type?.name ??
+            '',
       ShipInventorySortField.speed => row.ship.effectiveSpeed(row.master),
       ShipInventorySortField.level => row.ship.level,
       ShipInventorySortField.condition => row.ship.condition,
@@ -324,6 +344,7 @@ class OwnedInventoryProjection {
                 EquipmentWearing(
                   shipId: ship.id,
                   shipName: state.masterForShip(ship)?.name ?? '—',
+                  shipMasterId: ship.masterId,
                   level: ship.level,
                   count: wearing.value,
                 ),
@@ -347,6 +368,7 @@ class OwnedInventoryProjection {
           left,
           right,
           criterion.field,
+          nameResolver: equipmentNameResolver,
         );
         final directed = criterion.descending ? -comparison : comparison;
         if (directed != 0) return directed;
@@ -360,10 +382,12 @@ class OwnedInventoryProjection {
 int _compareEquipmentGroupsByField(
   EquipmentInventoryGroup left,
   EquipmentInventoryGroup right,
-  EquipmentInventorySortField field,
-) {
+  EquipmentInventorySortField field, {
+  String Function(String)? nameResolver,
+}) {
   Comparable<Object> value(EquipmentInventoryGroup group) => switch (field) {
-    EquipmentInventorySortField.name => group.master.name,
+    EquipmentInventorySortField.name =>
+      nameResolver?.call(group.master.name) ?? group.master.name,
     EquipmentInventorySortField.total => group.total,
     EquipmentInventorySortField.officialId => group.master.id,
   };

@@ -10,6 +10,8 @@ import 'sortie_map_query/sortie_map_query_page.dart';
 import 'sortie_map_query/sortie_map_catalog_controller.dart';
 import 'sortie_map_query/enemy_catalog_controller.dart';
 import 'toolbox_mode.dart';
+import 'game_mods/game_mods_controller.dart';
+import 'game_mods/game_mods_page.dart';
 
 export 'toolbox_mode.dart' show ToolboxMode;
 export 'composition_image_page.dart' show CompositionImageDraftController;
@@ -23,6 +25,7 @@ class ToolboxPage extends StatelessWidget {
     this.enemyCatalogController,
     this.compositionInitiallyShowSaved = true,
     this.compositionDraftController,
+    this.gameModsController,
   });
 
   final GameState state;
@@ -31,6 +34,7 @@ class ToolboxPage extends StatelessWidget {
   final EnemyCatalogController? enemyCatalogController;
   final bool compositionInitiallyShowSaved;
   final CompositionImageDraftController? compositionDraftController;
+  final GameModsController? gameModsController;
 
   @override
   Widget build(BuildContext context) => LazyIndexedStack(
@@ -50,6 +54,10 @@ class ToolboxPage extends StatelessWidget {
         visible: mode == ToolboxMode.mapQuery,
         catalogController: sortieMapCatalogController,
         enemyCatalogController: enemyCatalogController,
+      ),
+      GameModsPage(
+        controller: gameModsController,
+        visible: mode == ToolboxMode.mods,
       ),
       ColoredBox(
         key: const Key('toolbox-other-page'),

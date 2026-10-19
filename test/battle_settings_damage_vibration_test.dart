@@ -52,7 +52,7 @@ void main() {
     );
 
     expect(find.text('大破提醒'), findsOneWidget);
-    expect(find.text('大破进击保护'), findsOneWidget);
+    expect(find.text('大破进击提醒'), findsOneWidget);
     expect(find.text('战斗状态效果'), findsOneWidget);
     expect(find.text('启用状态效果'), findsOneWidget);
     expect(find.text('画面显示范围'), findsOneWidget);

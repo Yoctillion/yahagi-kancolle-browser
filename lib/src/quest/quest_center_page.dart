@@ -1,6 +1,7 @@
 // ignore_for_file: use_null_aware_elements
 
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
@@ -220,11 +221,16 @@ class QuestTranslationToggle extends StatelessWidget {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
+    final english = Localizations.maybeLocaleOf(context)?.languageCode == 'en';
     final color = enabled ? const Color(0xffffd47a) : const Color(0xff9fb3bf);
     return SizedBox(
       key: const Key('quest-translation-toggle'),
       height: 38,
-      width: compact ? 38 : 100,
+      width: compact
+          ? 38
+          : english
+          ? null
+          : 100,
       child: Material(
         color: enabled ? const Color(0xff5b4420) : const Color(0xff0b202d),
         shape: RoundedRectangleBorder(
@@ -239,8 +245,10 @@ class QuestTranslationToggle extends StatelessWidget {
           child: Tooltip(
             message: l10n.chineseTranslation,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                if (english && !compact) const SizedBox(width: 8),
                 Icon(Icons.translate, size: 17, color: color),
                 if (!compact) ...[
                   const SizedBox(width: 5),
@@ -253,6 +261,7 @@ class QuestTranslationToggle extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (english && !compact) const SizedBox(width: 8),
               ],
             ),
           ),
@@ -751,10 +760,11 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
         .toList();
+    final names = gameNames(context);
     return projection.items
         .where((item) {
           final entry = item.entry;
-          if (!item.matchesSearch(keywords)) {
+          if (!item.matchesSearch(keywords, displayText: names.entityText)) {
             return false;
           }
           if (_filters.acceptedOnly && !(item.liveQuest?.isAccepted ?? false)) {
@@ -981,7 +991,7 @@ class _QuestCard extends StatelessWidget {
                             constraints.maxWidth <
                             MediaQuery.textScalerOf(context).scale(160);
                         final title = Text(
-                          entry.title,
+                          gameNames(context).entityText(entry.title),
                           maxLines: narrow ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -1104,7 +1114,7 @@ class _QuestDetail extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    title,
+                    gameNames(context).entityText(title),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -1151,18 +1161,16 @@ class _QuestDetail extends StatelessWidget {
               child: Text(
                 detail.isEmpty
                     ? l10n.noDescription
-                    : normalizeQuestDetail(detail),
+                    : gameNames(
+                        context,
+                      ).entityText(normalizeQuestDetail(detail)),
                 style: const TextStyle(fontSize: 13, height: 1.45),
               ),
             ),
             if (steps.isNotEmpty) ...[
               const SizedBox(height: 8),
               _DetailCard(
-                title: Localizations.localeOf(context).languageCode == 'ja'
-                    ? 'ローカル進捗'
-                    : Localizations.localeOf(context).scriptCode == 'Hant'
-                    ? '本機進度'
-                    : '本地进度',
+                title: l10n.questLocalProgress,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1170,11 +1178,7 @@ class _QuestDetail extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
-                          "${Localizations.localeOf(context).languageCode == 'ja'
-                              ? 'サーバー進捗'
-                              : Localizations.localeOf(context).scriptCode == 'Hant'
-                              ? '伺服器進度'
-                              : '服务器进度'}：$serverProgress",
+                          l10n.questServerProgress(serverProgress!),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xff8da7b7),
@@ -1187,7 +1191,7 @@ class _QuestDetail extends StatelessWidget {
                       children: [
                         for (final step in steps)
                           Text(
-                            '${step.description}  ${step.count}/${step.required}',
+                            '${gameNames(context).entityText(step.description)}  ${step.count}/${step.required}',
                             style: TextStyle(
                               color: step.count >= step.required
                                   ? const Color(0xff67d6a3)
@@ -1204,7 +1208,7 @@ class _QuestDetail extends StatelessWidget {
               const SizedBox(height: 8),
               _DetailCard(
                 title: l10n.completionConditions,
-                child: Text(entry.memo),
+                child: Text(gameNames(context).entityText(entry.memo)),
               ),
             ],
             const SizedBox(height: 8),
@@ -1228,7 +1232,7 @@ class _QuestDetail extends StatelessWidget {
                   ),
                   if (entry.rewardsText.isNotEmpty) ...[
                     const SizedBox(height: 9),
-                    Text(entry.rewardsText),
+                    Text(gameNames(context).entityText(entry.rewardsText)),
                   ],
                 ],
               ),

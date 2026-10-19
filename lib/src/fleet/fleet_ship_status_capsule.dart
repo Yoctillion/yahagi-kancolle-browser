@@ -1,5 +1,6 @@
 import '../settings/fleet_display_options.dart';
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import '../battle/prophet_hp_bar.dart';
 import 'fleet_ui_strings.dart';
 import 'fleet_ship_type_label.dart';
@@ -115,9 +116,17 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
         widget.shipTypeLabelMode == FleetShipTypeLabelMode.abbreviation
         ? fleetShipTypeAbbreviation(
             master?.shipTypeId ?? 0,
-            fallback: type?.name ?? fleetText(context, '未知舰种'),
+            fallback:
+                (type == null
+                    ? null
+                    : gameNames(
+                        context,
+                      ).shipTypeName(type.name, typeId: type.id)) ??
+                fleetText(context, '未知舰种'),
           )
-        : type?.name;
+        : (type == null
+              ? null
+              : gameNames(context).shipTypeName(type.name, typeId: type.id));
     final hpRatio = _ratio(ship.currentHp, ship.maxHp);
     final fuelRatio = _ratio(ship.currentFuel, master?.maxFuel ?? 0);
     final ammoRatio = _ratio(ship.currentAmmo, master?.maxAmmo ?? 0);
@@ -402,7 +411,14 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                               ),
                                             Expanded(
                                               child: Text(
-                                                master?.name ??
+                                                (master == null
+                                                        ? null
+                                                        : gameNames(
+                                                            context,
+                                                          ).shipName(
+                                                            master.name,
+                                                            shipId: master.id,
+                                                          )) ??
                                                     fleetText(context, '未知舰娘'),
                                                 maxLines: 1,
                                                 softWrap: false,
@@ -571,7 +587,12 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
       children: [
         Flexible(
           child: Text(
-            master?.name ?? fleetText(context, '未知舰娘'),
+            (master == null
+                    ? null
+                    : gameNames(
+                        context,
+                      ).shipName(master.name, shipId: master.id)) ??
+                fleetText(context, '未知舰娘'),
             key: Key('text-name-${ship.id}'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -720,7 +741,9 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
             ? 'fleet-focus-mechanism-${ship.id}${key.substring(9)}'
             : '$key-${ship.id}',
       ),
-      text: fleetText(context, text),
+      text: key.startsWith('mechanism')
+          ? gameNames(context).entityText(fleetText(context, text))
+          : fleetText(context, text),
       color: color,
     );
     return [

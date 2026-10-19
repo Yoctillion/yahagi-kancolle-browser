@@ -37,6 +37,7 @@ class ShipEquipmentCompatibilityProjection {
     bool ownedOnly = false,
     EquipmentInventoryCategory category = EquipmentInventoryCategory.all,
     String query = '',
+    String Function(String)? nameResolver,
     EquipmentCompatibilitySlotFilter filter =
         EquipmentCompatibilitySlotFilter.all,
   }) {
@@ -70,7 +71,10 @@ class ShipEquipmentCompatibilityProjection {
         continue;
       }
       if (normalizedQuery.isNotEmpty &&
-          !master.name.toLowerCase().contains(normalizedQuery)) {
+          !master.name.toLowerCase().contains(normalizedQuery) &&
+          !(nameResolver?.call(master.name) ?? '').toLowerCase().contains(
+            normalizedQuery,
+          )) {
         continue;
       }
       if (!_matchesFilter(compatibility, filter)) continue;

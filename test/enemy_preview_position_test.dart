@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/formation_memory.dart';
 import 'package:yahagi_kancolle_browser/src/battle/live_battle_card.dart';
@@ -104,9 +105,13 @@ Future<void> _pumpCard(
   required bool compact,
   bool portraits = true,
   EnemyPreviewPosition position = EnemyPreviewPosition.above,
+  Locale locale = const Locale('zh'),
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SingleChildScrollView(
           child: SizedBox(
@@ -142,12 +147,34 @@ void main() {
   final raidPanel = find.byKey(const Key('land-base-raid-panel'));
   final formation = find.byKey(const Key('battle-last-formation-pill'));
 
+  for (final compact in [false, true]) {
+    testWidgets(
+      'English air raid fits a narrow battle card (compact=$compact)',
+      (tester) async {
+        final controller = await _navigationController(raid: true);
+        addTearDown(controller.dispose);
+        await _pumpCard(
+          tester,
+          controller,
+          compact: compact,
+          locale: const Locale('en'),
+        );
+        expect(find.text('Air raid on base'), findsOneWidget);
+        expect(find.textContaining('Air supremacy'), findsWidgets);
+        expect(find.text('第一基地航空隊'), findsOneWidget);
+        expect(find.text('152/200（-48）'), findsOneWidget);
+        expect(find.text('敌方主力一'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final compact in <bool>[false, true]) {
     for (final combined in <bool>[false, true]) {
       for (final portraits in <bool>[false, true]) {
         for (final raid in <bool>[false, true]) {
           testWidgets(
-            'preview swaps only with HP block '
+            'legacy position maps to the whole prediction result order '
             '(compact=$compact combined=$combined portraits=$portraits raid=$raid)',
             (tester) async {
               final controller = await _navigationController(
@@ -163,6 +190,9 @@ void main() {
               );
 
               final overviewRect = tester.getRect(_overview(tester, compact));
+              final mapRect = tester.getRect(
+                find.byKey(const Key('sortie-map-section')),
+              );
               final overviewText = tester
                   .widgetList<Text>(
                     find.descendant(
@@ -176,15 +206,16 @@ void main() {
               final previewSize = tester.getSize(preview);
               final friendlySize = tester.getSize(friendly);
               final raidSize = raid ? tester.getSize(raidPanel) : null;
+              expect(mapRect.top - overviewRect.bottom, closeTo(7, 0.001));
               expect(
-                tester.getTopLeft(preview).dy - overviewRect.bottom,
-                closeTo(7, 0.001),
+                tester.getTopLeft(preview).dy - mapRect.bottom,
+                closeTo(9, 0.001),
               );
               if (raid) {
                 expect(
                   tester.getTopLeft(raidPanel).dy -
                       tester.getBottomLeft(preview).dy,
-                  closeTo(7, 0.001),
+                  closeTo(9, 0.001),
                 );
                 expect(
                   tester.getTopLeft(friendly).dy -
@@ -224,29 +255,32 @@ void main() {
               expect(tester.getSize(preview), previewSize);
               expect(tester.getSize(friendly), friendlySize);
               expect(
-                tester.getTopLeft(friendly).dy - overviewRect.bottom,
-                closeTo(7, 0.001),
+                tester.getRect(find.byKey(const Key('sortie-map-section'))),
+                mapRect,
               );
               if (raid) {
                 expect(tester.getSize(raidPanel), raidSize);
                 expect(
-                  tester.getTopLeft(raidPanel).dy -
-                      tester.getBottomLeft(friendly).dy,
-                  closeTo(7, 0.001),
+                  tester.getTopLeft(raidPanel).dy - mapRect.bottom,
+                  closeTo(9, 0.001),
                 );
                 expect(
-                  tester.getTopLeft(preview).dy -
+                  tester.getTopLeft(friendly).dy -
                       tester.getBottomLeft(raidPanel).dy,
                   closeTo(9, 0.001),
                 );
                 expect(find.text('152/200（-48）'), findsOneWidget);
               } else {
                 expect(
-                  tester.getTopLeft(preview).dy -
-                      tester.getBottomLeft(friendly).dy,
+                  tester.getTopLeft(friendly).dy - mapRect.bottom,
                   closeTo(9, 0.001),
                 );
               }
+              expect(
+                tester.getTopLeft(preview).dy -
+                    tester.getBottomLeft(friendly).dy,
+                closeTo(9, 0.001),
+              );
               final previewWidget = tester.widget<OfficialEnemyPreview>(
                 find.byType(OfficialEnemyPreview),
               );
@@ -278,6 +312,9 @@ void main() {
           addTearDown(controller.dispose);
           await _pumpCard(tester, controller, compact: compact);
           final overviewRect = tester.getRect(_overview(tester, compact));
+          final mapRect = tester.getRect(
+            find.byKey(const Key('sortie-map-section')),
+          );
           final friendlyRect = tester.getRect(friendly);
           final raidRect = raid ? tester.getRect(raidPanel) : null;
           await _pumpCard(
@@ -292,9 +329,9 @@ void main() {
           if (raid) {
             expect(tester.getRect(raidPanel), raidRect);
             expect(friendlyRect.top - raidRect!.bottom, 9);
-            expect(raidRect.top - overviewRect.bottom, 7);
+            expect(raidRect.top - mapRect.bottom, 9);
           } else {
-            expect(friendlyRect.top - overviewRect.bottom, 9);
+            expect(friendlyRect.top - mapRect.bottom, 9);
           }
           expect(tester.takeException(), isNull);
         },

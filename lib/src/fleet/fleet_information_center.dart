@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import '../battle/prophet_hp_bar.dart';
 import 'fleet_ui_strings.dart';
 import 'ship_remodel_capsule.dart';
@@ -964,7 +965,14 @@ class _FleetFocusPanel extends StatelessWidget {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                master?.name ??
+                                                (master == null
+                                                        ? null
+                                                        : gameNames(
+                                                            context,
+                                                          ).shipName(
+                                                            master.name,
+                                                            shipId: master.id,
+                                                          )) ??
                                                     fleetText(context, '未知舰娘'),
                                                 maxLines: 1,
                                                 softWrap: false,
@@ -1056,7 +1064,14 @@ class _FleetFocusPanel extends StatelessWidget {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          type?.name ??
+                                          (type == null
+                                                  ? null
+                                                  : gameNames(
+                                                      context,
+                                                    ).shipTypeName(
+                                                      type.name,
+                                                      typeId: type.id,
+                                                    )) ??
                                               fleetText(context, '未知舰种'),
                                           maxLines: 1,
                                           style: const TextStyle(
@@ -1356,7 +1371,12 @@ class _CompactEquipmentRow extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
-                      master?.name ?? fleetText(context, '未知装备'),
+                      (master == null
+                              ? null
+                              : gameNames(
+                                  context,
+                                ).equipmentName(master.name)) ??
+                          fleetText(context, '未知装备'),
                       key: Key('fleet-equipment-name-${ship.id}-$index'),
                       style: const TextStyle(
                         color: Color(0xffe1e9ed),
@@ -1491,97 +1511,124 @@ class _ShipParameterDetails extends StatelessWidget {
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 2.6,
-                    crossAxisSpacing: 6,
-                    mainAxisSpacing: 6,
-                  ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    if (index < stats.length) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xff102331),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                fleetText(context, stats[index].$1),
-                                style: const TextStyle(
-                                  color: Color(0xffa9bac4),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              fleetText(context, stats[index].$2),
-                              style: const TextStyle(
-                                color: Color(0xffe1e9ed),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final mech = allMechanisms[index - stats.length];
-                    final valueText = mech.rate != null
-                        ? '${(mech.rate! * 100).round()}%'
-                        : fleetText(context, '有效');
-                    final labelColor = switch (mech.tone) {
-                      MechanismTone.antiAir => const Color(0xffffc861),
-                      MechanismTone.specialAttack => const Color(0xffff8b88),
-                      MechanismTone.nightAttack => const Color(0xffbfa4ff),
-                      MechanismTone.neutral ||
-                      MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-                    };
-
-                    return Material(
-                      color: const Color(0xff102331),
-                      borderRadius: BorderRadius.circular(7),
-                      child: InkWell(
-                        onTap: () => _showMechanismDetails(context, mech),
-                        borderRadius: BorderRadius.circular(7),
-                        child: Padding(
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) => SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      // English mechanism labels and values need a wider cell.
+                      crossAxisCount:
+                          Localizations.maybeLocaleOf(context)?.languageCode ==
+                                  'en' &&
+                              constraints.crossAxisExtent < 340
+                          ? 1
+                          : 2,
+                      childAspectRatio: 2.6,
+                      crossAxisSpacing: 6,
+                      mainAxisSpacing: 6,
+                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      if (index < stats.length) {
+                        final value = Text(
+                          fleetText(context, stats[index].$2),
+                          style: const TextStyle(
+                            color: Color(0xffe1e9ed),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        );
+                        return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xff102331),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Text(
-                                  fleetText(
-                                    context,
-                                    mech.shortLabel ?? mech.label,
-                                  ),
-                                  style: TextStyle(
-                                    color: labelColor,
+                                  fleetText(context, stats[index].$1),
+                                  style: const TextStyle(
+                                    color: Color(0xffa9bac4),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
-                              Text(
-                                valueText,
-                                style: const TextStyle(
-                                  color: Color(0xffe1e9ed),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                ),
-                              ),
+                              if (Localizations.maybeLocaleOf(
+                                    context,
+                                  )?.languageCode ==
+                                  'en')
+                                Flexible(
+                                  flex: 2,
+                                  fit: FlexFit.tight,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: value,
+                                  ),
+                                )
+                              else
+                                value,
                             ],
                           ),
+                        );
+                      }
+
+                      final mech = allMechanisms[index - stats.length];
+                      final valueText = mech.rate != null
+                          ? '${(mech.rate! * 100).round()}%'
+                          : fleetText(context, '有效');
+                      final labelColor = switch (mech.tone) {
+                        MechanismTone.antiAir => const Color(0xffffc861),
+                        MechanismTone.specialAttack => const Color(0xffff8b88),
+                        MechanismTone.nightAttack => const Color(0xffbfa4ff),
+                        MechanismTone.neutral ||
+                        MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
+                      };
+
+                      return Material(
+                        color: const Color(0xff102331),
+                        borderRadius: BorderRadius.circular(7),
+                        child: InkWell(
+                          onTap: () => _showMechanismDetails(context, mech),
+                          borderRadius: BorderRadius.circular(7),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    gameNames(context).entityText(
+                                      fleetText(
+                                        context,
+                                        mech.shortLabel ?? mech.label,
+                                      ),
+                                    ),
+                                    style: TextStyle(
+                                      color: labelColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  valueText,
+                                  style: const TextStyle(
+                                    color: Color(0xffe1e9ed),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    fontFeatures: [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    );
-                  }, childCount: totalCount),
+                      );
+                    }, childCount: totalCount),
+                  ),
                 ),
               ),
             ],
@@ -1608,7 +1655,7 @@ class _ShipParameterDetails extends StatelessWidget {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xff142735),
         title: Text(
-          fleetText(context, mechanism.label),
+          gameNames(context).entityText(fleetText(context, mechanism.label)),
           style: TextStyle(color: foregroundColor, fontWeight: FontWeight.bold),
         ),
         content: Text(
@@ -1704,7 +1751,12 @@ class _SelectedEquipmentDetails extends StatelessWidget {
                   runSpacing: 3,
                   children: [
                     Text(
-                      master?.name ?? fleetText(context, '未知装备'),
+                      (master == null
+                              ? null
+                              : gameNames(
+                                  context,
+                                ).equipmentName(master.name)) ??
+                          fleetText(context, '未知装备'),
                       key: Key('fleet-detail-equipment-name-${ship.id}-$index'),
                       style: const TextStyle(
                         fontSize: 15,
@@ -1738,56 +1790,62 @@ class _SelectedEquipmentDetails extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 2.4,
-              crossAxisSpacing: 6,
-              mainAxisSpacing: 6,
-            ),
-            itemCount: stats.length,
-            itemBuilder: (context, index) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xff102331),
-                borderRadius: BorderRadius.circular(7),
+          child: LayoutBuilder(
+            builder: (context, constraints) => GridView.builder(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount:
+                    Localizations.localeOf(context).languageCode == 'en' &&
+                        constraints.maxWidth < 340
+                    ? 1
+                    : 2,
+                childAspectRatio: 2.4,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      fleetText(context, stats[index].label),
-                      style: const TextStyle(
-                        color: Color(0xffa9bac4),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+              itemCount: stats.length,
+              itemBuilder: (context, index) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xff102331),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        fleetText(context, stats[index].label),
+                        style: const TextStyle(
+                          color: Color(0xffa9bac4),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                  if (stats[index].value.isNotEmpty)
-                    Text(
-                      fleetText(context, stats[index].value),
-                      style: const TextStyle(
-                        color: Color(0xffe1e9ed),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                    if (stats[index].value.isNotEmpty)
+                      Text(
+                        fleetText(context, stats[index].value),
+                        style: const TextStyle(
+                          color: Color(0xffe1e9ed),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  if (kShowEquipmentVisibleBonuses &&
-                      stats[index].bonus != 0) ...[
-                    const SizedBox(width: 3),
-                    Text(
-                      '↑+${stats[index].bonus}',
-                      key: Key('fleet-equipment-bonus-$index'),
-                      style: const TextStyle(
-                        color: Color(0xff63b8ff),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
+                    if (kShowEquipmentVisibleBonuses &&
+                        stats[index].bonus != 0) ...[
+                      const SizedBox(width: 3),
+                      Text(
+                        '↑+${stats[index].bonus}',
+                        key: Key('fleet-equipment-bonus-$index'),
+                        style: const TextStyle(
+                          color: Color(0xff63b8ff),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -2091,7 +2149,12 @@ class _ShipRow extends StatelessWidget {
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              master?.name ??
+                              (master == null
+                                      ? null
+                                      : gameNames(context).shipName(
+                                          master.name,
+                                          shipId: master.id,
+                                        )) ??
                                   (AppLocalizations.of(context)?.unknownShip ??
                                       fleetText(context, '未知舰娘')),
                               key: Key('ship-identity-name-${ship.id}'),
@@ -2401,7 +2464,12 @@ class _ShipRow extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              master?.name ??
+                              (master == null
+                                      ? null
+                                      : gameNames(context).shipName(
+                                          master.name,
+                                          shipId: master.id,
+                                        )) ??
                                   AppLocalizations.of(context)?.unknownShip ??
                                   fleetText(context, '未知舰娘'),
                               key: Key('ship-identity-name-${ship.id}'),
@@ -2474,7 +2542,14 @@ class _ShipRow extends StatelessWidget {
                                               maxWidth: 110,
                                             ),
                                             child: Text(
-                                              type?.name ??
+                                              (type == null
+                                                      ? null
+                                                      : gameNames(
+                                                          context,
+                                                        ).shipTypeName(
+                                                          type.name,
+                                                          typeId: type.id,
+                                                        )) ??
                                                   AppLocalizations.of(
                                                     context,
                                                   )?.unknownShipType ??
@@ -2878,7 +2953,7 @@ class _MechanismChip extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           child: Text(
-            fleetText(context, label),
+            gameNames(context).entityText(fleetText(context, label)),
             style: TextStyle(
               color: isSpecialAttack
                   ? const Color(0xffff8b88)
@@ -2898,7 +2973,7 @@ class _MechanismChip extends StatelessWidget {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xff142735),
         title: Text(
-          fleetText(context, mechanism.label),
+          gameNames(context).entityText(fleetText(context, mechanism.label)),
           style: TextStyle(
             color: isSpecialAttack
                 ? const Color(0xffff8b88)
@@ -2973,7 +3048,9 @@ class _EquipmentCard extends StatelessWidget {
               const SizedBox(width: 7),
               Flexible(
                 child: Text(
-                  master?.name ??
+                  (master == null
+                          ? null
+                          : gameNames(context).equipmentName(master.name)) ??
                       AppLocalizations.of(context)?.unknownEquipment ??
                       fleetText(context, '未知装备'),
                   maxLines: 1,
@@ -3030,7 +3107,7 @@ class _EquipmentCard extends StatelessWidget {
           const SizedBox(height: 7),
           if (stats.isEmpty)
             Text(
-              AppLocalizations.of(context)?.noAdditionalStats ?? '暂无附加属性',
+              AppLocalizations.of(context)?.noAdditionalStats ?? '暂无装备属性',
               style: const TextStyle(color: Color(0xff6f8795), fontSize: 11),
             )
           else

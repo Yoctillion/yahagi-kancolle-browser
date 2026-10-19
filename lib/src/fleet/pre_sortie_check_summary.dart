@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../game_state/game_state.dart';
@@ -396,10 +397,18 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
           }
           final filledMainSlots = ship.slotIds.where((id) => id > 0).length;
           if (filledMainSlots < masterShip.slotCount) {
-            mainEquipmentNames.add(masterShip.name);
+            mainEquipmentNames.add(
+              gameNames(
+                context,
+              ).shipName(masterShip.name, shipId: masterShip.id),
+            );
           }
           if (ship.extraSlotId == -1) {
-            extraEquipmentNames.add(masterShip.name);
+            extraEquipmentNames.add(
+              gameNames(
+                context,
+              ).shipName(masterShip.name, shipId: masterShip.id),
+            );
           }
         }
       }

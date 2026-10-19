@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/anchorage_repair_calculator.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_status_visual.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_switcher_bar.dart';
@@ -14,6 +15,9 @@ void main() {
       final state = buildNosakiTestState(companionConds: [49, 54]);
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: FleetSwitcherBar(
               fleets: state.fleets,
@@ -24,7 +28,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('野崎刷闪中'), findsOneWidget);
+      expect(find.text('野埼刷闪中'), findsOneWidget);
       expect(
         find.byKey(const Key('fleet-selector-status-dot-1')),
         findsOneWidget,

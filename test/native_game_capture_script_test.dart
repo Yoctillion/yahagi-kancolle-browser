@@ -190,7 +190,7 @@ eval(script.replace('__YAHAGI_BINARY_CAPTURE_ENABLED__', String(mode !== 'string
           'if (path !== null)',
         );
         final fetchCopy = nativeGameCaptureScript.indexOf(
-          'response.clone().text()',
+          'capturedResponse.clone().text()',
         );
         final xhrGuard = nativeGameCaptureScript.indexOf(
           'if (path !== null)',

@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../fleet/ship_portrait.dart';
@@ -53,6 +54,7 @@ class OfficialEnemyPreview extends StatelessWidget {
             for (var index = 0; index < ships.length; index++) ...<Widget>[
               if (index > 0) const Divider(height: 1, color: Color(0xff203746)),
               _nameCell(
+                context,
                 ships[index],
                 index: index,
                 portraitWidth: 52,
@@ -74,6 +76,7 @@ class OfficialEnemyPreview extends StatelessWidget {
                         ),
                       ),
                       child: _nameCell(
+                        context,
                         _shipAt(escortShips, index),
                         index: index,
                         portraitWidth: 52,
@@ -84,6 +87,7 @@ class OfficialEnemyPreview extends StatelessWidget {
                   ),
                   Expanded(
                     child: _nameCell(
+                      context,
                       _shipAt(mainShips, index),
                       index: index + 3,
                       portraitWidth: 52,
@@ -103,13 +107,16 @@ class OfficialEnemyPreview extends StatelessWidget {
       index < fleet.length ? fleet[index] : null;
 
   Widget _nameCell(
+    BuildContext context,
     EnemyPreviewShip? preview, {
     required int index,
     required double portraitWidth,
     required double portraitHeight,
     required Key key,
   }) {
-    final name = preview?.name ?? '';
+    final name = preview == null
+        ? ''
+        : gameNames(context).shipName(preview.name, shipId: preview.masterId);
     final masterShip = preview == null ? null : masterShips[preview.masterId];
     final resourceType = (masterShip?.id ?? 0) >= 1500
         ? ShipPortraitResourceType.banner

@@ -81,6 +81,28 @@ void main() {
     expect(rows.map((row) => row.entry.equipmentId), <int>[2]);
   });
 
+  test(
+    'search accepts translated equipment while retaining original names',
+    () {
+      const masters = <int, MasterSlotItem>{
+        1: MasterSlotItem(id: 1, name: '小口径主砲', type: <int>[1, 0, 1, 1]),
+      };
+      String translated(String original) =>
+          original == '小口径主砲' ? 'Small Main Gun' : original;
+      for (final query in [' small main ', '小口径']) {
+        final rows = projectImprovementRows(
+          dataset,
+          weekday: DateTime.monday,
+          equipmentMasters: masters,
+          query: query,
+          equipmentNameResolver: translated,
+        );
+        expect(rows.map((row) => row.entry.equipmentId), [1]);
+      }
+      expect(masters[1]!.name, '小口径主砲');
+    },
+  );
+
   test('uses owned inventory equipment categories', () {
     final rows = projectImprovementRows(
       dataset,

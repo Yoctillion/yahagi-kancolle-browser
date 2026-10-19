@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'fleet_ui_strings.dart';
 
@@ -90,7 +91,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     final modeSelector = _RepairSummaryModeSelector(
       mode: _mode,
       dockLabel: fleetText(context, '入渠修理'),
-      anchorageLabel: '泊地修理',
+      anchorageLabel: fleetText(context, '泊地修理'),
       nosakiLabel: fleetText(context, '野埼刷闪'),
       onChanged: (mode) => setState(() => _mode = mode),
     );
@@ -156,7 +157,13 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       } else {
         final ship = state.ships[dock.shipId];
         master = ship == null ? null : state.masterShips[ship.masterId];
-        name = master?.name ?? fleetText(context, '未知');
+        name =
+            (master == null
+                ? null
+                : gameNames(
+                    context,
+                  ).shipName(master.name, shipId: master.id)) ??
+            fleetText(context, '未知');
         disabled = false;
         active = true;
       }
@@ -268,7 +275,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         master: master,
         name: master == null
             ? strings.idle
-            : '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${master.name}',
+            : '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${gameNames(context).shipName(master.name, shipId: master.id)}',
         disabled: false,
         detail: Text(
           strings.inactive,
@@ -292,7 +299,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       state: state,
       master: row.master,
       name:
-          '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${row.master?.name ?? fleetText(context, '未知')}',
+          '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${(row.master == null ? null : gameNames(context).shipName(row.master!.name, shipId: row.master!.id)) ?? fleetText(context, '未知')}',
       disabled: false,
       fitFullName: true,
       dotColor: visual.color,
@@ -373,7 +380,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         master: master,
         name: master == null
             ? strings.idle
-            : '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${master.name}',
+            : '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${gameNames(context).shipName(master.name, shipId: master.id)}',
         disabled: false,
         detail: Text(
           strings.inactive,
@@ -397,7 +404,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       state: state,
       master: row.master,
       name:
-          '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${row.master?.name ?? fleetText(context, '未知')}',
+          '${widget.visible.contains('empty') ? '' : '${position + 1} · '}${(row.master == null ? null : gameNames(context).shipName(row.master!.name, shipId: row.master!.id)) ?? fleetText(context, '未知')}',
       disabled: false,
       fitFullName: true,
       dotColor: visual.color,
@@ -505,6 +512,7 @@ class _RepairSummaryModeSelector extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final english = Localizations.localeOf(context).languageCode == 'en';
           final labelWidth = constraints.maxWidth / 3 - 14;
           final style = DefaultTextStyle.of(context).style.merge(
             const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
@@ -528,7 +536,13 @@ class _RepairSummaryModeSelector extends StatelessWidget {
               Expanded(
                 child: _ModeButton(
                   key: const Key('repair-summary-mode-dock'),
-                  label: useShortLabels ? '入渠' : dockLabel,
+                  label: useShortLabels
+                      ? english
+                            ? 'Dock'
+                            : fleetText(context, '入渠')
+                      : dockLabel,
+                  tooltip: dockLabel,
+                  compactIcon: Icons.build_outlined,
                   selected: mode == RepairCenterMode.dock,
                   onTap: () => onChanged(RepairCenterMode.dock),
                 ),
@@ -536,7 +550,13 @@ class _RepairSummaryModeSelector extends StatelessWidget {
               Expanded(
                 child: _ModeButton(
                   key: const Key('repair-summary-mode-anchorage'),
-                  label: useShortLabels ? '泊地' : anchorageLabel,
+                  label: useShortLabels
+                      ? english
+                            ? 'Anch.'
+                            : fleetText(context, '泊地')
+                      : anchorageLabel,
+                  tooltip: anchorageLabel,
+                  compactIcon: Icons.anchor,
                   selected: mode == RepairCenterMode.anchorage,
                   onTap: () => onChanged(RepairCenterMode.anchorage),
                 ),
@@ -544,7 +564,11 @@ class _RepairSummaryModeSelector extends StatelessWidget {
               Expanded(
                 child: _ModeButton(
                   key: const Key('repair-summary-mode-nosaki'),
-                  label: useShortLabels ? '野崎' : nosakiLabel,
+                  label: useShortLabels
+                      ? fleetText(context, FleetUiKeys.nosakiShort)
+                      : nosakiLabel,
+                  tooltip: nosakiLabel,
+                  compactIcon: Icons.auto_awesome,
                   selected: mode == RepairCenterMode.nosaki,
                   onTap: () => onChanged(RepairCenterMode.nosaki),
                 ),
@@ -563,11 +587,15 @@ class _ModeButton extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    required this.tooltip,
+    required this.compactIcon,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final String tooltip;
+  final IconData compactIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -580,16 +608,39 @@ class _ModeButton extends StatelessWidget {
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            child: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                color: selected
-                    ? const Color(0xffffcf67)
-                    : const Color(0xff8197a5),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+            child: Tooltip(
+              message: tooltip,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final style = DefaultTextStyle.of(context).style.merge(
+                    TextStyle(
+                      color: selected
+                          ? const Color(0xffffcf67)
+                          : const Color(0xff8197a5),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  );
+                  final painter = TextPainter(
+                    text: TextSpan(text: label, style: style),
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
+                    locale: Localizations.maybeLocaleOf(context),
+                    maxLines: 1,
+                  )..layout();
+                  final useIcon = painter.width > constraints.maxWidth;
+                  painter.dispose();
+                  return Center(
+                    child: useIcon
+                        ? Icon(compactIcon, size: 14, color: style.color)
+                        : Text(
+                            label,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: style,
+                          ),
+                  );
+                },
               ),
             ),
           ),

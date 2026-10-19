@@ -106,6 +106,7 @@ void main() {
       addTearDown(memberId.dispose);
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: TopNoticeHost(
@@ -137,6 +138,7 @@ void main() {
 }
 
 Widget _app(_AuditStore store, int memberId) => MaterialApp(
+  locale: const Locale('zh'),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: TopNoticeHost(

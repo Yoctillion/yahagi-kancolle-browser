@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../theme/app_fonts.dart';
+import '../theme/custom_font_controller.dart';
 import 'header_resource_settings.dart';
 import 'workspace_menu_settings.dart';
 import 'fleet_display_options.dart';
@@ -22,6 +23,7 @@ class LayoutSettingsController extends ChangeNotifier {
     this._dashboardCardHidden,
     this._fontFamily,
     this._localeCode,
+    this._systemLocaleCode,
     this._fontLocaleCode,
     this._fleetMoraleMetricMode,
   );
@@ -29,6 +31,7 @@ class LayoutSettingsController extends ChangeNotifier {
   static Future<LayoutSettingsController> load(
     LayoutSettingsStore store, {
     String? systemLocaleCode,
+    CustomFontController? customFontController,
   }) async {
     final ratio = await store.loadGameAreaRatio();
     final width = await store.loadInformationPanelWidth();
@@ -70,9 +73,13 @@ class LayoutSettingsController extends ChangeNotifier {
       dashboardCardHidden,
       regionalFont,
       localeCode,
+      systemLocaleCode ?? 'zh',
       fontLocaleCode,
       fleetMoraleMetricMode,
     );
+    controller._customFontController = customFontController;
+    controller._lastCustomFontFamily = customFontController?.fontFamily;
+    customFontController?.addListener(controller._handleCustomFontChanged);
     if (store is WorkspaceMenuPositionStore) {
       final position = await (store as WorkspaceMenuPositionStore)
           .loadWorkspaceMenuPosition();
@@ -760,7 +767,10 @@ class LayoutSettingsController extends ChangeNotifier {
   List<String> _dashboardCardCollapsed;
   List<String> _dashboardCardHidden;
   String _fontFamily;
+  CustomFontController? _customFontController;
+  String? _lastCustomFontFamily;
   String? _localeCode;
+  String _systemLocaleCode;
   String _fontLocaleCode;
   FleetMoraleMetricMode _fleetMoraleMetricMode;
   List<String>? _headerResourceOrder;
@@ -812,16 +822,38 @@ class LayoutSettingsController extends ChangeNotifier {
   List<String> get dashboardCardOrder => _dashboardCardOrder;
   List<String> get dashboardCardCollapsed => _dashboardCardCollapsed;
   List<String> get dashboardCardHidden => _dashboardCardHidden;
-  String get fontFamily => _fontFamily;
+  CustomFontController? get customFontController => _customFontController;
+  String get defaultFontFamily => _fontFamily;
+  String get fontFamily =>
+      customFontController?.fontFamily ?? defaultFontFamily;
   String? get localeCode => _localeCode;
+
+  /// Selected language, or the current normalized system language.
+  String get effectiveLocaleCode => _localeCode ?? _fontLocaleCode;
   FleetMoraleMetricMode get fleetMoraleMetricMode => _fleetMoraleMetricMode;
   List<String> get headerResourceOrder =>
       List<String>.unmodifiable(_headerResourceOrder ?? allHeaderResourceIds);
   List<String> get visibleHeaderResourceIds => List<String>.unmodifiable(
     _visibleHeaderResourceIds ?? defaultVisibleHeaderResourceIds,
   );
-  List<String> get fontFamilyFallback =>
-      AppFonts.fallbackForLocale(_fontLocaleCode);
+  List<String> get fontFamilyFallback => [
+    if (customFontController?.fontFamily != null)
+      AppFonts.forLocale(_fontLocaleCode),
+    ...AppFonts.fallbackForLocale(_fontLocaleCode),
+  ];
+
+  void _handleCustomFontChanged() {
+    final family = customFontController?.fontFamily;
+    if (_lastCustomFontFamily == family) return;
+    _lastCustomFontFamily = family;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    customFontController?.removeListener(_handleCustomFontChanged);
+    super.dispose();
+  }
 
   Future<void> setGameAreaRatio(double ratio) async {
     if (_gameAreaRatio == ratio) {
@@ -999,11 +1031,20 @@ class LayoutSettingsController extends ChangeNotifier {
       return;
     }
     _localeCode = localeCode;
-    _fontLocaleCode = localeCode ?? 'zh';
+    _fontLocaleCode = localeCode ?? _systemLocaleCode;
     _fontFamily = AppFonts.forLocale(_fontLocaleCode);
     notifyListeners();
     await _store.saveLocaleCode(localeCode);
     await _store.saveFontFamily(_fontFamily);
+  }
+
+  void updateSystemLocaleCode(String localeCode) {
+    if (_systemLocaleCode == localeCode) return;
+    _systemLocaleCode = localeCode;
+    if (_localeCode != null) return;
+    _fontLocaleCode = localeCode;
+    _fontFamily = AppFonts.forLocale(localeCode);
+    notifyListeners();
   }
 }
 

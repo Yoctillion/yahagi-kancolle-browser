@@ -160,6 +160,33 @@ void main() {
     expect(controller.equipmentTypeName(1), '小口径主炮');
   });
 
+  test(
+    'picker search also matches the supplied localized equipment name',
+    () async {
+      final controller = EquipmentDevelopmentController(
+        repository: _repository(),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize(_stateWithFlagship(101));
+      controller.setEquipmentSearch('translated radar');
+      final results = controller.filteredEquipmentForTypes(
+        {12},
+        equipmentNameResolver: (raw) =>
+            raw == '测试雷达' ? 'Translated Radar' : raw,
+      );
+      expect(results.map((item) => item.id), [8]);
+      controller.setEquipmentSearch('雷达');
+      expect(
+        controller
+            .filteredEquipmentForTypes({
+              12,
+            }, equipmentNameResolver: (_) => 'Translated Radar')
+            .map((item) => item.id),
+        [8],
+      );
+    },
+  );
+
   test('equipment filtering combines a requested type with search', () async {
     final controller = EquipmentDevelopmentController(
       repository: _repository(),

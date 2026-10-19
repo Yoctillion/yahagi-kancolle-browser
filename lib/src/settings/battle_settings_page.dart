@@ -40,39 +40,57 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                     horizontal: 16,
                     vertical: 8,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        l10n.blockSortieTitle,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Text(
+                          l10n.blockSortieTitle,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      DropdownButton<BattleWarningMode>(
-                        value: safetySettingsController.battleWarningMode,
-                        underline: const SizedBox(),
-                        alignment: AlignmentDirectional.centerEnd,
-                        items: [
-                          DropdownMenuItem(
-                            value: BattleWarningMode.off,
-                            child: Text(l10n.battleWarningOff),
+                        _fitDropdown(
+                          maxWidth: constraints.maxWidth,
+                          child: DropdownButton<BattleWarningMode>(
+                            value: safetySettingsController.battleWarningMode,
+                            underline: const SizedBox(),
+                            alignment: AlignmentDirectional.centerEnd,
+                            isExpanded: true,
+                            itemHeight: null,
+                            items: [
+                              DropdownMenuItem(
+                                value: BattleWarningMode.off,
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: Text(
+                                  l10n.battleWarningOff,
+                                  textAlign: TextAlign.end,
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: BattleWarningMode.confirm,
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: Text(
+                                  l10n.battleWarningConfirm,
+                                  textAlign: TextAlign.end,
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                safetySettingsController.setBattleWarningMode(
+                                  value,
+                                );
+                              }
+                            },
                           ),
-                          DropdownMenuItem(
-                            value: BattleWarningMode.confirm,
-                            child: Text(l10n.battleWarningConfirm),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            safetySettingsController.setBattleWarningMode(
-                              value,
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -105,11 +123,17 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                           value: settings.displayScope,
                           underline: const SizedBox(),
                           alignment: AlignmentDirectional.centerEnd,
+                          isExpanded: true,
+                          itemHeight: null,
                           items: BattleEffectDisplayScope.values
                               .map(
                                 (value) => DropdownMenuItem(
                                   value: value,
-                                  child: Text(_scopeLabel(l10n, value)),
+                                  alignment: AlignmentDirectional.centerEnd,
+                                  child: Text(
+                                    _scopeLabel(l10n, value),
+                                    textAlign: TextAlign.end,
+                                  ),
                                 ),
                               )
                               .toList(growable: false),
@@ -133,11 +157,17 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                           value: settings.damagePulseFilter,
                           underline: const SizedBox(),
                           alignment: AlignmentDirectional.centerEnd,
+                          isExpanded: true,
+                          itemHeight: null,
                           items: DamagePulseFilter.values
                               .map(
                                 (value) => DropdownMenuItem(
                                   value: value,
-                                  child: Text(_pulseFilterLabel(l10n, value)),
+                                  alignment: AlignmentDirectional.centerEnd,
+                                  child: Text(
+                                    _pulseFilterLabel(l10n, value),
+                                    textAlign: TextAlign.end,
+                                  ),
                                 ),
                               )
                               .toList(growable: false),
@@ -161,12 +191,16 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                           value: settings.damageVibrationFilter,
                           underline: const SizedBox(),
                           alignment: AlignmentDirectional.centerEnd,
+                          isExpanded: true,
+                          itemHeight: null,
                           items: DamageVibrationFilter.values
                               .map(
                                 (value) => DropdownMenuItem(
                                   value: value,
+                                  alignment: AlignmentDirectional.centerEnd,
                                   child: Text(
                                     _vibrationFilterLabel(l10n, value),
+                                    textAlign: TextAlign.end,
                                   ),
                                 ),
                               )
@@ -191,12 +225,16 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                           value: settings.moraleSparkleMode,
                           underline: const SizedBox(),
                           alignment: AlignmentDirectional.centerEnd,
+                          isExpanded: true,
+                          itemHeight: null,
                           items: MoraleSparkleMode.values
                               .map(
                                 (value) => DropdownMenuItem(
                                   value: value,
+                                  alignment: AlignmentDirectional.centerEnd,
                                   child: Text(
                                     _moraleSparkleModeLabel(l10n, value),
+                                    textAlign: TextAlign.end,
                                   ),
                                 ),
                               )
@@ -268,6 +306,12 @@ String _vibrationFilterLabel(
   DamageVibrationFilter.all => l10n.battleEffectAll,
 };
 
+Widget _fitDropdown({required double maxWidth, required Widget child}) =>
+    ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: IntrinsicWidth(child: child),
+    );
+
 class _StatusEffectRow extends StatelessWidget {
   const _StatusEffectRow({
     required this.title,
@@ -305,6 +349,10 @@ class _StatusEffectRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 560;
+        final dropdown = _fitDropdown(
+          maxWidth: (constraints.maxWidth - 32) * (compact ? 1 : .5),
+          child: trailing,
+        );
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: compact
@@ -313,14 +361,14 @@ class _StatusEffectRow extends StatelessWidget {
                   children: <Widget>[
                     text,
                     const SizedBox(height: 8),
-                    Align(alignment: Alignment.centerRight, child: trailing),
+                    Align(alignment: Alignment.centerRight, child: dropdown),
                   ],
                 )
               : Row(
                   children: <Widget>[
                     Expanded(child: text),
                     const SizedBox(width: 12),
-                    trailing,
+                    dropdown,
                   ],
                 ),
         );

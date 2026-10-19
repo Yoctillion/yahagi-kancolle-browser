@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../localization/ui_text.dart';
+import '../localization/game_name_localizations.dart';
 
 class LogbookFilterField {
   const LogbookFilterField({
@@ -8,12 +9,16 @@ class LogbookFilterField {
     required this.label,
     required this.options,
     this.optionLabelFormatter,
+    this.preserveOptionNames = false,
   });
 
   final String keyName;
   final String label;
   final List<String> options;
   final String Function(String)? optionLabelFormatter;
+
+  /// The first option is the app's "all" choice; remaining names are data.
+  final bool preserveOptionNames;
 }
 
 Future<Map<String, String>?> showLogbookFilterPanel({
@@ -205,10 +210,18 @@ class _FilterPanelRouteState extends State<_FilterPanelRoute> {
                   DropdownMenuItem<String>(
                     value: option,
                     child: Text(
-                      uiText(
-                        context,
-                        field.optionLabelFormatter?.call(option) ?? option,
-                      ),
+                      field.preserveOptionNames && option != field.options.first
+                          ? gameNames(context).entityText(
+                              field.optionLabelFormatter?.call(option) ??
+                                  option,
+                            )
+                          : uiText(
+                              context,
+                              gameNames(context).entityText(
+                                field.optionLabelFormatter?.call(option) ??
+                                    option,
+                              ),
+                            ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

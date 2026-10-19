@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/src/battle/fcd_map_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/fcd_map_dataset.dart';
+import 'package:yahagi_kancolle_browser/src/battle/fcd_map_geometry.dart';
 import 'package:yahagi_kancolle_browser/src/battle/fcd_map_update_service.dart';
 
 String _map(String version, {String? destination}) =>
@@ -57,6 +58,33 @@ void main() {
     },
   );
 
+  test('provides the updated geometry through the same controller', () async {
+    final oldData = FcdMapDataset.parse(
+      _mapWithGeometry('2026/07/01/01', destinationX: 100),
+      minimumMapCount: 1,
+    );
+    final newData = FcdMapDataset.parse(
+      _mapWithGeometry('2026/07/28/02', destinationX: 300),
+      minimumMapCount: 1,
+    );
+    final controller = FcdMapController(
+      dataset: oldData,
+      updater: _Updater((_) async => FcdMapUpdated(newData)),
+    );
+    addTearDown(controller.dispose);
+
+    final BattleMapGeometryResolver resolver = controller;
+    final oldGeometry = resolver.geometryFor(mapAreaId: 5, mapInfoNo: 6)!;
+    expect(oldGeometry.spots['Y']!.x, 100.0);
+
+    await controller.checkForUpdates();
+
+    final newGeometry = resolver.geometryFor(mapAreaId: 5, mapInfoNo: 6)!;
+    expect(newGeometry, same(newData.geometryFor(mapAreaId: 5, mapInfoNo: 6)));
+    expect(newGeometry.spots['Y']!.x, 300.0);
+    expect(oldGeometry.spots['Y']!.x, 100.0);
+  });
+
   test('coalesces concurrent checks into the same future', () async {
     final completer = Completer<FcdMapUpdateResult>();
     var calls = 0;
@@ -79,6 +107,11 @@ void main() {
     expect(controller.isChecking, isFalse);
   });
 }
+
+String _mapWithGeometry(String version, {required int destinationX}) =>
+    '{"meta":{"name":"map","version":"$version"},'
+    '"data":{"5-6":{"route":{"42":["X","Y"]},'
+    '"spots":{"X":[0,0,"start"],"Y":[$destinationX,50,""]}}}}';
 
 final class _Updater implements FcdMapUpdateClient {
   _Updater(this.callback);

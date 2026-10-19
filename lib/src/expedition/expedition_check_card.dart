@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../account/account_session.dart';
 
 import '../localization/ui_text.dart';
+import '../localization/game_name_localizations.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
@@ -215,7 +216,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             if (_greatSuccess) ...evaluation.greatSuccessConditions,
             evaluation.daihatsuFill,
           ])
-            _conditionRow(condition, strings),
+            _conditionRow(context, condition, strings),
         ],
       ],
     );
@@ -604,6 +605,7 @@ Widget _itemTile(ExpeditionRewardItem item) {
 }
 
 Widget _conditionRow(
+  BuildContext context,
   ExpeditionConditionResult condition,
   ExpeditionStrings strings,
 ) {
@@ -638,7 +640,7 @@ Widget _conditionRow(
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            strings.conditionLabel(condition),
+            gameNames(context).entityText(strings.conditionLabel(condition)),
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ),

@@ -1,6 +1,7 @@
 package app.yahagi.kancollebrowser.browser
 
 import app.yahagi.kancollebrowser.capture.CaptureOriginPolicy
+import app.yahagi.kancollebrowser.mods.GameModCoordinateScript
 
 internal data class GameDocumentStartScript(
     val source: String,
@@ -45,6 +46,10 @@ internal fun platformGameDocumentStartScripts(
     reloadOriginRules: Set<String> = CaptureOriginPolicy().allowedOriginRules,
 ): List<GameDocumentStartScript> =
     listOf(
+        GameDocumentStartScript(
+            source = GameModCoordinateScript.source,
+            allowedOriginRules = GameModCoordinateScript.allowedOriginRules,
+        ),
         GameDocumentStartScript(
             source = GameFrameReloadBridgeScript.source,
             allowedOriginRules = reloadOriginRules,

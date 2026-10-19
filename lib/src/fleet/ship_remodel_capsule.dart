@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 
 import '../game_state/game_state.dart';
 import 'fleet_ui_strings.dart';
@@ -30,7 +31,8 @@ class ShipRemodelCapsule extends StatelessWidget {
         target.name.trim().isEmpty) {
       value = fleetText(context, FleetUiKeys.dataIncomplete);
     } else {
-      value = '${target.name} · Lv.${master.afterLv}';
+      value =
+          '${gameNames(context).shipName(target.name, shipId: target.id)} · Lv.${master.afterLv}';
     }
 
     return Container(

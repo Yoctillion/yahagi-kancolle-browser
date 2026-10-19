@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../battle/battle_pills.dart';
 import '../../fleet/ship_portrait.dart';
 import '../../game_state/game_state.dart';
+import '../../localization/game_name_localizations.dart';
 import '../../layout/adaptive_layout.dart';
 import 'sortie_map_catalog.dart';
 import 'sortie_map_catalog_controller.dart';
@@ -1174,10 +1175,13 @@ class _FormationCard extends StatelessWidget {
           formation.airSupremacy != null)
         MetaChip(
           key: Key('sortie-map-air-power-summary-pill-${formation.variant}'),
-          label:
-              '${strings.airPower}${formation.airPower ?? '—'}'
-              '（${strings.airSuperiorityShort}${formation.airSuperiority ?? '—'}'
-              '/${strings.airSupremacyShort}${formation.airSupremacy ?? '—'}）',
+          label: strings.locale.languageCode == 'en'
+              ? '${strings.airPower} ${formation.airPower ?? '—'} '
+                    '(${strings.airSuperiorityShort} ${formation.airSuperiority ?? '—'} / '
+                    '${strings.airSupremacyShort} ${formation.airSupremacy ?? '—'})'
+              : '${strings.airPower}${formation.airPower ?? '—'}'
+                    '（${strings.airSuperiorityShort}${formation.airSuperiority ?? '—'}'
+                    '/${strings.airSupremacyShort}${formation.airSupremacy ?? '—'}）',
           color: const Color(0xff70c7bc),
         ),
     ];
@@ -1273,7 +1277,10 @@ class _EnemyFleetGrid extends StatelessWidget {
                             groupIndex: groupIndex,
                             shipIndex: start + column,
                             entry: ships[start + column],
-                            label: strings.enemyShipName(ships[start + column]),
+                            label: gameNames(context).shipName(
+                              strings.enemyShipName(ships[start + column]),
+                              shipId: ships[start + column].id,
+                            ),
                             compact: compact,
                             state: state,
                             enemyCatalog: enemyCatalog,

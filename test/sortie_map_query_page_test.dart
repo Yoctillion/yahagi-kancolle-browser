@@ -1285,6 +1285,9 @@ void main() {
     }
 
     Widget app({required bool visible}) => MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SortieMapQueryPage(visible: visible, catalogLoader: loader),
       ),

@@ -380,10 +380,8 @@ class WorkspaceContextHeader extends StatelessWidget {
     if (workspaceIndex == 10) {
       return LayoutBuilder(
         builder: (context, constraints) {
-          // Five toolbox tabs need 400 px; the Japanese title needs about
-          // 120 px more. Below 550 px the tabs get the entire header width so
-          // neither localized labels nor the row can overflow.
-          final compact = constraints.maxWidth < 550;
+          // Keep six readable tabs; narrow headers scroll rather than shrink labels.
+          final compact = constraints.maxWidth < 640;
           final tabs = ToolboxModeTabs(
             mode: toolboxMode,
             compact: compact,

@@ -12,7 +12,7 @@ import 'package:yahagi_kancolle_browser/src/senka/senka_page.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_state.dart';
 
 Widget _localizedApp({required Widget home, Locale? locale}) => MaterialApp(
-  locale: locale,
+  locale: locale ?? const Locale('zh'),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: home,

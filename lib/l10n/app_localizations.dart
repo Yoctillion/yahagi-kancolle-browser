@@ -5,7 +5,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_en.dart';
 import 'app_localizations_ja.dart';
+import 'app_localizations_ko.dart';
 import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
@@ -94,7 +96,9 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
     Locale('ja'),
+    Locale('ko'),
     Locale('zh'),
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
@@ -531,6 +535,96 @@ abstract class AppLocalizations {
   /// **'诊断文件导出失败'**
   String get diagnosticExportFailed;
 
+  /// No description provided for @langKo.
+  ///
+  /// In zh, this message translates to:
+  /// **'한국어'**
+  String get langKo;
+
+  /// No description provided for @langEn.
+  ///
+  /// In zh, this message translates to:
+  /// **'English'**
+  String get langEn;
+
+  /// No description provided for @dataVersionLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据版本'**
+  String get dataVersionLabel;
+
+  /// No description provided for @dataLastCheckedLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次检查'**
+  String get dataLastCheckedLabel;
+
+  /// No description provided for @dataNotChecked.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未检查'**
+  String get dataNotChecked;
+
+  /// No description provided for @sortieMapDataTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'海域资料'**
+  String get sortieMapDataTitle;
+
+  /// No description provided for @enemyDataTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'敌舰资料'**
+  String get enemyDataTitle;
+
+  /// No description provided for @dataCatalogUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'资料已是最新版本。\n版本：{version}'**
+  String dataCatalogUpToDate(String version);
+
+  /// No description provided for @dataCatalogUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'资料更新成功。\n{before} → {after}'**
+  String dataCatalogUpdated(String before, String after);
+
+  /// No description provided for @dataCatalogIncompatible.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前应用版本过低，请先更新应用。'**
+  String get dataCatalogIncompatible;
+
+  /// No description provided for @dataCatalogValidationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新资料校验失败，已继续使用当前资料。'**
+  String get dataCatalogValidationFailed;
+
+  /// No description provided for @dataCatalogStorageFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法保存更新资料。'**
+  String get dataCatalogStorageFailed;
+
+  /// No description provided for @dataCatalogNetworkFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络更新失败，请稍后重试。'**
+  String get dataCatalogNetworkFailed;
+
+  /// No description provided for @questLocalProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地进度'**
+  String get questLocalProgress;
+
+  /// No description provided for @questServerProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器进度：{progress}'**
+  String questServerProgress(String progress);
+
   /// No description provided for @appTitle.
   ///
   /// In zh, this message translates to:
@@ -804,13 +898,13 @@ abstract class AppLocalizations {
   /// No description provided for @blockSortieTitle.
   ///
   /// In zh, this message translates to:
-  /// **'大破进击保护'**
+  /// **'大破进击提醒'**
   String get blockSortieTitle;
 
   /// No description provided for @blockSortieDesc.
   ///
   /// In zh, this message translates to:
-  /// **'出击或进击前，若舰队中存在大破舰船（非旗舰且未装备损管），将强制阻断网络请求并弹出警告。强烈建议开启。'**
+  /// **'出击或进击请求返回后，若出击舰队中有非旗舰大破舰船（已撤退舰船除外），会弹出需要确认的警告。此提醒不拦截出击或进击请求，也不会自动撤退。'**
   String get blockSortieDesc;
 
   /// No description provided for @storageAndCache.
@@ -1524,7 +1618,7 @@ abstract class AppLocalizations {
   /// No description provided for @avgCondition.
   ///
   /// In zh, this message translates to:
-  /// **'最低疲劳'**
+  /// **'最低士气'**
   String get avgCondition;
 
   /// No description provided for @losDetail.
@@ -1614,13 +1708,13 @@ abstract class AppLocalizations {
   /// No description provided for @noBonusStats.
   ///
   /// In zh, this message translates to:
-  /// **'暂无附加属性'**
+  /// **'暂无装备属性'**
   String get noBonusStats;
 
   /// No description provided for @condition.
   ///
   /// In zh, this message translates to:
-  /// **'疲劳'**
+  /// **'士气'**
   String get condition;
 
   /// No description provided for @noExpeditionFleet.
@@ -2028,7 +2122,7 @@ abstract class AppLocalizations {
   /// No description provided for @averageCondition.
   ///
   /// In zh, this message translates to:
-  /// **'最低疲劳'**
+  /// **'最低士气'**
   String get averageCondition;
 
   /// No description provided for @moraleRecoveryCountdown.
@@ -2046,7 +2140,7 @@ abstract class AppLocalizations {
   /// No description provided for @toggleMoraleMetric.
   ///
   /// In zh, this message translates to:
-  /// **'点击切换最低疲劳与恢复倒计时'**
+  /// **'点击切换最低士气与恢复倒计时'**
   String get toggleMoraleMetric;
 
   /// No description provided for @losDetails.
@@ -2076,7 +2170,7 @@ abstract class AppLocalizations {
   /// No description provided for @withoutBonus.
   ///
   /// In zh, this message translates to:
-  /// **'无加成'**
+  /// **'不含熟练度加成'**
   String get withoutBonus;
 
   /// No description provided for @showAirPowerDetails.
@@ -2124,13 +2218,13 @@ abstract class AppLocalizations {
   /// No description provided for @noAdditionalStats.
   ///
   /// In zh, this message translates to:
-  /// **'暂无附加属性'**
+  /// **'暂无装备属性'**
   String get noAdditionalStats;
 
   /// No description provided for @fatigue.
   ///
   /// In zh, this message translates to:
-  /// **'疲劳'**
+  /// **'士气'**
   String get fatigue;
 
   /// No description provided for @startupUpdateTitle.
@@ -2573,7 +2667,7 @@ abstract class AppLocalizations {
   /// No description provided for @noCookieReadDesc.
   ///
   /// In zh, this message translates to:
-  /// **'JS 桥接消息只包含接口路径、响应正文和时间。'**
+  /// **'JS 桥接捕获接口路径、脱敏请求参数与响应等游戏数据，不读取 Cookie。'**
   String get noCookieReadDesc;
 
   /// No description provided for @browserIdle.
@@ -2735,7 +2829,7 @@ abstract class AppLocalizations {
   /// No description provided for @fatigueValue.
   ///
   /// In zh, this message translates to:
-  /// **'疲劳 {value}'**
+  /// **'士气 {value}'**
   String fatigueValue(int value);
 
   /// No description provided for @fcdMapSectionTitle.
@@ -3530,7 +3624,7 @@ abstract class AppLocalizations {
   /// No description provided for @battlePredictionSection.
   ///
   /// In zh, this message translates to:
-  /// **'战斗预测'**
+  /// **'未卜先知'**
   String get battlePredictionSection;
 
   /// No description provided for @battleEnemyPreviewPortraits.
@@ -3580,6 +3674,72 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下方'**
   String get battleEnemyPreviewPositionBelow;
+
+  /// No description provided for @battleSectionOrder.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息区顺序'**
+  String get battleSectionOrder;
+
+  /// No description provided for @battleSectionOrderDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整信息区显示顺序'**
+  String get battleSectionOrderDescription;
+
+  /// No description provided for @battleSectionOrderAdjust.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整'**
+  String get battleSectionOrderAdjust;
+
+  /// No description provided for @battleSectionOrderHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击上下箭头调整，自动保存'**
+  String get battleSectionOrderHint;
+
+  /// No description provided for @battleSectionSortieMap.
+  ///
+  /// In zh, this message translates to:
+  /// **'海域小地图'**
+  String get battleSectionSortieMap;
+
+  /// No description provided for @battleSectionEnemyPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'敌方预测'**
+  String get battleSectionEnemyPreview;
+
+  /// No description provided for @battleSectionPredictionResult.
+  ///
+  /// In zh, this message translates to:
+  /// **'预测结果'**
+  String get battleSectionPredictionResult;
+
+  /// No description provided for @battleSectionOrderRestoreDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get battleSectionOrderRestoreDefault;
+
+  /// No description provided for @battleSectionOrderSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存失败，请重试。'**
+  String get battleSectionOrderSaveFailed;
+
+  /// No description provided for @battleSectionOrderMoveUp.
+  ///
+  /// In zh, this message translates to:
+  /// **'上移{section}'**
+  String battleSectionOrderMoveUp(String section);
+
+  /// No description provided for @battleSectionOrderMoveDown.
+  ///
+  /// In zh, this message translates to:
+  /// **'下移{section}'**
+  String battleSectionOrderMoveDown(String section);
 
   /// No description provided for @battleLastFormation.
   ///
@@ -6495,6 +6655,102 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'累计经验'**
   String get expCalcAccumulatedExpLabel;
+
+  /// No description provided for @customFontTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'界面字体'**
+  String get customFontTitle;
+
+  /// No description provided for @customFontDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入喜欢的字体，预览后应用。支持 TTF、OTF，最大 32 MB。'**
+  String get customFontDescription;
+
+  /// No description provided for @customFontDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认字体（跟随界面语言）'**
+  String get customFontDefault;
+
+  /// No description provided for @customFontImport.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入字体'**
+  String get customFontImport;
+
+  /// No description provided for @customFontRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get customFontRestore;
+
+  /// No description provided for @customFontPreviewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体预览'**
+  String get customFontPreviewTitle;
+
+  /// No description provided for @customFontApply.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用字体'**
+  String get customFontApply;
+
+  /// No description provided for @customFontPreviewSample.
+  ///
+  /// In zh, this message translates to:
+  /// **'舰队信息 · 出击记录 · 画面设置'**
+  String get customFontPreviewSample;
+
+  /// No description provided for @customFontPreviewNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认应用后将用于客户端界面，重启后仍然保留。'**
+  String get customFontPreviewNote;
+
+  /// No description provided for @customFontImportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法导入字体，请选择有效的 TTF 或 OTF 文件。'**
+  String get customFontImportFailed;
+
+  /// No description provided for @customFontSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体设置保存失败，请重试。'**
+  String get customFontSaveFailed;
+
+  /// No description provided for @customFontUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前平台暂不支持字体导入。'**
+  String get customFontUnsupported;
+
+  /// No description provided for @customFontTooLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体文件不能超过 32 MB。'**
+  String get customFontTooLarge;
+
+  /// No description provided for @customFontLoadLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'为控制内存占用，本次运行已达到字体切换上限。请重启应用后再应用新字体，仍可继续预览。'**
+  String get customFontLoadLimit;
+
+  /// No description provided for @customFontPreviewFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体预览生成失败，请重试。'**
+  String get customFontPreviewFailed;
+
+  /// No description provided for @customFontPreviewRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新预览'**
+  String get customFontPreviewRetry;
 }
 
 class _AppLocalizationsDelegate
@@ -6508,7 +6764,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['ja', 'zh'].contains(locale.languageCode);
+      <String>['en', 'ja', 'ko', 'zh'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -6529,8 +6785,12 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
     case 'ja':
       return AppLocalizationsJa();
+    case 'ko':
+      return AppLocalizationsKo();
     case 'zh':
       return AppLocalizationsZh();
   }

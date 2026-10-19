@@ -25,7 +25,8 @@ String senkaCatalogMatrixLabel(SenkaCatalogItem item, Locale locale) {
 }
 
 int? _localeIndex(Locale locale) {
-  if (locale.languageCode == 'ja') return 1;
+  // Korean and English localize UI only; quest and sea-area names use originals.
+  if (const ['ja', 'ko', 'en'].contains(locale.languageCode)) return 1;
   if (locale.languageCode == 'zh' &&
       (locale.scriptCode == 'Hant' ||
           const ['TW', 'HK', 'MO'].contains(locale.countryCode))) {

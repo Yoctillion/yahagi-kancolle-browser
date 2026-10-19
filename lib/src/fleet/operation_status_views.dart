@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../game_state/game_state.dart';
@@ -170,7 +171,13 @@ class _RepairDockCard extends StatelessWidget {
       identity: _OperationIdentity(
         eyebrow: 'Lv. ${ship.level}',
         title:
-            master?.name ?? AppLocalizations.of(context)?.unknownShip ?? '未知舰娘',
+            (master == null
+                ? null
+                : gameNames(
+                    context,
+                  ).shipName(master.name, shipId: master.id)) ??
+            AppLocalizations.of(context)?.unknownShip ??
+            '未知舰娘',
       ),
       body: Row(
         children: [
@@ -320,7 +327,13 @@ class _ConstructionDockCard extends StatelessWidget {
             ? const Color(0xffffc940)
             : const Color(0xff64c894),
         title:
-            master?.name ?? AppLocalizations.of(context)?.constructing ?? '建造中',
+            (master == null
+                ? null
+                : gameNames(
+                    context,
+                  ).shipName(master.name, shipId: master.id)) ??
+            AppLocalizations.of(context)?.constructing ??
+            '建造中',
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,

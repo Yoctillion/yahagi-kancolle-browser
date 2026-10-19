@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../audio/game_audio_controller.dart';
+import '../subtitles/ship_subtitle_settings.dart';
+import '../subtitles/ship_subtitle_settings_section.dart';
 import '../browser/game_toolbar_display_controller.dart';
 import 'background_game_retention_controller.dart';
 import 'app_exit_settings.dart';
 import 'app_exit_settings_section.dart';
 import 'display_mode_controller.dart';
 import 'display_mode_section.dart';
+import 'custom_font_settings_section.dart';
 import 'game_frame_rate_settings.dart';
 import 'game_frame_rate_settings_section.dart';
 import 'game_rendering_mode_controller.dart';
@@ -28,6 +31,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
     required this.layoutSettingsController,
     required this.displayModeController,
     this.audioController,
+    this.shipSubtitleSettingsController,
     this.backgroundGameRetentionController,
     this.toolbarDisplayController,
     this.gameFrameRateSettingsController,
@@ -42,6 +46,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
   final LayoutSettingsController layoutSettingsController;
   final DisplayModeController displayModeController;
   final GameAudioController? audioController;
+  final ShipSubtitleSettingsController? shipSubtitleSettingsController;
   final BackgroundGameRetentionController? backgroundGameRetentionController;
   final GameToolbarDisplayController? toolbarDisplayController;
   final GameFrameRateSettingsController? gameFrameRateSettingsController;
@@ -57,6 +62,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
+    final english = Localizations.localeOf(context).languageCode == 'en';
 
     return Container(
       color: const Color(0xff0d1a26),
@@ -91,7 +97,9 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                             ),
                           ),
                           DropdownButton<String>(
-                            value: layoutSettingsController.localeCode ?? 'zh',
+                            value:
+                                layoutSettingsController.localeCode ??
+                                l10n.localeName,
                             underline: const SizedBox(),
                             alignment: AlignmentDirectional.centerEnd,
                             items: [
@@ -107,6 +115,14 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                                 value: 'ja',
                                 child: Text(l10n.langJa),
                               ),
+                              DropdownMenuItem(
+                                value: 'ko',
+                                child: Text(l10n.langKo),
+                              ),
+                              DropdownMenuItem(
+                                value: 'en',
+                                child: Text(l10n.langEn),
+                              ),
                             ],
                             onChanged: (value) {
                               layoutSettingsController.setLocaleCode(value);
@@ -115,6 +131,17 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         ],
                       ),
                     ),
+                    if (layoutSettingsController.customFontController
+                        case final fonts?) ...[
+                      const Divider(color: Color(0xff294052), height: 1),
+                      CustomFontSettingsSection(
+                        controller: fonts,
+                        fallbackFonts: {
+                          layoutSettingsController.defaultFontFamily,
+                          ...layoutSettingsController.fontFamilyFallback,
+                        }.toList(),
+                      ),
+                    ],
                     const Divider(color: Color(0xff294052), height: 1),
                     Padding(
                       key: const Key('settings-ui-display-size-row'),
@@ -223,18 +250,18 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              OutlinedButton.icon(
+                              _resetOrderButton(
+                                context,
                                 key: const Key(
                                   'settings-reset-workspace-menu-order',
                                 ),
                                 onPressed: layoutSettingsController
                                     .resetWorkspaceMenuOrder,
-                                icon: const Icon(Icons.restore, size: 18),
-                                label: Text(l10n.restoreDefaultOrder),
+                                label: l10n.restoreDefaultOrder,
                               ),
                               const SizedBox(width: 12),
                               SizedBox(
-                                width: 60,
+                                width: english ? 112 : 60,
                                 child: DropdownButton<String>(
                                   isExpanded: true,
                                   padding: const EdgeInsets.only(left: 14),
@@ -280,18 +307,18 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          OutlinedButton.icon(
+                          _resetOrderButton(
+                            context,
                             key: const Key(
                               'settings-reset-dashboard-card-order',
                             ),
                             onPressed: layoutSettingsController
                                 .resetDashboardCardOrder,
-                            icon: const Icon(Icons.restore, size: 18),
-                            label: Text(l10n.restoreDefaultOrder),
+                            label: l10n.restoreDefaultOrder,
                           ),
                           const SizedBox(width: 12),
                           SizedBox(
-                            width: 60,
+                            width: english ? 112 : 60,
                             child: DropdownButton<String>(
                               key: const Key(
                                 'settings-information-panel-position',
@@ -431,6 +458,15 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                                   key: const Key(
                                     'settings-top-notice-duration-dropdown',
                                   ),
+                                  selectedItemBuilder: english
+                                      ? (context) => [
+                                          for (final seconds in [5, 10, 15])
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text('$seconds s'),
+                                            ),
+                                        ]
+                                      : null,
                                   value:
                                       const [5, 10, 15].contains(
                                         layoutSettingsController
@@ -578,9 +614,43 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                 ),
               ),
             ],
+            if (shipSubtitleSettingsController case final subtitles?) ...[
+              const SizedBox(height: 12),
+              buildCard(
+                child: ShipSubtitleSettingsSection(controller: subtitles),
+              ),
+            ],
             const SizedBox(height: 40),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _resetOrderButton(
+    BuildContext context, {
+    required Key key,
+    required VoidCallback onPressed,
+    required String label,
+  }) {
+    if (Localizations.localeOf(context).languageCode != 'en') {
+      return OutlinedButton.icon(
+        key: key,
+        onPressed: onPressed,
+        icon: const Icon(Icons.restore, size: 18),
+        label: Text(label),
+      );
+    }
+    return Tooltip(
+      message: label,
+      child: OutlinedButton(
+        key: key,
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(44, 44),
+          padding: const EdgeInsets.all(10),
+        ),
+        child: const Icon(Icons.restore, size: 18),
       ),
     );
   }

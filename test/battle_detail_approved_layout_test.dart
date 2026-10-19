@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_detail_models.dart';
 import 'package:yahagi_kancolle_browser/src/logbook/battle_detail_page.dart';
 import 'fixtures/battle_detail_ui_sample.dart';
@@ -14,6 +15,9 @@ void main() {
     Size(800, 1280),
   ];
   Widget app(BattleDetailSnapshot data, {double scale = 1}) => MaterialApp(
+    locale: const Locale('zh'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     theme: ThemeData(brightness: Brightness.dark),
     home: Builder(
       builder: (context) => MediaQuery(

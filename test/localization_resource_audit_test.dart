@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 Map<String, Object?> _readArb(String name) {
   return jsonDecode(File('lib/l10n/$name').readAsStringSync())
@@ -25,7 +27,33 @@ void main() {
     'zh': _readArb('app_zh.arb'),
     'zh_Hant': _readArb('app_zh_Hant.arb'),
     'ja': _readArb('app_ja.arb'),
+    'ko': _readArb('app_ko.arb'),
+    'en': _readArb('app_en.arb'),
   };
+
+  test(
+    'English and Korean torpedo categories have translated midget names',
+    () {
+      for (final language in ['en', 'ko']) {
+        final label = resources[language]!['equipmentTorpedo']! as String;
+        expect(
+          label,
+          isNot(matches(RegExp(r'[\u3400-\u9fff\u3040-\u30ff]'))),
+          reason: language,
+        );
+        expect(
+          lookupAppLocalizations(Locale(language)).equipmentTorpedo,
+          label,
+          reason: '$language generated resources must match the ARB',
+        );
+      }
+      expect(
+        resources['en']!['equipmentTorpedo'],
+        'Torpedoes / Midget submarines',
+      );
+      expect(resources['ko']!['equipmentTorpedo'], '어뢰 / 특수잠항정');
+    },
+  );
 
   test('ARB resources have no duplicate top-level keys or empty messages', () {
     for (final locale in resources.keys) {
@@ -62,6 +90,36 @@ void main() {
   });
 
   test(
+    'Korean UI messages contain Hangul except reviewed unchanged notation',
+    () {
+      const unchanged = <String>{
+        'appTitle',
+        'langZh',
+        'langZhHant',
+        'langJa',
+        'langEn',
+        'gameFrameRateStable60',
+        'gameFrameRateStable30',
+        'kcwikiReportFailureHttp',
+        'senkaBoss',
+        'senkaResult',
+        'noro6',
+        'jervis',
+        'deckBuilderV4',
+        'equipmentCompatibilityOwnedLevels',
+        'expCalcMvp',
+      };
+      final missingHangul = _messageKeys(resources['ko']!)
+          .where(
+            (key) =>
+                !RegExp(r'[가-힣]').hasMatch(resources['ko']![key] as String),
+          )
+          .toSet();
+      expect(missingHangul, unchanged);
+    },
+  );
+
+  test(
     'all locales have identical message, metadata and placeholder schemas',
     () {
       final template = resources['zh']!;
@@ -82,8 +140,42 @@ void main() {
             _placeholderNames(expectedMetadata),
             reason: '${entry.key}: $key placeholders',
           );
+          for (final name in _placeholderNames(expectedMetadata)) {
+            final expected = expectedMetadata['placeholders'] as Map;
+            final actual = actualMetadata['placeholders'] as Map;
+            expect(
+              actual[name]['type'],
+              expected[name]['type'],
+              reason: '${entry.key}: $key/$name type',
+            );
+          }
         }
       }
+    },
+  );
+
+  test(
+    'English CJK text is limited to original names and language self-names',
+    () {
+      final untranslated = _messageKeys(resources['en']!)
+          .where(
+            (key) => RegExp(
+              r'[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]',
+            ).hasMatch(resources['en']![key] as String),
+          )
+          .toSet();
+      expect(untranslated, <String>{
+        'langKo',
+        'appTitle',
+        'aboutApp',
+        'langZh',
+        'langZhHant',
+        'langJa',
+        'backgroundGameRetentionNotificationTitle',
+        'startupUpdateMessage',
+        'gameResourceCacheDesc',
+        'topNoticeEnabledSubtitle',
+      });
     },
   );
 
@@ -120,6 +212,10 @@ void main() {
     // Each entry is intentionally shared: product/game terminology, numerals,
     // protocol names, or a language self-name. Adding a key requires review.
     const reviewedZhHant = <String>{
+      // These battle section labels share standard Chinese spelling.
+      'battlePredictionSection',
+      'battleSectionOrderMoveDown',
+      'battleSectionOrderMoveUp',
       // Numeric period and established material/inventory labels share spelling.
       'resourceTrend90d',
       'resourceTrendBuildMaterial',
@@ -169,6 +265,8 @@ void main() {
       'langZh',
       'langZhHant',
       'langJa',
+      'langKo',
+      'langEn',
       'friend',
       'drop',
       'fleetStandby',
@@ -324,6 +422,8 @@ void main() {
       'langZh',
       'langZhHant',
       'langJa',
+      'langKo',
+      'langEn',
       'highSpeed',
       'lowSpeed',
       'airStateLabel',
@@ -381,5 +481,29 @@ void main() {
 
     expect(identical('zh_Hant'), reviewedZhHant);
     expect(identical('ja'), reviewedJa);
+    expect(identical('ko'), <String>{
+      // Product names, language self-names, protocol/level notation and scores.
+      'appTitle',
+      'langZh',
+      'langZhHant',
+      'langJa',
+      'langKo',
+      'langEn',
+      'kcwikiReportFailureHttp',
+      'senkaBoss',
+      'senkaResult',
+      'noro6',
+      'jervis',
+      'deckBuilderV4',
+      'equipmentCompatibilityOwnedLevels',
+      'expCalcMvp',
+    });
+    expect(identical('en'), <String>{
+      // Product and language names, score/level notation and standard protocols.
+      'appTitle', 'langZh', 'langZhHant', 'langJa', 'langKo', 'langEn',
+      'kcwikiReportFailureHttp', 'senkaBoss', 'senkaResult',
+      'noro6', 'jervis', 'deckBuilderV4',
+      'equipmentCompatibilityOwnedLevels', 'expCalcMvp',
+    });
   });
 }

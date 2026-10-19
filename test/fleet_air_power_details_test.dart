@@ -51,11 +51,11 @@ void main() {
     expect(find.text('40'), findsOneWidget);
     expect(find.text('最大'), findsOneWidget);
     expect(find.text('41'), findsOneWidget);
-    expect(find.text('无加成'), findsOneWidget);
+    expect(find.text('不含熟练度加成'), findsOneWidget);
     expect(find.text('24'), findsOneWidget);
     final minimumTop = tester.getTopLeft(find.text('最小')).dy;
     final maximumTop = tester.getTopLeft(find.text('最大')).dy;
-    final withoutBonusTop = tester.getTopLeft(find.text('无加成')).dy;
+    final withoutBonusTop = tester.getTopLeft(find.text('不含熟练度加成')).dy;
     expect(minimumTop, lessThan(maximumTop));
     expect(maximumTop, lessThan(withoutBonusTop));
 

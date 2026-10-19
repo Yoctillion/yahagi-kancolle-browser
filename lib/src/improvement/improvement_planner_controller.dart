@@ -46,18 +46,21 @@ class ImprovementPlannerController extends ChangeNotifier {
 
   ImprovementDataset get dataset => _dataset;
   Set<int> get favoriteEquipmentIds => Set.unmodifiable(_favoriteEquipmentIds);
-  List<ImprovementPlannerRow> rowsFor(GameState state) =>
-      projectImprovementRows(
-        _dataset,
-        weekday: selectedWeekday,
-        equipmentMasters: state.masterSlotItems,
-        shipMasters: state.masterShips,
-        query: query,
-        equipmentCategory: equipmentCategory,
-        favoriteEquipmentIds: _favoriteEquipmentIds,
-        favoritesOnly: favoritesOnly,
-        evolutionFilter: evolutionFilter,
-      );
+  List<ImprovementPlannerRow> rowsFor(
+    GameState state, {
+    String Function(String)? equipmentNameResolver,
+  }) => projectImprovementRows(
+    _dataset,
+    weekday: selectedWeekday,
+    equipmentMasters: state.masterSlotItems,
+    shipMasters: state.masterShips,
+    query: query,
+    equipmentNameResolver: equipmentNameResolver,
+    equipmentCategory: equipmentCategory,
+    favoriteEquipmentIds: _favoriteEquipmentIds,
+    favoritesOnly: favoritesOnly,
+    evolutionFilter: evolutionFilter,
+  );
   bool get hasSearch => query.trim().isNotEmpty;
   bool get hasFilters =>
       equipmentCategory != EquipmentInventoryCategory.all ||

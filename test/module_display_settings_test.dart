@@ -198,6 +198,9 @@ void main() {
           };
           await tester.pumpWidget(
             MaterialApp(
+              locale: const Locale('zh'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               home: Scaffold(
                 body: Align(
                   alignment: Alignment.topLeft,
@@ -244,6 +247,91 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+  testWidgets('English narrow expedition puts the name below its badges', (
+    tester,
+  ) async {
+    final game = GameStateController(
+      gameStateStore: _Store(
+        GameState.empty.copyWith(
+          hasPortData: true,
+          fleets: [
+            Fleet(
+              id: 2,
+              name: 'Second fleet',
+              mission: FleetMission(
+                state: 1,
+                missionId: 100,
+                completionTime: DateTime.now().add(const Duration(hours: 2)),
+              ),
+            ),
+          ],
+          masterMissions: {
+            100: const MasterMission(
+              id: 100,
+              name: 'A long expedition name for a narrow display',
+              duration: Duration(hours: 2),
+              displayNumber: 'A1',
+            ),
+          },
+        ),
+      ),
+    );
+    addTearDown(game.dispose);
+    await game.initialize();
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 280,
+              child: ExpeditionSummaryCard(
+                controller: game,
+                collapsed: false,
+                onToggleCollapse: () {},
+                onOpenExpedition: () {},
+                onOpenExpeditionCheck: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final row = tester.getRect(
+      find.byKey(const Key('expedition-summary-row-2')),
+    );
+    final fleet = tester.getRect(
+      find.byKey(const Key('expedition-summary-fleet-2')),
+    );
+    final number = tester.getRect(
+      find.byKey(const Key('expedition-summary-number-2')),
+    );
+    final name = tester.getRect(
+      find.byKey(const Key('expedition-summary-name-2')),
+    );
+    final time = tester.getRect(
+      find.byKey(const Key('expedition-summary-time-2')),
+    );
+    expect(find.text('A1'), findsOneWidget);
+    expect(
+      find.text('A long expedition name for a narrow display'),
+      findsOneWidget,
+    );
+    expect(number.left, greaterThan(fleet.right));
+    expect(number.top, fleet.top);
+    expect(name.top, greaterThan(fleet.bottom));
+    expect(name.top, greaterThan(number.bottom));
+    expect(name.left, row.left);
+    for (final rect in [fleet, number, name, time]) {
+      expect(rect.left, greaterThanOrEqualTo(row.left));
+      expect(rect.right, lessThanOrEqualTo(row.right));
+    }
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   test(
     'module choices persist independently and restore empty selections',
     () async {

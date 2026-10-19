@@ -5,8 +5,10 @@ import '../../l10n/app_localizations.dart';
 import '../account/account_session.dart';
 import '../fleet/equipment_type_icon.dart';
 import '../game_state/game_state.dart';
+import '../localization/game_name_localizations.dart';
 import '../widgets/top_notice.dart';
 import 'development_equipment_picker.dart';
+import 'development_name_labels.dart';
 import 'development_output_table.dart';
 import 'development_pool_matcher.dart';
 import 'development_recipe_table.dart';
@@ -183,7 +185,7 @@ class _CalculatorBody extends StatelessWidget {
             ActionChip(
               avatar: const Icon(Icons.flag_outlined, size: 17),
               label: Text(
-                '${l10n.developmentCurrentFlagship}: ${controller.currentFlagshipName ?? l10n.noValue}',
+                '${l10n.developmentCurrentFlagship}: ${gameNames(context).shipName(controller.currentFlagshipName ?? l10n.noValue, shipId: controller.currentFlagshipMasterId)}',
               ),
               onPressed: () {
                 if (!controller.useCurrentFlagship()) {
@@ -299,7 +301,12 @@ class _FormulaBody extends StatelessWidget {
                   width: 23,
                   height: 23,
                 ),
-                label: Text(controller.dataset!.equipment[id]!.label(locale)),
+                label: Text(
+                  developmentEquipmentLabel(
+                    context,
+                    controller.dataset!.equipment[id]!,
+                  ),
+                ),
                 onDeleted: () => controller.toggleTarget(id),
               ),
           ],

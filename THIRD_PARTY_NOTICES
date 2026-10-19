@@ -1,6 +1,43 @@
 Third-Party Notices
 ===================
 
+kcwiki and KC3 ship voice subtitles; poi-plugin-subtitle
+------------------------------------------------------
+
+Simplified Chinese, Traditional Chinese and Japanese subtitle text is sourced
+from the kcwiki community API:
+https://acc.kcwiki.cn/subtitles/zh-cn
+https://acc.kcwiki.cn/subtitles/zh-tw
+https://acc.kcwiki.cn/subtitles/jp
+https://zh.kcwiki.cn/
+The bundled snapshot and its provenance are documented in
+assets/data/subtitles/SOURCES_AND_LICENSES.md. The community's text licensing
+statement is CC BY-NC-SA 3.0; the project's MIT license does not relicense this
+subtitle text or the original game's dialogue.
+
+English and Korean subtitle text and its base voice-label mapping are derived from
+KC3Kai/kc3-translations under the MIT license:
+https://github.com/KC3Kai/kc3-translations
+Copyright (c) 2015-2021 KC3改. The complete license and pinned snapshot
+provenance are retained in assets/data/subtitles/SOURCES_AND_LICENSES.md.
+English and Korean data is normalized into numeric voice identifiers; unsupported
+seasonal selectors are not flattened into base voice identifiers.
+
+Simplified Chinese, Traditional Chinese, English and Korean ship names,
+remodel affixes, equipment names, ship types and equipment categories are also
+sourced from KC3Kai/kc3-translations. The 22 dialogue and entity-name source
+files in kc3-bundle.json are pinned to the same commit. English and Korean app
+interfaces use these entity-name dictionaries; Japanese names use game master
+data, and Chinese/Japanese app interfaces retain their existing naming behavior.
+The name-affix resolution follows KC3Kai/KC3Kai under the MIT license:
+https://github.com/KC3Kai/KC3Kai
+Its full license is retained in assets/data/subtitles/KC3KAI_LICENSE.txt.
+
+Voice identifier mapping is adapted from the MIT-licensed poi-plugin-subtitle:
+https://github.com/kcwikizh/poi-plugin-subtitle
+Its copyright and complete MIT license are retained in
+assets/scripts/ship_subtitles.js. GotoBrowser served as an interaction reference.
+
 The MIT License in LICENSE applies to the Yahagi source code unless a file or
 asset states otherwise. It does not replace licenses, copyrights, trademarks,
 or other rights that apply to third-party components and assets.

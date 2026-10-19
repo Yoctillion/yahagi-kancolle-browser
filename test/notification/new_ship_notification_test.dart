@@ -20,9 +20,19 @@ void main() {
       const state = GameState(
         masterShips: {1: MasterShip(id: 1, name: '雪風', shipTypeId: 2)},
       );
-      for (final code in ['ja', 'zh_Hant', 'zh', 'unexpected', 'ja']) {
+      for (final code in [
+        'ja',
+        'zh_Hant',
+        'ko',
+        'en',
+        'zh',
+        'unexpected',
+        'ja',
+      ]) {
         final locale = switch (code) {
           'ja' => const Locale('ja'),
+          'ko' => const Locale('ko'),
+          'en' => const Locale('en'),
           'zh_Hant' => const Locale.fromSubtags(
             languageCode: 'zh',
             scriptCode: 'Hant',
@@ -38,7 +48,9 @@ void main() {
         expect(result.title, l10n.newShipAlertTitle, reason: code);
         expect(
           result.body,
-          l10n.newShipAlertBody('雪風、${l10n.newShipFallbackName(2)}'),
+          l10n.newShipAlertBody(
+            '雪風${code == 'en' ? ', ' : '、'}${l10n.newShipFallbackName(2)}',
+          ),
           reason: code,
         );
         expect(result.key, 'new-ship:drop-1');

@@ -20,11 +20,13 @@ class AdaptiveBattleHeader extends StatelessWidget {
     required this.nodeLabel,
     required this.enemyName,
     required this.enemyStyle,
+    this.enemyNameIsFallback = false,
   });
 
   final String nodeLabel;
   final String enemyName;
   final TextStyle enemyStyle;
+  final bool enemyNameIsFallback;
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +35,26 @@ class AdaptiveBattleHeader extends StatelessWidget {
       fontSize: 16,
       fontWeight: FontWeight.w800,
     );
+    final enemyTitle = enemyNameIsFallback
+        ? BattleUiText(enemyName, style: enemyStyle)
+        : Text(enemyName, style: enemyStyle);
+    if (Localizations.localeOf(context).languageCode == 'en') {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BattleUiText(nodeLabel, style: nodeStyle),
+          const SizedBox(height: 3),
+          enemyTitle,
+        ],
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         BattleUiText(nodeLabel, style: nodeStyle),
         const SizedBox(width: 6),
-        Expanded(child: BattleUiText(enemyName, style: enemyStyle)),
+        Expanded(child: enemyTitle),
       ],
     );
   }
@@ -241,10 +257,16 @@ class AirSuperiorityPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = airSuperiorityPillColors(label);
+    final english = Localizations.localeOf(context).languageCode == 'en';
     return Container(
       key: const Key('air-superiority-pill'),
-      height: _battlePillHeight,
-      padding: _battlePillPadding,
+      height: english ? null : _battlePillHeight,
+      constraints: english
+          ? const BoxConstraints(minHeight: _battlePillHeight)
+          : null,
+      padding: english
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+          : _battlePillPadding,
       decoration: BoxDecoration(
         color: colors.background,
         borderRadius: BorderRadius.circular(999),
@@ -256,6 +278,7 @@ class AirSuperiorityPill extends StatelessWidget {
           (AppLocalizations.of(context) ??
                   lookupAppLocalizations(const Locale('zh')))
               .airStateLabel(BattleDetailStrings.of(context).localize(label)),
+          textAlign: english ? TextAlign.center : null,
           style: _battlePillTextStyle.copyWith(color: colors.foreground),
         ),
       ),

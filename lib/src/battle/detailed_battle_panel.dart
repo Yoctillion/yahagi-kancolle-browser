@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
 import 'battle_ui_text.dart';
@@ -11,6 +12,7 @@ import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'battle_models.dart';
 import 'battle_pills.dart';
+import 'battle_prediction_sections.dart';
 import 'battle_ship_details_popover.dart';
 import 'land_base_raid_panel.dart';
 import 'official_enemy_preview.dart';
@@ -26,6 +28,8 @@ class DetailedBattlePanel extends StatelessWidget {
     this.showEnemyPortraits = true,
     this.showLastFormationHint = true,
     this.enemyPreviewPosition = EnemyPreviewPosition.above,
+    this.sectionOrder,
+    this.mapSection,
   });
 
   final LiveBattle battle;
@@ -35,15 +39,14 @@ class DetailedBattlePanel extends StatelessWidget {
   final bool showEnemyPortraits;
   final bool showLastFormationHint;
   final EnemyPreviewPosition enemyPreviewPosition;
+  final List<BattlePredictionSection>? sectionOrder;
+  final Widget? mapSection;
 
   @override
   Widget build(BuildContext context) {
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     final enemyPreviewShips =
         battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
-    final previewBelow =
-        enemyPreviewPosition == EnemyPreviewPosition.below &&
-        enemyPreviewShips.isNotEmpty;
     final enemyPreview = OfficialEnemyPreview(
       ships: enemyPreviewShips,
       combined: battle.enemyPreviewCombined,
@@ -68,52 +71,63 @@ class DetailedBattlePanel extends StatelessWidget {
         key: const Key('detailed-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (navigation)
+          if (navigation) ...[
             _NavigationOverview(
               battle: battle,
               showLastFormationHint: showLastFormationHint,
-            )
-          else
-            _BattleOverview(battle: battle, gameState: gameState),
-          if (navigation && enemyPreviewShips.isNotEmpty) ...[
+            ),
             const SizedBox(height: 7),
-            if (previewBelow) friendlyFleets else enemyPreview,
           ],
-          if (navigation && battle.landBaseRaid != null) ...[
-            const SizedBox(height: 7),
-            LandBaseRaidPanel(result: battle.landBaseRaid!),
-          ],
-          const SizedBox(height: 9),
-          if (navigation)
-            if (previewBelow) enemyPreview else friendlyFleets
-          else
-            Row(
-              key: const Key('battle-side-by-side-fleets'),
-              crossAxisAlignment: CrossAxisAlignment.start,
+          BattlePredictionSections(
+            order: sectionOrder,
+            legacyEnemyPreviewPosition: enemyPreviewPosition,
+            sortieMap: mapSection,
+            enemyPreview: navigation && enemyPreviewShips.isNotEmpty
+                ? enemyPreview
+                : null,
+            predictionResult: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: _FleetColumn(
-                    mainTitle: friendMainTitle,
-                    mainShips: battle.friendMain,
-                    escortTitle: '我方随伴',
-                    escortShips: battle.friendEscort,
-                    mvpPositions: battle.mvpPositions,
-                    damagePulseMode: damagePulseMode,
+                if (navigation) ...[
+                  if (battle.landBaseRaid case final raid?) ...[
+                    LandBaseRaidPanel(result: raid),
+                    const SizedBox(height: 9),
+                  ],
+                  friendlyFleets,
+                ] else ...[
+                  _BattleOverview(battle: battle, gameState: gameState),
+                  const SizedBox(height: 9),
+                  Row(
+                    key: const Key('battle-side-by-side-fleets'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _FleetColumn(
+                          mainTitle: friendMainTitle,
+                          mainShips: battle.friendMain,
+                          escortTitle: '我方随伴',
+                          escortShips: battle.friendEscort,
+                          mvpPositions: battle.mvpPositions,
+                          damagePulseMode: damagePulseMode,
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: _FleetColumn(
+                          mainTitle: enemyMainTitle,
+                          mainShips: battle.enemyMain,
+                          escortTitle: '敌方护卫',
+                          escortShips: battle.enemyEscort,
+                          mvpPositions: const <int>[],
+                          damagePulseMode: damagePulseMode,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: _FleetColumn(
-                    mainTitle: enemyMainTitle,
-                    mainShips: battle.enemyMain,
-                    escortTitle: '敌方护卫',
-                    escortShips: battle.enemyEscort,
-                    mvpPositions: const <int>[],
-                    damagePulseMode: damagePulseMode,
-                  ),
-                ),
+                ],
               ],
             ),
+          ),
         ],
       ),
     );
@@ -245,7 +259,7 @@ class _BattleOverview extends StatelessWidget {
     final rawEnemyName = battle.enemyFleetName.isEmpty
         ? '敌方舰队'
         : battle.enemyFleetName;
-    final enemyName = battleEnemyFleetDisplayName(rawEnemyName);
+    final enemyName = rawEnemyName;
     final enemyCombined =
         battle.enemyEscort.isNotEmpty || rawEnemyName.contains('联合舰队');
     final details = <(String, Color)>[
@@ -264,7 +278,9 @@ class _BattleOverview extends StatelessWidget {
         lookupAppLocalizations(const Locale('zh'));
     final dropShipNames = <String>[
       for (final id in battle.effectiveDropShipMasterIds)
-        gameState.masterShips[id]?.name ?? 'ID: $id',
+        gameNames(
+          context,
+        ).shipName(gameState.masterShips[id]?.name ?? 'ID: $id', shipId: id),
     ];
     final dropShipName = dropShipNames.isEmpty
         ? null
@@ -296,6 +312,7 @@ class _BattleOverview extends StatelessWidget {
               AdaptiveBattleHeader(
                 nodeLabel: battle.context.forecastNodeLabel,
                 enemyName: enemyName,
+                enemyNameIsFallback: battle.enemyFleetName.isEmpty,
                 enemyStyle: TextStyle(
                   color: enemyCombined ? const Color(0xffff8c78) : null,
                   fontSize: phone ? 13 : null,
@@ -518,9 +535,13 @@ class _BattleShipRow extends StatelessWidget {
                   children: <Widget>[
                     Flexible(
                       child: Tooltip(
-                        message: ship.name,
+                        message: gameNames(
+                          context,
+                        ).shipName(ship.name, shipId: ship.masterId),
                         child: Text(
-                          ship.name,
+                          gameNames(
+                            context,
+                          ).shipName(ship.name, shipId: ship.masterId),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

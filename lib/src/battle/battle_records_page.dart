@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -171,7 +172,10 @@ class _RecordCard extends StatelessWidget {
     final battle = record.battle;
     final dropNames = <String>[
       for (final id in battle.effectiveDropShipMasterIds)
-        stateController.gameStateSnapshot.masterShips[id]?.name ?? 'ID: $id',
+        gameNames(context).shipName(
+          stateController.gameStateSnapshot.masterShips[id]?.name ?? 'ID: $id',
+          shipId: id,
+        ),
     ];
     final dropName = dropNames.isEmpty ? null : dropNames.join('、');
     final friendAlive = battle.friendShips.where((ship) => !ship.isSunk).length;
@@ -225,7 +229,11 @@ class _RecordCard extends StatelessWidget {
               ),
               if (dropName != null) Text(l10n.dropLabel(dropName)),
               for (final reward in battle.rewardItems)
-                Text(l10n.dropLabel('${reward.name} ×${reward.count}')),
+                Text(
+                  l10n.dropLabel(
+                    '${reward.kind == BattleRewardKind.equipment ? gameNames(context).equipmentName(reward.name) : reward.name} ×${reward.count}',
+                  ),
+                ),
             ],
           ),
         ),
@@ -332,7 +340,9 @@ class _FleetResult extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          ship.name,
+                          gameNames(
+                            context,
+                          ).shipName(ship.name, shipId: ship.masterId),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

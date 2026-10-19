@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/live_battle_card.dart';
 import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_engine.dart';
@@ -98,6 +99,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           brightness: Brightness.dark,
@@ -131,6 +135,19 @@ void main() {
     expect(
       tester.widget<Text>(find.text('水上打击部队')).style?.color,
       const Color(0xff70c7bc),
+    );
+
+    final mapSection = find.byKey(
+      const ValueKey('battle-prediction-section-sortieMap'),
+    );
+    final predictionSection = find.byKey(
+      const ValueKey('battle-prediction-section-predictionResult'),
+    );
+    expect(mapSection, findsOneWidget);
+    expect(predictionSection, findsOneWidget);
+    expect(
+      tester.getRect(mapSection).bottom,
+      lessThanOrEqualTo(tester.getRect(predictionSection).top),
     );
 
     await expectLater(
@@ -206,6 +223,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           brightness: Brightness.dark,

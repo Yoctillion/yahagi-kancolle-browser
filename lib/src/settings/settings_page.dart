@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../widgets/lazy_indexed_stack.dart';
 
 import '../audio/game_audio_controller.dart';
+import '../subtitles/ship_subtitle_settings.dart';
+import '../subtitles/ship_subtitle_catalog_controller.dart';
 import '../browser/gadget_bypass_controller.dart';
 import '../browser/game_browser_controller.dart';
 import '../browser/game_toolbar_display_controller.dart';
@@ -65,6 +67,8 @@ class SettingsPage extends StatelessWidget {
     this.screenAwakeController,
     this.appExitSettingsController,
     this.gameMouseWheelSettingsController,
+    this.shipSubtitleSettingsController,
+    this.shipSubtitleCatalogController,
     this.gameFrameRefreshShortcutSettings,
     this.toolbarDisplayController,
     this.fcdMapController,
@@ -106,6 +110,8 @@ class SettingsPage extends StatelessWidget {
   final ScreenAwakeController? screenAwakeController;
   final AppExitSettingsController? appExitSettingsController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
+  final ShipSubtitleSettingsController? shipSubtitleSettingsController;
+  final ShipSubtitleCatalogController? shipSubtitleCatalogController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final GameToolbarDisplayController? toolbarDisplayController;
   final FcdMapController? fcdMapController;
@@ -132,6 +138,7 @@ class SettingsPage extends StatelessWidget {
           layoutSettingsController: layoutSettingsController,
           displayModeController: displayModeController,
           audioController: audioController,
+          shipSubtitleSettingsController: shipSubtitleSettingsController,
           backgroundGameRetentionController: backgroundGameRetentionController,
           toolbarDisplayController: toolbarDisplayController,
           gameFrameRateSettingsController: gameFrameRateSettingsController,
@@ -175,6 +182,7 @@ class SettingsPage extends StatelessWidget {
           sortieMapCatalogController: sortieMapCatalogController,
           enemyCatalogController: enemyCatalogController,
           improvementPlannerController: improvementPlannerController,
+          shipSubtitleCatalogController: shipSubtitleCatalogController,
           telemetryController: telemetryController,
         ),
         AboutSupportSettingsPage(

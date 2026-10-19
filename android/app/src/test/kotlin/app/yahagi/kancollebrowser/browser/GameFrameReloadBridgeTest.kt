@@ -7,6 +7,15 @@ import org.junit.Test
 
 class GameFrameReloadBridgeTest {
     @Test
+    fun platformViewDocumentsInstallCoordinateHookBeforeReloadScripts() {
+        val scripts = platformGameDocumentStartScripts()
+        val coordinates = scripts.first()
+        assertTrue(coordinates.source.contains("/__yahagi_mods__/coordinates.json"))
+        assertEquals(setOf("https://*.kancolle-server.com"), coordinates.allowedOriginRules)
+        assertTrue(coordinates.source.contains("api_mst_shipgraph"))
+    }
+
+    @Test
     fun platformViewDocumentsDisableChromiumTapHighlightBeforeNavigation() {
         val scripts = platformGameDocumentStartScripts()
 

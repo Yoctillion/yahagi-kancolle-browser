@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/account/account_session.dart';
 import 'package:yahagi_kancolle_browser/src/expedition/expedition_check_page.dart';
 import 'package:yahagi_kancolle_browser/src/expedition/expedition_selection_store.dart';
@@ -13,6 +14,58 @@ import 'fixtures/kcsapi_fixtures.dart';
 
 void main() {
   setUp(() => AccountSession.shared.selectMember(1001));
+  for (final size in const [Size(430, 900), Size(800, 600), Size(1100, 720)]) {
+    testWidgets('English expedition details fit $size and keep mission names', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = GameStateController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(start2Event)
+        ..accept(portEvent)
+        ..accept(slotItemEvent);
+      await controller.idle;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ExpeditionCheckPage(
+            controller: controller,
+            onBack: () {},
+            selectionStore: _MemoryExpeditionSelectionStore({2: 5}),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Expedition check'), findsOneWidget);
+      expect(find.text('Time and cost'), findsOneWidget);
+      expect(find.text('Expected rewards'), findsOneWidget);
+      expect(find.text('Expedition requirements'), findsOneWidget);
+      expect(find.text('05 · 海上護衛任務'), findsOneWidget);
+      expect(find.text('Fuel cost'), findsOneWidget);
+      expect(find.text('Ammo cost'), findsOneWidget);
+      expect(find.text('01:30:00'), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'English success mode');
+
+      await tester.tap(find.text('Great success'));
+      await tester.pumpAndSettle();
+      expect(find.text('100%'), findsOneWidget);
+      expect(find.text('05 · 海上護衛任務'), findsOneWidget);
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'English great success mode',
+      );
+    });
+  }
+
   testWidgets('远征检查详情按舰队恢复上次选择的 A6', (tester) async {
     final controller = GameStateController();
     final store = _MemoryExpeditionSelectionStore(<int, int>{2: 105});
@@ -25,6 +78,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(
           controller: controller,
           onBack: () {},
@@ -59,6 +115,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(controller: controller, onBack: () {}),
       ),
     );
@@ -89,6 +148,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(controller: controller, onBack: () {}),
       ),
     );
@@ -114,6 +176,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(
           controller: controller,
           onBack: () {},
@@ -163,6 +228,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(
           controller: controller,
           onBack: () {},
@@ -245,6 +313,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(controller: controller, onBack: () {}),
       ),
     );
@@ -276,6 +347,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(
           controller: controller,
           onBack: () {},
@@ -326,6 +400,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: ExpeditionCheckPage(
           controller: controller,
           onBack: () {},

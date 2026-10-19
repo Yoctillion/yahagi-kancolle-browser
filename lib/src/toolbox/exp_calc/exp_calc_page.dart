@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../game_state/game_state.dart';
+import '../../localization/game_name_localizations.dart';
 import '../../widgets/top_notice.dart';
 import '../../theme/app_fonts.dart';
 import '../../quest/quest_completion_badge.dart';
@@ -572,6 +573,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
   }
 
   String get _fontFamily =>
+      Theme.of(context).textTheme.bodyMedium?.fontFamily ??
       AppFonts.forLocale(Localizations.localeOf(context).toString());
 
   @override
@@ -583,7 +585,10 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
         primaryTextTheme: theme.primaryTextTheme.apply(fontFamily: _fontFamily),
       ),
       child: DefaultTextStyle.merge(
-        style: TextStyle(fontFamily: _fontFamily),
+        style: TextStyle(
+          fontFamily: _fontFamily,
+          fontFamilyFallback: theme.textTheme.bodyMedium?.fontFamilyFallback,
+        ),
         child: _buildPage(context),
       ),
     );
@@ -1006,7 +1011,9 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
         runSpacing: 4,
         children: [
           Text(
-            '${_routeNodes.length} ${l10n.expCalcCombatNodesSuffix}',
+            Localizations.localeOf(context).languageCode == 'en'
+                ? '${_routeNodes.length} battle ${_routeNodes.length == 1 ? 'node' : 'nodes'}'
+                : '${_routeNodes.length} ${l10n.expCalcCombatNodesSuffix}',
             style: const TextStyle(color: _ExpCalcPalette.text, fontSize: 11),
           ),
           Text(
@@ -1353,7 +1360,12 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             _strings.estimated,
             _canEstimate ? '$_sortieCount' : '—',
             emphasis: true,
-            unit: _strings.times,
+            unit:
+                Localizations.localeOf(context).languageCode == 'en' &&
+                    _canEstimate &&
+                    _sortieCount == 1
+                ? 'time'
+                : _strings.times,
           ),
         ),
         const SizedBox(width: 10),
@@ -1587,7 +1599,12 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
       cells: [
         DataCell(
           Text(
-            item.shipName,
+            gameNames(context).shipName(
+              item.shipName,
+              shipId:
+                  widget.state.ships[item.shipInstanceId]?.masterId ??
+                  item.shipMasterId,
+            ),
             style: const TextStyle(
               color: _ExpCalcPalette.text,
               fontWeight: FontWeight.w700,

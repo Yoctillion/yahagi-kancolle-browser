@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/logbook/battle_detail_page.dart';
 import 'fixtures/battle_detail_ui_sample.dart';
 
@@ -9,6 +10,9 @@ void main() {
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: BattleDetailPage(detail: sampleBattle(false), onBack: () {}),
         ),
       );
@@ -31,6 +35,9 @@ void main() {
   );
 
   Widget app() => MaterialApp(
+    locale: const Locale('zh'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: BattleDetailPage(detail: sampleBattle(true), onBack: () {}),
   );
 

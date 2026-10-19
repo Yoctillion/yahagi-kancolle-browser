@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../fleet/equipment_type_icon.dart';
+import '../localization/game_name_localizations.dart';
 import 'development_dataset.dart';
+import 'development_name_labels.dart';
 import 'equipment_development_controller.dart';
 
 Future<void> showDevelopmentEquipmentPicker(
@@ -89,7 +91,10 @@ class _DevelopmentEquipmentPickerState
   String _typeLabel(AppLocalizations l10n, _EquipmentTypeGroup group) =>
       group.key == 'other'
       ? l10n.developmentOtherSecretaryGroup
-      : controller.equipmentTypeName(group.typeIds.single);
+      : gameNames(context).equipmentTypeName(
+          controller.equipmentTypeName(group.typeIds.single),
+          typeId: group.typeIds.single,
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +117,10 @@ class _DevelopmentEquipmentPickerState
     }
     final equipment = selectedGroup == null
         ? const <DevelopmentEquipmentRecord>[]
-        : controller.filteredEquipmentForTypes(selectedGroup.typeIds.toSet());
+        : controller.filteredEquipmentForTypes(
+            selectedGroup.typeIds.toSet(),
+            equipmentNameResolver: gameNames(context).equipmentName,
+          );
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
       backgroundColor: Colors.transparent,
@@ -322,7 +330,7 @@ class _EquipmentOption extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  equipment.label(Localizations.localeOf(context)),
+                  developmentEquipmentLabel(context, equipment),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

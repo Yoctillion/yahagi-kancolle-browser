@@ -43,50 +43,71 @@ class SenkaPanel extends StatelessWidget {
     this.trailing,
     this.compact = false,
     this.headerHeight,
+    this.fitContent = false,
   });
   final String title;
   final Widget child;
   final Widget? trailing;
   final bool compact;
   final double? headerHeight;
+  final bool fitContent;
   @override
-  Widget build(BuildContext context) => Material(
-    color: senkaPanel,
-    shape: RoundedRectangleBorder(
-      side: const BorderSide(color: senkaLine),
-      borderRadius: BorderRadius.circular(compact ? 7 : 11),
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(compact ? 6 : 10),
-      child: Column(
-        children: [
-          Container(
-            height: headerHeight ?? (compact ? 28 : 36),
-            color: senkaPanelAlt,
-            padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 11),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: senkaText,
-                      fontSize: compact ? 12 : 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                ?trailing,
-              ],
-            ),
-          ),
-          Expanded(child: child),
-        ],
+  Widget build(BuildContext context) {
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    final titleText = Text(
+      title,
+      maxLines: english ? null : 1,
+      overflow: english ? null : TextOverflow.ellipsis,
+      style: TextStyle(
+        color: senkaText,
+        fontSize: compact ? 12 : 15,
+        fontWeight: FontWeight.w800,
       ),
-    ),
-  );
+    );
+    return Material(
+      color: senkaPanel,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: senkaLine),
+        borderRadius: BorderRadius.circular(compact ? 7 : 11),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(compact ? 6 : 10),
+        child: Column(
+          mainAxisSize: fitContent ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            Container(
+              width: english ? double.infinity : null,
+              height: english ? null : headerHeight ?? (compact ? 28 : 36),
+              constraints: english
+                  ? BoxConstraints(
+                      minHeight: headerHeight ?? (compact ? 28 : 36),
+                    )
+                  : null,
+              color: senkaPanelAlt,
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 7 : 11,
+                vertical: english ? 4 : 0,
+              ),
+              child: english
+                  ? Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [titleText, ?trailing],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: titleText),
+                        ?trailing,
+                      ],
+                    ),
+            ),
+            if (fitContent) child else Expanded(child: child),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class SenkaLabelValue extends StatelessWidget {

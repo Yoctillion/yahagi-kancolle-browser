@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/improvement/improvement_dataset.dart';
 import 'package:yahagi_kancolle_browser/src/improvement/improvement_planner_controller.dart';
@@ -89,6 +90,84 @@ void main() {
       ),
     ],
   );
+
+  for (final (size, scale) in [
+    (const Size(390, 780), 1.0),
+    (const Size(780, 390), 1.0),
+    (const Size(390, 780), 2.0),
+    (const Size(780, 390), 2.0),
+  ]) {
+    testWidgets(
+      'English improvement filters fit $size at scale $scale and retain ship names',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        final controller = ImprovementPlannerController(
+          dataset: dataset,
+          clock: () => DateTime.utc(2026, 8, 10),
+        );
+        addTearDown(controller.dispose);
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: ImprovementPlannerView(
+                controller: controller,
+                state: const GameState(),
+              ),
+            ),
+          ),
+        );
+        expect(find.text('睦月'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        final filter = find.byKey(const Key('improvement-filter-button'));
+        await tester.ensureVisible(filter);
+        await tester.pumpAndSettle();
+        await tester.tap(filter);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('improvement-filter-sheet')),
+          findsOneWidget,
+        );
+        expect(find.text('Clear all'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        final notEvolvable = find.byKey(
+          const Key('improvement-filter-evolution-notEvolvable'),
+        );
+        await tester.ensureVisible(notEvolvable);
+        await tester.pumpAndSettle();
+        await tester.tap(notEvolvable);
+        await tester.pump();
+        expect(
+          controller.evolutionFilter,
+          ImprovementEvolutionFilter.notEvolvable,
+        );
+        final clear = find.byKey(const Key('improvement-filter-clear'));
+        await tester.ensureVisible(clear);
+        await tester.pumpAndSettle();
+        await tester.tap(clear);
+        await tester.pump();
+        expect(controller.evolutionFilter, ImprovementEvolutionFilter.all);
+        final close = find.byKey(const Key('improvement-filter-close'));
+        await tester.ensureVisible(close);
+        await tester.pumpAndSettle();
+        await tester.tap(close);
+        await tester.pumpAndSettle();
+        expect(find.text('睦月'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   test('controller keeps search separate when clearing panel filters', () {
     final controller = ImprovementPlannerController(
@@ -205,6 +284,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: ImprovementPlannerView(
               controller: controller,
@@ -358,6 +440,9 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ImprovementPlannerView(controller: controller, state: state),
         ),
@@ -392,6 +477,9 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ImprovementPlannerView(
             controller: controller,
@@ -444,6 +532,9 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ImprovementPlannerView(
             controller: controller,
@@ -504,6 +595,9 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ImprovementPlannerView(controller: controller, state: state),
         ),
@@ -540,6 +634,9 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ImprovementPlannerView(
             controller: controller,
@@ -576,6 +673,9 @@ void main() {
       addTearDown(controller.dispose);
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: ImprovementPlannerView(
               controller: controller,
@@ -744,6 +844,9 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ImprovementPlannerView(controller: controller, state: state),
         ),

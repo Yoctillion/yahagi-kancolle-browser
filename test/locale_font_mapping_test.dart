@@ -5,6 +5,54 @@ import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart'
 
 void main() {
   test(
+    'system language updates fonts and preserves an explicit choice',
+    () async {
+      final store = _MemoryLayoutStore();
+      final controller = await LayoutSettingsController.load(
+        store,
+        systemLocaleCode: 'ja',
+      );
+      addTearDown(controller.dispose);
+      var changes = 0;
+      controller.addListener(() => changes++);
+      controller.updateSystemLocaleCode('en');
+      expect(controller.localeCode, isNull);
+      expect(store.localeCode, isNull);
+      expect(controller.effectiveLocaleCode, 'en');
+      expect(controller.fontFamily, 'HarmonyOS_Sans');
+      expect(changes, 1);
+      controller.updateSystemLocaleCode('en');
+      expect(changes, 1);
+
+      await controller.setLocaleCode('ko');
+      controller.updateSystemLocaleCode('ja');
+      expect(controller.effectiveLocaleCode, 'ko');
+      expect(changes, 2);
+      await controller.setLocaleCode(null);
+      expect(controller.effectiveLocaleCode, 'ja');
+      expect(controller.fontFamily, 'HarmonyOS_Sans_SC');
+      expect(store.localeCode, isNull);
+      expect(changes, 3);
+    },
+  );
+
+  test(
+    'clearing an explicit language restores the loaded system language',
+    () async {
+      final controller = await LayoutSettingsController.load(
+        _MemoryLayoutStore(),
+        systemLocaleCode: 'en',
+      );
+      addTearDown(controller.dispose);
+      await controller.setLocaleCode('ko');
+      await controller.setLocaleCode(null);
+      expect(controller.localeCode, isNull);
+      expect(controller.effectiveLocaleCode, 'en');
+      expect(controller.fontFamily, 'HarmonyOS_Sans');
+    },
+  );
+
+  test(
     'maps simplified, traditional, and Japanese locales to regional fonts',
     () async {
       final store = _MemoryLayoutStore();

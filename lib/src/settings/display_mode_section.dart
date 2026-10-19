@@ -21,9 +21,14 @@ class DisplayModeSection extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              l10n.displayMode,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            Expanded(
+              child: Text(
+                l10n.displayMode,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
             DropdownButton<DisplayMode>(
               value: controller.displayMode,

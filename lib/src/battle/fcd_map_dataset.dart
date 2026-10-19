@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'battle_node_label_resolver.dart';
+import 'fcd_map_geometry.dart';
 
 final class FcdMapVersion implements Comparable<FcdMapVersion> {
   const FcdMapVersion._(this.year, this.month, this.day, this.revision);
@@ -56,7 +57,8 @@ final class FcdMapVersion implements Comparable<FcdMapVersion> {
       '${revision.toString().padLeft(2, '0')}';
 }
 
-final class FcdMapDataset implements BattleNodeLabelResolver {
+final class FcdMapDataset
+    implements BattleNodeLabelResolver, BattleMapGeometryResolver {
   const FcdMapDataset._({
     required this.version,
     required this.rawJson,
@@ -152,10 +154,108 @@ final class FcdMapDataset implements BattleNodeLabelResolver {
   final int routeCount;
   final Map<String, String> labels;
 
+  // A separate cache also works for datasets parsed before a hot reload adds
+  // geometry support: their retained rawJson remains the source of truth.
+  static final _geometryCache = Expando<Map<String, FcdMapGeometry>>();
+
+  @override
+  FcdMapGeometry? geometryFor({
+    required int mapAreaId,
+    required int mapInfoNo,
+  }) {
+    final maps = _geometryCache[this] ??= _parseGeometries(rawJson);
+    return maps['$mapAreaId-$mapInfoNo'];
+  }
+
   @override
   String? resolve({
     required int mapAreaId,
     required int mapInfoNo,
     required int internalNodeId,
   }) => labels['$mapAreaId-$mapInfoNo-$internalNodeId'];
+}
+
+Map<String, FcdMapGeometry> _parseGeometries(String rawJson) {
+  if (rawJson.isEmpty) return const <String, FcdMapGeometry>{};
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(rawJson);
+  } on FormatException {
+    return const <String, FcdMapGeometry>{};
+  }
+  if (decoded is! Map<String, dynamic>) {
+    return const <String, FcdMapGeometry>{};
+  }
+  final data = decoded['data'];
+  if (data is! Map<String, dynamic>) {
+    return const <String, FcdMapGeometry>{};
+  }
+  final maps = <String, FcdMapGeometry>{};
+  for (final entry in data.entries) {
+    final value = entry.value;
+    if (value is! Map<String, dynamic>) continue;
+    final geometry = _parseGeometry(value);
+    if (geometry != null) maps[entry.key] = geometry;
+  }
+  return Map<String, FcdMapGeometry>.unmodifiable(maps);
+}
+
+FcdMapGeometry? _parseGeometry(Map<String, dynamic> value) {
+  final rawSpots = value['spots'];
+  final rawRoutes = value['route'];
+  if (rawSpots is! Map<String, dynamic> ||
+      rawSpots.isEmpty ||
+      rawRoutes is! Map<String, dynamic> ||
+      rawRoutes.isEmpty) {
+    return null;
+  }
+
+  final spots = <String, FcdMapSpot>{};
+  for (final entry in rawSpots.entries) {
+    final name = _spotName(entry.key);
+    final position = entry.value;
+    if (name == null ||
+        spots.containsKey(name) ||
+        position is! List ||
+        position.length != 3) {
+      return null;
+    }
+    final rawX = position[0];
+    final rawY = position[1];
+    final type = position[2];
+    if (rawX is! num || rawY is! num || type is! String) return null;
+    final x = rawX.toDouble();
+    final y = rawY.toDouble();
+    if (!x.isFinite || !y.isFinite) return null;
+    spots[name] = FcdMapSpot(x: x, y: y, type: type);
+  }
+
+  final routes = <int, FcdMapRoute>{};
+  for (final entry in rawRoutes.entries) {
+    final id = int.tryParse(entry.key);
+    final endpoints = entry.value;
+    if (id == null ||
+        id < 0 ||
+        routes.containsKey(id) ||
+        endpoints is! List ||
+        endpoints.length != 2) {
+      return null;
+    }
+    final rawFrom = endpoints[0];
+    final from = _spotName(rawFrom);
+    final to = _spotName(endpoints[1]);
+    if ((rawFrom != null && (from == null || !spots.containsKey(from))) ||
+        to == null ||
+        !spots.containsKey(to)) {
+      return null;
+    }
+    routes[id] = FcdMapRoute(from: from, to: to);
+  }
+  return FcdMapGeometry(routes: routes, spots: spots);
+}
+
+String? _spotName(Object? value) {
+  if (value is! String) return null;
+  final name = value.trim();
+  return name.isEmpty || name.length > 16 ? null : name;
 }

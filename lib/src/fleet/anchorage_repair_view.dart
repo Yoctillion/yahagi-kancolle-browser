@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'fleet_ui_strings.dart';
 
 import '../game_state/game_state.dart';
@@ -99,7 +100,7 @@ class _RepairCenterViewState extends State<RepairCenterView> {
   }
 }
 
-class RepairModeTabs extends StatelessWidget {
+class RepairModeTabs extends StatefulWidget {
   const RepairModeTabs({
     super.key,
     required this.mode,
@@ -110,49 +111,151 @@ class RepairModeTabs extends StatelessWidget {
   final ValueChanged<RepairCenterMode> onChanged;
 
   @override
+  State<RepairModeTabs> createState() => _RepairModeTabsState();
+}
+
+class _RepairModeTabsState extends State<RepairModeTabs> {
+  final _scroll = ScrollController();
+  double? _viewportWidth;
+  final _tabKeys = {
+    for (final mode in RepairCenterMode.values) mode: GlobalKey(),
+  };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scheduleReveal();
+  }
+
+  @override
+  void didUpdateWidget(RepairModeTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mode != widget.mode) _scheduleReveal();
+  }
+
+  void _scheduleReveal() =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelection());
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _revealSelection() {
+    if (!mounted || !_scroll.hasClients) return;
+    final renderObject = _tabKeys[widget.mode]?.currentContext
+        ?.findRenderObject();
+    if (renderObject != null && renderObject.attached) {
+      _scroll.position.ensureVisible(renderObject, alignment: .5);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final labels = [
+      fleetText(context, '入渠修理'),
+      fleetText(context, '泊地修理'),
+      fleetText(context, '野埼刷闪'),
+    ];
+    final shortLabels = [
+      fleetText(context, FleetUiKeys.dockShort),
+      fleetText(context, FleetUiKeys.anchorageShort),
+      fleetText(context, FleetUiKeys.nosakiShort),
+    ];
+    final style = DefaultTextStyle.of(
+      context,
+    ).style.merge(const TextStyle(fontSize: 12, fontWeight: FontWeight.w800));
+    var height = 38.0;
+    double labelWidth(String label) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        locale: Localizations.maybeLocaleOf(context),
+        maxLines: 1,
+      )..layout();
+      final width = (painter.width + 16)
+          .clamp(48.0, double.infinity)
+          .toDouble();
+      if (painter.height + 8 > height) height = painter.height + 8;
+      painter.dispose();
+      return width;
+    }
+
+    final widths = labels.map(labelWidth).toList();
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
-        child: Container(
-          key: const Key('repair-mode-segmented'),
-          width: 360,
-          height: 38,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: const Color(0xff0b202d),
-            border: Border.all(color: const Color(0xff315064)),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _RepairModeTab(
-                  key: const Key('repair-mode-dock'),
-                  label: fleetText(context, '入渠修理'),
-                  selected: mode == RepairCenterMode.dock,
-                  onTap: () => onChanged(RepairCenterMode.dock),
-                ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final available = (constraints.maxWidth - 8)
+                .clamp(0.0, double.infinity)
+                .toDouble();
+            final visibleLabels = [
+              for (var index = 0; index < labels.length; index++)
+                widths[index] > available ? shortLabels[index] : labels[index],
+            ];
+            final visibleWidths = visibleLabels.map(labelWidth).toList();
+            final required = visibleWidths.fold<double>(
+              0,
+              (sum, width) => sum + width,
+            );
+            final scrolling = visibleWidths.any(
+              (width) => width > available / labels.length,
+            );
+            final spare = (available - required).clamp(0.0, double.infinity);
+            if (_viewportWidth != available) {
+              _viewportWidth = available;
+              _scheduleReveal();
+            }
+            final row = SizedBox(
+              width: scrolling ? required + spare : available,
+              child: Row(
+                children: [
+                  for (var index = 0; index < labels.length; index++)
+                    SizedBox(
+                      width: scrolling
+                          ? visibleWidths[index] + spare / labels.length
+                          : available / labels.length,
+                      child: KeyedSubtree(
+                        key: _tabKeys[RepairCenterMode.values[index]],
+                        child: _RepairModeTab(
+                          key: Key(
+                            'repair-mode-${RepairCenterMode.values[index].name}',
+                          ),
+                          label: visibleLabels[index],
+                          tooltip: labels[index],
+                          selected:
+                              widget.mode == RepairCenterMode.values[index],
+                          onTap: () =>
+                              widget.onChanged(RepairCenterMode.values[index]),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              Expanded(
-                child: _RepairModeTab(
-                  key: const Key('repair-mode-anchorage'),
-                  label: '泊地修理',
-                  selected: mode == RepairCenterMode.anchorage,
-                  onTap: () => onChanged(RepairCenterMode.anchorage),
-                ),
+            );
+            return Container(
+              key: const Key('repair-mode-segmented'),
+              width: constraints.maxWidth,
+              height: height,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: const Color(0xff0b202d),
+                border: Border.all(color: const Color(0xff315064)),
+                borderRadius: BorderRadius.circular(20),
               ),
-              Expanded(
-                child: _RepairModeTab(
-                  key: const Key('repair-mode-nosaki'),
-                  label: fleetText(context, '野埼刷闪'),
-                  selected: mode == RepairCenterMode.nosaki,
-                  onTap: () => onChanged(RepairCenterMode.nosaki),
-                ),
-              ),
-            ],
-          ),
+              child: scrolling
+                  ? SingleChildScrollView(
+                      controller: _scroll,
+                      scrollDirection: Axis.horizontal,
+                      child: row,
+                    )
+                  : row,
+            );
+          },
         ),
       ),
     );
@@ -163,11 +266,13 @@ class _RepairModeTab extends StatelessWidget {
   const _RepairModeTab({
     super.key,
     required this.label,
+    required this.tooltip,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
+  final String tooltip;
   final bool selected;
   final VoidCallback onTap;
 
@@ -180,16 +285,22 @@ class _RepairModeTab extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Center(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: selected
-                  ? const Color(0xffffdc88)
-                  : const Color(0xff9fb3bf),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+          child: Tooltip(
+            message: tooltip,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  color: selected
+                      ? const Color(0xffffdc88)
+                      : const Color(0xff9fb3bf),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ),
@@ -541,7 +652,13 @@ class _ShipIdentity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = row.master?.name ?? fleetText(context, '未知舰娘');
+    final name =
+        (row.master == null
+            ? null
+            : gameNames(
+                context,
+              ).shipName(row.master!.name, shipId: row.master!.id)) ??
+        fleetText(context, '未知舰娘');
     final posLabel = row.position == 0
         ? fleetText(context, '旗舰')
         : (row.position == 1

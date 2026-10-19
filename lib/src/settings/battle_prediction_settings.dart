@@ -3,6 +3,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum EnemyPreviewPosition { above, below }
 
+enum BattlePredictionSection { sortieMap, enemyPreview, predictionResult }
+
+const defaultBattlePredictionSectionOrder = <BattlePredictionSection>[
+  BattlePredictionSection.sortieMap,
+  BattlePredictionSection.enemyPreview,
+  BattlePredictionSection.predictionResult,
+];
+
+List<BattlePredictionSection> normalizeBattlePredictionSectionOrder(
+  Iterable<BattlePredictionSection> order,
+) => List<BattlePredictionSection>.unmodifiable(<BattlePredictionSection>{
+  ...order,
+  ...defaultBattlePredictionSectionOrder,
+});
+
 abstract interface class BattlePredictionSettingsStore {
   Future<void> initialize();
 
@@ -17,6 +32,10 @@ abstract interface class BattlePredictionSettingsStore {
   Future<EnemyPreviewPosition> loadEnemyPreviewPosition();
 
   Future<void> saveEnemyPreviewPosition(EnemyPreviewPosition position);
+
+  Future<List<BattlePredictionSection>?> loadSectionOrder();
+
+  Future<void> saveSectionOrder(List<BattlePredictionSection> order);
 }
 
 final class SharedPreferencesBattlePredictionSettingsStore
@@ -26,6 +45,7 @@ final class SharedPreferencesBattlePredictionSettingsStore
       'battle.enemyPreviewPortraitsEnabled';
   static const String _lastFormationHintKey = 'battle.lastFormationHintEnabled';
   static const String _enemyPreviewPositionKey = 'battle.enemyPreviewPosition';
+  static const String _sectionOrderKey = 'battle.sectionOrder';
 
   @override
   Future<void> initialize() async {
@@ -70,7 +90,7 @@ final class SharedPreferencesBattlePredictionSettingsStore
 
   @override
   Future<EnemyPreviewPosition> loadEnemyPreviewPosition() async {
-    final value = (await SharedPreferences.getInstance()).getString(
+    final value = (await SharedPreferences.getInstance()).get(
       _enemyPreviewPositionKey,
     );
     return EnemyPreviewPosition.values.firstWhere(
@@ -87,6 +107,29 @@ final class SharedPreferencesBattlePredictionSettingsStore
     );
     if (!saved) throw StateError('enemy preview position was not saved');
   }
+
+  @override
+  Future<List<BattlePredictionSection>?> loadSectionOrder() async {
+    final value = (await SharedPreferences.getInstance()).get(_sectionOrderKey);
+    if (value is! List) return null;
+    return normalizeBattlePredictionSectionOrder(
+      value.expand<BattlePredictionSection>((name) {
+        return BattlePredictionSection.values.where(
+          (section) => section.name == name,
+        );
+      }),
+    );
+  }
+
+  @override
+  Future<void> saveSectionOrder(List<BattlePredictionSection> order) async {
+    final normalized = normalizeBattlePredictionSectionOrder(order);
+    final saved = await (await SharedPreferences.getInstance()).setStringList(
+      _sectionOrderKey,
+      normalized.map((section) => section.name).toList(),
+    );
+    if (!saved) throw StateError('battle section order was not saved');
+  }
 }
 
 final class MemoryBattlePredictionSettingsStore
@@ -100,6 +143,7 @@ final class MemoryBattlePredictionSettingsStore
   bool _enemyPortraitsEnabled;
   bool _lastFormationHintEnabled;
   EnemyPreviewPosition _enemyPreviewPosition;
+  List<BattlePredictionSection>? _sectionOrder;
 
   @override
   Future<void> initialize() async {}
@@ -129,6 +173,15 @@ final class MemoryBattlePredictionSettingsStore
   Future<void> saveEnemyPreviewPosition(EnemyPreviewPosition position) async {
     _enemyPreviewPosition = position;
   }
+
+  @override
+  Future<List<BattlePredictionSection>?> loadSectionOrder() async =>
+      _sectionOrder;
+
+  @override
+  Future<void> saveSectionOrder(List<BattlePredictionSection> order) async {
+    _sectionOrder = normalizeBattlePredictionSectionOrder(order);
+  }
 }
 
 final class BattlePredictionSettingsController extends ChangeNotifier {
@@ -138,10 +191,22 @@ final class BattlePredictionSettingsController extends ChangeNotifier {
   bool _enemyPortraitsEnabled = true;
   bool _lastFormationHintEnabled = true;
   EnemyPreviewPosition _enemyPreviewPosition = EnemyPreviewPosition.above;
+  List<BattlePredictionSection>? _sectionOrder;
+  Future<void>? _sectionOrderOperation;
 
   bool get enemyPortraitsEnabled => _enemyPortraitsEnabled;
   bool get lastFormationHintEnabled => _lastFormationHintEnabled;
   EnemyPreviewPosition get enemyPreviewPosition => _enemyPreviewPosition;
+  // Existing controllers retain their legacy arrangement across hot reload.
+  List<BattlePredictionSection> get sectionOrder =>
+      _sectionOrder ??
+      (_enemyPreviewPosition == EnemyPreviewPosition.above
+          ? defaultBattlePredictionSectionOrder
+          : const <BattlePredictionSection>[
+              BattlePredictionSection.sortieMap,
+              BattlePredictionSection.predictionResult,
+              BattlePredictionSection.enemyPreview,
+            ]);
 
   static Future<BattlePredictionSettingsController> load(
     BattlePredictionSettingsStore store,
@@ -156,6 +221,16 @@ final class BattlePredictionSettingsController extends ChangeNotifier {
     controller._lastFormationHintEnabled = await store
         .loadLastFormationHintEnabled();
     controller._enemyPreviewPosition = await store.loadEnemyPreviewPosition();
+    try {
+      final savedOrder = await store.loadSectionOrder();
+      if (savedOrder != null) {
+        controller._sectionOrder = normalizeBattlePredictionSectionOrder(
+          savedOrder,
+        );
+      }
+    } catch (_) {
+      // A corrupt or unavailable order must not block the remaining settings.
+    }
     return controller;
   }
 
@@ -178,5 +253,46 @@ final class BattlePredictionSettingsController extends ChangeNotifier {
     await _store.saveEnemyPreviewPosition(position);
     _enemyPreviewPosition = position;
     notifyListeners();
+  }
+
+  Future<void> setSectionOrder(List<BattlePredictionSection> order) {
+    final normalized = normalizeBattlePredictionSectionOrder(order);
+    return _enqueueSectionOrderOperation(() => _saveSectionOrder(normalized));
+  }
+
+  Future<void> moveSection(BattlePredictionSection section, int delta) {
+    return _enqueueSectionOrderOperation(() async {
+      final order = sectionOrder.toList();
+      final currentIndex = order.indexOf(section);
+      final targetIndex = (currentIndex + delta).clamp(0, order.length - 1);
+      if (currentIndex == targetIndex) return;
+      order.removeAt(currentIndex);
+      order.insert(targetIndex, section);
+      await _saveSectionOrder(normalizeBattlePredictionSectionOrder(order));
+    });
+  }
+
+  Future<void> resetSectionOrder() =>
+      setSectionOrder(defaultBattlePredictionSectionOrder);
+
+  Future<void> _saveSectionOrder(List<BattlePredictionSection> order) async {
+    final changed = !listEquals(sectionOrder, order);
+    if (_sectionOrder != null && !changed) return;
+    await _store.saveSectionOrder(order);
+    _sectionOrder = order;
+    if (changed) notifyListeners();
+  }
+
+  Future<void> _enqueueSectionOrderOperation(
+    Future<void> Function() operation,
+  ) {
+    final pending = (_sectionOrderOperation ?? Future<void>.value()).then(
+      (_) => operation(),
+    );
+    _sectionOrderOperation = pending.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return pending;
   }
 }

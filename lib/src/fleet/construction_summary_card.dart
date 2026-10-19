@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../performance/second_tick_scope.dart';
@@ -82,11 +83,12 @@ class ConstructionSummaryCard extends StatelessWidget {
           dock.completionTime != null,
       stopAt: dock?.completionTime,
       builder: (context, now, _) =>
-          _buildConstructionSlotAt(dock, state, position, now),
+          _buildConstructionSlotAt(context, dock, state, position, now),
     );
   }
 
   Widget _buildConstructionSlotAt(
+    BuildContext context,
     ConstructionDock? dock,
     GameState state,
     int position,
@@ -106,7 +108,13 @@ class ConstructionSummaryCard extends StatelessWidget {
         disabled = false;
       } else {
         master = state.masterShips[dock.createdShipMasterId];
-        name = master?.name ?? '建中';
+        name =
+            (master == null
+                ? null
+                : gameNames(
+                    context,
+                  ).shipName(master.name, shipId: master.id)) ??
+            '建中';
         disabled = false;
         active = true;
       }

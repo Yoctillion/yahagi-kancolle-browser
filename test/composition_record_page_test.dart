@@ -38,6 +38,9 @@ void main() {
     var captures = 0;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
           child: Scaffold(
             body: CompositionImagePage(
@@ -81,6 +84,9 @@ void main() {
     final store = _MemoryStore()..limitReached = true;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
           child: Scaffold(
             body: CompositionImagePage(
@@ -123,6 +129,9 @@ void main() {
     final capture = Completer<Uint8List>();
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
           child: Scaffold(
             body: CompositionImagePage(
@@ -213,6 +222,7 @@ void main() {
     final store = _MemoryStore();
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
@@ -303,6 +313,7 @@ void main() {
     addTearDown(catalog.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
@@ -389,6 +400,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
@@ -524,6 +536,7 @@ void main() {
     }
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
@@ -641,6 +654,7 @@ void main() {
     addTearDown(catalog.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
@@ -713,6 +727,7 @@ void main() {
       );
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: TopNoticeHost(
@@ -934,6 +949,9 @@ void main() {
     store.images['restored'] = Uint8List.fromList([1, 2, 3]);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: TopNoticeHost(
           child: Scaffold(
             body: CompositionImagePage(

@@ -220,7 +220,9 @@ class DevelopmentPoolRecord {
   bool get isSelectable => poolId >= 0 && minimumResources == null;
 
   String label(Locale locale) {
-    if (locale.languageCode == 'ja') return labels['ja']!;
+    if (const ['ja', 'ko', 'en'].contains(locale.languageCode)) {
+      return labels['ja']!;
+    }
     final traditional =
         locale.languageCode == 'zh' &&
         (locale.scriptCode == 'Hant' ||
@@ -229,7 +231,9 @@ class DevelopmentPoolRecord {
   }
 
   String description(Locale locale) {
-    if (locale.languageCode == 'ja') return descriptions['ja'] ?? '';
+    if (const ['ja', 'ko', 'en'].contains(locale.languageCode)) {
+      return descriptions['ja'] ?? '';
+    }
     final traditional =
         locale.languageCode == 'zh' &&
         (locale.scriptCode == 'Hant' ||
@@ -313,7 +317,9 @@ class DevelopmentEquipmentRecord {
   Iterable<String> get searchableNames => {name, ...?names?.values};
 
   String label(Locale locale) {
-    if (locale.languageCode == 'ja') return names?['ja'] ?? name;
+    if (const ['ja', 'ko', 'en'].contains(locale.languageCode)) {
+      return names?['ja'] ?? name;
+    }
     final traditional =
         locale.languageCode == 'zh' &&
         (locale.scriptCode == 'Hant' ||

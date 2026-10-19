@@ -31,6 +31,7 @@ void main() {
                 const AdaptiveBattleHeader(
                   nodeLabel: '节点 12',
                   enemyName: '敌方舰队',
+                  enemyNameIsFallback: true,
                   enemyStyle: TextStyle(),
                 ),
                 MetaChip(label: formationLabel(1), color: Colors.white),

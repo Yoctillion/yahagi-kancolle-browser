@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -62,6 +63,7 @@ class _OwnedInventoryPageState extends State<OwnedInventoryPage> {
   List<ShipInventoryRow>? _cachedShipRows;
   List<EquipmentInventoryGroup>? _cachedEquipmentGroups;
   final _equipmentRowHeightCache = _EquipmentRowHeightCache();
+  Object? _derivedNames;
   int? _selectedEquipmentMasterId;
   int? _selectedOwnedShipInstanceId;
   int? _selectedUnownedShipMasterId;
@@ -69,6 +71,16 @@ class _OwnedInventoryPageState extends State<OwnedInventoryPage> {
 
   bool get _showShips => widget.showShips ?? _localShowShips;
   bool get _showOwned => widget.showOwned ?? _localShowOwned;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final names = gameNames(context);
+    if (!identical(_derivedNames, names)) {
+      _derivedNames = names;
+      _clearDerivedData();
+    }
+  }
 
   @override
   void initState() {
@@ -228,14 +240,22 @@ class _OwnedInventoryPageState extends State<OwnedInventoryPage> {
     if (mounted && !_showOwned && _showShips) setState(() {});
   }
 
-  List<ShipInventoryRow> _shipRows() =>
-      _cachedShipRows ??= OwnedInventoryProjection(_state).shipRows(
+  List<ShipInventoryRow> _shipRows() => _cachedShipRows ??=
+      OwnedInventoryProjection(
+        _state,
+        shipNameWithIdResolver: (name, id) =>
+            gameNames(context).shipName(name, shipId: id),
+        shipTypeNameResolver: gameNames(context).shipTypeName,
+      ).shipRows(
         category: _shipCategory,
         sortCriteria: _sortState.effectiveCriteria,
       );
 
   List<EquipmentInventoryGroup> _equipmentGroups() => _cachedEquipmentGroups ??=
-      OwnedInventoryProjection(_state).equipmentGroups(
+      OwnedInventoryProjection(
+        _state,
+        equipmentNameResolver: gameNames(context).equipmentName,
+      ).equipmentGroups(
         category: _equipmentCategory,
         sortCriteria: _equipmentSortState.effectiveCriteria,
       );
@@ -436,7 +456,11 @@ class _OwnedInventoryPageState extends State<OwnedInventoryPage> {
                 values: EquipmentInventoryCategory.values,
                 selected: _equipmentCategory,
                 resultCount: equipmentGroups.length,
-                resultSuffix: l10n.inventoryTypeSuffix,
+                resultSuffix:
+                    Localizations.localeOf(context).languageCode == 'en' &&
+                        equipmentGroups.length == 1
+                    ? ' type'
+                    : l10n.inventoryTypeSuffix,
                 label: (value) => _equipmentCategoryLabel(value, l10n),
                 keyFor: (value) => Key('equipment-filter-${value.name}'),
                 actionLabel: l10n.restoreDefaultOrder,
@@ -810,7 +834,7 @@ class _UnownedShipCard extends StatelessWidget {
       ),
     );
     final name = Text(
-      row.master.name,
+      gameNames(context).shipName(row.master.name, shipId: row.master.id),
       maxLines: 1,
       softWrap: false,
       overflow: TextOverflow.ellipsis,
@@ -820,7 +844,9 @@ class _UnownedShipCard extends StatelessWidget {
       ),
     );
     final type = Text(
-      row.typeName.isEmpty ? l10n.otherType : row.typeName,
+      row.typeName.isEmpty
+          ? l10n.otherType
+          : gameNames(context).shipTypeName(row.typeName, typeId: row.typeId),
       maxLines: 1,
       softWrap: false,
       overflow: TextOverflow.ellipsis,
@@ -940,7 +966,7 @@ class _UnownedEquipmentCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            row.master.name,
+                            gameNames(context).equipmentName(row.master.name),
                             maxLines: 1,
                             softWrap: false,
                             overflow: TextOverflow.ellipsis,
@@ -951,7 +977,10 @@ class _UnownedEquipmentCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            row.typeName,
+                            gameNames(context).equipmentTypeName(
+                              row.typeName,
+                              typeId: row.typeId,
+                            ),
                             maxLines: 1,
                             softWrap: false,
                             overflow: TextOverflow.ellipsis,
@@ -1463,7 +1492,13 @@ class _ShipInventoryTable extends StatelessWidget {
         final row = rows[index];
         final ship = row.ship;
         return <Widget>[
-          _TextCell(row.type?.name ?? '—'),
+          _TextCell(
+            row.type == null
+                ? '—'
+                : gameNames(
+                    context,
+                  ).shipTypeName(row.type!.name, typeId: row.type!.id),
+          ),
           _TextCell(_speedLabel(ship.effectiveSpeed(row.master), l10n)),
           _TextCell('${ship.level}', strong: true),
           _TextCell(
@@ -1548,7 +1583,13 @@ class _ShipNameCell extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    row.master?.name ?? '—',
+                    (row.master == null
+                            ? null
+                            : gameNames(context).shipName(
+                                row.master!.name,
+                                shipId: row.master!.id,
+                              )) ??
+                        '—',
                     style: const TextStyle(
                       color: Color(0xffe8f0f4),
                       fontSize: 12,
@@ -1619,6 +1660,7 @@ class _EquipmentRowHeightCache {
   List<EquipmentInventoryGroup>? _heightGroups;
   TextScaler? _heightTextScaler;
   TextStyle? _heightDefaultStyle;
+  Object? _heightNames;
   List<double>? _cachedRowHeights;
 
   List<double> resolve(
@@ -1627,15 +1669,18 @@ class _EquipmentRowHeightCache {
   ) {
     final textScaler = MediaQuery.textScalerOf(context);
     final defaultStyle = DefaultTextStyle.of(context).style;
+    final names = gameNames(context);
     if (identical(_heightGroups, groups) &&
         _heightTextScaler == textScaler &&
         _heightDefaultStyle == defaultStyle &&
+        identical(_heightNames, names) &&
         _cachedRowHeights != null) {
       return _cachedRowHeights!;
     }
     _heightGroups = groups;
     _heightTextScaler = textScaler;
     _heightDefaultStyle = defaultStyle;
+    _heightNames = names;
     return _cachedRowHeights = <double>[
       for (final group in groups)
         _EquipmentInventoryTableState._equipmentRowHeight(context, group),
@@ -1703,7 +1748,7 @@ class _EquipmentInventoryTableState extends State<_EquipmentInventoryTable> {
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    groups[index].master.name,
+                    gameNames(context).equipmentName(groups[index].master.name),
                     style: const TextStyle(
                       color: Color(0xffe8f0f4),
                       fontSize: 12,
@@ -1772,7 +1817,7 @@ class _EquipmentInventoryTableState extends State<_EquipmentInventoryTable> {
                       key: ValueKey<String>(
                         'equipment-wearing-item-${group.master.id}-${wearing.shipId}',
                       ),
-                      'Lv.${wearing.level} ${wearing.shipName} ×${wearing.count}',
+                      'Lv.${wearing.level} ${gameNames(context).shipName(wearing.shipName, shipId: wearing.shipMasterId)} ×${wearing.count}',
                       maxLines: 1,
                       overflow: TextOverflow.clip,
                       style: const TextStyle(
@@ -1812,7 +1857,12 @@ class _EquipmentInventoryTableState extends State<_EquipmentInventoryTable> {
     final textScaler = MediaQuery.textScalerOf(context);
     final nameHeight = math.max(
       25.0,
-      _wrappedTextHeight(group.master.name, nameStyle, textScaler, 182),
+      _wrappedTextHeight(
+        gameNames(context).equipmentName(group.master.name),
+        nameStyle,
+        textScaler,
+        182,
+      ),
     );
     final variantWidths = <double>[
       for (final summary in summaries)
@@ -1828,7 +1878,7 @@ class _EquipmentInventoryTableState extends State<_EquipmentInventoryTable> {
     final wearingWidths = <double>[
       for (final wearing in group.wearings)
         _textWidth(
-          'Lv.${wearing.level} ${wearing.shipName} ×${wearing.count}',
+          'Lv.${wearing.level} ${gameNames(context).shipName(wearing.shipName, shipId: wearing.shipMasterId)} ×${wearing.count}',
           wearingStyle,
           textScaler,
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import 'development_dataset.dart';
+import 'development_name_labels.dart';
 import 'development_recipe_calculator.dart';
 import 'development_resources.dart';
 import 'development_sort_header.dart';
@@ -132,6 +133,7 @@ class DevelopmentRecipeTable extends StatelessWidget {
               rows: [
                 for (var index = 0; index < controller.recipes.length; index++)
                   _recipeRow(
+                    context,
                     index,
                     controller.recipes[index],
                     controller.dataset?.poolsByKey[controller
@@ -172,6 +174,7 @@ class DevelopmentRecipeTable extends StatelessWidget {
   }
 
   DataRow _recipeRow(
+    BuildContext context,
     int index,
     DevelopmentRecipeResult recipe,
     DevelopmentPoolRecord? pool,
@@ -194,7 +197,10 @@ class DevelopmentRecipeTable extends StatelessWidget {
             selected: applied,
             button: true,
             child: Text(
-              pool?.label(locale) ?? recipe.poolKey,
+              developmentPoolText(
+                context,
+                pool?.label(locale) ?? recipe.poolKey,
+              ),
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),

@@ -39,6 +39,57 @@ const _rewardText =
     '[零式艦戦21型×2、九四式爆雷投射機×2、三式爆雷投射機]';
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.localeTestValue = const Locale('zh');
+    binding.platformDispatcher.localesTestValue = const [Locale('zh')];
+    addTearDown(binding.platformDispatcher.clearLocaleTestValue);
+    addTearDown(binding.platformDispatcher.clearLocalesTestValue);
+  });
+
+  for (final size in [const Size(800, 400), const Size(600, 700)]) {
+    for (final viaPinned in [true, false]) {
+      testWidgets(
+        'English quest summary and details fit $size via ${viaPinned ? 'pinned summary' : 'navigation'}',
+        (tester) async {
+          await _pumpQuestApp(tester, size: size, localeCode: 'en');
+          final summary = find.byKey(const Key('quest-summary-item-201'));
+          expect(summary, findsOneWidget);
+          expect(find.text('Quest summary'), findsOneWidget);
+          expect(find.text('In progress'), findsOneWidget);
+          expect(find.text('布局回归任务'), findsOneWidget);
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'English pinned summary',
+          );
+
+          if (viaPinned) {
+            await tester.ensureVisible(summary);
+            await tester.tap(summary);
+            await tester.pump(const Duration(milliseconds: 300));
+          } else {
+            await _openQuestNavigation(tester);
+          }
+          expect(find.byType(QuestCenterPage), findsOneWidget);
+          expect(
+            find.byKey(const Key('quest-detail-title-201')),
+            findsOneWidget,
+          );
+          expect(find.text('Base rewards'), findsOneWidget);
+          expect(find.text(_rewardText), findsOneWidget);
+          expect(find.text('任务列表与奖励详情遵循保存的显示模式。'), findsOneWidget);
+          _expectHorizontal(tester, 'English quest details at $size');
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'English quest details',
+          );
+        },
+      );
+    }
+  }
+
   testWidgets(
     'saved landscape reaches quest layout through the left navigation',
     (tester) async {
@@ -163,6 +214,7 @@ _pumpQuestApp(
   WidgetTester tester, {
   Size size = const Size(800, 400),
   DisplayMode displayMode = DisplayMode.landscape,
+  String? localeCode,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{
     'settings.displayMode': displayMode.name,
@@ -184,6 +236,7 @@ _pumpQuestApp(
   final layout = await LayoutSettingsController.load(
     SharedPreferencesLayoutSettingsStore(),
   );
+  if (localeCode != null) await layout.setLocaleCode(localeCode);
   expect(layout.workspaceMenuOnRight, isFalse);
   expect(layout.workspaceMenuHorizontal, isFalse);
   final gameState = GameStateController(

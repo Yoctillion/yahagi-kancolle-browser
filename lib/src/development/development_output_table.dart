@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../fleet/equipment_type_icon.dart';
+import '../localization/game_name_localizations.dart';
+import 'development_name_labels.dart';
 import 'development_projection.dart';
 import 'development_sort_header.dart';
 import 'equipment_development_controller.dart';
@@ -136,8 +138,9 @@ class _DevelopmentOutputTableState extends State<DevelopmentOutputTable> {
                                 ),
                                 const SizedBox(width: 7),
                                 Text(
-                                  item.equipment.label(
-                                    Localizations.localeOf(context),
+                                  developmentEquipmentLabel(
+                                    context,
+                                    item.equipment,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -175,8 +178,11 @@ class _DevelopmentOutputTableState extends State<DevelopmentOutputTable> {
                           ),
                           DataCell(
                             Text(
-                              widget.controller.equipmentTypeName(
-                                item.equipment.typeId,
+                              gameNames(context).equipmentTypeName(
+                                widget.controller.equipmentTypeName(
+                                  item.equipment.typeId,
+                                ),
+                                typeId: item.equipment.typeId,
                               ),
                               style: const TextStyle(
                                 fontSize: 12,

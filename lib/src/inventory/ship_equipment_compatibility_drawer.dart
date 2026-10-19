@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -63,6 +64,7 @@ class _ShipEquipmentCompatibilityDrawerState
       ownedOnly: _ownedOnly,
       category: _category,
       query: _query,
+      nameResolver: gameNames(context).equipmentName,
       filter: _slotFilter,
     );
     final ownedCount = _projection
@@ -258,8 +260,10 @@ class _Header extends StatelessWidget {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
-    final typeName =
-        state.masterShipTypes[ship.shipTypeId]?.name ?? l10n.otherType;
+    final typeName = gameNames(context).shipTypeName(
+      state.masterShipTypes[ship.shipTypeId]?.name ?? l10n.otherType,
+      typeId: ship.shipTypeId,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 10),
       child: Row(
@@ -277,7 +281,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  ship.name,
+                  gameNames(context).shipName(ship.name, shipId: ship.id),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -567,10 +571,11 @@ class _SlotFilters extends StatelessWidget {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
-    return Row(
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
       children: <Widget>[
-        for (final value
-            in EquipmentCompatibilitySlotFilter.values) ...<Widget>[
+        for (final value in EquipmentCompatibilitySlotFilter.values)
           _FilterChip(
             key: Key('ship-equipment-compatibility-filter-${value.name}'),
             selected: selected == value,
@@ -584,9 +589,6 @@ class _SlotFilters extends StatelessWidget {
             },
             onTap: () => onChanged(value),
           ),
-          if (value != EquipmentCompatibilitySlotFilter.values.last)
-            const SizedBox(width: 6),
-        ],
       ],
     );
   }
@@ -670,7 +672,9 @@ class _GroupHeader extends StatelessWidget {
     key: Key('ship-equipment-compatibility-group-${group.typeId}'),
     padding: const EdgeInsets.fromLTRB(4, 10, 4, 6),
     child: Text(
-      group.typeName,
+      gameNames(
+        context,
+      ).equipmentTypeName(group.typeName, typeId: group.typeId),
       style: const TextStyle(
         color: Color(0xff69d2cf),
         fontSize: 11,
@@ -729,7 +733,7 @@ class _EquipmentRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  row.master.name,
+                  gameNames(context).equipmentName(row.master.name),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

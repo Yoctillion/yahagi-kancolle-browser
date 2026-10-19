@@ -97,6 +97,23 @@ void main() {
 
   final projection = ShipEquipmentCompatibilityProjection(state);
 
+  test('translated and original equipment names both match', () {
+    String translated(String name) => name == '零式舰战' ? 'Zero Fighter' : name;
+    final translatedGroups = projection.groups(
+      shipMasterId: 100,
+      query: ' ZERO ',
+      nameResolver: translated,
+    );
+    final originalGroups = projection.groups(
+      shipMasterId: 100,
+      query: '零式',
+      nameResolver: translated,
+    );
+    expect(translatedGroups.single.rows.single.master.id, 20);
+    expect(originalGroups.single.rows.single.master.id, 20);
+    expect(translatedGroups.single.rows.single.master.name, '零式舰战');
+  });
+
   test(
     'groups all compatible equipment by concrete type with stable sorting',
     () {

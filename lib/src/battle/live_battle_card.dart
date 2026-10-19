@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
 import 'battle_ui_text.dart';
@@ -6,6 +7,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'battle_controller.dart';
 import 'battle_models.dart';
 import 'battle_pills.dart';
+import 'battle_prediction_sections.dart';
 import 'battle_ship_details_popover.dart';
 import '../fleet/dashboard_card.dart';
 import '../fleet/ship_status_style.dart';
@@ -19,6 +21,7 @@ import 'detailed_battle_panel.dart';
 import 'land_base_raid_panel.dart';
 import 'official_enemy_preview.dart';
 import 'prophet_hp_bar.dart';
+import 'sortie_map_section.dart';
 
 enum BattlePanelMode { compact, detailed }
 
@@ -32,6 +35,7 @@ class LiveBattleCard extends StatefulWidget {
     this.showEnemyPortraits = true,
     this.showLastFormationHint = true,
     this.enemyPreviewPosition = EnemyPreviewPosition.above,
+    this.sectionOrder,
     this.showLogo = true,
     this.showTitle = true,
     this.onOpenDisplaySettings,
@@ -44,6 +48,7 @@ class LiveBattleCard extends StatefulWidget {
   final bool showEnemyPortraits;
   final bool showLastFormationHint;
   final EnemyPreviewPosition enemyPreviewPosition;
+  final List<BattlePredictionSection>? sectionOrder;
   final bool showLogo;
   final bool showTitle;
   final VoidCallback? onOpenDisplaySettings;
@@ -55,10 +60,30 @@ class LiveBattleCard extends StatefulWidget {
 class _LiveBattleCardState extends State<LiveBattleCard> {
   BattlePanelMode _mode = BattlePanelMode.detailed;
   bool _modeRestored = false;
+  bool _mapExpanded = true;
+  bool _mapExpansionRestored = false;
+  SortieMapSection? _cachedMapSection;
+
+  static const _mapExpansionStorageId = 'prophet-sortie-map-expanded';
+
+  @override
+  void didUpdateWidget(covariant LiveBattleCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      _cachedMapSection = null;
+    }
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_mapExpansionRestored) {
+      final storedExpansion = PageStorage.maybeOf(
+        context,
+      )?.readState(context, identifier: _mapExpansionStorageId);
+      if (storedExpansion is bool) _mapExpanded = storedExpansion;
+      _mapExpansionRestored = true;
+    }
     if (_modeRestored) return;
     final storedMode = PageStorage.maybeOf(context)?.readState(context);
     if (storedMode is String) {
@@ -75,6 +100,52 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
     PageStorage.maybeOf(context)?.writeState(context, mode.name);
   }
 
+  void _toggleMapExpanded() {
+    setState(() => _mapExpanded = !_mapExpanded);
+    PageStorage.maybeOf(
+      context,
+    )?.writeState(context, _mapExpanded, identifier: _mapExpansionStorageId);
+  }
+
+  SortieMapSection? _buildMapSection(LiveBattle? battle) {
+    // DashboardCard does not mount its child while collapsed. Avoid even the
+    // first lazy geometry parse until the map can be shown.
+    if (widget.collapsed || battle?.context.practice == true) {
+      _cachedMapSection = null;
+      return null;
+    }
+    final progress = widget.controller.sortieMapProgress;
+    if (progress == null) {
+      _cachedMapSection = null;
+      return null;
+    }
+    final geometry = widget.controller.sortieMapGeometry;
+    final currentNodeLabel =
+        battle != null &&
+            battle.context.mapAreaId == progress.mapAreaId &&
+            battle.context.mapInfoNo == progress.mapInfoNo &&
+            battle.context.node == progress.currentRouteId
+        ? battle.context.nodeDisplayLabel
+        : null;
+    final cached = _cachedMapSection;
+    if (cached != null &&
+        identical(cached.progress, progress) &&
+        identical(cached.geometry, geometry) &&
+        cached.currentNodeLabel == currentNodeLabel &&
+        cached.expanded == _mapExpanded) {
+      return cached;
+    }
+    // Reuse only the immutable widget, so its elements still receive inherited
+    // locale, text scale, theme and layout updates normally.
+    return _cachedMapSection = SortieMapSection(
+      progress: progress,
+      geometry: geometry,
+      expanded: _mapExpanded,
+      onToggleExpanded: _toggleMapExpanded,
+      currentNodeLabel: currentNodeLabel,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -82,6 +153,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
       builder: (context, _) {
         final battle = widget.controller.current;
         final idle = battle == null || battle.friendShips.isEmpty;
+        final mapSection = _buildMapSection(battle);
         return DashboardCard(
           key: const Key('live-battle-card'),
           title: AppLocalizations.of(context)?.forecast ?? '未卜先知',
@@ -117,9 +189,13 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                     ),
                   ),
                 ),
-              if (idle)
-                const _IdleBattleContent()
-              else if (_mode == BattlePanelMode.detailed)
+              if (idle) ...[
+                if (mapSection != null) ...[
+                  mapSection,
+                  const SizedBox(height: 9),
+                ],
+                const _IdleBattleContent(),
+              ] else if (_mode == BattlePanelMode.detailed)
                 DetailedBattlePanel(
                   battle: battle,
                   gameState: widget.controller.gameStateSnapshot,
@@ -128,6 +204,8 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                   showEnemyPortraits: widget.showEnemyPortraits,
                   showLastFormationHint: widget.showLastFormationHint,
                   enemyPreviewPosition: widget.enemyPreviewPosition,
+                  sectionOrder: widget.sectionOrder,
+                  mapSection: mapSection,
                 )
               else
                 BattleShipDetailsHost(
@@ -139,6 +217,8 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                     damagePulseMode: widget.damagePulseMode,
                     showLastFormationHint: widget.showLastFormationHint,
                     enemyPreviewPosition: widget.enemyPreviewPosition,
+                    sectionOrder: widget.sectionOrder,
+                    mapSection: mapSection,
                   ),
                 ),
             ],
@@ -231,6 +311,8 @@ class _CompactBattlePanel extends StatelessWidget {
     required this.damagePulseMode,
     required this.showLastFormationHint,
     required this.enemyPreviewPosition,
+    this.sectionOrder,
+    this.mapSection,
   });
 
   final LiveBattle battle;
@@ -238,6 +320,8 @@ class _CompactBattlePanel extends StatelessWidget {
   final DamagePulseFilter damagePulseMode;
   final bool showLastFormationHint;
   final EnemyPreviewPosition enemyPreviewPosition;
+  final List<BattlePredictionSection>? sectionOrder;
+  final Widget? mapSection;
 
   @override
   Widget build(BuildContext context) {
@@ -299,9 +383,6 @@ class _CompactBattlePanel extends StatelessWidget {
       final raid = battle.landBaseRaid;
       final previewShips =
           battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
-      final previewBelow =
-          enemyPreviewPosition == EnemyPreviewPosition.below &&
-          previewShips.isNotEmpty;
       final enemyPreview = OfficialEnemyPreview(
         ships: previewShips,
         combined: battle.enemyPreviewCombined,
@@ -315,16 +396,23 @@ class _CompactBattlePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           navigationHeader,
-          if (previewShips.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 7),
-            if (previewBelow) friendlyFleets else enemyPreview,
-          ],
-          if (raid != null) ...<Widget>[
-            const SizedBox(height: 7),
-            LandBaseRaidPanel(result: raid, compact: true),
-          ],
-          const SizedBox(height: 9),
-          if (previewBelow) enemyPreview else friendlyFleets,
+          const SizedBox(height: 7),
+          BattlePredictionSections(
+            order: sectionOrder,
+            legacyEnemyPreviewPosition: enemyPreviewPosition,
+            sortieMap: mapSection,
+            enemyPreview: previewShips.isNotEmpty ? enemyPreview : null,
+            predictionResult: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (raid != null) ...[
+                  LandBaseRaidPanel(result: raid, compact: true),
+                  const SizedBox(height: 9),
+                ],
+                friendlyFleets,
+              ],
+            ),
+          ),
         ],
       );
     }
@@ -333,7 +421,9 @@ class _CompactBattlePanel extends StatelessWidget {
         lookupAppLocalizations(const Locale('zh'));
     final dropShipNames = <String>[
       for (final id in battle.effectiveDropShipMasterIds)
-        gameState.masterShips[id]?.name ?? 'ID: $id',
+        gameNames(
+          context,
+        ).shipName(gameState.masterShips[id]?.name ?? 'ID: $id', shipId: id),
     ];
     final dropEntries = <String>[
       if (dropShipNames.isNotEmpty) l10n.dropLabel(dropShipNames.join('、')),
@@ -341,7 +431,7 @@ class _CompactBattlePanel extends StatelessWidget {
     final rawEnemyName = battle.enemyFleetName.isNotEmpty
         ? battle.enemyFleetName
         : '敌方舰队';
-    final enemyName = battleEnemyFleetDisplayName(rawEnemyName);
+    final enemyName = rawEnemyName;
     final enemyCombined =
         battle.enemyEscort.isNotEmpty || rawEnemyName.contains('联合舰队');
     final metaChips = _compactMetaChips(battle);
@@ -358,40 +448,60 @@ class _CompactBattlePanel extends StatelessWidget {
       key: const Key('compact-battle-panel'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            if (battle.rank != BattleRank.unknown) ...<Widget>[
-              _RankBadge(rank: battle.rank, phone: phone),
-              const SizedBox(width: 11),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        BattlePredictionSections(
+          order: sectionOrder,
+          legacyEnemyPreviewPosition: enemyPreviewPosition,
+          sortieMap: mapSection,
+          predictionResult: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  AdaptiveBattleHeader(
-                    nodeLabel: battle.context.forecastNodeLabel,
-                    enemyName: enemyName,
-                    enemyStyle: TextStyle(
-                      fontSize: phone ? 13 : 14,
-                      fontWeight: FontWeight.w600,
-                      color: enemyCombined ? const Color(0xffff8c78) : null,
+                  if (battle.rank != BattleRank.unknown) ...<Widget>[
+                    _RankBadge(rank: battle.rank, phone: phone),
+                    const SizedBox(width: 11),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AdaptiveBattleHeader(
+                          nodeLabel: battle.context.forecastNodeLabel,
+                          enemyName: enemyName,
+                          enemyNameIsFallback: battle.enemyFleetName.isEmpty,
+                          enemyStyle: TextStyle(
+                            fontSize: phone ? 13 : 14,
+                            fontWeight: FontWeight.w600,
+                            color: enemyCombined
+                                ? const Color(0xffff8c78)
+                                : null,
+                          ),
+                        ),
+                        if (statusPills.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 5),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: statusPills,
+                          ),
+                        ],
+                        if (battle.rewardItems.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 4),
+                          RewardItemsPill(items: battle.rewardItems),
+                        ],
+                      ],
                     ),
                   ),
-                  if (statusPills.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 5),
-                    Wrap(spacing: 4, runSpacing: 4, children: statusPills),
-                  ],
-                  if (battle.rewardItems.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 4),
-                    RewardItemsPill(items: battle.rewardItems),
-                  ],
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              _CompactFleetGrid(
+                battle: battle,
+                damagePulseMode: damagePulseMode,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        _CompactFleetGrid(battle: battle, damagePulseMode: damagePulseMode),
       ],
     );
   }

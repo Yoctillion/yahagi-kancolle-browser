@@ -627,7 +627,7 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 3, 16, 3),
           child: SizedBox(
-            height: 38,
+            height: _modeBarHeight(context),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 680;
@@ -794,9 +794,14 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
   );
 
   // Keep the record switch as one compact control on every composition layout.
+  double _modeBarHeight(BuildContext context) =>
+      Localizations.localeOf(context).languageCode == 'en'
+      ? 44 * math.max(1.0, MediaQuery.textScalerOf(context).scale(12) / 12)
+      : 38;
+
   Widget _modeTabs(CompositionImageStrings strings) => SizedBox(
     key: const Key('composition-mode-bar'),
-    height: 38,
+    height: _modeBarHeight(context),
     child: LayoutBuilder(
       builder: (context, constraints) => Container(
         padding: const EdgeInsets.all(3),
@@ -841,16 +846,26 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  index == 0
-                                      ? strings.savedTab
-                                      : strings.currentTab,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: _showSaved == (index == 0)
-                                        ? const Color(0xffffdc88)
-                                        : const Color(0xffa8bac4),
+                                Flexible(
+                                  child: Tooltip(
+                                    message: index == 0
+                                        ? strings.savedTab
+                                        : strings.currentTab,
+                                    child: Text(
+                                      index == 0
+                                          ? strings.savedTab
+                                          : strings.currentTab,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: _showSaved == (index == 0)
+                                            ? const Color(0xffffdc88)
+                                            : const Color(0xffa8bac4),
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 if (index == 0) ...[

@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -128,13 +129,17 @@ class _QuestCompletionFeedbackState extends State<QuestCompletionFeedback> {
       final l10n = AppLocalizations.of(context)!;
       if (recent.isNotEmpty) {
         final message = recent.length == 1
-            ? l10n.questCompletionSingleNotice(recent.first.title)
+            ? l10n.questCompletionSingleNotice(
+                gameNames(context).entityText(recent.first.title),
+              )
             : l10n.questCompletionMultiNotice(recent.length);
         _showNotice(message);
       }
       if (awaiting.isNotEmpty) {
         final message = awaiting.length == 1
-            ? l10n.questPendingConfirmationSingleNotice(awaiting.first.title)
+            ? l10n.questPendingConfirmationSingleNotice(
+                gameNames(context).entityText(awaiting.first.title),
+              )
             : l10n.questPendingConfirmationMultiNotice(awaiting.length);
         _showNotice(message);
       }

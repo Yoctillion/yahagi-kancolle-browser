@@ -111,6 +111,8 @@ test/fixtures/*
 !test/fixtures/fleet_display_sample.dart
 !test/fixtures/kcsapi_fixtures.dart
 !test/fixtures/native_capture_session_test.cjs
+!test/fixtures/game_mod_coordinate_script_test.cjs
+!test/fixtures/game_mod_coordinate_game_consumer_test.cjs
 !test/fixtures/record_backup_v12_empty.yhb
 !test/fixtures/battle_detail_poi_3_0_5.json
 !test/fixtures/poi_ezexped/
@@ -151,3 +153,9 @@ test/*/fixtures/
 *.hprof
 *.dmp
 *.pfx
+
+# Keep local device acceptance and performance audit diaries private.
+/docs/game-name-performance.md
+/docs/mod-performance-audit.md
+/docs/public-mod-library-validation.md
+/docs/subtitle-performance-audit.md

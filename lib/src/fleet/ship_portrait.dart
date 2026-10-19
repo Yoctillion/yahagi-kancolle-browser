@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../game_state/game_state.dart';
 import 'ship_portrait_cache.dart';
+import 'game_mod_portraits.dart';
 
 const shipCardPortraitHeight = 54.0;
 const shipCardCapsuleMinHeight = 76.0;
@@ -187,6 +188,29 @@ class ShipPortrait extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final official = _buildOfficial(context);
+    final portraits = GameModPortraitScope.maybeOf(context);
+    if (portraits == null || ship == null || !portraits.enabled) {
+      return official;
+    }
+    return FutureBuilder<GameModPortraitImage?>(
+      future: portraits.resolve(ship!),
+      builder: (context, snapshot) {
+        final mod = snapshot.connectionState == ConnectionState.done
+            ? snapshot.data
+            : null;
+        if (mod == null) return official;
+        return _ModPortraitImage(
+          portrait: mod,
+          width: width,
+          height: height,
+          official: official,
+        );
+      },
+    );
+  }
+
+  Widget _buildOfficial(BuildContext context) {
     final uri = ship == null
         ? null
         : ShipPortraitUriBuilder.build(
@@ -247,6 +271,102 @@ class ShipPortrait extends StatelessWidget {
                     decodeHeight: decodeHeight,
                     fit: BoxFit.fitHeight,
                     placeholder: placeholder,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModPortraitImage extends StatefulWidget {
+  const _ModPortraitImage({
+    required this.portrait,
+    required this.width,
+    required this.height,
+    required this.official,
+  });
+  final GameModPortraitImage portrait;
+  final double width;
+  final double height;
+  final Widget official;
+
+  @override
+  State<_ModPortraitImage> createState() => _ModPortraitImageState();
+}
+
+class _ModPortraitImageState extends State<_ModPortraitImage> {
+  bool _failed = false;
+  bool _failureScheduled = false;
+
+  @override
+  void didUpdateWidget(covariant _ModPortraitImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.portrait.cacheKey != widget.portrait.cacheKey) {
+      _failed = false;
+      _failureScheduled = false;
+    }
+  }
+
+  void _decodeFailed() {
+    if (_failed || _failureScheduled) return;
+    _failureScheduled = true;
+    final failedKey = widget.portrait.cacheKey;
+    scheduleMicrotask(() {
+      if (!mounted || widget.portrait.cacheKey != failedKey) return;
+      setState(() => _failed = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) return widget.official;
+    final portrait = widget.portrait;
+    final width = widget.width;
+    final height = widget.height;
+    final full =
+        portrait.layout == GameModPortraitLayout.full ||
+        portrait.layout == GameModPortraitLayout.characterFull;
+    final banner = portrait.layout == GameModPortraitLayout.banner;
+    final imageHeight = full || banner ? height : (height / 176) * 182;
+    return ClipRRect(
+      key: const ValueKey('game-mod-portrait'),
+      borderRadius: BorderRadius.circular(8),
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [Colors.black, Colors.black, Colors.transparent],
+          stops: [0, 0.76, 1],
+        ).createShader(bounds),
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xff385064), Color(0xff1b3240)],
+              ),
+            ),
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                Positioned(
+                  left: full || banner ? 0 : -height * 0.555,
+                  top: full || banner ? 0 : -(height / 176) * 3,
+                  child: Image.memory(
+                    portrait.bytes,
+                    key: ValueKey(portrait.cacheKey),
+                    height: imageHeight,
+                    width: banner ? width : null,
+                    fit: banner ? BoxFit.cover : BoxFit.fitHeight,
+                    gaplessPlayback: false,
+                    errorBuilder: (_, error, stack) {
+                      _decodeFailed();
+                      return const SizedBox.shrink();
+                    },
                   ),
                 ),
               ],

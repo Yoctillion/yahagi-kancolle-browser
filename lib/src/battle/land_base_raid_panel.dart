@@ -18,6 +18,24 @@ class LandBaseRaidPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    const title = BattleUiText(
+      '基地空袭',
+      style: TextStyle(color: Color(0xffffa092), fontWeight: FontWeight.w800),
+    );
+    final heading = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.warning_amber_rounded,
+          size: 18,
+          color: Color(0xffff8c78),
+        ),
+        const SizedBox(width: 6),
+        if (english) Flexible(child: title) else title,
+      ],
+    );
+    final airState = AirSuperiorityPill(label: result.airSuperiority);
     return Container(
       key: const Key('land-base-raid-panel'),
       padding: EdgeInsets.all(compact ? 8 : 10),
@@ -29,25 +47,16 @@ class LandBaseRaidPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.warning_amber_rounded,
-                size: 18,
-                color: Color(0xffff8c78),
-              ),
-              const SizedBox(width: 6),
-              const BattleUiText(
-                '基地空袭',
-                style: TextStyle(
-                  color: Color(0xffffa092),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Spacer(),
-              AirSuperiorityPill(label: result.airSuperiority),
-            ],
-          ),
+          if (english)
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [heading, airState],
+            )
+          else
+            Row(children: [heading, const Spacer(), airState]),
           const SizedBox(height: 7),
           ClipRRect(
             borderRadius: BorderRadius.circular(7),

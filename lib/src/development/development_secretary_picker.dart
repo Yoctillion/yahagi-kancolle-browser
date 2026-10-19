@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'development_dataset.dart';
+import 'development_name_labels.dart';
 
 class DevelopmentSecretaryPoolGroup {
   const DevelopmentSecretaryPoolGroup({
@@ -105,7 +106,12 @@ class DevelopmentSecretaryPicker extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  selected == null ? '—' : _poolDisplayLabel(selected, locale),
+                  selected == null
+                      ? '—'
+                      : developmentPoolText(
+                          context,
+                          _poolDisplayLabel(selected, locale),
+                        ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -238,7 +244,10 @@ class _DevelopmentSecretaryPickerDialogState
                                   vertical: 13,
                                 ),
                                 child: Text(
-                                  widget.groups[index].label,
+                                  developmentPoolText(
+                                    context,
+                                    widget.groups[index].label,
+                                  ),
                                   style: TextStyle(
                                     fontWeight: selected
                                         ? FontWeight.w800
@@ -281,10 +290,13 @@ class _DevelopmentSecretaryPickerDialogState
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      _poolDisplayLabel(
-                                        pool,
-                                        widget.locale,
-                                        otherLabel: widget.otherLabel,
+                                      developmentPoolText(
+                                        context,
+                                        _poolDisplayLabel(
+                                          pool,
+                                          widget.locale,
+                                          otherLabel: widget.otherLabel,
+                                        ),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,

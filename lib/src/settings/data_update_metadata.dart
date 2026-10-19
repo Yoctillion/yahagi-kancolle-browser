@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Shared presentation for the five independently versioned data sources.
 class DataUpdateMetadata extends StatelessWidget {
   const DataUpdateMetadata({
@@ -30,20 +32,19 @@ class DataUpdateMetadata extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final japanese = Localizations.localeOf(context).languageCode == 'ja';
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
     const style = TextStyle(color: Color(0xff8197a5));
     final checked = lastCheckedAt;
     return Wrap(
       spacing: 16,
       runSpacing: 2,
       children: [
+        Text('${l10n.dataVersionLabel}：${versionDate(version)}', style: style),
         Text(
-          '${japanese ? 'データバージョン' : '数据版本'}：${versionDate(version)}',
-          style: style,
-        ),
-        Text(
-          '${japanese ? '最終確認' : '上次检查'}：'
-          '${checked == null ? (japanese ? '未確認' : '尚未检查') : _time(checked)}',
+          '${l10n.dataLastCheckedLabel}：'
+          '${checked == null ? l10n.dataNotChecked : _time(checked)}',
           style: style,
         ),
       ],

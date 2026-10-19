@@ -40,7 +40,7 @@ final class BattleDetailReplayBuilder {
       mapLabel: battle.context.mapLabel,
       nodeLabel: battle.context.nodeLabel,
       rank: battle.rank.label,
-      enemyFleetName: battleEnemyFleetDisplayName(battle.enemyFleetName),
+      enemyFleetName: battle.enemyFleetName,
       fleets: List<BattleDetailFleet>.unmodifiable(<BattleDetailFleet>[
         _fleet(
           battle.friendMain,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -61,6 +62,8 @@ class _EquipmentCompatibilityDrawerState
       ownedOnly: _ownedOnly,
       shipCategory: _shipCategory,
       query: _query,
+      nameWithIdResolver: (name, id) =>
+          gameNames(context).shipName(name, shipId: id),
       filter: _slotFilter,
     );
     final allRows = _projection.rows(equipmentMasterId: widget.equipment.id);
@@ -355,7 +358,7 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              equipment.name,
+              gameNames(context).equipmentName(equipment.name),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -713,7 +716,7 @@ class _TypeHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 10, 4, 6),
       child: Text(
-        name.isEmpty ? l10n.otherType : name,
+        name.isEmpty ? l10n.otherType : gameNames(context).shipTypeName(name),
         style: const TextStyle(
           color: Color(0xff69d2cf),
           fontSize: 11,
@@ -745,7 +748,9 @@ class _ShipRow extends StatelessWidget {
         : l10n.equipmentCompatibilityExpansionSlot;
     final shipTypeLabel = row.shipTypeName.isEmpty
         ? l10n.otherType
-        : row.shipTypeName;
+        : gameNames(
+            context,
+          ).shipTypeName(row.shipTypeName, typeId: row.shipMaster.shipTypeId);
     final metadata = row.ownedShips.isEmpty
         ? shipTypeLabel
         : '$shipTypeLabel · ${l10n.equipmentCompatibilityOwnedLevels(row.ownedShips.map((ship) => ship.level).join(' / '))}';
@@ -777,7 +782,9 @@ class _ShipRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  row.shipMaster.name,
+                  gameNames(
+                    context,
+                  ).shipName(row.shipMaster.name, shipId: row.shipMaster.id),
                   style: const TextStyle(
                     color: Color(0xffe8f0f4),
                     fontSize: 13,

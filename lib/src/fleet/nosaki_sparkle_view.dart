@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/game_name_localizations.dart';
 import 'fleet_ui_strings.dart';
 
 import '../game_state/game_state.dart';
@@ -426,7 +427,13 @@ class _NosakiShipIdentity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = row.master?.name ?? fleetText(context, '未知舰娘');
+    final name =
+        (row.master == null
+            ? null
+            : gameNames(
+                context,
+              ).shipName(row.master!.name, shipId: row.master!.id)) ??
+        fleetText(context, '未知舰娘');
     final posLabel = row.position == 0
         ? fleetText(context, '旗舰')
         : (row.position == 1

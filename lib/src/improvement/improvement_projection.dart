@@ -51,6 +51,7 @@ List<ImprovementPlannerRow> projectImprovementRows(
   Map<int, MasterSlotItem> equipmentMasters = const <int, MasterSlotItem>{},
   Map<int, MasterShip> shipMasters = const <int, MasterShip>{},
   String query = '',
+  String Function(String)? equipmentNameResolver,
   EquipmentInventoryCategory equipmentCategory = EquipmentInventoryCategory.all,
   Set<int> favoriteEquipmentIds = const <int>{},
   bool favoritesOnly = false,
@@ -74,7 +75,13 @@ List<ImprovementPlannerRow> projectImprovementRows(
   for (final entry in dataset.entries) {
     final master = equipmentMasters[entry.equipmentId];
     if (normalizedQuery.isNotEmpty &&
-        !(master?.name.toLowerCase().contains(normalizedQuery) ?? false)) {
+        !(master?.name.toLowerCase().contains(normalizedQuery) ?? false) &&
+        !(master != null &&
+            (equipmentNameResolver
+                    ?.call(master.name)
+                    .toLowerCase()
+                    .contains(normalizedQuery) ??
+                false))) {
       continue;
     }
     if (equipmentCategory != EquipmentInventoryCategory.all &&

@@ -38,6 +38,7 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final english = Localizations.localeOf(context).languageCode == 'en';
     final narrowWeekdays = MaterialLocalizations.of(context).narrowWeekdays;
     final mondayFirstWeekdays = [
       ...narrowWeekdays.skip(1),
@@ -95,39 +96,45 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
             ),
           ),
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: widget.compact ? 2 : 6,
-                vertical: widget.compact ? 2 : 4,
-              ),
-              child: Column(
-                children: [
-                  for (var week = 0; week < 6; week++)
-                    Expanded(
-                      key: Key('calendar-week-row-$week'),
-                      child: Row(
-                        children: [
-                          for (var weekday = 0; weekday < 7; weekday++)
-                            Expanded(
-                              child: _cell(
-                                year,
-                                month,
-                                week * 7 + weekday,
-                                leading,
-                                count,
-                                currentDate,
+            child: _fitGrid(
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.compact ? 2 : 6,
+                  vertical: widget.compact ? 2 : 4,
+                ),
+                child: Column(
+                  children: [
+                    for (var week = 0; week < 6; week++)
+                      Expanded(
+                        key: Key('calendar-week-row-$week'),
+                        child: Row(
+                          children: [
+                            for (var weekday = 0; weekday < 7; weekday++)
+                              Expanded(
+                                child: _cell(
+                                  year,
+                                  month,
+                                  week * 7 + weekday,
+                                  leading,
+                                  count,
+                                  currentDate,
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
           Container(
             key: const Key('senka-day-detail'),
-            height: widget.compact ? 24 : 38,
+            height: english
+                ? null
+                : widget.compact
+                ? 24
+                : 38,
             decoration: const BoxDecoration(
               border: Border(top: BorderSide(color: senkaLine)),
             ),
@@ -140,6 +147,28 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _fitGrid(Widget grid) {
+    if (Localizations.localeOf(context).languageCode != 'en') return grid;
+    final scaler = MediaQuery.textScalerOf(context);
+    final cellContentHeight =
+        scaler.scale(widget.compact ? 15 : 21) * 1.05 +
+        (widget.compact ? 1 : 2) +
+        scaler.scale(widget.compact ? 12 : 16) * 1.05;
+    final minimumHeight =
+        6 * (cellContentHeight + (widget.compact ? 3 : 5) + 3) +
+        (widget.compact ? 4 : 8);
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: SizedBox(
+          height: constraints.maxHeight < minimumHeight
+              ? minimumHeight
+              : constraints.maxHeight,
+          child: grid,
+        ),
       ),
     );
   }
@@ -255,35 +284,47 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
     );
   }
 
-  Widget _detail(String label, double value) => Expanded(
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: senkaText,
-            fontSize: widget.compact ? 11 : 13,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        SizedBox(width: widget.compact ? 2 : 5),
-        Flexible(
-          child: Text(
-            '${value >= 0 ? '+' : ''}${value.toStringAsFixed(2)}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: senkaGold,
-              fontSize: widget.compact ? 11 : 13,
-              fontWeight: FontWeight.w800,
-              fontFeatures: const [FontFeature.tabularFigures()],
+  Widget _detail(String label, double value) {
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    final labelText = Text(
+      label,
+      textAlign: english ? TextAlign.center : null,
+      style: TextStyle(
+        color: senkaText,
+        fontSize: widget.compact ? 11 : 13,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+    final valueText = Text(
+      '${value >= 0 ? '+' : ''}${value.toStringAsFixed(2)}',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: senkaGold,
+        fontSize: widget.compact ? 11 : 13,
+        fontWeight: FontWeight.w800,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    );
+    return Expanded(
+      child: english
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [labelText, const SizedBox(height: 2), valueText],
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                labelText,
+                SizedBox(width: widget.compact ? 2 : 5),
+                Flexible(child: valueText),
+              ],
             ),
-          ),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
 
 DateTime _initialSelection(SenkaState state, DateTime now) {

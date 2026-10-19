@@ -75,6 +75,7 @@ import app.yahagi.kancollebrowser.capture.writeScreenshotExport
 import app.yahagi.kancollebrowser.capture.ScreenshotViewCandidate
 import app.yahagi.kancollebrowser.composition.CompositionImageHandler
 import app.yahagi.kancollebrowser.backup.RecordBackupHandler
+import app.yahagi.kancollebrowser.fonts.CustomFontManager
 import app.yahagi.kancollebrowser.diagnostics.DiagnosticExportDirectoryHost
 import app.yahagi.kancollebrowser.diagnostics.DiagnosticDirectoryPickerUi
 import app.yahagi.kancollebrowser.diagnostics.DiagnosticPickerSystemBars
@@ -93,6 +94,8 @@ import app.yahagi.kancollebrowser.nativewebview.SharedPreferencesNativeWebViewSt
 import app.yahagi.kancollebrowser.notification.AppNotificationManager
 import app.yahagi.kancollebrowser.notification.NotificationProgressService
 import app.yahagi.kancollebrowser.navigation.AppNavigationChannel
+import app.yahagi.kancollebrowser.mods.GameModManager
+import app.yahagi.kancollebrowser.subtitles.ShipSubtitleBridge
 import java.io.File
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
@@ -222,12 +225,18 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     private var appNavigationChannel: MethodChannel? = null
     private var gameFrameReloadManager: GameFrameReloadManager? = null
     private var gameFrameReloadChannel: MethodChannel? = null
+    private var gameModManager: GameModManager? = null
+    private var shipSubtitleBridge: ShipSubtitleBridge? = null
+    private var gameModChannel: MethodChannel? = null
+    private val gadgetBypassClientOwner = Any()
     private var gameResourceCacheEngine: GameResourceCacheEngine? = null
     private var gameResourceCacheManager: GameResourceCacheManager? = null
     @Volatile
     private var gameResourceCacheMode: GameResourceCacheMode = GameResourceCacheMode.TEMPORARY
     private var diagnosticPlatformHandler: DiagnosticPlatformHandler? = null
     private var recordBackupHandler: RecordBackupHandler? = null
+    private var customFontManager: CustomFontManager? = null
+    private var customFontChannel: MethodChannel? = null
     private val diagnosticDirectoryPickerUi by lazy {
         DiagnosticDirectoryPickerUi(
             systemBars = object : DiagnosticPickerSystemBars {
@@ -292,6 +301,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             },
             lifecycleObserver = object : NativeGameWebViewLifecycleObserver {
                 override fun onCreated() {
+                    runCatching { shipSubtitleBridge?.ensureInstalled() }
                     // The native host is now discoverable under decorView. Reapply
                     // the existing request client stack to this single WebView.
                     ensureGadgetBypassWrap()
@@ -322,6 +332,12 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        shipSubtitleBridge?.dispose()
+        shipSubtitleBridge = ShipSubtitleBridge(
+            this,
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
+                "app.yahagi.kancollebrowser/ship_subtitles"),
+        )
 
         appNavigationChannel?.setMethodCallHandler(null)
         appNavigationChannel = MethodChannel(
@@ -340,6 +356,14 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
                 flutterEngine.dartExecutor.binaryMessenger,
                 RecordBackupHandler.CHANNEL,
             ).setMethodCallHandler(handler)
+        }
+
+        disposeCustomFonts()
+        customFontManager = CustomFontManager(this).also { handler ->
+            customFontChannel = MethodChannel(
+                flutterEngine.dartExecutor.binaryMessenger,
+                CustomFontManager.CHANNEL,
+            ).also { it.setMethodCallHandler(handler) }
         }
 
         gameMouseWheelChannel?.dispose()
@@ -709,17 +733,44 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             flutterEngine.dartExecutor.binaryMessenger,
             GAME_FRAME_RELOAD_CHANNEL,
         )
-        val frameReloadManager = GameFrameReloadManager(
-            AndroidGameFrameReloadBridge(this) { result ->
-                frameReloadChannel.invokeMethod("shortcutResult", result)
-            },
-        )
+        val frameReloadBridge = AndroidGameFrameReloadBridge(this) { result ->
+            frameReloadChannel.invokeMethod("shortcutResult", result)
+        }
+        val frameReloadManager = GameFrameReloadManager(frameReloadBridge)
         gameFrameReloadManager = frameReloadManager
         gameFrameReloadChannel = frameReloadChannel
-        frameReloadChannel.setMethodCallHandler(frameReloadManager)
+        frameReloadChannel.setMethodCallHandler { call, result ->
+            // Both WebView hosts already await this configure call before their
+            // first real navigation. Install the dormant subtitle bridge here
+            // without adding another startup wait to the Dart navigation path.
+            if (call.method == "configure") {
+                runCatching { shipSubtitleBridge?.ensureInstalled() }
+            }
+            frameReloadManager.onMethodCall(call, result)
+        }
+        disposeGameMods()
+        var lastPortraitToken: String? = null
+        val mods = GameModManager(this, frameReloadBridge) {
+            installGadgetBypassLayoutListener()
+            ensureGadgetBypassWrap()
+            val token = gameModManager?.portraitToken()
+            if (token != null && token != lastPortraitToken) {
+                lastPortraitToken = token
+                gameModChannel?.invokeMethod("portraitsChanged", null)
+            }
+        }
+        gameModManager = mods
+        gameModChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            GameModManager.CHANNEL,
+        ).also { it.setMethodCallHandler(mods) }
+        installGadgetBypassLayoutListener()
+        ensureGadgetBypassWrap()
     }
 
     override fun onDestroy() {
+        disposeCustomFonts()
+        disposeGameMods()
         appNavigationChannel?.setMethodCallHandler(null)
         appNavigationChannel = null
         gameFullscreenChannel?.dispose()
@@ -748,6 +799,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         gameResourceCacheManager = null
         gameResourceCacheEngine = null
         gameFrameRateManager?.dispose()
+        shipSubtitleBridge?.dispose()
+        shipSubtitleBridge = null
         gameFrameRateManager = null
         gameFrameReloadManager?.dispose()
         gameFrameReloadManager = null
@@ -781,6 +834,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        disposeCustomFonts()
+        disposeGameMods()
         appNavigationChannel?.setMethodCallHandler(null)
         appNavigationChannel = null
         gameFullscreenChannel?.dispose()
@@ -805,11 +860,25 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         super.cleanUpFlutterEngine(flutterEngine)
     }
 
+    private fun disposeCustomFonts() {
+        customFontChannel?.setMethodCallHandler(null)
+        customFontChannel = null
+        customFontManager?.dispose()
+        customFontManager = null
+    }
+
     private fun disposeCompositionImageHandler() {
         compositionImageHandler?.dispose()
         compositionImageHandler = null
         compositionImageChannel?.setMethodCallHandler(null)
         compositionImageChannel = null
+    }
+
+    private fun disposeGameMods() {
+        gameModChannel?.setMethodCallHandler(null)
+        gameModChannel = null
+        gameModManager?.dispose()
+        gameModManager = null
     }
 
     private fun enableNativeActivityWebViewIfSelected() {
@@ -928,6 +997,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     @Deprecated("Deprecated in Android")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (customFontManager?.onActivityResult(requestCode, resultCode, data) == true) return
+        if (gameModManager?.onActivityResult(requestCode, resultCode, data) == true) return
         if (recordBackupHandler?.onActivityResult(requestCode, resultCode, data) == true) return
         if (requestCode != DIAGNOSTIC_DIRECTORY_REQUEST) return
         diagnosticDirectoryPickerUi.finish()
@@ -973,16 +1044,17 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         if (enabled) {
             installGadgetBypassLayoutListener()
             ensureGadgetBypassWrap()
-        } else if (gameResourceCacheMode == GameResourceCacheMode.NONE) {
+        } else if (gameResourceCacheMode == GameResourceCacheMode.NONE && gameModManager == null) {
             restoreGadgetBypassClient()
             removeGadgetBypassLayoutListener()
         }
     }
 
     private fun ensureGadgetBypassWrap() {
+        runCatching { shipSubtitleBridge?.ensureInstalled() }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = gadgetBypassManager ?: return
-        if (!manager.enabled && gameResourceCacheMode == GameResourceCacheMode.NONE) return
+        if (!manager.enabled && gameResourceCacheMode == GameResourceCacheMode.NONE && gameModManager == null) return
 
         val webViews = mutableListOf<WebView>()
         collectWebViews(window.decorView, webViews)
@@ -995,7 +1067,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         val webView = webViews.single()
 
         val current = webView.webViewClient ?: return
-        if (current is GadgetBypassWebViewClient) return
+        if (current is GadgetBypassWebViewClient && current.ownerToken === gadgetBypassClientOwner) return
+        val originalClient = if (current is GadgetBypassWebViewClient) current.originalClient else current
 
         val cookieInterceptSupported = runCatching {
             if (!WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT)) false
@@ -1014,12 +1087,14 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         Log.d("GadgetBypass", "wrapping WebViewClient")
         webView.setWebViewClient(
             GadgetBypassWebViewClient(
-                original = current,
+                original = originalClient,
                 engine = manager.engine,
                 isEnabled = { manager.enabled },
                 endpoint = { manager.endpoint },
                 gameResourceEngine = gameResourceCacheEngine,
                 cookiesIncludedInRequestHeaders = cookieInterceptSupported,
+                modResourceInterceptor = { url, method, headers -> gameModManager?.intercept(url, method, headers) },
+                ownerToken = gadgetBypassClientOwner,
             ),
         )
     }
@@ -1029,7 +1104,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         if (mode != GameResourceCacheMode.NONE) {
             installGadgetBypassLayoutListener()
             ensureGadgetBypassWrap()
-        } else if (gadgetBypassManager?.enabled != true) {
+        } else if (gadgetBypassManager?.enabled != true && gameModManager == null) {
             restoreGadgetBypassClient()
             removeGadgetBypassLayoutListener()
         }
@@ -1654,6 +1729,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
                 ?.isVisible(WindowInsetsCompat.Type.ime()) == true,
         ) ?: return
         webView.setInitialScale(scalePercent)
+        shipSubtitleBridge?.refreshDisplayScale(scalePercent / 100.0)
     }
 
     private val nativePresentationMethodResult = object : MethodChannel.Result {

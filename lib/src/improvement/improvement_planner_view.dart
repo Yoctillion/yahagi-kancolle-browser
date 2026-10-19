@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../localization/ui_text.dart';
+import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../fleet/equipment_type_icon.dart';
@@ -14,6 +15,11 @@ import '../widgets/frozen_data_table.dart';
 import 'improvement_dataset.dart';
 import 'improvement_planner_controller.dart';
 import 'improvement_projection.dart';
+
+double _englishTextLayoutScale(BuildContext context) =>
+    Localizations.maybeLocaleOf(context)?.languageCode == 'en'
+    ? math.max(1.0, MediaQuery.textScalerOf(context).scale(11) / 11)
+    : 1.0;
 
 class ImprovementPlannerView extends StatelessWidget {
   const ImprovementPlannerView({
@@ -31,7 +37,10 @@ class ImprovementPlannerView extends StatelessWidget {
     child: AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        final rows = controller.rowsFor(state);
+        final rows = controller.rowsFor(
+          state,
+          equipmentNameResolver: gameNames(context).equipmentName,
+        );
         return Padding(
           padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
           child: Column(
@@ -62,7 +71,7 @@ class _WeekdayFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 34,
+    height: 34 * _englishTextLayoutScale(context),
     child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -71,7 +80,7 @@ class _WeekdayFilter extends StatelessWidget {
             key: const Key('improvement-weekday-segmented'),
             sliderKey: const Key('improvement-weekday-slider'),
             selected: controller.selectedWeekday,
-            segmentWidth: 52,
+            segmentWidth: 52 * _englishTextLayoutScale(context),
             options: <_SegmentOption<int>>[
               const _SegmentOption<int>(
                 value: improvementAllWeekdays,
@@ -237,72 +246,98 @@ class _ImprovementFilterSheet extends StatelessWidget {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
+    final english = Localizations.maybeLocaleOf(context)?.languageCode == 'en';
+    const title = UiText(
+      '筛选装备',
+      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+    );
+    final actions = <Widget>[
+      TextButton(
+        key: const Key('improvement-filter-clear'),
+        onPressed: controller.clearFilters,
+        child: const UiText('全部清除'),
+      ),
+      IconButton(
+        key: const Key('improvement-filter-close'),
+        onPressed: () => Navigator.pop(context),
+        icon: const Icon(Icons.close),
+      ),
+    ];
     return AnimatedBuilder(
       key: const Key('improvement-filter-sheet'),
       animation: controller,
-      builder: (context, _) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const UiText(
-                  '筛选装备',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+      builder: (context, _) {
+        final body = Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (english && _englishTextLayoutScale(context) > 1)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    title,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: actions,
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    if (english)
+                      const Expanded(child: title)
+                    else ...[
+                      title,
+                      const Spacer(),
+                    ],
+                    ...actions,
+                  ],
                 ),
-                const Spacer(),
-                TextButton(
-                  key: const Key('improvement-filter-clear'),
-                  onPressed: controller.clearFilters,
-                  child: const UiText('全部清除'),
-                ),
-                IconButton(
-                  key: const Key('improvement-filter-close'),
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const UiText('装备分类'),
-            const SizedBox(height: 5),
-            Wrap(
-              runSpacing: 5,
-              children: [
-                for (final category in EquipmentInventoryCategory.values)
-                  CompactFilterChip(
-                    key: Key('improvement-filter-equipment-${category.name}'),
-                    label: _equipmentCategoryLabel(category, l10n),
-                    selected: controller.equipmentCategory == category,
-                    onTap: () => controller.selectEquipmentCategory(category),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            const UiText('进化状态'),
-            const SizedBox(height: 5),
-            Wrap(
-              runSpacing: 5,
-              children: [
-                for (final option
-                    in const <(ImprovementEvolutionFilter, String)>[
-                      (ImprovementEvolutionFilter.all, '全部'),
-                      (ImprovementEvolutionFilter.evolvable, '可进化'),
-                      (ImprovementEvolutionFilter.notEvolvable, '不可进化'),
-                    ])
-                  CompactFilterChip(
-                    key: Key('improvement-filter-evolution-${option.$1.name}'),
-                    label: uiText(context, option.$2),
-                    selected: controller.evolutionFilter == option.$1,
-                    onTap: () => controller.selectEvolutionFilter(option.$1),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
+              const SizedBox(height: 8),
+              const UiText('装备分类'),
+              const SizedBox(height: 5),
+              Wrap(
+                runSpacing: 5,
+                children: [
+                  for (final category in EquipmentInventoryCategory.values)
+                    CompactFilterChip(
+                      key: Key('improvement-filter-equipment-${category.name}'),
+                      label: _equipmentCategoryLabel(category, l10n),
+                      selected: controller.equipmentCategory == category,
+                      onTap: () => controller.selectEquipmentCategory(category),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const UiText('进化状态'),
+              const SizedBox(height: 5),
+              Wrap(
+                runSpacing: 5,
+                children: [
+                  for (final option
+                      in const <(ImprovementEvolutionFilter, String)>[
+                        (ImprovementEvolutionFilter.all, '全部'),
+                        (ImprovementEvolutionFilter.evolvable, '可进化'),
+                        (ImprovementEvolutionFilter.notEvolvable, '不可进化'),
+                      ])
+                    CompactFilterChip(
+                      key: Key(
+                        'improvement-filter-evolution-${option.$1.name}',
+                      ),
+                      label: uiText(context, option.$2),
+                      selected: controller.evolutionFilter == option.$1,
+                      onTap: () => controller.selectEvolutionFilter(option.$1),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+        return english ? SingleChildScrollView(child: body) : body;
+      },
     );
   }
 }
@@ -358,9 +393,10 @@ class _SlidingSegment<T> extends StatelessWidget {
       0,
       options.indexWhere((item) => item.value == selected),
     );
+    final scale = _englishTextLayoutScale(context);
     return SizedBox(
       width: segmentWidth * options.length,
-      height: 30,
+      height: 30 * scale,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xff102936),
@@ -376,7 +412,7 @@ class _SlidingSegment<T> extends StatelessWidget {
               left: selectedIndex * segmentWidth + 2,
               top: 2,
               width: segmentWidth - 4,
-              height: 24,
+              height: 24 * scale,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: const Color(0xff8a6628),
@@ -389,7 +425,7 @@ class _SlidingSegment<T> extends StatelessWidget {
                 for (final option in options)
                   SizedBox(
                     width: segmentWidth,
-                    height: 28,
+                    height: 28 * scale,
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -438,7 +474,8 @@ class _ImprovementTableState extends State<_ImprovementTable> {
   final Map<int, int> _focusedRouteByEquipment = <int, int>{};
 
   MasterSlotItem? _master(int id) => widget.state.masterSlotItems[id];
-  String _name(int id) => _master(id)?.name ?? '#$id';
+  String _name(int id) =>
+      gameNames(context).equipmentName(_master(id)?.name ?? '#$id');
   int _icon(int id) {
     final type = _master(id)?.type ?? const <int>[];
     return type.length > 3 ? type[3] : -1;
@@ -489,7 +526,9 @@ class _ImprovementTableState extends State<_ImprovementTable> {
     for (final schedule in schedules) {
       final painter = TextPainter(
         text: TextSpan(
-          text: schedule.secretaryLabels.join('、'),
+          text: gameNames(
+            context,
+          ).entityText(schedule.secretaryLabels.join('、')),
           style: _cellStyle,
         ),
         textDirection: TextDirection.ltr,
@@ -534,15 +573,30 @@ class _ImprovementTableState extends State<_ImprovementTable> {
 
   @override
   Widget build(BuildContext context) {
-    final heights = <double>[for (final row in widget.rows) _rowHeight(row)];
+    final scale = _englishTextLayoutScale(context);
+    final heights = <double>[
+      for (final row in widget.rows) _rowHeight(row) * scale,
+    ];
     return FrozenDataTable(
       key: const Key('improvement-planner-table'),
       keyPrefix: 'improvement-table',
       rowHeights: heights,
+      headerExtent: FrozenDataTable.headerHeight * scale,
       frozenColumnWidths: const <double>[48, 190],
-      frozenHeaders: const <Widget>[
-        _Header(key: Key('improvement-frozen-favorite'), label: '收藏'),
-        _Header(key: Key('improvement-frozen-equipment'), label: '装备名字'),
+      frozenHeaders: <Widget>[
+        if (scale > 1)
+          Tooltip(
+            message: uiText(context, '收藏'),
+            child: const Icon(
+              Icons.star_border,
+              key: Key('improvement-frozen-favorite'),
+              size: 18,
+              color: Color(0xffb8c9d2),
+            ),
+          )
+        else
+          const _Header(key: Key('improvement-frozen-favorite'), label: '收藏'),
+        const _Header(key: Key('improvement-frozen-equipment'), label: '装备名字'),
       ],
       frozenCells: (index) {
         final entry = widget.rows[index].entry;
@@ -573,7 +627,10 @@ class _ImprovementTableState extends State<_ImprovementTable> {
           ),
         ];
       },
-      scrollableColumnWidths: const <double>[170, 210, 280, 220, 300, 82, 220],
+      scrollableColumnWidths: <double>[
+        for (final width in const [170, 210, 280, 220, 300, 82, 220])
+          width * scale,
+      ],
       scrollableHeaders: const <Widget>[
         _Header(
           label: '基础消耗',
@@ -593,13 +650,15 @@ class _ImprovementTableState extends State<_ImprovementTable> {
         final evolvableToday = routes.isNotEmpty;
         final hasMultipleRoutes = routes.length > 1;
         final consumeRouteHeights = hasMultipleRoutes
-            ? _consumeRouteHeights(row)
+            ? _consumeRouteHeights(row).map((height) => height * scale).toList()
             : const <double>[];
         final secretaryRouteHeights = hasMultipleRoutes
-            ? _secretaryRouteHeights(row)
+            ? _secretaryRouteHeights(
+                row,
+              ).map((height) => height * scale).toList()
             : const <double>[];
         final targetRouteHeights = hasMultipleRoutes
-            ? _targetRouteHeights(row)
+            ? _targetRouteHeights(row).map((height) => height * scale).toList()
             : const <double>[];
         final storedFocusedRoute = _focusedRouteByEquipment[entry.equipmentId];
         final focusedRouteIndex =
@@ -740,6 +799,41 @@ String _materialDisplayName(ImprovementConsumeItem item) =>
     }[item.materialKey] ??
     item.materialKey ??
     '—';
+
+String _localizedMaterialDisplayName(
+  BuildContext context,
+  ImprovementConsumeItem item,
+) {
+  final language = Localizations.maybeLocaleOf(context)?.languageCode;
+  if (language != 'en' && language != 'ko') return _materialDisplayName(item);
+  const names = <String, (String, String)>{
+    'ActionReport': ('Action Report', '전투상보'),
+    'emergency-repair-material': ('Emergency Repair Material', '긴급수리자재'),
+    'fast-build': ('Instant Construction Material', '고속건조재'),
+    'kaigai-skill': ('New Overseas Warship Technology', '해외함 최신기술'),
+    'kousyo-sigen': ('Arsenal Material', '공창자원'),
+    'MedalL': ('Medal', '훈장'),
+    'NeEngine': ('Ne Type Engine', 'Ne식 엔진'),
+    'new_gun_material': (
+      'New Model Gun Mount Improvement Material',
+      '신형포공병장자재',
+    ),
+    'new_model_material': ('New Model Armament Material', '신형병장자재'),
+    'new_plane_material': ('New Model Aerial Armament Material', '신형항공병장자재'),
+    'new-funsiki-material': (
+      'New Model Rocket Development Material',
+      '신형분진장비개발자재',
+    ),
+    'sensui-hokyu': ('Submarine Supply Material', '잠수함 보급물자'),
+    'skilled_crew': ('Skilled Crew Member', '숙련탑승원'),
+  };
+  final value = names[item.materialKey];
+  return value == null
+      ? _materialDisplayName(item)
+      : language == 'ko'
+      ? value.$2
+      : value.$1;
+}
 
 String? _materialIconAsset(String? materialKey) => const <String, String>{
   'ActionReport': 'assets/images/material/useitem_78.png',
@@ -1027,6 +1121,7 @@ class _RouteLane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = _englishTextLayoutScale(context);
     final isFocused = focusedRouteIndex == routeIndex;
     final isDimmed = focusedRouteIndex != null && !isFocused;
     return AnimatedOpacity(
@@ -1068,8 +1163,8 @@ class _RouteLane extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 18,
-                          height: 18,
+                          width: 18 * scale,
+                          height: 18 * scale,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: _color.withValues(alpha: 0.2),
@@ -1218,7 +1313,7 @@ class _MaterialLine extends StatelessWidget {
           ],
           Expanded(
             child: Text(
-              _materialDisplayName(item),
+              _localizedMaterialDisplayName(context, item),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: _cellStyle,
@@ -1368,7 +1463,9 @@ class _SecretaryScheduleList extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  schedules[groupIndex].secretaryLabels.join('、'),
+                  gameNames(
+                    context,
+                  ).entityText(schedules[groupIndex].secretaryLabels.join('、')),
                   softWrap: true,
                   style: _cellStyle,
                 ),
@@ -1392,8 +1489,8 @@ class _SecretaryDayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 16,
-    height: 18,
+    width: 16 * _englishTextLayoutScale(context),
+    height: 18 * _englishTextLayoutScale(context),
     alignment: Alignment.center,
     decoration: BoxDecoration(
       color: active ? const Color(0xff258b68) : const Color(0xff37434a),

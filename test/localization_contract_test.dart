@@ -80,7 +80,7 @@ String _normalizeNewlines(String value) =>
 void main() {
   test('UI source has no unreviewed hardcoded Han string literals', () {
     // Like ARB resources, these reviewed catalogs intentionally contain all
-    // three languages. Call sites remain scanned; locale behavior is covered
+    // five languages. Call sites remain scanned; locale behavior is covered
     // by the matching *_localization_test.dart suites.
     const translationCatalogs = <String>{
       'lib/src/battle/battle_detail_strings.dart',
@@ -92,8 +92,12 @@ void main() {
       'lib/src/senka/senka_catalog_localization.dart',
       'lib/src/toolbox/composition_image_strings.dart',
       'lib/src/toolbox/exp_calc/exp_calc_strings.dart',
+      'lib/src/toolbox/game_mods/game_mods_strings.dart',
+      // Five-locale subtitle UI catalogs; actual subtitle data stays untouched.
+      'lib/src/subtitles/ship_subtitle_strings.dart',
+      'lib/src/subtitles/ship_subtitle_data_strings.dart',
       'lib/src/toolbox/sortie_map_query/sortie_map_query_strings.dart',
-      // Game equipment terms and the three-locale enemy details catalog.
+      // Game equipment terms and the five-locale enemy details catalog.
       'lib/src/toolbox/sortie_map_query/sortie_enemy_details_strings.dart',
     };
     final files = <File>[

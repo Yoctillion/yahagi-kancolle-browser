@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
@@ -103,103 +104,134 @@ class PinnedQuestsSummary extends StatelessWidget {
                                   color: const Color(0xff0d1a26),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Row(
-                                  children: [
-                                    if (visible.contains('type')) ...[
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: q.categoryColor.withValues(
-                                            alpha: 0.2,
+                                child: Builder(
+                                  builder: (context) {
+                                    final english =
+                                        Localizations.maybeLocaleOf(
+                                          context,
+                                        )?.languageCode ==
+                                        'en';
+                                    final children = <Widget>[
+                                      if (visible.contains('type')) ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                            vertical: 2,
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
+                                          decoration: BoxDecoration(
+                                            color: q.categoryColor.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            switch (q.category) {
+                                              1 => l10n.questFormation,
+                                              2 ||
+                                              8 ||
+                                              9 ||
+                                              10 => l10n.questSortie,
+                                              3 => l10n.questExercise,
+                                              4 => l10n.expedition,
+                                              5 => l10n.questSupplyRepair,
+                                              6 || 11 => l10n.questFactory,
+                                              7 => l10n.questRemodeling,
+                                              _ => l10n.questOther,
+                                            },
+                                            style: TextStyle(
+                                              color: q.categoryColor,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                           ),
                                         ),
-                                        child: Text(
-                                          switch (q.category) {
-                                            1 => l10n.questFormation,
-                                            2 ||
-                                            8 ||
-                                            9 ||
-                                            10 => l10n.questSortie,
-                                            3 => l10n.questExercise,
-                                            4 => l10n.expedition,
-                                            5 => l10n.questSupplyRepair,
-                                            6 || 11 => l10n.questFactory,
-                                            7 => l10n.questRemodeling,
-                                            _ => l10n.questOther,
-                                          },
+                                        const SizedBox(width: 8),
+                                      ],
+                                      if (visible.contains('number')) ...[
+                                        Container(
+                                          key: Key(
+                                            'quest-summary-number-${q.id}',
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: q.categoryColor.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            catalogController?.catalog
+                                                    .byGameId(q.id)
+                                                    ?.code ??
+                                                '#${q.id}',
+                                            style: TextStyle(
+                                              color: q.categoryColor,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      if (visible.contains('name'))
+                                        if (english)
+                                          Text(
+                                            gameNames(
+                                              context,
+                                            ).entityText(q.title),
+                                            style: const TextStyle(
+                                              color: Color(0xffecf3f5),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          )
+                                        else
+                                          Expanded(
+                                            child: Text(
+                                              gameNames(
+                                                context,
+                                              ).entityText(q.title),
+                                              style: const TextStyle(
+                                                color: Color(0xffecf3f5),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                      if (!visible.contains('name') && !english)
+                                        const Spacer(),
+                                      if (visible.contains('progress')) ...[
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _getProgressText(q, l10n),
                                           style: TextStyle(
-                                            color: q.categoryColor,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: _getProgressColor(q),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    if (visible.contains('number')) ...[
-                                      Container(
-                                        key: Key(
-                                          'quest-summary-number-${q.id}',
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: q.categoryColor.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          catalogController?.catalog
-                                                  .byGameId(q.id)
-                                                  ?.code ??
-                                              '#${q.id}',
-                                          style: TextStyle(
-                                            color: q.categoryColor,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    if (visible.contains('name'))
-                                      Expanded(
-                                        child: Text(
-                                          q.title,
-                                          style: const TextStyle(
-                                            color: Color(0xffecf3f5),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    if (!visible.contains('name'))
-                                      const Spacer(),
-                                    if (visible.contains('progress')) ...[
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        _getProgressText(q, l10n),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: _getProgressColor(q),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                      ],
+                                    ];
+                                    return english
+                                        ? Wrap(
+                                            runSpacing: 4,
+                                            crossAxisAlignment:
+                                                WrapCrossAlignment.center,
+                                            children: children,
+                                          )
+                                        : Row(children: children);
+                                  },
                                 ),
                               ),
                             ),

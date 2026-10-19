@@ -36,6 +36,33 @@ import '../fixtures/kcsapi_fixtures.dart';
 void main() {
   final dialog = find.byKey(const Key('new-ship-alert-dialog'));
 
+  testWidgets('English dashboard headers fit before and during a ship dialog', (
+    tester,
+  ) async {
+    // This real shell layout previously left only 84 px for the battle header.
+    final harness = await _mountApp(tester, localeCode: 'en');
+    expect(find.text('Battle prediction'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await harness.send(_reward(sequence: 1));
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(dialog, findsOneWidget);
+    expect(find.text('New unowned ship found'), findsOneWidget);
+    expect(
+      find.descendant(of: dialog, matching: find.textContaining('三日月')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.byType(FilledButton)),
+    );
+    await tester.pumpAndSettle();
+    expect(dialog, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final transition in <String>['start2', 'basic', 'port']) {
     testWidgets('$transition cancels a ship dialog before its first frame', (
       tester,
@@ -106,7 +133,10 @@ void main() {
   });
 }
 
-Future<_Harness> _mountApp(WidgetTester tester) async {
+Future<_Harness> _mountApp(
+  WidgetTester tester, {
+  String localeCode = 'zh',
+}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1200, 700);
@@ -124,6 +154,7 @@ Future<_Harness> _mountApp(WidgetTester tester) async {
   final layout = await LayoutSettingsController.load(
     SharedPreferencesLayoutSettingsStore(),
   );
+  await layout.setLocaleCode(localeCode);
   final safety = await SafetySettingsController.load(
     MemorySafetySettingsStore(),
   );

@@ -9,6 +9,7 @@ import '../bridge/captured_api_event.dart';
 import '../game_state/game_api_decoder.dart';
 import '../game_state/game_api_event_pipeline.dart';
 import '../game_state/game_state.dart';
+import '../localization/game_name_catalog.dart';
 import '../settings/layout_settings_controller.dart';
 import '../toolbox/exp_calc/ship_exp_table.dart';
 import '../widgets/top_notice.dart';
@@ -26,6 +27,7 @@ class GameInfoNoticeController implements GameApiEventConsumer {
     required this.layoutSettingsController,
     required this.topNoticeController,
     this.accountSession,
+    this.namesProvider,
   }) : _noticeScope = accountSession?.current {
     accountSession?.addListener(_onAccountChanged);
   }
@@ -34,6 +36,7 @@ class GameInfoNoticeController implements GameApiEventConsumer {
   final LayoutSettingsController layoutSettingsController;
   final TopNoticeController topNoticeController;
   final AccountSession? accountSession;
+  final GameNameCatalog Function()? namesProvider;
   AccountScope? _noticeScope;
   bool _disposed = false;
 
@@ -138,13 +141,13 @@ class GameInfoNoticeController implements GameApiEventConsumer {
   }
 
   AppLocalizations _getL10n() {
-    final code = layoutSettingsController.localeCode;
+    final code = layoutSettingsController.effectiveLocaleCode;
     if (code == 'zh_Hant') {
       return lookupAppLocalizations(
         const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
       );
-    } else if (code == 'ja') {
-      return lookupAppLocalizations(const Locale('ja'));
+    } else if (code == 'ja' || code == 'ko' || code == 'en') {
+      return lookupAppLocalizations(Locale(code));
     }
     return lookupAppLocalizations(const Locale('zh'));
   }
@@ -241,7 +244,7 @@ class GameInfoNoticeController implements GameApiEventConsumer {
           final name =
               state.masterSlotItems[masterId]?.name ??
               l10n.noticeDevDefaultName;
-          results.add(name);
+          results.add(namesProvider?.call().equipmentName(name) ?? name);
         } else {
           results.add(l10n.noticeDevSlotFailed);
         }
@@ -268,7 +271,9 @@ class GameInfoNoticeController implements GameApiEventConsumer {
       final name =
           state.masterSlotItems[masterId]?.name ?? l10n.noticeDevDefaultName;
       postNotice(
-        message: l10n.noticeDevSuccess(name),
+        message: l10n.noticeDevSuccess(
+          namesProvider?.call().equipmentName(name) ?? name,
+        ),
         tone: TopNoticeTone.success,
       );
     } else {

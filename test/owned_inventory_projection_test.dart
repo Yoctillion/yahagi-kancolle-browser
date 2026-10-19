@@ -49,6 +49,82 @@ void main() {
     ],
   );
 
+  test('name sorting follows display resolvers and preserves master names', () {
+    final projection = OwnedInventoryProjection(
+      fixture(),
+      shipNameResolver: (name) => name == destroyer.name ? 'Zulu' : 'Alpha',
+      shipTypeNameResolver: (name) =>
+          name == '驱逐舰' ? 'Zulu type' : 'Alpha type',
+      equipmentNameResolver: (name) =>
+          name == '12.7cm连装炮' ? 'Zulu gun' : 'Alpha plane',
+    );
+    for (final field in [
+      ShipInventorySortField.name,
+      ShipInventorySortField.type,
+    ]) {
+      final ships = projection.shipRows(
+        sortCriteria: [
+          ShipInventorySortCriterion(field: field, descending: false),
+        ],
+      );
+      expect(ships.map((row) => row.ship.masterId), [102, 101]);
+      expect(ships.last.master!.name, destroyer.name);
+    }
+    final equipment = projection.equipmentGroups(
+      sortCriteria: const [
+        EquipmentInventorySortCriterion(
+          field: EquipmentInventorySortField.name,
+          descending: false,
+        ),
+      ],
+    );
+    expect(equipment.map((group) => group.master.id), [202, 201]);
+    expect(equipment.last.master.name, '12.7cm连装炮');
+  });
+
+  test('same-name variants sort by their ID-specific displayed names', () {
+    const variants = GameState(
+      masterShips: {
+        699: MasterShip(id: 699, name: '宗谷', shipTypeId: 22),
+        650: MasterShip(id: 650, name: '宗谷', shipTypeId: 22),
+        1027: MasterShip(id: 1027, name: 'Glorious', shipTypeId: 11),
+        1022: MasterShip(id: 1022, name: 'Glorious', shipTypeId: 8),
+      },
+      ships: {
+        1: OwnedShip(id: 1, masterId: 699, level: 99),
+        2: OwnedShip(id: 2, masterId: 650, level: 99),
+        3: OwnedShip(id: 3, masterId: 1027, level: 99),
+        4: OwnedShip(id: 4, masterId: 1022, level: 99),
+      },
+    );
+    const translations = {
+      699: 'Souya (ASU)',
+      650: 'Souya (AGB)',
+      1027: 'Glorious (CV)',
+      1022: 'Glorious (BC)',
+    };
+    final projection = OwnedInventoryProjection(
+      variants,
+      shipNameResolver: (_) => 'Legacy resolver cannot distinguish variants',
+      shipNameWithIdResolver: (name, id) => translations[id] ?? name,
+    );
+    for (final descending in [false, true]) {
+      final rows = projection.shipRows(
+        sortCriteria: [
+          ShipInventorySortCriterion(
+            field: ShipInventorySortField.name,
+            descending: descending,
+          ),
+        ],
+      );
+      expect(
+        rows.map((row) => row.master!.id),
+        descending ? [699, 650, 1027, 1022] : [1022, 1027, 650, 699],
+      );
+      expect(rows.where((row) => row.master!.name == '宗谷'), hasLength(2));
+    }
+  });
+
   test('remaining counts ship and known land-base instance union once', () {
     final base = fixture();
     final state = base.copyWith(
@@ -264,6 +340,7 @@ void main() {
         <(int, int)>[(0, 1), (7, 2)],
       );
       expect(group.wearings.single.shipName, '吹雪改二');
+      expect(group.wearings.single.shipMasterId, 101);
       expect(group.wearings.single.level, 98);
       expect(group.wearings.single.count, 2);
     },

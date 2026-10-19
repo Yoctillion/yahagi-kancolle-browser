@@ -49,6 +49,9 @@ import 'src/browser/game_application_restart_port.dart';
 import 'src/browser/game_resource_cache_controller.dart';
 import 'src/browser/game_resource_manifest_builder.dart';
 import 'src/browser/game_resource_manifest_consumer.dart';
+import 'src/subtitles/ship_subtitle_settings.dart';
+import 'src/subtitles/ship_subtitle_catalog_controller.dart';
+import 'src/subtitles/ship_subtitle_runtime_controller.dart';
 import 'src/browser/native_game_surface_slot.dart';
 import 'src/capture/battle_result_warning_overlay.dart';
 import 'src/capture/capture_mode_controller.dart';
@@ -91,12 +94,15 @@ import 'src/game_state/game_state.dart';
 import 'src/account/account_session.dart';
 import 'src/backup/record_backup.dart';
 import 'src/localization/record_backup_strings.dart';
+import 'src/localization/game_name_catalog.dart';
+import 'src/localization/game_name_localizations.dart';
 import 'src/game_state/game_api_event_pipeline.dart';
 import 'src/game_state/game_state_store.dart';
 import 'src/layout/adaptive_layout.dart';
 import 'src/layout/hd_workspace_geometry.dart';
 import 'src/layout/hd_bottom_strip.dart';
 import 'src/layout/hd_portrait_grid.dart';
+import 'src/fleet/game_mod_portraits.dart';
 import 'src/layout/hd_home_editor.dart';
 import 'src/layout/workspace_navigation_side.dart';
 import 'src/layout/workspace_context_header.dart';
@@ -137,6 +143,7 @@ import 'src/toolbox/sortie_map_query/enemy_catalog_store.dart';
 import 'src/toolbox/sortie_map_query/enemy_catalog_update_service.dart';
 import 'src/quest/shared_preferences_quest_store.dart';
 import 'src/settings/layout_settings_controller.dart';
+import 'src/theme/custom_font_controller.dart';
 import 'src/settings/layout_settings_store.dart';
 import 'src/settings/ui_display_size.dart';
 import 'src/settings/network_settings_controller.dart';
@@ -155,7 +162,9 @@ import 'src/settings/game_frame_refresh_shortcut_settings.dart';
 import 'src/browser/game_frame_refresh_shortcut_dialog.dart';
 import 'src/browser/game_frame_refresh_shortcut_action.dart';
 import 'src/toolbox/toolbox_page.dart';
+import 'src/toolbox/game_mods/game_mods_controller.dart';
 import 'src/localization/runtime_message_text.dart';
+import 'src/localization/ui_locale.dart';
 import 'src/settings/background_game_retention_controller.dart';
 import 'src/settings/battle_prediction_settings.dart';
 import 'src/settings/game_frame_rate_settings.dart';
@@ -180,9 +189,11 @@ Future<void> main() async {
   late final GameCaptureController gameCaptureController;
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
+  final customFontController = await CustomFontController.load();
   final layoutSettingsController = await LayoutSettingsController.load(
     SharedPreferencesLayoutSettingsStore(),
-    systemLocaleCode: _localeStorageCode(
+    customFontController: customFontController,
+    systemLocaleCode: uiLocaleStorageCode(
       WidgetsBinding.instance.platformDispatcher.locale,
     ),
   );
@@ -468,8 +479,25 @@ Future<void> main() async {
   );
   String notificationLocaleCode() =>
       layoutSettingsController.localeCode ??
-      _localeStorageCode(WidgetsBinding.instance.platformDispatcher.locale);
+      uiLocaleStorageCode(WidgetsBinding.instance.platformDispatcher.locale);
   late final GameNotificationCoordinator notificationCoordinator;
+  late final ShipSubtitleCatalogController shipSubtitleCatalogController;
+  GameNameCatalog? notificationNameCache;
+  GameNameCatalog notificationNames() {
+    final bundle = shipSubtitleCatalogController.kc3Bundle;
+    final locale = Locale(notificationLocaleCode());
+    final cached = notificationNameCache;
+    if (cached != null &&
+        cached.locale == locale &&
+        identical(cached.bundle, bundle)) {
+      return cached;
+    }
+    return notificationNameCache = GameNameCatalog(
+      bundle: bundle,
+      locale: locale,
+    );
+  }
+
   final newShipReminderController = NewShipReminderController(
     accountSession: accountSession,
     stateProvider: () => gameStateController.state,
@@ -481,12 +509,14 @@ Future<void> main() async {
           alert: alert,
           state: gameStateController.state,
           localeCode: notificationLocaleCode(),
+          names: notificationNames(),
         ),
       );
     },
   );
   final headerNoticeController = TopNoticeController();
   final gameInfoNoticeController = GameInfoNoticeController(
+    namesProvider: notificationNames,
     stateProvider: () => gameStateController.state,
     accountSession: accountSession,
     layoutSettingsController: layoutSettingsController,
@@ -522,6 +552,17 @@ Future<void> main() async {
   final releaseChecker = GitHubReleaseChecker();
   final gameMouseWheelSettingsController =
       await GameMouseWheelSettingsController.load();
+  final shipSubtitleSettingsController =
+      await ShipSubtitleSettingsController.load();
+  shipSubtitleCatalogController = await ShipSubtitleCatalogController.load(
+    language: shipSubtitleSettingsController.language,
+  );
+  await ShipSubtitleRuntimeController(
+    settings: shipSubtitleSettingsController,
+    catalog: shipSubtitleCatalogController,
+    layout: layoutSettingsController,
+    gameState: gameStateController,
+  ).initialize();
   final gameFrameRefreshShortcutSettings =
       await GameFrameRefreshShortcutSettings.load();
   final screenAwakeController = await ScreenAwakeController.load(
@@ -644,6 +685,8 @@ Future<void> main() async {
     gameStateController: gameStateController,
     settingsController: notificationSettingsController,
     localeCodeProvider: notificationLocaleCode,
+    namesProvider: notificationNames,
+    namesListenable: shipSubtitleCatalogController,
     localeListenable: layoutSettingsController,
     notificationPort: const MethodChannelNotificationPort(),
     initialTimerAnchors: notificationTimerAnchors,
@@ -708,6 +751,8 @@ Future<void> main() async {
     headerNoticeController: headerNoticeController,
     gameInfoNoticeController: gameInfoNoticeController,
     gameMouseWheelSettingsController: gameMouseWheelSettingsController,
+    shipSubtitleSettingsController: shipSubtitleSettingsController,
+    shipSubtitleCatalogController: shipSubtitleCatalogController,
     gameFrameRefreshShortcutSettings: gameFrameRefreshShortcutSettings,
     diagnosticController: diagnosticController,
     telemetryController: telemetryController,
@@ -998,6 +1043,8 @@ class YahagiApp extends StatelessWidget {
     this.gameInfoNoticeController,
     this.gameMouseWheelSettingsController,
     this.gameFrameRefreshShortcutSettings,
+    this.shipSubtitleSettingsController,
+    this.shipSubtitleCatalogController,
     this.toolbarDisplayController,
     this.gameScreenshotController,
     this.showDeveloperDiagnostics = false,
@@ -1048,6 +1095,8 @@ class YahagiApp extends StatelessWidget {
   final GameInfoNoticeController? gameInfoNoticeController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
+  final ShipSubtitleSettingsController? shipSubtitleSettingsController;
+  final ShipSubtitleCatalogController? shipSubtitleCatalogController;
   final GameToolbarDisplayController? toolbarDisplayController;
   final GameScreenshotController? gameScreenshotController;
   final bool showDeveloperDiagnostics;
@@ -1077,14 +1126,17 @@ class YahagiApp extends StatelessWidget {
         final routeObserver = gameRouteObserver ?? yahagiGameRouteObserver;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(boldText: true),
-            child: Stack(
-              children: [
-                child ?? const SizedBox.shrink(),
-                if (backupMaintenanceOverlay?.value case final overlay?)
-                  Positioned.fill(child: overlay),
-              ],
+          builder: (context, child) => GameNameLocalizationScope(
+            controller: shipSubtitleCatalogController,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(boldText: true),
+              child: Stack(
+                children: [
+                  child ?? const SizedBox.shrink(),
+                  if (backupMaintenanceOverlay?.value case final overlay?)
+                    Positioned.fill(child: overlay),
+                ],
+              ),
             ),
           ),
           scrollBehavior: const AppScrollBehavior(),
@@ -1104,6 +1156,7 @@ class YahagiApp extends StatelessWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: AppLocalizations.supportedLocales,
+          localeResolutionCallback: resolveUiLocale,
           navigatorObservers: <NavigatorObserver>[routeObserver],
           theme: ThemeData(
             brightness: Brightness.dark,
@@ -1165,6 +1218,9 @@ class YahagiApp extends StatelessWidget {
                       gameMouseWheelSettingsController,
                   gameFrameRefreshShortcutSettings:
                       gameFrameRefreshShortcutSettings,
+                  shipSubtitleSettingsController:
+                      shipSubtitleSettingsController,
+                  shipSubtitleCatalogController: shipSubtitleCatalogController,
                   toolbarDisplayController: toolbarDisplayController,
                   gameScreenshotController: gameScreenshotController,
                   headerNoticeController: headerNoticeController,
@@ -1330,14 +1386,6 @@ class YahagiApp extends StatelessWidget {
   }
 }
 
-String _localeStorageCode(Locale locale) {
-  if (locale.languageCode == 'ja') return 'ja';
-  if (locale.languageCode == 'zh' && locale.scriptCode == 'Hant') {
-    return 'zh_Hant';
-  }
-  return 'zh';
-}
-
 class YahagiShell extends StatefulWidget {
   const YahagiShell({
     super.key,
@@ -1374,6 +1422,8 @@ class YahagiShell extends StatefulWidget {
     this.screenAwakeController,
     this.gameMouseWheelSettingsController,
     this.gameFrameRefreshShortcutSettings,
+    this.shipSubtitleSettingsController,
+    this.shipSubtitleCatalogController,
     this.toolbarDisplayController,
     this.gameScreenshotController,
     this.headerNoticeController,
@@ -1426,6 +1476,8 @@ class YahagiShell extends StatefulWidget {
   final ScreenAwakeController? screenAwakeController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
+  final ShipSubtitleSettingsController? shipSubtitleSettingsController;
+  final ShipSubtitleCatalogController? shipSubtitleCatalogController;
   final GameToolbarDisplayController? toolbarDisplayController;
   final GameScreenshotController? gameScreenshotController;
   final TopNoticeController? headerNoticeController;
@@ -1471,6 +1523,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
   SenkaCenterMode _senkaCenterMode = SenkaCenterMode.info;
   ToolboxMode _toolboxMode = ToolboxMode.export;
   CompositionImageDraftController? _compositionDraftController;
+  final GameModsController _gameModsController = GameModsController();
   final DevelopmentRepository _developmentRepository = DevelopmentRepository();
   BackgroundGameRetentionCoordinator? _backgroundGameRetentionCoordinator;
 
@@ -1478,6 +1531,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_gameModsController.initialize());
     widget.displayModeController.addListener(_onDisplayModeChanged);
     widget.layoutSettingsController.addListener(_onLayoutSettingsChanged);
     widget.newShipReminderController?.addListener(_handleNewShipAlert);
@@ -1513,6 +1567,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     widget.kcwikiReportConsumer?.dispose();
     widget.gameInfoNoticeController?.dispose();
     _questFilters.dispose();
+    _gameModsController.dispose();
     _windowMetricsRecoveryScheduler.dispose();
     _backgroundGameRetentionCoordinator?.dispose();
     widget.telemetryController?.dispose();
@@ -1560,17 +1615,24 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       }
       final state = widget.gameStateController.state;
       final l10n = AppLocalizations.of(context)!;
-      final names = alert.masterIds
-          .map(
-            (id) => state.masterShips[id]?.name ?? l10n.newShipFallbackName(id),
-          )
-          .toList(growable: false);
       final route = DialogRoute<void>(
         context: context,
         builder: (context) => AlertDialog(
           key: const Key('new-ship-alert-dialog'),
           title: Text(l10n.newShipAlertTitle),
-          content: Text(l10n.newShipAlertBody(names.join('、'))),
+          content: Text(
+            l10n.newShipAlertBody(
+              alert.masterIds
+                  .map(
+                    (id) => gameNames(context).shipName(
+                      state.masterShips[id]?.name ??
+                          l10n.newShipFallbackName(id),
+                      shipId: id,
+                    ),
+                  )
+                  .join('、'),
+            ),
+          ),
           actions: [
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -1609,6 +1671,13 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       }
     });
     widget.browserController.fitGameScreen().catchError((Object _) {});
+  }
+
+  @override
+  void didChangeLocales(List<Locale>? locales) {
+    widget.layoutSettingsController.updateSystemLocaleCode(
+      uiLocaleStorageCode(locales?.firstOrNull),
+    );
   }
 
   @override
@@ -1831,7 +1900,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                 !hdWindow &&
                 usesVerticalWorkspace(windowSize, screenDisplayMode)));
 
-    return Scaffold(
+    final shell = Scaffold(
       resizeToAvoidBottomInset: false,
       body: AppExitGuard(
         settingsController: widget.appExitSettingsController,
@@ -2935,6 +3004,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                         widget.gameMouseWheelSettingsController,
                                     gameFrameRefreshShortcutSettings:
                                         widget.gameFrameRefreshShortcutSettings,
+                                    shipSubtitleSettingsController:
+                                        widget.shipSubtitleSettingsController,
+                                    shipSubtitleCatalogController:
+                                        widget.shipSubtitleCatalogController,
                                     toolbarDisplayController:
                                         widget.toolbarDisplayController,
                                     fcdMapController: widget.fcdMapController,
@@ -2971,6 +3044,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                     builder: (context, _) => ToolboxPage(
                                       state: widget.gameStateController.state,
                                       mode: _toolboxMode,
+                                      gameModsController: _gameModsController,
                                       compositionDraftController:
                                           _compositionDraftController ??=
                                               CompositionImageDraftController(),
@@ -2993,6 +3067,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           ),
         ),
       ),
+    );
+    return GameModPortraitScope(
+      controller: _gameModsController.portraits,
+      child: shell,
     );
   }
 }
@@ -3658,11 +3736,8 @@ class _InformationPanelState extends State<_InformationPanel> {
                         .battlePredictionSettingsController
                         ?.lastFormationHintEnabled ??
                     true,
-                enemyPreviewPosition:
-                    widget
-                        .battlePredictionSettingsController
-                        ?.enemyPreviewPosition ??
-                    EnemyPreviewPosition.above,
+                sectionOrder:
+                    widget.battlePredictionSettingsController?.sectionOrder,
                 damagePulseMode: widget
                     .safetySettingsController
                     .battleStatusEffects

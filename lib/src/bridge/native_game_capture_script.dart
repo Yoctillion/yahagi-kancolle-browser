@@ -338,7 +338,10 @@ String buildNativeGameCaptureScript() {
 
       return originalFetch.apply(this, args).then((response) => {
         if (path !== null) {
-          Promise.all([response.clone().text(), requestBodyPromise])
+          const originalResponses = window.__yahagiModOriginalResponses;
+          const capturedResponse = originalResponses
+            ? originalResponses.fetch(response) : response;
+          Promise.all([capturedResponse.clone().text(), requestBodyPromise])
             .then(([responseBody, capturedRequestBody]) => {
               publish({
                 method,
@@ -373,15 +376,21 @@ String buildNativeGameCaptureScript() {
       if (path !== null) {
         this.addEventListener('loadend', () => {
           try {
-            if (
-              (this.responseType === '' || this.responseType === 'text') &&
-              typeof this.responseText === 'string'
-            ) {
+            const originalResponses = window.__yahagiModOriginalResponses;
+            let responseBody;
+            if (this.responseType === '' || this.responseType === 'text') {
+              responseBody = originalResponses
+                ? originalResponses.xhrText(this) : this.responseText;
+            } else if (this.responseType === 'json') {
+              responseBody = JSON.stringify(originalResponses
+                ? originalResponses.xhrJson(this) : this.response);
+            }
+            if (typeof responseBody === 'string') {
               publish({
                 method: this[xhrMethod],
                 url: this.responseURL || this[xhrUrl],
                 requestBody: body,
-                responseBody: this.responseText,
+                responseBody,
                 statusCode: this.status,
                 transport: 'xhr',
               });

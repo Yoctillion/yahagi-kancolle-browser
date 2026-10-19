@@ -26,7 +26,7 @@ void main() {
     expect(ja.localize('我方主力（单纵阵）'), '味方主力（単縦陣）');
     expect(hant.localize('阵型 17'), '陣型 17');
     expect(ja.localize('节点 12'), 'マス 12');
-    expect(hant.localize('潜艇战'), '潜艇戰');
+    expect(hant.localize('潜艇战'), '潛艇戰');
     expect(ja.localize('潜艇战'), '潜水艦戦');
     expect(ja.localize('Z1点'), 'Z1マス');
     expect(ja.localize('深海棲艦'), '深海棲艦');

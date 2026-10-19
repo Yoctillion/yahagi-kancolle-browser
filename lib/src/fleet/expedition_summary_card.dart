@@ -156,36 +156,36 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
             color: const Color(0xff0d1a26),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Row(
-            key: Key('expedition-summary-row-$fleetId'),
-            children: [
-              Expanded(
-                child: Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrowEnglish =
+                  Localizations.localeOf(context).languageCode == 'en' &&
+                  constraints.maxWidth <
+                      320 * MediaQuery.textScalerOf(context).scale(1);
+              if (narrowEnglish) {
+                return Wrap(
+                  key: Key('expedition-summary-row-$fleetId'),
+                  spacing: 4,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     if (widget.visible.contains('fleet'))
-                      Flexible(
-                        child: _summaryBadge(
-                          'fleet',
-                          fleetId,
-                          fleet,
-                          const Color(0xff03a9f4),
-                        ),
+                      _summaryBadge(
+                        'fleet',
+                        fleetId,
+                        fleet,
+                        const Color(0xff03a9f4),
                       ),
-                    if (widget.visible.contains('number')) ...[
-                      if (widget.visible.contains('fleet'))
-                        const SizedBox(width: 4),
+                    if (widget.visible.contains('number'))
                       _summaryBadge(
                         'number',
                         fleetId,
                         number,
                         const Color(0xffd4a85f),
                       ),
-                    ],
-                    if (widget.visible.contains('name')) ...[
-                      if (widget.visible.contains('fleet') ||
-                          widget.visible.contains('number'))
-                        const SizedBox(width: 8),
-                      Expanded(
+                    if (widget.visible.contains('name'))
+                      SizedBox(
+                        width: constraints.maxWidth,
                         child: Text(
                           mission,
                           key: Key('expedition-summary-name-$fleetId'),
@@ -197,18 +197,69 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ],
+                    if (widget.visible.contains('time'))
+                      KeyedSubtree(
+                        key: Key('expedition-summary-time-$fleetId'),
+                        child: time,
+                      ),
                   ],
-                ),
-              ),
-              if (widget.visible.contains('time')) ...[
-                const SizedBox(width: 6),
-                KeyedSubtree(
-                  key: Key('expedition-summary-time-$fleetId'),
-                  child: time,
-                ),
-              ],
-            ],
+                );
+              }
+              return Row(
+                key: Key('expedition-summary-row-$fleetId'),
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        if (widget.visible.contains('fleet'))
+                          Flexible(
+                            child: _summaryBadge(
+                              'fleet',
+                              fleetId,
+                              fleet,
+                              const Color(0xff03a9f4),
+                            ),
+                          ),
+                        if (widget.visible.contains('number')) ...[
+                          if (widget.visible.contains('fleet'))
+                            const SizedBox(width: 4),
+                          _summaryBadge(
+                            'number',
+                            fleetId,
+                            number,
+                            const Color(0xffd4a85f),
+                          ),
+                        ],
+                        if (widget.visible.contains('name')) ...[
+                          if (widget.visible.contains('fleet') ||
+                              widget.visible.contains('number'))
+                            const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              mission,
+                              key: Key('expedition-summary-name-$fleetId'),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (widget.visible.contains('time')) ...[
+                    const SizedBox(width: 6),
+                    KeyedSubtree(
+                      key: Key('expedition-summary-time-$fleetId'),
+                      child: time,
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ),
       ),

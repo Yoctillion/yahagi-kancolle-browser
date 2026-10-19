@@ -32,6 +32,8 @@ class GadgetBypassWebViewClient(
     private val endpoint: () -> String,
     private val gameResourceEngine: GameResourceCacheEngine? = null,
     private val cookiesIncludedInRequestHeaders: Boolean = false,
+    private val modResourceInterceptor: ((String, String, Map<String, String>) -> WebResourceResponse?)? = null,
+    val ownerToken: Any? = null,
 ) : WebViewClient() {
 
     private companion object {
@@ -47,6 +49,7 @@ class GadgetBypassWebViewClient(
         request: WebResourceRequest,
     ): WebResourceResponse? {
         val url = request.url?.toString() ?: return null
+        serveFromMods(url, request.method, request.requestHeaders)?.let { return it }
         if (isEnabled() && GadgetBypassRules.shouldIntercept(url, request.method)) {
             return serveFromBypass(url) ?: original.shouldInterceptRequest(view, request)
         }
@@ -60,12 +63,16 @@ class GadgetBypassWebViewClient(
         if (url == null) {
             return null
         }
+        serveFromMods(url, "GET", emptyMap())?.let { return it }
         if (isEnabled() && GadgetBypassRules.shouldIntercept(url, "GET")) {
             return serveFromBypass(url) ?: original.shouldInterceptRequest(view, url)
         }
         serveFromGameCache(url)?.let { return it }
         return original.shouldInterceptRequest(view, url)
     }
+
+    private fun serveFromMods(url: String, method: String, headers: Map<String, String>): WebResourceResponse? =
+        runCatching { modResourceInterceptor?.invoke(url, method, headers) }.getOrNull()
 
     private fun serveFromBypass(url: String): WebResourceResponse? {
         val startedAt = SystemClock.elapsedRealtime()

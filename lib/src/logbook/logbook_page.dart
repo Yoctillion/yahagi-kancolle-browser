@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -179,7 +180,7 @@ class _LogbookPageState extends State<LogbookPage>
   }
 }
 
-class LogbookSegmented extends StatelessWidget {
+class LogbookSegmented extends StatefulWidget {
   const LogbookSegmented({
     super.key,
     required this.selectedIndex,
@@ -190,37 +191,137 @@ class LogbookSegmented extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerRight,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680),
-      child: Container(
-        key: const Key('logbook-segmented'),
-        height: 38,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: const Color(0xff0b202d),
-          border: Border.all(color: const Color(0xff315064)),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            for (var index = 0; index < _LogbookCategory.values.length; index++)
-              Expanded(
-                child: _LogbookSegmentButton(
-                  key: Key(
-                    'logbook-tab-${_LogbookCategory.values[index].name}',
-                  ),
-                  selected: index == selectedIndex,
-                  label: _LogbookCategory.values[index].label,
-                  onTap: () => onChanged(index),
+  State<LogbookSegmented> createState() => _LogbookSegmentedState();
+}
+
+const _logbookTabStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.w800);
+
+class _LogbookSegmentedState extends State<LogbookSegmented> {
+  final _scrollController = ScrollController();
+  final _tabKeys = [for (final _ in _LogbookCategory.values) GlobalKey()];
+  double? _viewportWidth;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _revealSelection();
+  }
+
+  @override
+  void didUpdateWidget(LogbookSegmented oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedIndex != widget.selectedIndex) _revealSelection();
+  }
+
+  void _revealSelection() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted || !_scrollController.hasClients) return;
+    final index = widget.selectedIndex.clamp(0, _tabKeys.length - 1);
+    final tabContext = _tabKeys[index].currentContext;
+    if (tabContext != null) {
+      Scrollable.ensureVisible(tabContext, alignment: .5);
+    }
+  });
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = [
+      for (final category in _LogbookCategory.values)
+        uiText(context, category.label),
+    ];
+    final textWidths = [
+      for (final label in labels) _tabTextWidth(context, label),
+    ];
+    final widths = [
+      for (final width in textWidths) (width + 16).clamp(48.0, double.infinity),
+    ];
+    Widget button(int index) => KeyedSubtree(
+      key: _tabKeys[index],
+      child: _LogbookSegmentButton(
+        key: Key('logbook-tab-${_LogbookCategory.values[index].name}'),
+        selected: index == widget.selectedIndex,
+        label: labels[index],
+        onTap: () => widget.onChanged(index),
+      ),
+    );
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: Container(
+          key: const Key('logbook-segmented'),
+          height: 38,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: const Color(0xff0b202d),
+            border: Border.all(color: const Color(0xff315064)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (_viewportWidth != constraints.maxWidth) {
+                _viewportWidth = constraints.maxWidth;
+                _revealSelection();
+              }
+              if (textWidths.every(
+                (width) => width <= constraints.maxWidth / labels.length,
+              )) {
+                return Row(
+                  children: [
+                    for (var index = 0; index < labels.length; index++)
+                      Expanded(child: button(index)),
+                  ],
+                );
+              }
+              final minimumWidth = widths.fold(
+                0.0,
+                (sum, width) => sum + width,
+              );
+              final spareWidth = (constraints.maxWidth - minimumWidth).clamp(
+                0.0,
+                double.infinity,
+              );
+              return SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (var index = 0; index < labels.length; index++)
+                      SizedBox(
+                        width: widths[index] + spareWidth / labels.length,
+                        child: button(index),
+                      ),
+                  ],
                 ),
-              ),
-          ],
+              );
+            },
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  double _tabTextWidth(BuildContext context, String label) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: Theme.of(context).textTheme.bodyMedium!.merge(_logbookTabStyle),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      locale: Localizations.localeOf(context),
+    )..layout();
+    try {
+      return painter.width.ceilToDouble();
+    } finally {
+      painter.dispose();
+    }
+  }
 }
 
 class _LogbookSegmentButton extends StatelessWidget {
@@ -243,17 +344,10 @@ class _LogbookSegmentButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Center(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected
-                  ? const Color(0xffffdc88)
-                  : const Color(0xff9fb3bf),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
+        child: Text(
+          label,
+          style: _logbookTabStyle.copyWith(
+            color: selected ? const Color(0xffffdc88) : const Color(0xff9fb3bf),
           ),
         ),
       ),
@@ -763,6 +857,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         LogbookFilterField(
           keyName: 'mission',
           label: '远征',
+          preserveOptionNames: true,
           options: _distinct(
             '全部远征',
             (_operationFilterCatalog ?? _records).map(_expeditionName),
@@ -799,6 +894,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         LogbookFilterField(
           keyName: 'secretary',
           label: '秘书舰',
+          preserveOptionNames: true,
           options: _distinct(
             '全部秘书舰',
             (_operationFilterCatalog ?? _records).map(
@@ -827,6 +923,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         LogbookFilterField(
           keyName: 'secretary',
           label: '秘书舰',
+          preserveOptionNames: true,
           options: _distinct(
             '全部秘书舰',
             (_operationFilterCatalog ?? _records).map(
@@ -1028,7 +1125,9 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         row['record_type'] != 'battle') {
       return FrozenDataTable.minimumRowHeight;
     }
-    final label = _heavyDamageShipNames(row).join('、');
+    final label = _heavyDamageShipNames(
+      row,
+    ).map((name) => gameNames(context).shipName(name)).join('、');
     if (label.isEmpty) return FrozenDataTable.minimumRowHeight;
     final painter = TextPainter(
       text: TextSpan(
@@ -1074,10 +1173,16 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
       switch (widget.category) {
         _LogbookCategory.sortie => [_TextCell(_mapLabel(row))],
         _LogbookCategory.expedition => [
-          _TextCell(_expeditionLabel(row), strong: true),
+          _TextCell(_expeditionLabel(row), strong: true, localize: false),
         ],
         _LogbookCategory.construction => [
-          _TextCell('${row['ship_name']}', strong: true),
+          _TextCell(
+            gameNames(
+              context,
+            ).shipName('${row['ship_name']}', shipId: _rowInt(row['ship_id'])),
+            strong: true,
+            localize: row['ship_id'] == null,
+          ),
         ],
         _LogbookCategory.development => [
           _EquipmentCell(
@@ -1154,8 +1259,12 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
       cells: (row) => [
         _TextCell(_formatTime(row['timestamp'])),
         _RetirementTypeCell('${row['type']}'),
-        _TextCell('${row['ship_type']}'),
-        _TextCell('${row['ship_name']} Lv.${row['level']}', strong: true),
+        _TextCell(gameNames(context).shipTypeName('${row['ship_type']}')),
+        _TextCell(
+          '${gameNames(context).shipName('${row['ship_name']}')} Lv.${row['level']}',
+          strong: true,
+          localize: false,
+        ),
       ],
     );
   }
@@ -1230,14 +1339,35 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
                   row['enemy_fleet_name'] == '-'
               ? '-'
               : '${row['enemy_fleet_name']}',
+          localize: false,
         ),
-        _TextCell(_dropNames(row), color: const Color(0xff67bce9)),
+        _TextCell(
+          _dropNames(row),
+          color: const Color(0xff67bce9),
+          localize: false,
+        ),
         _SortieResourceCell(row),
         _SortieRewardItemsCell(row),
-        _TextCell(_formatShipName(row['flagship_name']), strong: true),
-        _TextCell(_formatShipName(row['mvp_name']), strong: true),
-        _TextCell(_formatShipName(row['escort_flagship_name']), strong: true),
-        _TextCell(_formatShipName(row['escort_mvp_name']), strong: true),
+        _TextCell(
+          _formatShipName(row['flagship_name']),
+          strong: true,
+          localize: false,
+        ),
+        _TextCell(
+          _formatShipName(row['mvp_name']),
+          strong: true,
+          localize: false,
+        ),
+        _TextCell(
+          _formatShipName(row['escort_flagship_name']),
+          strong: true,
+          localize: false,
+        ),
+        _TextCell(
+          _formatShipName(row['escort_mvp_name']),
+          strong: true,
+          localize: false,
+        ),
       ],
     ),
     _LogbookCategory.expedition => _TableSpec(
@@ -1277,13 +1407,16 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
       cells: (row) => [
         _TextCell(_formatTime(row['timestamp'])),
         _TextCell('${row['construction_type']}'),
-        _TextCell('${row['ship_type']}'),
+        _TextCell(gameNames(context).shipTypeName('${row['ship_type']}')),
         _TextCell('${row['fuel']}'),
         _TextCell('${row['ammo']}'),
         _TextCell('${row['steel']}'),
         _TextCell('${row['bauxite']}'),
         _TextCell('${row['development_material']}'),
-        _TextCell('${row['secretary_name']}'),
+        _TextCell(
+          gameNames(context).entityText('${row['secretary_name']}'),
+          localize: false,
+        ),
       ],
     ),
     _LogbookCategory.development => _TableSpec(
@@ -1299,14 +1432,19 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         _HeaderCell('秘书舰'),
       ],
       cells: (row) => [
-        _TextCell('${row['equipment_type']}'),
+        _TextCell(
+          gameNames(context).equipmentTypeName('${row['equipment_type']}'),
+        ),
         _TextCell(_formatTime(row['timestamp'])),
         _ResultCell((row['success'] as int? ?? 0) > 0 ? '成功' : '失败'),
         _TextCell('${row['fuel']}'),
         _TextCell('${row['ammo']}'),
         _TextCell('${row['steel']}'),
         _TextCell('${row['bauxite']}'),
-        _TextCell('${row['secretary_name']}'),
+        _TextCell(
+          gameNames(context).entityText('${row['secretary_name']}'),
+          localize: false,
+        ),
       ],
     ),
     _LogbookCategory.retirement => _TableSpec(
@@ -1320,8 +1458,12 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
       cells: (row) => [
         _TextCell(_formatTime(row['timestamp'])),
         _RetirementTypeCell('${row['type']}'),
-        _TextCell('${row['ship_type']}'),
-        _TextCell('${row['ship_name']} Lv.${row['level']}', strong: true),
+        _TextCell(gameNames(context).shipTypeName('${row['ship_type']}')),
+        _TextCell(
+          '${gameNames(context).shipName('${row['ship_name']}')} Lv.${row['level']}',
+          strong: true,
+          localize: false,
+        ),
       ],
     ),
     _LogbookCategory.resource => throw StateError('资源页不使用日志表格'),
@@ -1330,8 +1472,10 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
   String _dropName(Object? value) {
     final id = value as int? ?? 0;
     if (id <= 0) return '-';
-    return widget.battleController.gameState().masterShips[id]?.name ??
-        'ID: $id';
+    return gameNames(context).shipName(
+      widget.battleController.gameState().masterShips[id]?.name ?? 'ID: $id',
+      shipId: id,
+    );
   }
 
   String _dropNames(Map<String, dynamic> row) {
@@ -1356,7 +1500,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
   String _formatShipName(Object? raw) {
     final str = raw?.toString().trim() ?? '';
     if (str.isEmpty || str == '—' || str == '-') return '-';
-    return str;
+    return gameNames(context).entityText(str);
   }
 
   String _mapLabel(Map<String, dynamic> row) =>
@@ -1494,10 +1638,12 @@ class _TextCell extends StatelessWidget {
     this.value, {
     this.color = const Color(0xffd7e3e9),
     this.strong = false,
+    this.localize = true,
   });
   final String value;
   final Color color;
   final bool strong;
+  final bool localize;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -1505,7 +1651,9 @@ class _TextCell extends StatelessWidget {
     child: Align(
       alignment: Alignment.centerLeft,
       child: Text(
-        BattleDetailStrings.of(context).localize(uiText(context, value)),
+        localize
+            ? BattleDetailStrings.of(context).localize(uiText(context, value))
+            : value,
         maxLines: 1,
         overflow: TextOverflow.clip,
         style: TextStyle(
@@ -1654,7 +1802,9 @@ class _HeavyDamageCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = _heavyDamageShipNames(row).join('、');
+    final label = _heavyDamageShipNames(
+      row,
+    ).map((name) => gameNames(context).shipName(name)).join('、');
     if (label.isEmpty) return const _TextCell('-');
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -1775,7 +1925,13 @@ class _EquipmentCell extends StatelessWidget {
           imageKey: const Key('logbook-development-equipment-icon'),
         ),
         const SizedBox(width: 5),
-        Expanded(child: _TextCell(name, strong: true)),
+        Expanded(
+          child: _TextCell(
+            gameNames(context).equipmentName(name),
+            strong: true,
+            localize: false,
+          ),
+        ),
       ],
     ),
   );
@@ -1850,10 +2006,19 @@ class _SortieRewardItemsCell extends StatelessWidget {
       rewards.isEmpty
           ? '-'
           : rewards
-                .map((reward) => '${reward.name} ×${reward.count}')
+                .map((reward) {
+                  final appOwnedName =
+                      expeditionRewardCatalog.containsKey(reward.id) ||
+                      reward.name == expeditionRewardName(reward.id);
+                  final name = appOwnedName
+                      ? uiText(context, reward.name)
+                      : reward.name;
+                  return '$name ×${reward.count}';
+                })
                 .join('　'),
       color: const Color(0xff83d5c8),
       strong: rewards.isNotEmpty,
+      localize: false,
     );
   }
 }

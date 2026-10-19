@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/src/settings/fleet_display_options.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/morale_recovery_timer_controller.dart';
@@ -231,7 +232,7 @@ void main() {
     expect(find.text('制空详情'), findsOneWidget);
     expect(find.text('最小'), findsOneWidget);
     expect(find.text('最大'), findsOneWidget);
-    expect(find.text('无加成'), findsOneWidget);
+    expect(find.text('不含熟练度加成'), findsOneWidget);
   });
 
   testWidgets('selected recovery countdown shows the live timer', (
@@ -312,6 +313,9 @@ Widget _card({
   FleetShipTypeLabelMode shipTypeLabelMode =
       FleetShipTypeLabelMode.localizedName,
 }) => MaterialApp(
+  locale: const Locale('zh'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
   home: Scaffold(
     body: FleetSummaryCard(
       controller: controller,

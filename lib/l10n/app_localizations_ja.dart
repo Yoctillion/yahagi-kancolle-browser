@@ -243,6 +243,58 @@ class AppLocalizationsJa extends AppLocalizations {
   String get diagnosticExportFailed => '診断ファイルの書き出しに失敗しました';
 
   @override
+  String get langKo => '한국어';
+
+  @override
+  String get langEn => 'English';
+
+  @override
+  String get dataVersionLabel => 'データバージョン';
+
+  @override
+  String get dataLastCheckedLabel => '最終確認';
+
+  @override
+  String get dataNotChecked => '未確認';
+
+  @override
+  String get sortieMapDataTitle => '海域データ';
+
+  @override
+  String get enemyDataTitle => '敵艦データ';
+
+  @override
+  String dataCatalogUpToDate(String version) {
+    return 'データは最新版です。\nバージョン：$version';
+  }
+
+  @override
+  String dataCatalogUpdated(String before, String after) {
+    return 'データを更新しました。\n$before → $after';
+  }
+
+  @override
+  String get dataCatalogIncompatible => 'アプリを更新してから、もう一度お試しください。';
+
+  @override
+  String get dataCatalogValidationFailed => '更新データの検証に失敗しました。現在のデータを継続使用します。';
+
+  @override
+  String get dataCatalogStorageFailed => '更新データを保存できませんでした。';
+
+  @override
+  String get dataCatalogNetworkFailed =>
+      'ネットワーク経由の更新に失敗しました。しばらくしてから再試行してください。';
+
+  @override
+  String get questLocalProgress => 'ローカル進捗';
+
+  @override
+  String questServerProgress(String progress) {
+    return 'サーバー進捗：$progress';
+  }
+
+  @override
   String get appTitle => 'ヤハギ';
 
   @override
@@ -380,11 +432,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gameSafety => '大破警告';
 
   @override
-  String get blockSortieTitle => '大破進撃ストッパー';
+  String get blockSortieTitle => '大破進撃警告';
 
   @override
   String get blockSortieDesc =>
-      '出撃・進撃前に、艦隊に大破した艦娘（旗艦以外・ダメコン未装備）がいる場合、通信リクエストを強制的に遮断して警告を表示します。オンにすることを強く推奨します。';
+      '出撃・進撃リクエストへの応答を受けた後、出撃艦隊に大破した旗艦以外の艦（退避艦を除く）がいる場合、確認が必要な警告を表示します。出撃・進撃リクエストを遮断したり、自動で撤退したりすることはありません。';
 
   @override
   String get storageAndCache => 'ストレージとキャッシュ';
@@ -756,7 +808,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get los => '索敵';
 
   @override
-  String get avgCondition => '最低疲労';
+  String get avgCondition => '最低コンディション';
 
   @override
   String get losDetail => '索敵詳細';
@@ -801,10 +853,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get unknownEquip => '未知の装備';
 
   @override
-  String get noBonusStats => 'ボーナスステータスなし';
+  String get noBonusStats => '装備ステータスなし';
 
   @override
-  String get condition => '疲労';
+  String get condition => 'コンディション';
 
   @override
   String get noExpeditionFleet => '遠征中の艦隊はありません';
@@ -1009,7 +1061,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get lineOfSight => '索敵';
 
   @override
-  String get averageCondition => '最低疲労';
+  String get averageCondition => '最低コンディション';
 
   @override
   String get moraleRecoveryCountdown => '回復カウントダウン';
@@ -1018,7 +1070,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get moraleRecovered => '回復済み';
 
   @override
-  String get toggleMoraleMetric => '最低疲労と回復カウントダウンを切り替える';
+  String get toggleMoraleMetric => '最低コンディションと回復カウントダウンを切り替える';
 
   @override
   String get losDetails => '索敵詳細';
@@ -1057,10 +1109,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get unknownEquipment => '未知の装備';
 
   @override
-  String get noAdditionalStats => 'ボーナスステータスなし';
+  String get noAdditionalStats => '装備ステータスなし';
 
   @override
-  String get fatigue => '疲労';
+  String get fatigue => 'コンディション';
 
   @override
   String get startupUpdateTitle => '新しいバージョン';
@@ -1311,7 +1363,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get noCookieRead => 'Cookie を読み取りません';
 
   @override
-  String get noCookieReadDesc => 'JS ブリッジのメッセージは API パス、応答本文、時刻のみを含みます。';
+  String get noCookieReadDesc =>
+      'JS ブリッジは API パス、機密パラメーターを除いたリクエスト情報、応答などのゲームデータを取得します。Cookie は読み取りません。';
 
   @override
   String get browserIdle => 'Web ページ待機中';
@@ -1399,7 +1452,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String fatigueValue(int value) {
-    return '疲労 $value';
+    return 'コンディション $value';
   }
 
   @override
@@ -1859,6 +1912,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get battleEnemyPreviewPositionBelow => '下';
 
   @override
+  String get battleSectionOrder => '情報エリアの順序';
+
+  @override
+  String get battleSectionOrderDescription => '情報エリアの表示順序を調整します。';
+
+  @override
+  String get battleSectionOrderAdjust => '変更';
+
+  @override
+  String get battleSectionOrderHint => '上下の矢印で変更すると自動で保存されます';
+
+  @override
+  String get battleSectionSortieMap => '海域ミニマップ';
+
+  @override
+  String get battleSectionEnemyPreview => '敵艦予測';
+
+  @override
+  String get battleSectionPredictionResult => '予測結果';
+
+  @override
+  String get battleSectionOrderRestoreDefault => '既定に戻す';
+
+  @override
+  String get battleSectionOrderSaveFailed => '保存に失敗しました。もう一度お試しください。';
+
+  @override
+  String battleSectionOrderMoveUp(String section) {
+    return '$sectionを上へ移動';
+  }
+
+  @override
+  String battleSectionOrderMoveDown(String section) {
+    return '$sectionを下へ移動';
+  }
+
+  @override
   String battleLastFormation(String formation) {
     return '前回：$formation';
   }
@@ -2240,7 +2330,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get gameResourceCacheFullDesc =>
-      '固定の基本リソース一覧に含まれるファイル（約 5.72 GB）を事前ダウンロードします。新しいコンテンツはプレイ中に自動でキャッシュします。';
+      '基本リソース（約 5.72 GB）を事前ダウンロードします。完了を待たずにダウンロードしながらプレイできます。新しいコンテンツはプレイ中に自動でキャッシュします。';
 
   @override
   String get gameResourceCacheStart => 'ダウンロード開始';
@@ -2565,7 +2655,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get landBaseRange => '航続距離';
+  String get landBaseRange => '行動半径';
 
   @override
   String get landBaseActionSortie => '出撃';
@@ -3488,4 +3578,54 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get expCalcAccumulatedExpLabel => '累計EXP';
+
+  @override
+  String get customFontTitle => '画面のフォント';
+
+  @override
+  String get customFontDescription =>
+      '好きなフォントを読み込み、プレビューして適用できます。TTF・OTF、最大32 MB。';
+
+  @override
+  String get customFontDefault => '標準フォント（表示言語に合わせる）';
+
+  @override
+  String get customFontImport => 'フォントを読み込む';
+
+  @override
+  String get customFontRestore => '標準に戻す';
+
+  @override
+  String get customFontPreviewTitle => 'フォントのプレビュー';
+
+  @override
+  String get customFontApply => 'フォントを適用';
+
+  @override
+  String get customFontPreviewSample => '艦隊情報 · 出撃記録 · 画面設定';
+
+  @override
+  String get customFontPreviewNote => '適用するとクライアント画面に反映され、再起動後も維持されます。';
+
+  @override
+  String get customFontImportFailed => 'フォントを読み込めません。有効なTTFまたはOTFファイルを選んでください。';
+
+  @override
+  String get customFontSaveFailed => 'フォント設定を保存できません。もう一度お試しください。';
+
+  @override
+  String get customFontUnsupported => 'このプラットフォームではフォントの読み込みに対応していません。';
+
+  @override
+  String get customFontTooLarge => 'フォントファイルは32 MB以下にしてください。';
+
+  @override
+  String get customFontLoadLimit =>
+      'メモリ使用量を抑えるため、今回の起動中に切り替えられるフォント数の上限に達しました。別のフォントを適用するにはアプリを再起動してください。プレビューは引き続き利用できます。';
+
+  @override
+  String get customFontPreviewFailed => 'フォントのプレビューを作成できません。もう一度お試しください。';
+
+  @override
+  String get customFontPreviewRetry => '再プレビュー';
 }

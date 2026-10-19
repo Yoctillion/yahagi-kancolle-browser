@@ -240,6 +240,57 @@ class AppLocalizationsZh extends AppLocalizations {
   String get diagnosticExportFailed => '诊断文件导出失败';
 
   @override
+  String get langKo => '한국어';
+
+  @override
+  String get langEn => 'English';
+
+  @override
+  String get dataVersionLabel => '数据版本';
+
+  @override
+  String get dataLastCheckedLabel => '上次检查';
+
+  @override
+  String get dataNotChecked => '尚未检查';
+
+  @override
+  String get sortieMapDataTitle => '海域资料';
+
+  @override
+  String get enemyDataTitle => '敌舰资料';
+
+  @override
+  String dataCatalogUpToDate(String version) {
+    return '资料已是最新版本。\n版本：$version';
+  }
+
+  @override
+  String dataCatalogUpdated(String before, String after) {
+    return '资料更新成功。\n$before → $after';
+  }
+
+  @override
+  String get dataCatalogIncompatible => '当前应用版本过低，请先更新应用。';
+
+  @override
+  String get dataCatalogValidationFailed => '更新资料校验失败，已继续使用当前资料。';
+
+  @override
+  String get dataCatalogStorageFailed => '无法保存更新资料。';
+
+  @override
+  String get dataCatalogNetworkFailed => '网络更新失败，请稍后重试。';
+
+  @override
+  String get questLocalProgress => '本地进度';
+
+  @override
+  String questServerProgress(String progress) {
+    return '服务器进度：$progress';
+  }
+
+  @override
   String get appTitle => 'ヤハギ';
 
   @override
@@ -376,11 +427,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gameSafety => '大破提醒';
 
   @override
-  String get blockSortieTitle => '大破进击保护';
+  String get blockSortieTitle => '大破进击提醒';
 
   @override
   String get blockSortieDesc =>
-      '出击或进击前，若舰队中存在大破舰船（非旗舰且未装备损管），将强制阻断网络请求并弹出警告。强烈建议开启。';
+      '出击或进击请求返回后，若出击舰队中有非旗舰大破舰船（已撤退舰船除外），会弹出需要确认的警告。此提醒不拦截出击或进击请求，也不会自动撤退。';
 
   @override
   String get storageAndCache => '存储与缓存';
@@ -747,7 +798,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get los => '索敌';
 
   @override
-  String get avgCondition => '最低疲劳';
+  String get avgCondition => '最低士气';
 
   @override
   String get losDetail => '索敌详情';
@@ -792,10 +843,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unknownEquip => '未知装备';
 
   @override
-  String get noBonusStats => '暂无附加属性';
+  String get noBonusStats => '暂无装备属性';
 
   @override
-  String get condition => '疲劳';
+  String get condition => '士气';
 
   @override
   String get noExpeditionFleet => '暂无远征中的舰队';
@@ -999,7 +1050,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get lineOfSight => '索敌';
 
   @override
-  String get averageCondition => '最低疲劳';
+  String get averageCondition => '最低士气';
 
   @override
   String get moraleRecoveryCountdown => '恢复倒计时';
@@ -1008,7 +1059,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get moraleRecovered => '已恢复';
 
   @override
-  String get toggleMoraleMetric => '点击切换最低疲劳与恢复倒计时';
+  String get toggleMoraleMetric => '点击切换最低士气与恢复倒计时';
 
   @override
   String get losDetails => '索敌详情';
@@ -1023,7 +1074,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get maximumValue => '最大';
 
   @override
-  String get withoutBonus => '无加成';
+  String get withoutBonus => '不含熟练度加成';
 
   @override
   String get showAirPowerDetails => '点击查看制空详情';
@@ -1047,10 +1098,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unknownEquipment => '未知装备';
 
   @override
-  String get noAdditionalStats => '暂无附加属性';
+  String get noAdditionalStats => '暂无装备属性';
 
   @override
-  String get fatigue => '疲劳';
+  String get fatigue => '士气';
 
   @override
   String get startupUpdateTitle => '发现新版本';
@@ -1299,7 +1350,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noCookieRead => '不读取 Cookie';
 
   @override
-  String get noCookieReadDesc => 'JS 桥接消息只包含接口路径、响应正文和时间。';
+  String get noCookieReadDesc => 'JS 桥接捕获接口路径、脱敏请求参数与响应等游戏数据，不读取 Cookie。';
 
   @override
   String get browserIdle => '等待网页';
@@ -1387,7 +1438,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String fatigueValue(int value) {
-    return '疲劳 $value';
+    return '士气 $value';
   }
 
   @override
@@ -1818,7 +1869,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get battleEffectAll => '全部开启';
 
   @override
-  String get battlePredictionSection => '战斗预测';
+  String get battlePredictionSection => '未卜先知';
 
   @override
   String get battleEnemyPreviewPortraits => '战前敌方立绘';
@@ -1843,6 +1894,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get battleEnemyPreviewPositionBelow => '下方';
+
+  @override
+  String get battleSectionOrder => '信息区顺序';
+
+  @override
+  String get battleSectionOrderDescription => '调整信息区显示顺序';
+
+  @override
+  String get battleSectionOrderAdjust => '调整';
+
+  @override
+  String get battleSectionOrderHint => '点击上下箭头调整，自动保存';
+
+  @override
+  String get battleSectionSortieMap => '海域小地图';
+
+  @override
+  String get battleSectionEnemyPreview => '敌方预测';
+
+  @override
+  String get battleSectionPredictionResult => '预测结果';
+
+  @override
+  String get battleSectionOrderRestoreDefault => '恢复默认';
+
+  @override
+  String get battleSectionOrderSaveFailed => '保存失败，请重试。';
+
+  @override
+  String battleSectionOrderMoveUp(String section) {
+    return '上移$section';
+  }
+
+  @override
+  String battleSectionOrderMoveDown(String section) {
+    return '下移$section';
+  }
 
   @override
   String battleLastFormation(String formation) {
@@ -3451,6 +3539,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get expCalcAccumulatedExpLabel => '累计经验';
+
+  @override
+  String get customFontTitle => '界面字体';
+
+  @override
+  String get customFontDescription => '导入喜欢的字体，预览后应用。支持 TTF、OTF，最大 32 MB。';
+
+  @override
+  String get customFontDefault => '默认字体（跟随界面语言）';
+
+  @override
+  String get customFontImport => '导入字体';
+
+  @override
+  String get customFontRestore => '恢复默认';
+
+  @override
+  String get customFontPreviewTitle => '字体预览';
+
+  @override
+  String get customFontApply => '应用字体';
+
+  @override
+  String get customFontPreviewSample => '舰队信息 · 出击记录 · 画面设置';
+
+  @override
+  String get customFontPreviewNote => '确认应用后将用于客户端界面，重启后仍然保留。';
+
+  @override
+  String get customFontImportFailed => '无法导入字体，请选择有效的 TTF 或 OTF 文件。';
+
+  @override
+  String get customFontSaveFailed => '字体设置保存失败，请重试。';
+
+  @override
+  String get customFontUnsupported => '当前平台暂不支持字体导入。';
+
+  @override
+  String get customFontTooLarge => '字体文件不能超过 32 MB。';
+
+  @override
+  String get customFontLoadLimit =>
+      '为控制内存占用，本次运行已达到字体切换上限。请重启应用后再应用新字体，仍可继续预览。';
+
+  @override
+  String get customFontPreviewFailed => '字体预览生成失败，请重试。';
+
+  @override
+  String get customFontPreviewRetry => '重新预览';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -3690,6 +3827,57 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get diagnosticExportFailed => '診斷檔案匯出失敗';
 
   @override
+  String get langKo => '한국어';
+
+  @override
+  String get langEn => 'English';
+
+  @override
+  String get dataVersionLabel => '資料版本';
+
+  @override
+  String get dataLastCheckedLabel => '上次檢查';
+
+  @override
+  String get dataNotChecked => '尚未檢查';
+
+  @override
+  String get sortieMapDataTitle => '海域資料';
+
+  @override
+  String get enemyDataTitle => '敵艦資料';
+
+  @override
+  String dataCatalogUpToDate(String version) {
+    return '資料已是最新版本。\n版本：$version';
+  }
+
+  @override
+  String dataCatalogUpdated(String before, String after) {
+    return '資料更新成功。\n$before → $after';
+  }
+
+  @override
+  String get dataCatalogIncompatible => '目前應用程式版本過舊，請先更新應用程式。';
+
+  @override
+  String get dataCatalogValidationFailed => '更新資料驗證失敗，已繼續使用目前資料。';
+
+  @override
+  String get dataCatalogStorageFailed => '無法儲存更新資料。';
+
+  @override
+  String get dataCatalogNetworkFailed => '網路更新失敗，請稍後重試。';
+
+  @override
+  String get questLocalProgress => '本機進度';
+
+  @override
+  String questServerProgress(String progress) {
+    return '伺服器進度：$progress';
+  }
+
+  @override
   String get appTitle => 'ヤハギ';
 
   @override
@@ -3826,11 +4014,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get gameSafety => '大破提醒';
 
   @override
-  String get blockSortieTitle => '大破進擊保護';
+  String get blockSortieTitle => '大破進擊提醒';
 
   @override
   String get blockSortieDesc =>
-      '出擊或進擊前，若艦隊中存在大破艦娘（非旗艦且未裝備損管），將強制阻斷網路請求並跳出警告。強烈建議開啟。';
+      '出擊或進擊請求返回後，若出擊艦隊中有非旗艦大破艦船（已撤退艦船除外），會彈出需要確認的警告。此提醒不攔截出擊或進擊請求，也不會自動撤退。';
 
   @override
   String get storageAndCache => '儲存與快取';
@@ -4198,7 +4386,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get los => '索敵';
 
   @override
-  String get avgCondition => '最低疲勞';
+  String get avgCondition => '最低士氣';
 
   @override
   String get losDetail => '索敵詳情';
@@ -4243,10 +4431,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get unknownEquip => '未知裝備';
 
   @override
-  String get noBonusStats => '暫無附加屬性';
+  String get noBonusStats => '暫無裝備屬性';
 
   @override
-  String get condition => '疲勞';
+  String get condition => '士氣';
 
   @override
   String get noExpeditionFleet => '暫無遠征中的艦隊';
@@ -4450,7 +4638,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get lineOfSight => '索敵';
 
   @override
-  String get averageCondition => '最低疲勞';
+  String get averageCondition => '最低士氣';
 
   @override
   String get moraleRecoveryCountdown => '恢復倒數';
@@ -4459,7 +4647,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get moraleRecovered => '已恢復';
 
   @override
-  String get toggleMoraleMetric => '點擊切換最低疲勞與恢復倒數';
+  String get toggleMoraleMetric => '點擊切換最低士氣與恢復倒數';
 
   @override
   String get losDetails => '索敵詳情';
@@ -4474,7 +4662,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get maximumValue => '最大';
 
   @override
-  String get withoutBonus => '無加成';
+  String get withoutBonus => '不含熟練度加成';
 
   @override
   String get showAirPowerDetails => '點擊查看制空詳情';
@@ -4498,10 +4686,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get unknownEquipment => '未知裝備';
 
   @override
-  String get noAdditionalStats => '暫無附加屬性';
+  String get noAdditionalStats => '暫無裝備屬性';
 
   @override
-  String get fatigue => '疲勞';
+  String get fatigue => '士氣';
 
   @override
   String get startupUpdateTitle => '發現新版本';
@@ -4750,7 +4938,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get noCookieRead => '不讀取 Cookie';
 
   @override
-  String get noCookieReadDesc => 'JS 橋接訊息只包含介面路徑、回應本文和時間。';
+  String get noCookieReadDesc => 'JS 橋接擷取介面路徑、去識別化的請求參數與回應等遊戲資料，不讀取 Cookie。';
 
   @override
   String get browserIdle => '等待網頁';
@@ -4838,7 +5026,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String fatigueValue(int value) {
-    return '疲勞 $value';
+    return '士氣 $value';
   }
 
   @override
@@ -5269,7 +5457,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get battleEffectAll => '全部開啟';
 
   @override
-  String get battlePredictionSection => '戰鬥預測';
+  String get battlePredictionSection => '未卜先知';
 
   @override
   String get battleEnemyPreviewPortraits => '戰前敵方立繪';
@@ -5294,6 +5482,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get battleEnemyPreviewPositionBelow => '下方';
+
+  @override
+  String get battleSectionOrder => '資訊區順序';
+
+  @override
+  String get battleSectionOrderDescription => '調整資訊區顯示順序';
+
+  @override
+  String get battleSectionOrderAdjust => '調整';
+
+  @override
+  String get battleSectionOrderHint => '點擊上下箭頭調整，自動儲存';
+
+  @override
+  String get battleSectionSortieMap => '海域小地圖';
+
+  @override
+  String get battleSectionEnemyPreview => '敵方預測';
+
+  @override
+  String get battleSectionPredictionResult => '預測結果';
+
+  @override
+  String get battleSectionOrderRestoreDefault => '恢復預設';
+
+  @override
+  String get battleSectionOrderSaveFailed => '儲存失敗，請重試。';
+
+  @override
+  String battleSectionOrderMoveUp(String section) {
+    return '上移$section';
+  }
+
+  @override
+  String battleSectionOrderMoveDown(String section) {
+    return '下移$section';
+  }
 
   @override
   String battleLastFormation(String formation) {
@@ -5672,7 +5897,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get gameResourceCacheFullDesc =>
-      '預先下載固定基礎資源清單（約 5.72 GB）；新內容會在遊玩時自動快取。';
+      '預先下載基礎資源（約 5.72 GB），無需等待下載完成，可邊下載邊遊玩，不影響遊戲。新內容會在遊玩時自動快取。';
 
   @override
   String get gameResourceCacheStart => '開始下載';
@@ -6902,4 +7127,53 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get expCalcAccumulatedExpLabel => '累計經驗';
+
+  @override
+  String get customFontTitle => '介面字型';
+
+  @override
+  String get customFontDescription => '匯入喜歡的字型，預覽後套用。支援 TTF、OTF，最大 32 MB。';
+
+  @override
+  String get customFontDefault => '預設字型（跟隨介面語言）';
+
+  @override
+  String get customFontImport => '匯入字型';
+
+  @override
+  String get customFontRestore => '恢復預設';
+
+  @override
+  String get customFontPreviewTitle => '字型預覽';
+
+  @override
+  String get customFontApply => '套用字型';
+
+  @override
+  String get customFontPreviewSample => '艦隊資訊 · 出擊紀錄 · 畫面設定';
+
+  @override
+  String get customFontPreviewNote => '確認套用後將用於用戶端介面，重新啟動後仍會保留。';
+
+  @override
+  String get customFontImportFailed => '無法匯入字型，請選擇有效的 TTF 或 OTF 檔案。';
+
+  @override
+  String get customFontSaveFailed => '字型設定儲存失敗，請重試。';
+
+  @override
+  String get customFontUnsupported => '目前平台暫不支援字型匯入。';
+
+  @override
+  String get customFontTooLarge => '字型檔案不能超過 32 MB。';
+
+  @override
+  String get customFontLoadLimit =>
+      '為控制記憶體用量，本次執行已達字型切換上限。請重新啟動應用程式後再套用新字型，仍可繼續預覽。';
+
+  @override
+  String get customFontPreviewFailed => '字型預覽產生失敗，請重試。';
+
+  @override
+  String get customFontPreviewRetry => '重新預覽';
 }

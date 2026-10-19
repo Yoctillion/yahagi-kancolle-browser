@@ -104,10 +104,15 @@ class EquipmentDevelopmentController extends ChangeNotifier {
       filteredEquipmentForTypes({typeId});
 
   List<DevelopmentEquipmentRecord> filteredEquipmentForTypes(
-    Set<int> typeIds,
-  ) => _filteredEquipment(typeIds);
+    Set<int> typeIds, {
+    String Function(String)? equipmentNameResolver,
+  }) =>
+      _filteredEquipment(typeIds, equipmentNameResolver: equipmentNameResolver);
 
-  List<DevelopmentEquipmentRecord> _filteredEquipment(Set<int>? typeIds) {
+  List<DevelopmentEquipmentRecord> _filteredEquipment(
+    Set<int>? typeIds, {
+    String Function(String)? equipmentNameResolver,
+  }) {
     final data = _dataset;
     if (data == null) return const [];
     final query = _equipmentSearch.trim().toLowerCase();
@@ -121,6 +126,17 @@ class EquipmentDevelopmentController extends ChangeNotifier {
                 query,
               ) ??
               false) ||
+          (equipmentNameResolver
+                  ?.call(item.name)
+                  .toLowerCase()
+                  .contains(query) ??
+              false) ||
+          (_gameState.masterSlotItems[item.id] != null &&
+              (equipmentNameResolver
+                      ?.call(_gameState.masterSlotItems[item.id]!.name)
+                      .toLowerCase()
+                      .contains(query) ??
+                  false)) ||
           item.id.toString() == query;
     }).toList();
     output.sort((left, right) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
+import '../widgets/top_notice.dart';
 import 'battle_prediction_settings.dart';
 import 'settings_ui_helpers.dart';
 
@@ -35,30 +36,306 @@ class BattlePredictionSettingsSection extends StatelessWidget
           ),
           const Divider(color: Color(0xff294052), height: 1),
           buildActionTile(
-            title: l10n.battleEnemyPreviewPosition,
-            subtitle: l10n.battleEnemyPreviewPositionDesc,
-            trailing: DropdownButton<EnemyPreviewPosition>(
-              key: const Key('battle-enemy-preview-position'),
-              value: controller.enemyPreviewPosition,
-              underline: const SizedBox.shrink(),
-              items: <DropdownMenuItem<EnemyPreviewPosition>>[
-                DropdownMenuItem(
-                  value: EnemyPreviewPosition.above,
-                  child: Text(l10n.battleEnemyPreviewPositionAbove),
+            key: const Key('battle-section-order'),
+            title: l10n.battleSectionOrder,
+            subtitle: l10n.battleSectionOrderDescription,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  l10n.battleSectionOrderAdjust,
+                  style: SettingsTileTypography.description.copyWith(
+                    color: const Color(0xffd4a85f),
+                  ),
                 ),
-                DropdownMenuItem(
-                  value: EnemyPreviewPosition.below,
-                  child: Text(l10n.battleEnemyPreviewPositionBelow),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: Color(0xffd4a85f),
                 ),
               ],
-              onChanged: (position) {
-                if (position != null) {
-                  controller.setEnemyPreviewPosition(position);
-                }
+            ),
+            onTap: () => _showOrderSheet(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOrderSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 444),
+      builder: (sheetContext) => _BattlePredictionOrderSheet(
+        controller: controller,
+        onSaveFailed: () {
+          if (!context.mounted) return;
+          TopNotice.show(
+            context,
+            message: AppLocalizations.of(context)!.battleSectionOrderSaveFailed,
+            tone: TopNoticeTone.error,
+          );
+        },
+      ),
+    );
+  }
+}
+
+String _sectionLabel(AppLocalizations l10n, BattlePredictionSection section) =>
+    switch (section) {
+      BattlePredictionSection.sortieMap => l10n.battleSectionSortieMap,
+      BattlePredictionSection.enemyPreview => l10n.battleSectionEnemyPreview,
+      BattlePredictionSection.predictionResult =>
+        l10n.battleSectionPredictionResult,
+    };
+
+class _BattlePredictionOrderSheet extends StatefulWidget {
+  const _BattlePredictionOrderSheet({
+    required this.controller,
+    required this.onSaveFailed,
+  });
+
+  final BattlePredictionSettingsController controller;
+  final VoidCallback onSaveFailed;
+
+  @override
+  State<_BattlePredictionOrderSheet> createState() =>
+      _BattlePredictionOrderSheetState();
+}
+
+class _BattlePredictionOrderSheetState
+    extends State<_BattlePredictionOrderSheet> {
+  bool _saving = false;
+  bool _saveFailed = false;
+  final _errorKey = GlobalKey();
+
+  Future<void> _save(Future<void> Function() operation) async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _saveFailed = false;
+    });
+    try {
+      await operation();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _saveFailed = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final errorContext = _errorKey.currentContext;
+          if (!mounted || errorContext == null) return;
+          Scrollable.ensureVisible(errorContext);
+        });
+      }
+      widget.onSaveFailed();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        12,
+        12,
+        12,
+        12 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Material(
+        key: const Key('battle-section-order-sheet'),
+        color: const Color(0xff142735),
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            key: const Key('battle-section-order-scroll'),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: AnimatedBuilder(
+              animation: widget.controller,
+              builder: (context, _) {
+                final order = widget.controller.sectionOrder;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Center(
+                      child: Container(
+                        width: 30,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xff526776),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      l10n.battleSectionOrder,
+                      style: const TextStyle(
+                        color: Color(0xffe1eaf0),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.battleSectionOrderHint,
+                      style: SettingsTileTypography.description,
+                    ),
+                    const SizedBox(height: 10),
+                    Material(
+                      color: const Color(0xff10212e),
+                      borderRadius: BorderRadius.circular(8),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: <Widget>[
+                          for (
+                            var index = 0;
+                            index < order.length;
+                            index++
+                          ) ...[
+                            if (index > 0)
+                              const Divider(
+                                color: Color(0xff203746),
+                                height: 1,
+                              ),
+                            _buildRow(l10n, order[index], index, order.length),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (_saveFailed) ...<Widget>[
+                      const SizedBox(height: 10),
+                      Semantics(
+                        key: _errorKey,
+                        liveRegion: true,
+                        child: Text(
+                          l10n.battleSectionOrderSaveFailed,
+                          key: const Key('battle-section-order-error'),
+                          style: SettingsTileTypography.description.copyWith(
+                            color: const Color(0xffff8c78),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    OverflowBar(
+                      alignment: MainAxisAlignment.spaceBetween,
+                      overflowAlignment: OverflowBarAlignment.end,
+                      spacing: 8,
+                      overflowSpacing: 8,
+                      children: <Widget>[
+                        TextButton(
+                          key: const Key('battle-section-order-reset'),
+                          onPressed: _saving
+                              ? null
+                              : () =>
+                                    _save(widget.controller.resetSectionOrder),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xffd4a85f),
+                            minimumSize: const Size(44, 44),
+                            textStyle: SettingsTileTypography.title,
+                          ),
+                          child: Text(l10n.battleSectionOrderRestoreDefault),
+                        ),
+                        FilledButton(
+                          key: const Key('battle-section-order-done'),
+                          onPressed: () => Navigator.pop(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xffd4a85f),
+                            foregroundColor: const Color(0xff332914),
+                            minimumSize: const Size(64, 44),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            textStyle: SettingsTileTypography.title,
+                          ),
+                          child: Text(l10n.done),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
               },
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRow(
+    AppLocalizations l10n,
+    BattlePredictionSection section,
+    int index,
+    int length,
+  ) {
+    final label = _sectionLabel(l10n, section);
+    return Padding(
+      key: Key('battle-section-row-${section.name}'),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      child: Row(
+        children: <Widget>[
+          SizedBox(
+            width: 16,
+            child: Text(
+              '${index + 1}',
+              style: SettingsTileTypography.description,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xffe1eaf0),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          _moveButton(
+            section: section,
+            delta: -1,
+            tooltip: l10n.battleSectionOrderMoveUp(label),
+            enabled: !_saving && index > 0,
+          ),
+          _moveButton(
+            section: section,
+            delta: 1,
+            tooltip: l10n.battleSectionOrderMoveDown(label),
+            enabled: !_saving && index < length - 1,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _moveButton({
+    required BattlePredictionSection section,
+    required int delta,
+    required String tooltip,
+    required bool enabled,
+  }) {
+    return IconButton(
+      key: Key('battle-section-${delta < 0 ? 'up' : 'down'}-${section.name}'),
+      tooltip: tooltip,
+      onPressed: enabled
+          ? () => _save(() => widget.controller.moveSection(section, delta))
+          : null,
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.standard,
+      color: const Color(0xffe1eaf0),
+      disabledColor: const Color(0xff405462),
+      icon: Icon(
+        delta < 0 ? Icons.arrow_upward : Icons.arrow_downward,
+        size: 19,
       ),
     );
   }

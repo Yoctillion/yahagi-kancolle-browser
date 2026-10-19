@@ -91,6 +91,7 @@ Future<void> _pumpCard(
   bool exitGuard = false,
   Rect? panelBounds,
   double textScale = 1,
+  String localeCode = 'zh',
 }) async {
   final panel = SingleChildScrollView(
     child: GameWorkspaceActive(
@@ -118,6 +119,7 @@ Future<void> _pumpCard(
   );
   await tester.pumpWidget(
     MaterialApp(
+      locale: Locale(localeCode),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
@@ -162,6 +164,47 @@ Finder _detailText(String value) =>
     find.descendant(of: _popover, matching: find.text(value));
 
 void main() {
+  for (final (width, scale) in [
+    (300.0, 1.3),
+    (300.0, 2.0),
+    (420.0, 1.3),
+    (420.0, 2.0),
+    // The dashboard content remains wider than 400px after its own padding.
+    (460.0, 2.0),
+  ]) {
+    testWidgets(
+      'English battle header and ship details fit $width px at scale $scale',
+      (tester) async {
+        final controller = _controller();
+        await _startBattle(controller);
+        await _pumpCard(
+          tester,
+          controller,
+          localeCode: 'en',
+          textScale: scale,
+          panelBounds: Rect.fromLTWH(800 - width, 0, width, 600),
+        );
+        expect(find.text('Battle prediction'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.ensureVisible(_row('enemy', 0));
+        await tester.pump();
+        await tester.tap(_row('enemy', 0));
+        await tester.pump();
+        expect(_popover, findsOneWidget);
+        expect(_detailText('12.7cm 连装炮'), findsOneWidget);
+        final bounds = tester.getRect(_popover);
+        expect(bounds.left, greaterThanOrEqualTo(800 - width));
+        expect(bounds.right, lessThanOrEqualTo(800));
+        expect(bounds.bottom, lessThanOrEqualTo(600));
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byKey(const Key('battle-ship-details-close')));
+        await tester.pump();
+        expect(_popover, findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'opening details reads newly received proficiency without another battle phase',
     (tester) async {

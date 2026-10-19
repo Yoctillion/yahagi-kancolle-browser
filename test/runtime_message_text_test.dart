@@ -50,10 +50,19 @@ void main() {
   );
 
   test(
-    'Simplified Chinese source and unrecognized addresses remain unchanged',
+    'Simplified Chinese preserves sources except known English fallbacks',
     () {
+      const fallbacks = {
+        'Unknown error': '未知错误',
+        'No result returned from native platform': '原生平台未返回结果',
+        'Platform exception occurred': '原生平台发生异常',
+      };
       for (final source in runtimeMessageTranslations.keys) {
-        expect(runtimeMessageForLocale(const Locale('zh'), source), source);
+        expect(
+          runtimeMessageForLocale(const Locale('zh'), source),
+          fallbacks[source] ?? source,
+          reason: source,
+        );
       }
       const url = 'https://例子.test/未知页面';
       expect(runtimeMessageForLocale(ja, url), url);

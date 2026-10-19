@@ -324,9 +324,14 @@ class QuestCatalogItem {
         : QuestStatus.unknown;
   }
 
-  bool matchesSearch(List<String> keywords) {
+  /// Matches any keyword against original fields and optional display labels.
+  /// Keep source case for dictionary lookups before normalizing the result.
+  bool matchesSearch(
+    List<String> keywords, {
+    String Function(String)? displayText,
+  }) {
     if (keywords.isEmpty) return true;
-    final text = [
+    final source = [
       gameId,
       entry.code,
       entry.name,
@@ -337,8 +342,10 @@ class QuestCatalogItem {
       entry.memo,
       liveQuest?.title ?? '',
       liveQuest?.detail ?? '',
-    ].join(' ').toLowerCase();
-    return keywords.any(text.contains);
+    ].join(' ');
+    if (keywords.any(source.toLowerCase().contains)) return true;
+    final translated = displayText?.call(source).toLowerCase();
+    return translated != null && keywords.any(translated.contains);
   }
 
   /// Poi's ordinary filters group unknown tasks with locked tasks, and

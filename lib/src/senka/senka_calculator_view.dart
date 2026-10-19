@@ -95,82 +95,103 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
       compact: widget.compact,
       child: Padding(
         padding: EdgeInsets.all(widget.compact ? 7 : 12),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _inputColumn(
-                    l10n.senkaLatestRanking,
-                    const Key('senka-current-input'),
-                    widget.state.calculatorCurrentSenka,
-                    widget.controller.setCurrentSenka,
+        child: _fitOverview(
+          Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _inputColumn(
+                      l10n.senkaLatestRanking,
+                      const Key('senka-current-input'),
+                      widget.state.calculatorCurrentSenka,
+                      widget.controller.setCurrentSenka,
+                    ),
                   ),
-                ),
-                SizedBox(width: widget.compact ? 7 : 10),
-                Expanded(
-                  child: _inputColumn(
-                    l10n.senkaTarget,
-                    const Key('senka-target-input'),
-                    widget.state.targetSenka,
-                    widget.controller.setTargetSenka,
+                  SizedBox(width: widget.compact ? 7 : 10),
+                  Expanded(
+                    child: _inputColumn(
+                      l10n.senkaTarget,
+                      const Key('senka-target-input'),
+                      widget.state.targetSenka,
+                      widget.controller.setTargetSenka,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: widget.compact ? 7 : 12),
-            _projectedCard(result, gapText),
-            SizedBox(height: widget.compact ? 7 : 12),
-            Expanded(
-              child: Container(
-                key: const Key('senka-metrics-grid'),
-                decoration: BoxDecoration(
-                  color: senkaPanelAlt,
-                  border: Border.all(color: senkaLine),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: _metricRow(
-                        l10n.senkaPlannedEo,
-                        '+${senkaNumber(result.plannedEo)}',
-                        l10n.senkaPlannedQuest,
-                        '+${senkaNumber(result.plannedQuest)}',
-                        firstKey: const Key('senka-metric-planned-eo'),
-                        secondKey: const Key('senka-metric-planned-quest'),
+                ],
+              ),
+              SizedBox(height: widget.compact ? 7 : 12),
+              _projectedCard(result, gapText),
+              SizedBox(height: widget.compact ? 7 : 12),
+              Expanded(
+                child: Container(
+                  key: const Key('senka-metrics-grid'),
+                  decoration: BoxDecoration(
+                    color: senkaPanelAlt,
+                    border: Border.all(color: senkaLine),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: _metricRow(
+                          l10n.senkaPlannedEo,
+                          '+${senkaNumber(result.plannedEo)}',
+                          l10n.senkaPlannedQuest,
+                          '+${senkaNumber(result.plannedQuest)}',
+                          firstKey: const Key('senka-metric-planned-eo'),
+                          secondKey: const Key('senka-metric-planned-quest'),
+                        ),
                       ),
-                    ),
-                    const Divider(height: 1, color: senkaLine),
-                    Expanded(
-                      child: _metricRow(
-                        l10n.senkaDailyRequired,
-                        senkaNumber(result.dailyRequired),
-                        l10n.senkaTodayRemaining,
-                        senkaNumber(result.todayRemaining),
-                        firstKey: const Key('senka-metric-daily-required'),
-                        secondKey: const Key('senka-metric-today-remaining'),
+                      const Divider(height: 1, color: senkaLine),
+                      Expanded(
+                        child: _metricRow(
+                          l10n.senkaDailyRequired,
+                          senkaNumber(result.dailyRequired),
+                          l10n.senkaTodayRemaining,
+                          senkaNumber(result.todayRemaining),
+                          firstKey: const Key('senka-metric-daily-required'),
+                          secondKey: const Key('senka-metric-today-remaining'),
+                        ),
                       ),
-                    ),
-                    const Divider(height: 1, color: senkaLine),
-                    Expanded(
-                      child: _metricRow(
-                        l10n.senkaUnsettledDelta,
-                        senkaNumber(result.unsettledSenka),
-                        l10n.senkaAvailableDaysIncludingToday,
-                        '${result.remainingDays}',
-                        firstKey: const Key('senka-metric-base-senka'),
-                        secondKey: const Key('senka-metric-remaining-days'),
+                      const Divider(height: 1, color: senkaLine),
+                      Expanded(
+                        child: _metricRow(
+                          l10n.senkaUnsettledDelta,
+                          senkaNumber(result.unsettledSenka),
+                          l10n.senkaAvailableDaysIncludingToday,
+                          '${result.remainingDays}',
+                          firstKey: const Key('senka-metric-base-senka'),
+                          secondKey: const Key('senka-metric-remaining-days'),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _fitOverview(Widget content) {
+    if (Localizations.localeOf(context).languageCode != 'en') return content;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minimumHeight =
+            (widget.compact ? 420 : 500) *
+            MediaQuery.textScalerOf(context).scale(1);
+        return SingleChildScrollView(
+          child: SizedBox(
+            height: constraints.maxHeight < minimumHeight
+                ? minimumHeight
+                : constraints.maxHeight,
+            child: content,
+          ),
+        );
+      },
     );
   }
 
@@ -267,6 +288,16 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
 
   Widget _projectedCard(SenkaCalculationResult result, String gapText) {
     final l10n = AppLocalizations.of(context)!;
+    final amount = Text(
+      senkaNumber(result.projected),
+      style: TextStyle(
+        color: senkaGold,
+        fontSize: widget.compact ? 24 : 34,
+        height: 1,
+        fontWeight: FontWeight.w900,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    );
     return Container(
       key: const Key('senka-projected-card'),
       width: double.infinity,
@@ -292,16 +323,15 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                senkaNumber(result.projected),
-                style: TextStyle(
-                  color: senkaGold,
-                  fontSize: widget.compact ? 24 : 34,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              if (Localizations.localeOf(context).languageCode == 'en')
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.bottomLeft,
+                    child: amount,
+                  ),
                 ),
-              ),
+              if (Localizations.localeOf(context).languageCode != 'en') amount,
               const SizedBox(width: 7),
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
@@ -574,15 +604,32 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
           children: [
             Row(
               children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: senkaText,
-                    fontSize: widget.compact ? 12 : 15,
-                    fontWeight: FontWeight.w800,
+                if (Localizations.localeOf(context).languageCode == 'en')
+                  Expanded(
+                    child: Tooltip(
+                      message: title,
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: senkaText,
+                          fontSize: widget.compact ? 12 : 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    title,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: senkaText,
+                      fontSize: widget.compact ? 12 : 15,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
                 if (legend != null) ...[
                   SizedBox(width: widget.compact ? 5 : 8),
                   Expanded(

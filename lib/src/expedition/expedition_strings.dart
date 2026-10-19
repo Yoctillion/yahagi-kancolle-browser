@@ -10,7 +10,9 @@ class ExpeditionStrings {
     final locale = Localizations.localeOf(context);
     return ExpeditionStrings._(
       locale.languageCode,
-      locale.scriptCode == 'Hant' || locale.countryCode == 'TW',
+      locale.languageCode == 'zh' &&
+          (locale.scriptCode == 'Hant' ||
+              const ['TW', 'HK', 'MO'].contains(locale.countryCode)),
     );
   }
 
@@ -18,135 +20,259 @@ class ExpeditionStrings {
   final bool traditional;
 
   bool get _ja => languageCode == 'ja';
-  String get progress => _ja
+  bool get _ko => languageCode == 'ko';
+  bool get _en => languageCode == 'en';
+  String get progress => _en
+      ? 'Expedition progress'
+      : _ko
+      ? '원정 진행도'
+      : _ja
       ? '遠征進捗'
       : traditional
       ? '遠征進度'
       : '远征进度';
-  String get title => _ja
+  String get title => _en
+      ? 'Expedition check'
+      : _ko
+      ? '원정 점검'
+      : _ja
       ? '遠征チェック'
       : traditional
       ? '遠征檢查'
       : '远征检查';
-  String get modeProgress => _ja
+  String get modeProgress => _en
+      ? 'Progress'
+      : _ko
+      ? '진행도'
+      : _ja
       ? '進捗'
       : traditional
       ? '進度'
       : '进度';
-  String get modeCheck => _ja
+  String get modeCheck => _en
+      ? 'Check'
+      : _ko
+      ? '점검'
+      : _ja
       ? 'チェック'
       : traditional
       ? '檢查'
       : '检查';
-  String get compact => _ja || traditional ? '簡潔' : '简洁';
-  String get detailed => _ja || traditional ? '詳細' : '详细';
-  String get success => _ja ? '成功' : '成功';
-  String get greatSuccess => _ja ? '大成功' : '大成功';
-  String get detailsPage => _ja
+  String get compact => _en
+      ? 'Compact'
+      : _ko
+      ? '간단히'
+      : _ja || traditional
+      ? '簡潔'
+      : '简洁';
+  String get detailed => _en
+      ? 'Detailed'
+      : _ko
+      ? '자세히'
+      : _ja || traditional
+      ? '詳細'
+      : '详细';
+  String get success => _en
+      ? 'Success'
+      : _ko
+      ? '성공'
+      : _ja
+      ? '成功'
+      : '成功';
+  String get greatSuccess => _en
+      ? 'Great success'
+      : _ko
+      ? '대성공'
+      : _ja
+      ? '大成功'
+      : '大成功';
+  String get detailsPage => _en
+      ? 'Details'
+      : _ko
+      ? '상세 화면'
+      : _ja
       ? '詳細画面'
       : traditional
       ? '詳情頁'
       : '详情页';
-  String get waiting => _ja
+  String get waiting => _en
+      ? 'Waiting for port data'
+      : _ko
+      ? '모항 데이터를 기다리는 중'
+      : _ja
       ? '母港データを待っています'
       : traditional
       ? '等待母港資料'
       : '等待母港数据';
-  String get selectExpedition => _ja
+  String get selectExpedition => _en
+      ? 'Select expedition'
+      : _ko
+      ? '원정 선택'
+      : _ja
       ? '遠征を選択'
       : traditional
       ? '選擇遠征'
       : '选择远征';
-  String get expeditionFallbackName => _ja
+  String get expeditionFallbackName => _en
+      ? 'Expedition'
+      : _ko
+      ? '원정'
+      : _ja
       ? '遠征'
       : traditional
       ? '遠征'
       : '远征';
-  String expeditionAreaName(int areaId) => switch (areaId) {
-    1 => _ja || traditional ? '鎮守府海域' : '镇守府海域',
-    2 =>
-      _ja
-          ? '南西諸島海域'
-          : traditional
-          ? '南西群島海域'
-          : '南西群岛海域',
-    3 => _ja ? '北方海域' : '北方海域',
-    4 => _ja ? '西方海域' : '西方海域',
-    5 => _ja ? '南方海域' : '南方海域',
-    7 => _ja ? '南西海域' : '南西海域',
-    _ =>
-      _ja
-          ? '海域 $areaId'
-          : traditional
-          ? '海域 $areaId'
-          : '海域 $areaId',
-  };
-  String get expectedIncome => _ja
+  String expeditionAreaName(int areaId) => _ko || _en
+      ? switch (areaId) {
+          1 => '鎮守府海域',
+          2 => '南西諸島海域',
+          3 => '北方海域',
+          4 => '西方海域',
+          5 => '南方海域',
+          7 => '南西海域',
+          _ => _en ? 'Area $areaId' : '해역 $areaId',
+        }
+      : switch (areaId) {
+          1 => _ja || traditional ? '鎮守府海域' : '镇守府海域',
+          2 =>
+            _ja
+                ? '南西諸島海域'
+                : traditional
+                ? '南西群島海域'
+                : '南西群岛海域',
+          3 => _ja ? '北方海域' : '北方海域',
+          4 => _ja ? '西方海域' : '西方海域',
+          5 => _ja ? '南方海域' : '南方海域',
+          7 => _ja ? '南西海域' : '南西海域',
+          _ =>
+            _ja
+                ? '海域 $areaId'
+                : traditional
+                ? '海域 $areaId'
+                : '海域 $areaId',
+        };
+  String get expectedIncome => _en
+      ? 'Expected rewards'
+      : _ko
+      ? '예상 수입'
+      : _ja
       ? '予想収入'
       : traditional
       ? '預計收入'
       : '预计收入';
-  String get conditions => _ja
+  String get conditions => _en
+      ? 'Expedition requirements'
+      : _ko
+      ? '원정 조건'
+      : _ja
       ? '遠征条件'
       : traditional
       ? '遠征條件'
       : '远征条件';
-  String get normalCheck => _ja
+  String get normalCheck => _en
+      ? 'Normal check'
+      : _ko
+      ? '일반 점검'
+      : _ja
       ? '通常チェック'
       : traditional
       ? '常規檢查'
       : '常规检查';
-  String get passed => _ja
+  String get passed => _en
+      ? 'Passed'
+      : _ko
+      ? '통과'
+      : _ja
       ? '合格'
       : traditional
       ? '通過'
       : '通过';
-  String get failed => _ja
+  String get failed => _en
+      ? 'Failed'
+      : _ko
+      ? '미통과'
+      : _ja
       ? '不合格'
       : traditional
       ? '未通過'
       : '未通过';
-  String get targetRate => _ja
+  String get targetRate => _en
+      ? 'Target chance'
+      : _ko
+      ? '목표 확률'
+      : _ja
       ? '目標確率'
       : traditional
       ? '目標概率'
       : '目标概率';
-  String get timeAndCost => _ja
+  String get timeAndCost => _en
+      ? 'Time and cost'
+      : _ko
+      ? '소요 시간 및 소모'
+      : _ja
       ? '所要時間と消費'
       : traditional
       ? '遠征時間與消耗'
       : '远征时间与消耗';
-  String get requiredTime => _ja
+  String get requiredTime => _en
+      ? 'Time required'
+      : _ko
+      ? '소요 시간'
+      : _ja
       ? '所要時間'
       : traditional
       ? '所需時間'
       : '所需时间';
-  String get estimatedCompletionTime => _ja
+  String get estimatedCompletionTime => _en
+      ? 'Estimated completion time'
+      : _ko
+      ? '예상 완료 시각'
+      : _ja
       ? '完了予定時刻'
       : traditional
       ? '預計完成時間'
       : '预计完成时间';
-  String get fuelCost => _ja
+  String get fuelCost => _en
+      ? 'Fuel cost'
+      : _ko
+      ? '연료 소모'
+      : _ja
       ? '燃料消費'
       : traditional
       ? '燃料消耗'
       : '燃料消耗';
-  String get ammoCost => _ja
+  String get ammoCost => _en
+      ? 'Ammo cost'
+      : _ko
+      ? '탄약 소모'
+      : _ja
       ? '弾薬消費'
       : traditional
       ? '彈藥消耗'
       : '弹药消耗';
-  String get back => _ja
+  String get back => _en
+      ? 'Back to game'
+      : _ko
+      ? '게임으로 돌아가기'
+      : _ja
       ? 'ゲームに戻る'
       : traditional
       ? '返回遊戲'
       : '返回游戏';
-  String get satisfied => _ja
+  String get satisfied => _en
+      ? 'Met'
+      : _ko
+      ? '충족'
+      : _ja
       ? '達成'
       : traditional
       ? '已滿足'
       : '已满足';
-  String get notSatisfied => _ja
+  String get notSatisfied => _en
+      ? 'Not met'
+      : _ko
+      ? '미충족'
+      : _ja
       ? '未達成'
       : traditional
       ? '未滿足'
@@ -154,6 +280,62 @@ class ExpeditionStrings {
 
   String conditionLabel(ExpeditionConditionResult value) {
     final number = RegExp(r'\d+').firstMatch(value.label)?.group(0) ?? '';
+    final greatSuccessDrums = value.label.startsWith('大成功');
+    if (_en) {
+      return switch (value.kind) {
+        ExpeditionConditionKind.flagshipLevel => 'Flagship level ≥ $number',
+        ExpeditionConditionKind.shipCount => 'Ship count ≥ $number',
+        ExpeditionConditionKind.composition => value.label.replaceFirst(
+          '舰队构成：',
+          'Fleet composition: ',
+        ),
+        ExpeditionConditionKind.flagshipType =>
+          'Flagship type: ${_localizedFlagshipType(value.label, english: true)}',
+        ExpeditionConditionKind.levelSum => 'Total fleet level ≥ $number',
+        ExpeditionConditionKind.resupply => 'Fleet fully supplied',
+        ExpeditionConditionKind.morale => 'All ships: morale ≥ $number',
+        ExpeditionConditionKind.drumCount =>
+          greatSuccessDrums
+              ? 'Drum count for great success ≥ $number'
+              : 'Drum count ≥ $number',
+        ExpeditionConditionKind.drumCarrierCount =>
+          'Ships carrying drums ≥ $number',
+        ExpeditionConditionKind.firepower => 'Total firepower ≥ $number',
+        ExpeditionConditionKind.antiAir => 'Total anti-air ≥ $number',
+        ExpeditionConditionKind.antiSub => 'Total anti-sub ≥ $number',
+        ExpeditionConditionKind.lineOfSight => 'Total LOS ≥ $number',
+        ExpeditionConditionKind.greatSuccessRate =>
+          'Current great success chance ≥ $number%',
+        ExpeditionConditionKind.allSparkled => 'All ships sparkled',
+        ExpeditionConditionKind.daihatsuFill =>
+          'Equip as many 大発動艇 or 特大発動艇 as possible',
+      };
+    }
+    if (_ko) {
+      return switch (value.kind) {
+        ExpeditionConditionKind.flagshipLevel => '기함 레벨 ≥ $number',
+        ExpeditionConditionKind.shipCount => '함선 수 ≥ $number',
+        ExpeditionConditionKind.composition => value.label.replaceFirst(
+          '舰队构成：',
+          '함대 구성: ',
+        ),
+        ExpeditionConditionKind.flagshipType =>
+          '기함 함종: ${_localizedFlagshipType(value.label, korean: true)}',
+        ExpeditionConditionKind.levelSum => '함대 레벨 합계 ≥ $number',
+        ExpeditionConditionKind.resupply => '함대 보급 완료',
+        ExpeditionConditionKind.morale => '전원 컨디션 ≥ $number',
+        ExpeditionConditionKind.drumCount =>
+          greatSuccessDrums ? '대성공 드럼통 수 ≥ $number' : '드럼통 수 ≥ $number',
+        ExpeditionConditionKind.drumCarrierCount => '드럼통 탑재함 수 ≥ $number',
+        ExpeditionConditionKind.firepower => '총 화력 ≥ $number',
+        ExpeditionConditionKind.antiAir => '총 대공 ≥ $number',
+        ExpeditionConditionKind.antiSub => '총 대잠 ≥ $number',
+        ExpeditionConditionKind.lineOfSight => '총 색적 ≥ $number',
+        ExpeditionConditionKind.greatSuccessRate => '현재 대성공 확률 ≥ $number%',
+        ExpeditionConditionKind.allSparkled => '모든 함선이 반짝이 상태',
+        ExpeditionConditionKind.daihatsuFill => '가능한 한 大発動艇 또는 特大発動艇을 많이 탑재',
+      };
+    }
     return switch (value.kind) {
       ExpeditionConditionKind.flagshipLevel =>
         _ja
@@ -199,9 +381,9 @@ class ExpeditionStrings {
             : value.label,
       ExpeditionConditionKind.drumCount =>
         _ja
-            ? 'ドラム缶数 ≥ $number'
+            ? '${greatSuccessDrums ? '大成功に必要な' : ''}ドラム缶数 ≥ $number'
             : traditional
-            ? '運輸桶數量 ≥ $number'
+            ? '${greatSuccessDrums ? '大成功' : ''}運輸桶數量 ≥ $number'
             : value.label,
       ExpeditionConditionKind.drumCarrierCount =>
         _ja
@@ -258,9 +440,39 @@ class ExpeditionStrings {
     String label, {
     bool japanese = false,
     bool traditional = false,
+    bool korean = false,
+    bool english = false,
   }) {
     final code = RegExp(r'（([A-Z]+)）').firstMatch(label)?.group(1) ?? '';
     final unknownTypeId = RegExp(r'舰种 (\d+)').firstMatch(label)?.group(1);
+    if (english) {
+      if (code.isEmpty && unknownTypeId != null) {
+        return 'Ship type $unknownTypeId';
+      }
+      final name = switch (code) {
+        'CL' => 'Light cruiser',
+        'CA' => 'Heavy cruiser',
+        'CVL' => 'Light carrier',
+        'AV' => 'Seaplane tender',
+        'AS' => 'Submarine tender',
+        'CT' => 'Training cruiser',
+        _ => 'Specified ship type',
+      };
+      return code.isEmpty ? name : '$name ($code)';
+    }
+    if (korean) {
+      if (code.isEmpty && unknownTypeId != null) return '함종 $unknownTypeId';
+      final name = switch (code) {
+        'CL' => '경순양함',
+        'CA' => '중순양함',
+        'CVL' => '경항모',
+        'AV' => '수상기모함',
+        'AS' => '잠수모함',
+        'CT' => '연습순양함',
+        _ => '지정 함종',
+      };
+      return code.isEmpty ? name : '$name($code)';
+    }
     if (code.isEmpty && unknownTypeId != null) {
       return japanese || traditional
           ? '艦種 $unknownTypeId'
@@ -315,7 +527,11 @@ class ExpeditionStrings {
 
   String conditionActual(ExpeditionConditionResult value) {
     if (value.actual == '已补满') {
-      return _ja
+      return _en
+          ? 'Fully supplied'
+          : _ko
+          ? '보급 완료'
+          : _ja
           ? '補給済み'
           : traditional
           ? '已補滿'

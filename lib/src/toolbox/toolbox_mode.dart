@@ -1,1 +1,1 @@
-enum ToolboxMode { export, composition, expCalc, mapQuery, other }
+enum ToolboxMode { export, composition, expCalc, mapQuery, mods, other }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/expedition_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_information_center.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/morale_recovery_timer_controller.dart';
@@ -18,6 +19,74 @@ import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settin
 import 'fixtures/kcsapi_fixtures.dart';
 
 void main() {
+  testWidgets(
+    'English fleet details fit narrow panels and preserve equipment names',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final controller = GameStateController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(start2Event)
+        ..accept(portEvent)
+        ..accept(slotItemEvent);
+      await controller.idle;
+
+      for (final size in [const Size(1180, 720), const Size(590, 700)]) {
+        tester.view.physicalSize = size;
+        await tester.pumpWidget(
+          MaterialApp(
+            key: ValueKey(size),
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: FleetInformationCenter(controller: controller),
+            ),
+          ),
+        );
+        await tester.pump();
+        final detailsScrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        );
+        await tester.scrollUntilVisible(
+          find.text('Firing range'),
+          180,
+          scrollable: detailsScrollable,
+        );
+        expect(find.text('Firing range'), findsOneWidget);
+        expect(find.text('Very long'), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: 'Ship details at $size');
+
+        final detailsPosition = tester
+            .state<ScrollableState>(detailsScrollable)
+            .position;
+        detailsPosition.jumpTo(detailsPosition.maxScrollExtent);
+        await tester.pump();
+        expect(find.text('Active'), findsWidgets);
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Mechanism details at $size',
+        );
+
+        await tester.tap(find.byKey(const Key('fleet-equipment-row-9001-0')));
+        await tester.pump();
+        final equipmentName = tester.widget<Text>(
+          find.byKey(const Key('fleet-detail-equipment-name-9001-0')),
+        );
+        expect(equipmentName.data, '12.7cm 连装炮');
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Equipment details at $size',
+        );
+      }
+    },
+  );
+
   testWidgets('marks only expansion-slot equipment after its name', (
     tester,
   ) async {
@@ -46,6 +115,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -87,6 +159,9 @@ void main() {
       await controller.idle;
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: FleetInformationCenter(controller: controller)),
         ),
       );
@@ -149,6 +224,9 @@ void main() {
       await controller.idle;
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: FleetInformationCenter(controller: controller)),
         ),
       );
@@ -202,6 +280,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: FleetInformationCenter(
             controller: controller,
@@ -238,6 +319,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 1180,
@@ -324,6 +408,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 1180,
@@ -408,6 +495,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -509,6 +599,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 1180,
@@ -527,7 +620,7 @@ void main() {
     expect(find.text('制空详情'), findsOneWidget);
     expect(find.text('最小'), findsOneWidget);
     expect(find.text('最大'), findsOneWidget);
-    expect(find.text('无加成'), findsOneWidget);
+    expect(find.text('不含熟练度加成'), findsOneWidget);
   });
 
   testWidgets('编成预设换走当前舰娘后详情立即切换', (tester) async {
@@ -560,6 +653,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -610,6 +706,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -651,6 +750,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 740,
@@ -701,6 +803,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -733,6 +838,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -761,6 +869,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -791,6 +902,9 @@ void main() {
         tester.view.physicalSize = size;
         await tester.pumpWidget(
           MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               body: FleetInformationCenter(controller: controller),
             ),
@@ -826,6 +940,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -850,6 +967,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -907,6 +1027,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -938,6 +1061,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -972,6 +1098,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -1028,6 +1157,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: MediaQuery(
           data: const MediaQueryData(
             size: Size(1600, 760),
@@ -1056,6 +1188,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -1088,6 +1223,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -1159,6 +1297,9 @@ void main() {
       await controller.idle;
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: FleetInformationCenter(controller: controller)),
         ),
       );
@@ -1190,6 +1331,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -1245,6 +1389,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -1307,6 +1454,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: FleetInformationCenter(controller: controller)),
         ),
       );
@@ -1395,6 +1545,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: FleetInformationCenter(
               controller: controller,
@@ -1424,6 +1577,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 1180,
@@ -1470,6 +1626,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 1180,
@@ -1515,6 +1674,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 1180,
@@ -1535,8 +1697,8 @@ void main() {
     expect(find.text('燃料'), findsNothing);
     expect(find.text('弹药'), findsNothing);
     expect(find.text('活力 49'), findsNothing);
-    expect(find.text('士气 49'), findsNothing);
-    expect(find.text('疲劳 49'), findsOneWidget);
+    expect(find.text('疲劳 49'), findsNothing);
+    expect(find.text('士气 49'), findsOneWidget);
     expect(find.text('-25.63'), findsOneWidget);
     expect(find.text('40'), findsNothing);
     expect(find.byKey(const Key('ship-status-hp-icon-9001')), findsOneWidget);
@@ -1630,7 +1792,7 @@ void main() {
       find.descendant(of: identityTop, matching: find.text('高速+')),
     );
     final openingAsw = tester.widget<Text>(find.text('先反'));
-    final fatigue = tester.widget<Text>(find.text('疲劳 49'));
+    final fatigue = tester.widget<Text>(find.text('士气 49'));
     expect(
       tester.getSize(find.byKey(const Key('ship-identity-9001'))).width,
       inInclusiveRange(108, 130),
@@ -1700,11 +1862,11 @@ void main() {
       const Key('ship-status-bottom-line-9001'),
     );
     expect(
-      find.descendant(of: topStatusLine, matching: find.text('疲劳 49')),
+      find.descendant(of: topStatusLine, matching: find.text('士气 49')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: identityTop, matching: find.text('疲劳 49')),
+      find.descendant(of: identityTop, matching: find.text('士气 49')),
       findsNothing,
     );
     final supplyWarning = find.byKey(const Key('ship-supply-warning-9001'));
@@ -1714,10 +1876,10 @@ void main() {
     );
     expect(
       tester.getTopLeft(supplyWarning).dx,
-      lessThan(tester.getTopLeft(find.text('疲劳 49')).dx),
+      lessThan(tester.getTopLeft(find.text('士气 49')).dx),
     );
     expect(
-      tester.getTopLeft(find.text('疲劳 49')).dy,
+      tester.getTopLeft(find.text('士气 49')).dy,
       lessThan(
         tester.getTopLeft(find.byKey(const Key('ship-status-hp-9001'))).dy,
       ),
@@ -1863,6 +2025,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 820,
@@ -1915,6 +2080,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 1180,
@@ -1930,6 +2098,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 1180,
@@ -1965,6 +2136,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 1180,
@@ -2031,6 +2205,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 1180,
@@ -2099,7 +2276,12 @@ void main() {
       }
 
       await tester.pumpWidget(
-        MaterialApp(home: FleetInformationCenter(controller: emptyController)),
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: FleetInformationCenter(controller: emptyController),
+        ),
       );
 
       expect(find.text('等待母港数据'), findsOneWidget);
@@ -2122,6 +2304,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -2133,6 +2318,9 @@ void main() {
     ]) {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: FleetInformationCenter(controller: controller, page: page),
           ),
@@ -2158,6 +2346,9 @@ void main() {
     Future<double> portraitInset(EdgeInsets padding) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: MediaQueryData(
               size: const Size(900, 400),
@@ -2209,6 +2400,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: MediaQuery(
           data: const MediaQueryData(
             size: Size(1024, 1024),
@@ -2229,7 +2423,7 @@ void main() {
         .getTopLeft(find.byKey(const Key('ship-row-9001')))
         .dy;
     expect(firstShipTop - metricsBottom, closeTo(10, 1));
-    expect(find.text('最低疲劳'), findsOneWidget);
+    expect(find.text('最低士气'), findsOneWidget);
 
     final firstFleet = find.byKey(const Key('fleet-button-1'));
     final firstNameCell = find.descendant(
@@ -2284,6 +2478,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: FleetInformationCenter(controller: controller)),
       ),
     );
@@ -2327,6 +2524,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 1180,
@@ -2378,6 +2578,9 @@ void main() {
     late StateSetter updateHost;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: StatefulBuilder(
           builder: (context, setState) {
             updateHost = setState;
@@ -2439,6 +2642,9 @@ void main() {
     ]) {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 412,
@@ -2468,6 +2674,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 412,
@@ -2539,6 +2748,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 1180,
@@ -2649,6 +2861,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 1280,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../account/account_session.dart';
 
 import '../localization/ui_text.dart';
+import '../localization/game_name_localizations.dart';
 
 import '../fleet/fleet_switcher_bar.dart';
 import '../game_state/game_state.dart';
@@ -112,6 +113,17 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
   @override
   Widget build(BuildContext context) {
     final s = ExpeditionStrings.of(context);
+    final english = s.languageCode == 'en';
+    final title = Text(
+      s.title,
+      maxLines: english ? 1 : null,
+      overflow: english ? TextOverflow.ellipsis : null,
+      style: const TextStyle(
+        color: Color(0xffd4a85f),
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+      ),
+    );
     return Material(
       color: const Color(0xff081521),
       child: Column(
@@ -124,27 +136,23 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
                 color: Color(0xff0d1a26),
                 border: Border(bottom: BorderSide(color: Color(0xff294052))),
               ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: widget.onBack,
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                  Text(
-                    s.title,
-                    style: const TextStyle(
-                      color: Color(0xffd4a85f),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
+              child: LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    IconButton(
+                      onPressed: widget.onBack,
+                      icon: const Icon(Icons.arrow_back),
                     ),
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: widget.onBack,
-                    icon: const Icon(Icons.sports_esports_outlined),
-                    label: Text(s.back),
-                  ),
-                ],
+                    if (english) Expanded(child: title) else title,
+                    if (!english) const Spacer(),
+                    if (!english || constraints.maxWidth >= 600)
+                      TextButton.icon(
+                        onPressed: widget.onBack,
+                        icon: const Icon(Icons.sports_esports_outlined),
+                        label: Text(s.back),
+                      ),
+                  ],
+                ),
               ),
             ),
           Expanded(
@@ -452,27 +460,32 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
       children: [_sectionTitle(title), const SizedBox(height: 10), child],
     ),
   );
-  Widget _infoRow(String label, String value, {Widget? icon}) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: const Color(0xff0b1d29),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Row(
-      children: [
-        if (icon != null) ...[icon, const SizedBox(width: 6)],
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xff8fa8b6),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const Spacer(),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-      ],
-    ),
-  );
+  Widget _infoRow(String label, String value, {Widget? icon}) {
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    final labelText = Text(
+      label,
+      style: const TextStyle(
+        color: Color(0xff8fa8b6),
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xff0b1d29),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[icon, const SizedBox(width: 6)],
+          if (english) Expanded(child: labelText) else labelText,
+          if (english) const SizedBox(width: 8) else const Spacer(),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+
   Widget _completionRow(
     ExpeditionStrings strings,
     ExpeditionCompletionEstimate estimate,
@@ -683,7 +696,7 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              s.conditionLabel(condition),
+              gameNames(context).entityText(s.conditionLabel(condition)),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),

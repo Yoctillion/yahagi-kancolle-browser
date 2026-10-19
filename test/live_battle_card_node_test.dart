@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_models.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_node_label_resolver.dart';
@@ -111,6 +112,9 @@ Future<void> _pumpCard(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SizedBox(
           width: width,
@@ -130,6 +134,18 @@ Future<void> _pumpCard(
     await tester.tap(find.byKey(const Key('battle-mode-compact')));
     await tester.pump();
   }
+}
+
+void _expectIndependentMapSummary(String mapLabel) {
+  final summary = find.textContaining(mapLabel);
+  expect(summary, findsOneWidget);
+  expect(
+    find.ancestor(
+      of: summary,
+      matching: find.byKey(const Key('sortie-map-section')),
+    ),
+    findsOneWidget,
+  );
 }
 
 void main() {
@@ -252,6 +268,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: AdaptiveBattleHeader(
             nodeLabel: 'D',
@@ -452,6 +471,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Row(
             children: <Widget>[
@@ -552,6 +574,9 @@ void main() {
     ]) {
       await tester.pumpWidget(
         MaterialApp(
+          locale: Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: BattleRankBadge(rank: entry.$1)),
         ),
       );
@@ -581,7 +606,7 @@ void main() {
     expect(engagementChipColor(0), const Color(0xff9db2bf));
   });
 
-  testWidgets('compact navigation shows node and node type pill without map', (
+  testWidgets('compact navigation keeps map separate from node and node type', (
     tester,
   ) async {
     final controller = _createController();
@@ -593,7 +618,7 @@ void main() {
 
     expect(find.text('节点 1'), findsOneWidget);
     expect(find.text('普通战斗'), findsOneWidget);
-    expect(find.textContaining('1-1'), findsNothing);
+    _expectIndependentMapSummary('1-1');
     expect(find.byKey(const Key('navigation-friendly-fleets')), findsOneWidget);
     expect(find.text('我方舰队'), findsOneWidget);
     expect(find.text('夕張'), findsOneWidget);
@@ -844,6 +869,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: OfficialEnemyPreview(
             ships: <EnemyPreviewShip>[
@@ -871,6 +899,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: OfficialEnemyPreview(
             ships: <EnemyPreviewShip>[
@@ -910,6 +941,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 360,
@@ -964,6 +998,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 360,
@@ -1016,6 +1053,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 360,
@@ -1095,38 +1135,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('compact battle hides drop before result and omits map', (
-    tester,
-  ) async {
-    final controller = _createController();
-    addTearDown(controller.dispose);
-    controller
-      ..accept(mapStartEvent)
-      ..accept(dayBattleEvent);
-    await controller.idle;
+  testWidgets(
+    'compact battle hides drop before result and keeps map separate',
+    (tester) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(mapStartEvent)
+        ..accept(dayBattleEvent);
+      await controller.idle;
 
-    await _pumpCard(tester, controller, compact: true);
+      await _pumpCard(tester, controller, compact: true);
 
-    expect(find.text('节点 1'), findsOneWidget);
-    expect(find.text('敌方舰队'), findsOneWidget);
-    expect(find.text('普通战斗'), findsOneWidget);
-    expect(find.textContaining('掉落'), findsNothing);
-    expect(find.textContaining('1-1'), findsNothing);
-    expect(find.byKey(const Key('compact-fleet-grid')), findsOneWidget);
-    expect(find.byKey(const Key('compact-fleet-col-friend')), findsOneWidget);
-    expect(find.byKey(const Key('compact-fleet-col-enemy')), findsOneWidget);
-    expect(find.text('我方舰队（单纵阵）'), findsOneWidget);
-    expect(find.text('敌方舰队（单纵阵）'), findsOneWidget);
-    expect(find.text('18 / 30 (-12)'), findsWidgets);
-    expect(find.text('昼战'), findsOneWidget);
-    expect(find.text('己方 单纵阵'), findsNothing);
-    expect(find.text('敌方 单纵阵'), findsNothing);
-    expect(
-      tester.widget<Text>(find.text('普通战斗')).style?.fontWeight,
-      FontWeight.w600,
-    );
-    expect(find.text('同航战'), findsOneWidget);
-  });
+      expect(find.text('节点 1'), findsOneWidget);
+      expect(find.text('敌方舰队'), findsOneWidget);
+      expect(find.text('普通战斗'), findsOneWidget);
+      expect(find.textContaining('掉落'), findsNothing);
+      _expectIndependentMapSummary('1-1');
+      expect(find.byKey(const Key('compact-fleet-grid')), findsOneWidget);
+      expect(find.byKey(const Key('compact-fleet-col-friend')), findsOneWidget);
+      expect(find.byKey(const Key('compact-fleet-col-enemy')), findsOneWidget);
+      expect(find.text('我方舰队（单纵阵）'), findsOneWidget);
+      expect(find.text('敌方舰队（单纵阵）'), findsOneWidget);
+      expect(find.text('18 / 30 (-12)'), findsWidgets);
+      expect(find.text('昼战'), findsOneWidget);
+      expect(find.text('己方 单纵阵'), findsNothing);
+      expect(find.text('敌方 单纵阵'), findsNothing);
+      expect(
+        tester.widget<Text>(find.text('普通战斗')).style?.fontWeight,
+        FontWeight.w600,
+      );
+      expect(find.text('同航战'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'phone compact battle moves node and air pills below the enemy name',
@@ -1560,29 +1601,30 @@ void main() {
     expect((decoration.border! as Border).top.color, const Color(0xff2f7469));
   });
 
-  testWidgets('detailed battle shows phase formation engagement and no map', (
-    tester,
-  ) async {
-    final controller = _createController();
-    addTearDown(controller.dispose);
-    controller
-      ..accept(mapStartEvent)
-      ..accept(dayBattleEvent);
-    await controller.idle;
+  testWidgets(
+    'detailed battle keeps phase formation and map sections separate',
+    (tester) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(mapStartEvent)
+        ..accept(dayBattleEvent);
+      await controller.idle;
 
-    await _pumpCard(tester, controller);
+      await _pumpCard(tester, controller);
 
-    expect(find.text('节点 1'), findsOneWidget);
-    expect(find.text('敌方舰队'), findsOneWidget);
-    expect(find.text('昼战'), findsOneWidget);
-    expect(find.text('己方 单纵阵'), findsNothing);
-    expect(find.text('敌方 单纵阵'), findsNothing);
-    expect(find.text('我方主力（单纵阵）'), findsOneWidget);
-    expect(find.text('敌方主力（单纵阵）'), findsOneWidget);
-    expect(find.text('同航战'), findsOneWidget);
-    expect(find.text('普通战斗'), findsOneWidget);
-    expect(find.textContaining('1-1'), findsNothing);
-  });
+      expect(find.text('节点 1'), findsOneWidget);
+      expect(find.text('敌方舰队'), findsOneWidget);
+      expect(find.text('昼战'), findsOneWidget);
+      expect(find.text('己方 单纵阵'), findsNothing);
+      expect(find.text('敌方 单纵阵'), findsNothing);
+      expect(find.text('我方主力（单纵阵）'), findsOneWidget);
+      expect(find.text('敌方主力（单纵阵）'), findsOneWidget);
+      expect(find.text('同航战'), findsOneWidget);
+      expect(find.text('普通战斗'), findsOneWidget);
+      _expectIndependentMapSummary('1-1');
+    },
+  );
 
   testWidgets('phone detailed battle header matches compact layout', (
     tester,
@@ -1783,7 +1825,9 @@ void main() {
     );
   });
 
-  testWidgets('detailed navigation shows node without map', (tester) async {
+  testWidgets('detailed navigation keeps map separate from node overview', (
+    tester,
+  ) async {
     final controller = _createController();
     addTearDown(controller.dispose);
     controller.accept(mapStartEvent);
@@ -1793,7 +1837,7 @@ void main() {
 
     expect(find.text('节点 1'), findsOneWidget);
     expect(find.text('普通战斗'), findsOneWidget);
-    expect(find.textContaining('1-1'), findsNothing);
+    _expectIndependentMapSummary('1-1');
     expect(find.byKey(const Key('navigation-friendly-fleets')), findsOneWidget);
   });
 

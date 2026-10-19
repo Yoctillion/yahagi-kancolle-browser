@@ -68,9 +68,20 @@ Future<void> _tapWorkspaceNavigationItem(
 }
 
 void main() {
-  testWidgets(
-    'preview position controller updates the live shell immediately',
-    (tester) async {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    // These shell scenarios assert Chinese UI; system-English behavior has its
+    // own explicit locale integration coverage.
+    binding.platformDispatcher.localeTestValue = const Locale('zh');
+    binding.platformDispatcher.localesTestValue = const [Locale('zh')];
+    addTearDown(binding.platformDispatcher.clearLocaleTestValue);
+    addTearDown(binding.platformDispatcher.clearLocalesTestValue);
+  });
+
+  for (final size in const [Size(390, 844), Size(800, 500)]) {
+    testWidgets('English shell dashboard and navigation fit $size', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({});
       final timersWereDisabled = GameStateController.disableTimerForTest;
       GameStateController.disableTimerForTest = true;
@@ -78,30 +89,45 @@ void main() {
         () => GameStateController.disableTimerForTest = timersWereDisabled,
       );
       tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1000, 800);
+      tester.view.physicalSize = size;
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
+
+      final layout = await LayoutSettingsController.load(
+        _MemoryLayoutSettingsStore(),
+        systemLocaleCode: 'en',
+      );
+      // This test explicitly opts into English despite the Chinese setup above.
+      await layout.setLocaleCode('en');
+      await layout.setHdEnabled(false);
+      final display = await DisplayModeController.load(
+        MemoryDisplayModeStore(),
+      );
       final game = GameStateController();
+      game
+        ..accept(start2Event)
+        ..accept(portEvent)
+        ..accept(slotItemEvent);
+      await game.idle;
       final toolbar = GameToolbarController();
       final capture = GameCaptureController();
       final battle = BattleController(gameState: () => game.state);
-      final layout = await LayoutSettingsController.load(
-        _MemoryLayoutSettingsStore().._dashboardCardOrder = ['battle'],
+      final safety = await SafetySettingsController.load(
+        MemorySafetySettingsStore(),
       );
-      final prediction = await BattlePredictionSettingsController.load(
-        MemoryBattlePredictionSettingsStore(),
-      );
+      final audio = await GameAudioController.load(_MemoryAudioStore());
+      addTearDown(layout.dispose);
+      addTearDown(display.dispose);
       addTearDown(game.dispose);
       addTearDown(toolbar.dispose);
       addTearDown(capture.dispose);
       addTearDown(battle.dispose);
-      addTearDown(layout.dispose);
-      addTearDown(prediction.dispose);
+      addTearDown(safety.dispose);
+      addTearDown(audio.dispose);
 
       await tester.pumpWidget(
         YahagiApp(
           layoutSettingsController: layout,
-          battlePredictionSettingsController: prediction,
           networkSettingsController: NetworkSettingsController(
             store: _MemoryNetworkSettingsStore(),
           ),
@@ -109,12 +135,8 @@ void main() {
             store: _MemoryGadgetBypassStore(),
             port: _FakeGadgetBypassPort(),
           ),
-          safetySettingsController: await SafetySettingsController.load(
-            MemorySafetySettingsStore(),
-          ),
-          displayModeController: await DisplayModeController.load(
-            MemoryDisplayModeStore(),
-          ),
+          safetySettingsController: safety,
+          displayModeController: display,
           controller: PrototypeStatusController(),
           browserController: GameBrowserController(port: _NoopBrowserPort()),
           captureModeController: await CaptureModeController.load(
@@ -123,34 +145,269 @@ void main() {
           gameCaptureController: capture,
           gameStateController: game,
           battleController: battle,
-          audioController: await GameAudioController.load(_MemoryAudioStore()),
+          audioController: audio,
+          toolbarController: toolbar,
+          gameSurface: const ColoredBox(
+            key: Key('english-shell-game-surface'),
+            color: Colors.black,
+          ),
+        ),
+      );
+      // Populated dashboard cards animate continuously; wait only for the
+      // shell's finite entrance transition.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.text('Fleet summary'), findsOneWidget);
+      expect(find.text('编队简报'), findsNothing);
+      expect(find.text('夕張'), findsWidgets);
+      expect(find.bySemanticsLabel('Game'), findsOneWidget);
+      expect(find.bySemanticsLabel('Fleet'), findsOneWidget);
+      expect(find.bySemanticsLabel('Expedition'), findsOneWidget);
+      expect(find.bySemanticsLabel('Quests'), findsOneWidget);
+      expect(
+        find.byKey(const Key('english-shell-game-surface')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+
+      if (size == const Size(800, 500)) {
+        final gameSurface = find.byKey(const Key('english-shell-game-surface'));
+        final originalGameElement = tester.element(gameSurface);
+        await display.setDisplayMode(DisplayMode.portrait);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
+        expect(find.byType(Divider), findsOneWidget);
+        expect(find.byType(VerticalDivider), findsNothing);
+        expect(tester.takeException(), isNull);
+
+        tester.view.physicalSize = const Size(400, 800);
+        for (final mode in [
+          DisplayMode.auto,
+          DisplayMode.landscape,
+          DisplayMode.portrait,
+        ]) {
+          await display.setDisplayMode(mode);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 350));
+          expect(
+            find.byType(VerticalDivider),
+            mode == DisplayMode.landscape ? findsOneWidget : findsNothing,
+          );
+          expect(
+            find.byType(Divider),
+            mode == DisplayMode.landscape ? findsNothing : findsOneWidget,
+          );
+          expect(find.bySemanticsLabel('Fleet'), findsOneWidget);
+          expect(tester.element(gameSurface), same(originalGameElement));
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'English dashboard at 400×800 with $mode',
+          );
+        }
+        tester.view.physicalSize = size;
+        await display.setDisplayMode(DisplayMode.auto);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
+        expect(find.byType(VerticalDivider), findsOneWidget);
+        expect(tester.element(gameSurface), same(originalGameElement));
+        expect(find.text('Fleet summary'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+
+      final fleetNavigation = find.byKey(const Key('workspace-nav-fleet'));
+      await tester.ensureVisible(fleetNavigation);
+      await tester.pump();
+      await tester.tap(fleetNavigation);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.byType(FleetInformationCenter), findsOneWidget);
+      expect(find.text('夕張'), findsWidgets);
+      expect(game.state.fleets.first.name, '第一舰队');
+      expect(game.state.masterShips[101]?.name, '夕張');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'system locale changes update the shell unless a language is chosen',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final timersWereDisabled = GameStateController.disableTimerForTest;
+      GameStateController.disableTimerForTest = true;
+      addTearDown(
+        () => GameStateController.disableTimerForTest = timersWereDisabled,
+      );
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      binding.platformDispatcher.localeTestValue = const Locale('ja');
+      binding.platformDispatcher.localesTestValue = const [Locale('ja')];
+      final layout = await LayoutSettingsController.load(
+        _MemoryLayoutSettingsStore().._dashboardCardOrder = ['fleet'],
+        systemLocaleCode: 'ja',
+      );
+      final display = await DisplayModeController.load(
+        MemoryDisplayModeStore(),
+      );
+      final game = GameStateController();
+      final toolbar = GameToolbarController();
+      final capture = GameCaptureController();
+      final battle = BattleController(gameState: () => game.state);
+      final safety = await SafetySettingsController.load(
+        MemorySafetySettingsStore(),
+      );
+      final audio = await GameAudioController.load(_MemoryAudioStore());
+      addTearDown(layout.dispose);
+      addTearDown(display.dispose);
+      addTearDown(game.dispose);
+      addTearDown(toolbar.dispose);
+      addTearDown(capture.dispose);
+      addTearDown(battle.dispose);
+      addTearDown(safety.dispose);
+      addTearDown(audio.dispose);
+      await tester.pumpWidget(
+        YahagiApp(
+          layoutSettingsController: layout,
+          networkSettingsController: NetworkSettingsController(
+            store: _MemoryNetworkSettingsStore(),
+          ),
+          gadgetBypassController: GadgetBypassController(
+            store: _MemoryGadgetBypassStore(),
+            port: _FakeGadgetBypassPort(),
+          ),
+          safetySettingsController: safety,
+          displayModeController: display,
+          controller: PrototypeStatusController(),
+          browserController: GameBrowserController(port: _NoopBrowserPort()),
+          captureModeController: await CaptureModeController.load(
+            _MemoryModeStore(),
+          ),
+          gameCaptureController: capture,
+          gameStateController: game,
+          battleController: battle,
+          audioController: audio,
           toolbarController: toolbar,
           gameSurface: const SizedBox(),
         ),
       );
       await tester.pumpAndSettle();
-      final card = find.byType(LiveBattleCard);
-      expect(card, findsOneWidget);
-      expect(
-        tester.widget<LiveBattleCard>(card).enemyPreviewPosition,
-        EnemyPreviewPosition.above,
-      );
+      expect(layout.localeCode, isNull);
+      expect(layout.effectiveLocaleCode, 'ja');
+      expect(find.bySemanticsLabel('艦隊'), findsOneWidget);
 
-      await prediction.setEnemyPreviewPosition(EnemyPreviewPosition.below);
+      binding.platformDispatcher.localeTestValue = const Locale('en');
+      binding.platformDispatcher.localesTestValue = const [Locale('en')];
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<LiveBattleCard>(card).enemyPreviewPosition,
-        EnemyPreviewPosition.below,
-      );
-      await prediction.setEnemyPreviewPosition(EnemyPreviewPosition.above);
+      expect(layout.localeCode, isNull);
+      expect(layout.effectiveLocaleCode, 'en');
+      expect(find.text('Fleet summary'), findsOneWidget);
+      expect(find.bySemanticsLabel('Fleet'), findsOneWidget);
+
+      await layout.setLocaleCode('ko');
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<LiveBattleCard>(card).enemyPreviewPosition,
-        EnemyPreviewPosition.above,
-      );
+      binding.platformDispatcher.localeTestValue = const Locale('ja');
+      binding.platformDispatcher.localesTestValue = const [Locale('ja')];
+      await tester.pumpAndSettle();
+      binding.platformDispatcher.localeTestValue = const Locale('en');
+      binding.platformDispatcher.localesTestValue = const [Locale('en')];
+      await tester.pumpAndSettle();
+      expect(layout.localeCode, 'ko');
+      expect(layout.effectiveLocaleCode, 'ko');
+      expect(find.bySemanticsLabel('함대'), findsOneWidget);
+      expect(find.bySemanticsLabel('Fleet'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('section order controller updates the live shell immediately', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final timersWereDisabled = GameStateController.disableTimerForTest;
+    GameStateController.disableTimerForTest = true;
+    addTearDown(
+      () => GameStateController.disableTimerForTest = timersWereDisabled,
+    );
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1000, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final game = GameStateController();
+    final toolbar = GameToolbarController();
+    final capture = GameCaptureController();
+    final battle = BattleController(gameState: () => game.state);
+    final layout = await LayoutSettingsController.load(
+      _MemoryLayoutSettingsStore().._dashboardCardOrder = ['battle'],
+    );
+    final prediction = await BattlePredictionSettingsController.load(
+      MemoryBattlePredictionSettingsStore(),
+    );
+    addTearDown(game.dispose);
+    addTearDown(toolbar.dispose);
+    addTearDown(capture.dispose);
+    addTearDown(battle.dispose);
+    addTearDown(layout.dispose);
+    addTearDown(prediction.dispose);
+
+    await tester.pumpWidget(
+      YahagiApp(
+        layoutSettingsController: layout,
+        battlePredictionSettingsController: prediction,
+        networkSettingsController: NetworkSettingsController(
+          store: _MemoryNetworkSettingsStore(),
+        ),
+        gadgetBypassController: GadgetBypassController(
+          store: _MemoryGadgetBypassStore(),
+          port: _FakeGadgetBypassPort(),
+        ),
+        safetySettingsController: await SafetySettingsController.load(
+          MemorySafetySettingsStore(),
+        ),
+        displayModeController: await DisplayModeController.load(
+          MemoryDisplayModeStore(),
+        ),
+        controller: PrototypeStatusController(),
+        browserController: GameBrowserController(port: _NoopBrowserPort()),
+        captureModeController: await CaptureModeController.load(
+          _MemoryModeStore(),
+        ),
+        gameCaptureController: capture,
+        gameStateController: game,
+        battleController: battle,
+        audioController: await GameAudioController.load(_MemoryAudioStore()),
+        toolbarController: toolbar,
+        gameSurface: const SizedBox(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final card = find.byType(LiveBattleCard);
+    expect(card, findsOneWidget);
+    expect(
+      tester.widget<LiveBattleCard>(card).sectionOrder,
+      orderedEquals(defaultBattlePredictionSectionOrder),
+    );
+
+    const below = <BattlePredictionSection>[
+      BattlePredictionSection.sortieMap,
+      BattlePredictionSection.predictionResult,
+      BattlePredictionSection.enemyPreview,
+    ];
+    await prediction.setSectionOrder(below);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<LiveBattleCard>(card).sectionOrder,
+      orderedEquals(below),
+    );
+    await prediction.resetSectionOrder();
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<LiveBattleCard>(card).sectionOrder,
+      orderedEquals(defaultBattlePredictionSectionOrder),
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('backup maintenance and recovery preserve the game surface', (
     tester,
@@ -737,7 +994,7 @@ void main() {
     final source = File('lib/main.dart').readAsStringSync();
     expect(
       source,
-      matches(RegExp(r'return Scaffold\(\s*resizeToAvoidBottomInset: false,')),
+      matches(RegExp(r'Scaffold\(\s*resizeToAvoidBottomInset: false,')),
     );
   });
 

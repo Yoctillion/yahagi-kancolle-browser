@@ -5,6 +5,26 @@ import org.junit.Test
 
 class NotificationStringsTest {
     @Test
+    fun englishKeepsNamesAndTranslatesNotificationChrome() {
+        val strings = NotificationStrings("en")
+        assertEquals("Expedition alerts", strings.channelNames["expedition"])
+        assertEquals("Complete", strings.completed)
+        assertEquals("矢矧 · Port progress (1 task)", strings.ongoingTitle(1))
+        assertEquals("矢矧 · Port progress (3 tasks)", strings.ongoingTitle(3))
+        assertEquals("1 more active or completed task", strings.overflow(1))
+        assertEquals("2 more active or completed tasks", strings.overflow(2))
+        assertEquals("My Fleet · Sound on · Vibration off", strings.channelVariant("My Fleet", true, false))
+    }
+    @org.junit.Test
+    fun koreanKeepsNamesAndTranslatesNotificationChrome() {
+        val strings = NotificationStrings("ko")
+        assertEquals("원정 알림", strings.channelNames["expedition"])
+        assertEquals("완료", strings.completed)
+        assertEquals("矢矧 · 모항 진행 상황 (3건)", strings.ongoingTitle(3))
+        assertEquals("그 외 진행 중이거나 완료된 작업 2건", strings.overflow(2))
+        assertEquals("My Fleet · 소리 켜짐 · 진동 꺼짐", strings.channelVariant("My Fleet", true, false))
+    }
+    @Test
     fun usesPersistedAppLocaleForNativeNotificationText() {
         assertEquals("远征通知", NotificationStrings().channelNames["expedition"])
         assertEquals("遠征通知", NotificationStrings("zh_Hant").channelNames["expedition"])

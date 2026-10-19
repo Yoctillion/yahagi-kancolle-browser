@@ -10,6 +10,7 @@ import '../fleet/slot_item_portrait.dart';
 import '../fleet/fleet_ui_strings.dart';
 import '../game_state/fleet_metrics.dart';
 import '../game_state/game_state.dart';
+import '../localization/game_name_localizations.dart';
 import 'composition_image_strings.dart';
 
 enum CompositionPlaneCountMode { hidden, current, maximum }
@@ -467,8 +468,15 @@ class _ShipCard extends StatelessWidget {
     final hasExpansion = ship != null && ship.extraSlotId != 0;
     final heading = _UnitHeading(
       recordMode: recordMode,
-      name: master?.name ?? strings.missingShip,
-      type: ship == null ? '—' : state.typeForShip(ship)?.name ?? '—',
+      name: master == null
+          ? strings.missingShip
+          : gameNames(context).shipName(master.name, shipId: master.id),
+      type: ship == null
+          ? '—'
+          : gameNames(context).shipTypeName(
+              state.typeForShip(ship)?.name ?? '—',
+              typeId: master?.shipTypeId,
+            ),
       level: ship?.level,
       luck: ship?.luck,
       portrait: master == null
@@ -770,43 +778,48 @@ class _UnitHeading extends StatelessWidget {
                 if (trailing != null) ...[const SizedBox(height: 5), trailing!],
                 if (level != null) ...[
                   const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      if (recordMode)
-                        Text(
-                          CompositionImageStrings.of(context).level(level!),
-                          style: const TextStyle(
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (recordMode)
+                          Text(
+                            CompositionImageStrings.of(context).level(level!),
+                            style: const TextStyle(
+                              color: _gold,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          )
+                        else
+                          _Pill(
+                            text: CompositionImageStrings.of(
+                              context,
+                            ).level(level!),
                             color: _gold,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                            compact: true,
                           ),
-                        )
-                      else
-                        _Pill(
-                          text: CompositionImageStrings.of(
-                            context,
-                          ).level(level!),
-                          color: _gold,
-                          compact: true,
-                        ),
-                      const SizedBox(width: 3),
-                      if (recordMode)
-                        Text(
-                          '${CompositionImageStrings.of(context).luck} ${luck ?? 0}',
-                          style: const TextStyle(
+                        const SizedBox(width: 3),
+                        if (recordMode)
+                          Text(
+                            '${CompositionImageStrings.of(context).luck} ${luck ?? 0}',
+                            style: const TextStyle(
+                              color: _cyan,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          )
+                        else
+                          _Pill(
+                            text:
+                                '${CompositionImageStrings.of(context).luck} ${luck ?? 0}',
                             color: _cyan,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                            compact: true,
                           ),
-                        )
-                      else
-                        _Pill(
-                          text:
-                              '${CompositionImageStrings.of(context).luck} ${luck ?? 0}',
-                          color: _cyan,
-                          compact: true,
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ],
@@ -920,7 +933,9 @@ class _EquipmentRow extends StatelessWidget {
                       _EquipmentName(
                         name: empty
                             ? strings.emptySlot
-                            : master?.name ?? strings.missingEquipment,
+                            : gameNames(context).equipmentName(
+                                master?.name ?? strings.missingEquipment,
+                              ),
                         textKey: Key('composition-equipment-name-$suffix'),
                         empty: empty,
                       ),

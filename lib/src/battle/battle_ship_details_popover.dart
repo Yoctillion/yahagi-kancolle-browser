@@ -1,3 +1,4 @@
+import '../localization/game_name_localizations.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -418,7 +419,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
         : (details?.remodelShipId ?? 0) > 0 &&
               (details?.remodelLevel ?? 0) > 0 &&
               (details?.remodelName?.trim().isNotEmpty ?? false)
-        ? 'Lv.${details!.remodelLevel} ${details.remodelName}'
+        ? 'Lv.${details!.remodelLevel} ${gameNames(context).shipName(details.remodelName!, shipId: details.remodelShipId)}'
         : fleetText(context, FleetUiKeys.dataIncomplete);
     Widget labeledValue(String label, String value) => Text.rich(
       TextSpan(
@@ -480,7 +481,9 @@ class _ShipPopoverState extends State<_ShipPopover> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
-                                ship.name,
+                                gameNames(
+                                  context,
+                                ).shipName(ship.name, shipId: ship.masterId),
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -702,7 +705,9 @@ class _EquipmentRow extends StatelessWidget {
           const SizedBox(width: 7),
           Expanded(
             child: Text(
-              item.name ??
+              (item.name == null
+                      ? null
+                      : gameNames(context).equipmentName(item.name!)) ??
                   (item.masterId == null
                       ? l.unknownEquip
                       : '${l.unknownEquip} #${item.masterId}'),

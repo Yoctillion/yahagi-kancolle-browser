@@ -10,6 +10,7 @@ class FrozenDataTable extends StatefulWidget {
     required this.scrollableHeaders,
     required this.scrollableCells,
     required this.rowHeights,
+    this.headerExtent = headerHeight,
     this.keyPrefix = 'frozen-table',
     this.onEndReached,
     this.onRowTap,
@@ -28,6 +29,7 @@ class FrozenDataTable extends StatefulWidget {
   final List<Widget> scrollableHeaders;
   final List<Widget> Function(int index) scrollableCells;
   final List<double> rowHeights;
+  final double headerExtent;
   final String keyPrefix;
   final VoidCallback? onEndReached;
   final ValueChanged<int>? onRowTap;
@@ -215,7 +217,7 @@ class _FrozenDataTableState extends State<FrozenDataTable> {
           child: Column(
             children: [
               SizedBox(
-                height: FrozenDataTable.headerHeight,
+                height: widget.headerExtent,
                 child: Row(
                   children: [
                     SizedBox(
@@ -223,7 +225,7 @@ class _FrozenDataTableState extends State<FrozenDataTable> {
                       child: row(
                         widget.frozenHeaders,
                         widget.frozenColumnWidths,
-                        FrozenDataTable.headerHeight,
+                        widget.headerExtent,
                         background: const Color(0xff17303e),
                         strongTrailingBorder: true,
                       ),
@@ -248,7 +250,7 @@ class _FrozenDataTableState extends State<FrozenDataTable> {
                           child: row(
                             widget.scrollableHeaders,
                             widget.scrollableColumnWidths,
-                            FrozenDataTable.headerHeight,
+                            widget.headerExtent,
                             background: const Color(0xff17303e),
                           ),
                         ),

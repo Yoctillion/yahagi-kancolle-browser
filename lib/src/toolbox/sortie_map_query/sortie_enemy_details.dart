@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../fleet/equipment_type_icon.dart';
 import '../../fleet/ship_portrait.dart';
 import '../../game_state/game_state.dart';
+import '../../localization/game_name_localizations.dart';
 import '../../widgets/top_notice.dart';
 import 'enemy_catalog.dart';
 import 'sortie_map_models.dart';
@@ -99,7 +100,9 @@ class _SortieEnemyDetailsDialog extends StatelessWidget {
                       color: const Color(0xffff907e),
                     ),
                     _InfoChip(
-                      label: details.shipType ?? strings.enemyShip,
+                      label: gameNames(
+                        context,
+                      ).shipTypeName(details.shipType ?? strings.enemyShip),
                       color: const Color(0xffffc95c),
                     ),
                     _InfoChip(
@@ -167,7 +170,7 @@ class _Header extends StatelessWidget {
       const SizedBox(width: 9),
       Expanded(
         child: Text(
-          entry.nameJa,
+          gameNames(context).shipName(entry.nameJa, shipId: entry.id),
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
       ),
@@ -192,10 +195,16 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = EnemyDetailsStrings.of(context);
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    Widget valueText(String value) => Text(
+      value,
+      maxLines: 1,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+    );
     final stats = <(String, String)>[
       (strings.hp, _number(details.hp)),
-      (strings.speed, details.speed ?? '—'),
-      (strings.range, details.range ?? '—'),
+      (strings.speed, strings.speedValue(details.speed)),
+      (strings.range, strings.rangeValue(details.range)),
       (strings.aircraftCapacity, _number(details.aircraftCapacity)),
       (strings.firepower, _stat(details.firepower)),
       (strings.torpedo, _stat(details.torpedo)),
@@ -219,6 +228,9 @@ class _StatsGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 4,
           childAspectRatio: 2.35,
+          mainAxisExtent: english
+              ? MediaQuery.textScalerOf(context).scale(50)
+              : null,
           children: [
             for (final stat in stats)
               Column(
@@ -226,19 +238,23 @@ class _StatsGrid extends StatelessWidget {
                 children: [
                   Text(
                     stat.$1,
+                    maxLines: english ? 2 : null,
+                    textAlign: english ? TextAlign.center : null,
                     style: const TextStyle(
                       color: Color(0xff93aab8),
                       fontSize: 10,
                     ),
                   ),
-                  Text(
-                    stat.$2,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  if (english)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: valueText(stat.$2),
+                      ),
+                    )
+                  else
+                    valueText(stat.$2),
                 ],
               ),
           ],
@@ -276,7 +292,7 @@ class _EquipmentRow extends StatelessWidget {
         const SizedBox(width: 7),
         Expanded(
           child: Text(
-            item.name,
+            gameNames(context).equipmentName(item.name),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12),

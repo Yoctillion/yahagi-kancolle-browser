@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../account/account_session.dart';
+import '../subtitles/ship_subtitle_catalog_controller.dart';
+import '../subtitles/ship_subtitle_update_section.dart';
 import '../backup/record_backup.dart';
 
 import '../battle/fcd_map_controller.dart';
@@ -61,6 +63,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
     this.sortieMapCatalogController,
     this.enemyCatalogController,
     this.improvementPlannerController,
+    this.shipSubtitleCatalogController,
     this.telemetryController,
     this.backupService,
   });
@@ -82,6 +85,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
   final SortieMapCatalogController? sortieMapCatalogController;
   final EnemyCatalogController? enemyCatalogController;
   final ImprovementPlannerController? improvementPlannerController;
+  final ShipSubtitleCatalogController? shipSubtitleCatalogController;
   final TelemetryController? telemetryController;
   final RecordBackupService? backupService;
 
@@ -199,7 +203,8 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                 questCatalogController != null ||
                 sortieMapCatalogController != null ||
                 enemyCatalogController != null ||
-                improvementPlannerController != null) ...<Widget>[
+                improvementPlannerController != null ||
+                shipSubtitleCatalogController != null) ...<Widget>[
               const SizedBox(height: 24),
               buildSectionTitle(l10n.fcdMapSectionTitle),
               buildCard(
@@ -231,6 +236,16 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                       const Divider(height: 1),
                     if (improvementPlannerController case final controller?)
                       ImprovementDatasetUpdateSection(controller: controller),
+                    if (shipSubtitleCatalogController
+                        case final controller?) ...[
+                      if (fcdMapController != null ||
+                          questCatalogController != null ||
+                          sortieMapCatalogController != null ||
+                          enemyCatalogController != null ||
+                          improvementPlannerController != null)
+                        const Divider(height: 1),
+                      ShipSubtitleUpdateSection(controller: controller),
+                    ],
                   ],
                 ),
               ),

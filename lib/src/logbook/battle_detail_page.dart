@@ -163,7 +163,7 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                           if (detail.enemyFleetName.isNotEmpty) ...[
                             Flexible(
                               child: Tag(
-                                strings.localize(detail.enemyFleetName),
+                                detail.enemyFleetName,
                                 color: enemy,
                                 pill: true,
                               ),
@@ -239,6 +239,17 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
         .fleet(attack.defenderSide, attack.defenderRole!)
         ?.ships
         .where((ship) => ship.position == attack.defenderPosition)
+        .firstOrNull;
+  }
+
+  BattleDetailShip? _attackerShip(BattleDetailAttack attack) {
+    final role = attack.attackerRole;
+    final position = attack.attackerPosition;
+    if (role == null || position == null) return null;
+    return widget.detail
+        .fleet(attack.attackerSide, role)
+        ?.ships
+        .where((ship) => ship.position == position)
         .firstOrNull;
   }
 
@@ -423,6 +434,7 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                                 attack: row.attack,
                                 number: row.number,
                                 target: _targetShip(row.attack),
+                                attacker: _attackerShip(row.attack),
                               ),
                         ],
                       ),
@@ -465,10 +477,12 @@ class _AttackReport extends StatelessWidget {
     required this.attack,
     required this.number,
     this.target,
+    this.attacker,
   });
   final BattleDetailAttack attack;
   final int number;
   final BattleDetailShip? target;
+  final BattleDetailShip? attacker;
 
   String? get targetStatus {
     if (target?.hpUnknown == true || attack.defenderHpAfter < 0) return null;
@@ -491,6 +505,10 @@ class _AttackReport extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = BattleDetailStrings.of(context);
     final a = attack;
+    // Attacks without a ship identity use a generated source label instead.
+    final attackerName = a.attackerRole == null && a.attackerPosition == null
+        ? strings.localize(a.attackerName)
+        : strings.shipDisplayName(a.attackerName, shipId: attacker?.masterId);
     final accent = a.attackerSide != BattleDetailSide.enemy ? friend : enemy;
     final missed =
         a.hits.isNotEmpty &&
@@ -540,7 +558,7 @@ class _AttackReport extends StatelessWidget {
                     TextSpan(
                       children: [
                         TextSpan(
-                          text: strings.localize(a.attackerName),
+                          text: attackerName,
                           style: TextStyle(
                             color: accent,
                             fontWeight: FontWeight.w700,
@@ -551,7 +569,10 @@ class _AttackReport extends StatelessWidget {
                           style: const TextStyle(color: muted),
                         ),
                         TextSpan(
-                          text: strings.localize(a.defenderName),
+                          text: strings.shipDisplayName(
+                            a.defenderName,
+                            shipId: target?.masterId,
+                          ),
                           style: TextStyle(
                             color: a.defenderSide == BattleDetailSide.enemy
                                 ? enemy
@@ -582,7 +603,9 @@ class _AttackReport extends StatelessWidget {
                         Tag(strings.critical, color: enemy, pill: true),
                       if (status != null)
                         Tag(
-                          '${strings.sideName(a.defenderSide)}${strings.damageStatus(status)}',
+                          '${strings.sideName(a.defenderSide)}'
+                          '${strings.locale.languageCode == 'en' ? ' ' : ''}'
+                          '${strings.damageStatus(status)}',
                           color: statusColor,
                           pill: true,
                         ),
@@ -717,7 +740,7 @@ class _ShipCard extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     label(
-                      strings.localize(s.name) +
+                      strings.shipDisplayName(s.name, shipId: s.masterId) +
                           (s.level == null ? '' : '  Lv.${s.level}'),
                       size: 13,
                       bold: true,

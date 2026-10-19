@@ -31,6 +31,7 @@ class _SenkaInfoViewState extends State<SenkaInfoView> {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      final english = Localizations.localeOf(context).languageCode == 'en';
       final horizontal = constraints.maxWidth > constraints.maxHeight * 1.15;
       final server = _ServerOverview(
         state: widget.state,
@@ -105,12 +106,14 @@ class _SenkaInfoViewState extends State<SenkaInfoView> {
             SizedBox(height: gap),
             SizedBox(
               key: const Key('senka-info-sorties'),
-              height: _sortiePanelHeight(
-                sortieStats,
-                widget.state.hiddenSortieMapKeys,
-                showHidden,
-                widget.compact,
-              ),
+              height: english
+                  ? null
+                  : _sortiePanelHeight(
+                      sortieStats,
+                      widget.state.hiddenSortieMapKeys,
+                      showHidden,
+                      widget.compact,
+                    ),
               child: sorties,
             ),
           ],
@@ -502,6 +505,7 @@ class _SortiePanel extends StatelessWidget {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
+    final english = Localizations.localeOf(context).languageCode == 'en';
     final rows =
         sortieStats.values
             .where(
@@ -524,6 +528,7 @@ class _SortiePanel extends StatelessWidget {
     return SenkaPanel(
       title: l10n.senkaSortieStats,
       compact: compact,
+      fitContent: english && !scrollRows,
       headerHeight: compact ? 34 : 44,
       trailing: Semantics(
         button: true,
@@ -557,98 +562,110 @@ class _SortiePanel extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            height: compact ? 26 : 34,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            height: english
+                ? null
+                : compact
+                ? 26
+                : 34,
+            constraints: english
+                ? BoxConstraints(minHeight: compact ? 26 : 34)
+                : null,
+            padding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: english ? 4 : 0,
+            ),
             decoration: const BoxDecoration(
               color: Color(0xff071822),
               border: Border(bottom: BorderSide(color: senkaLine)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _summaryMetric(
-                  timeFilter == 'today'
-                      ? l10n.senkaTodaySorties
-                      : l10n.senkaMonthSorties,
-                  '$totalSorties',
-                  compact,
-                ),
-                _summaryMetric(l10n.senkaBossArrivals, '$totalBoss', compact),
-                _summaryMetric(l10n.senkaSWins, '$totalS', compact),
-              ],
-            ),
+            child: _responsiveHeader(context, [
+              _summaryMetric(
+                context,
+                timeFilter == 'today'
+                    ? l10n.senkaTodaySorties
+                    : l10n.senkaMonthSorties,
+                '$totalSorties',
+                compact,
+              ),
+              _summaryMetric(
+                context,
+                l10n.senkaBossArrivals,
+                '$totalBoss',
+                compact,
+              ),
+              _summaryMetric(context, l10n.senkaSWins, '$totalS', compact),
+            ], distribute: true),
           ),
           Container(
-            height: 44,
+            height: english ? null : 44,
+            constraints: english ? const BoxConstraints(minHeight: 44) : null,
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              children: [
-                Container(
-                  height: compact ? 24 : 28,
-                  decoration: BoxDecoration(
-                    color: const Color(0xff0b1e2a),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: senkaLine),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _timeFilterButton(
-                        l10n.senkaMonth,
-                        'month',
-                        timeFilter == 'month',
-                        compact,
-                      ),
-                      _timeFilterButton(
-                        l10n.senkaToday,
-                        'today',
-                        timeFilter == 'today',
-                        compact,
-                      ),
-                    ],
-                  ),
+            child: _responsiveHeader(context, [
+              Container(
+                height: compact ? 24 : 28,
+                decoration: BoxDecoration(
+                  color: const Color(0xff0b1e2a),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: senkaLine),
                 ),
-                const Spacer(),
-                Semantics(
-                  label: l10n.senkaShowHiddenAreas,
-                  button: true,
-                  toggled: showHidden,
-                  excludeSemantics: true,
-                  child: Container(
-                    key: const Key('senka-show-hidden'),
-                    constraints: const BoxConstraints(
-                      minWidth: 44,
-                      minHeight: 44,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _timeFilterButton(
+                      l10n.senkaMonth,
+                      'month',
+                      timeFilter == 'month',
+                      compact,
                     ),
-                    child: InkWell(
-                      onTap: () => onShowHidden(!showHidden),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Icon(
-                            showHidden
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            size: compact ? 14 : 18,
-                            color: showHidden ? senkaGold : senkaMuted,
+                    _timeFilterButton(
+                      l10n.senkaToday,
+                      'today',
+                      timeFilter == 'today',
+                      compact,
+                    ),
+                  ],
+                ),
+              ),
+              if (!english) const Spacer(),
+              Semantics(
+                label: l10n.senkaShowHiddenAreas,
+                button: true,
+                toggled: showHidden,
+                excludeSemantics: true,
+                child: Container(
+                  key: const Key('senka-show-hidden'),
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
+                  ),
+                  child: InkWell(
+                    onTap: () => onShowHidden(!showHidden),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Icon(
+                          showHidden
+                              ? Icons.check_box
+                              : Icons.check_box_outline_blank,
+                          size: compact ? 14 : 18,
+                          color: showHidden ? senkaGold : senkaMuted,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          l10n.senkaShowHidden,
+                          style: TextStyle(
+                            color: showHidden ? senkaText : senkaMuted,
+                            fontSize: compact ? 10 : 12,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            l10n.senkaShowHidden,
-                            style: TextStyle(
-                              color: showHidden ? senkaText : senkaMuted,
-                              fontSize: compact ? 10 : 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
           Container(
             height: compact ? 26 : 34,
@@ -686,9 +703,31 @@ class _SortiePanel extends StatelessWidget {
     );
   }
 
-  Widget _summaryMetric(String label, String value, bool compact) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
+  Widget _responsiveHeader(
+    BuildContext context,
+    List<Widget> children, {
+    bool distribute = false,
+  }) => Localizations.localeOf(context).languageCode == 'en'
+      ? Wrap(
+          spacing: 12,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: children,
+        )
+      : Row(
+          mainAxisAlignment: distribute
+              ? MainAxisAlignment.spaceAround
+              : MainAxisAlignment.start,
+          children: children,
+        );
+
+  Widget _summaryMetric(
+    BuildContext context,
+    String label,
+    String value,
+    bool compact,
+  ) {
+    final children = <Widget>[
       Text(
         label,
         style: TextStyle(
@@ -697,7 +736,8 @@ class _SortiePanel extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
-      const SizedBox(width: 6),
+      if (Localizations.localeOf(context).languageCode != 'en')
+        const SizedBox(width: 6),
       Text(
         value,
         style: TextStyle(
@@ -707,8 +747,15 @@ class _SortiePanel extends StatelessWidget {
           fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
-    ],
-  );
+    ];
+    return Localizations.localeOf(context).languageCode == 'en'
+        ? Wrap(
+            spacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: children,
+          )
+        : Row(mainAxisSize: MainAxisSize.min, children: children);
+  }
 
   Widget _timeFilterButton(
     String label,

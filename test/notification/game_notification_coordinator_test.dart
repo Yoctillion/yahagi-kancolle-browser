@@ -1,3 +1,8 @@
+import 'dart:io';
+import 'package:flutter/widgets.dart' show Locale;
+import 'package:yahagi_kancolle_browser/src/localization/game_name_catalog.dart';
+import 'package:yahagi_kancolle_browser/src/subtitles/ship_subtitle_kc3_bundle.dart';
+import 'package:yahagi_kancolle_browser/src/subtitles/ship_subtitle_language.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -131,6 +136,55 @@ void main() {
       testState = GameState.empty;
     });
 
+    for (final code in ['en', 'ko']) {
+      test(
+        'ship names in $code notification alarms follow the shared dictionary',
+        () async {
+          final bundle = ShipSubtitleKc3Bundle.fromJsonString(
+            File(ShipSubtitleKc3Bundle.bundledAsset).readAsStringSync(),
+          );
+          final names = GameNameCatalog(bundle: bundle, locale: Locale(code));
+          testState = testState.copyWith(
+            masterShips: const {
+              1: MasterShip(id: 1, name: '睦月', shipTypeId: 2),
+            },
+            constructionDocks: [
+              ConstructionDock(
+                id: 1,
+                state: 1,
+                createdShipMasterId: 1,
+                completionTime: testNow.add(const Duration(minutes: 30)),
+              ),
+            ],
+          );
+          final coordinator = GameNotificationCoordinator(
+            gameStateController: gameStateController,
+            settingsController: settingsController,
+            notificationPort: fakePort,
+            gameStateProvider: () => testState,
+            nowProvider: () => testNow,
+            localeCodeProvider: () => code,
+            namesProvider: () => names,
+          );
+          addTearDown(coordinator.dispose);
+          coordinator.start();
+          await Future<void>.delayed(Duration.zero);
+          final bodies = fakePort.scheduledAlarms.values
+              .map((alarm) => alarm.body)
+              .join(' ');
+          final expected = bundle.shipName(
+            code == 'en'
+                ? ShipSubtitleLanguage.english
+                : ShipSubtitleLanguage.korean,
+            '睦月',
+          );
+          expect(bodies, contains(expected));
+          expect(bodies, isNot(contains('睦月')));
+          expect(testState.masterShips[1]!.name, '睦月');
+        },
+      );
+    }
+
     test(
       'locale changes update alarms without changing identity or names',
       () async {
@@ -178,7 +232,7 @@ void main() {
         coordinator.start();
         await Future<void>.delayed(Duration.zero);
         final original = Map.of(fakePort.scheduledAlarms);
-        for (final code in ['zh_Hant', 'ja', 'zh']) {
+        for (final code in ['zh_Hant', 'ja', 'ko', 'en', 'zh']) {
           locale.value = code;
           await Future<void>.delayed(Duration.zero);
           expect(
@@ -206,6 +260,36 @@ void main() {
             );
           }
           if (code == 'zh_Hant') expect(alarm.title, '遠征完成 · 我的舰队');
+          if (code == 'ko') {
+            expect(alarm.title, '원정 완료 · 我的舰队');
+            expect(
+              fakePort.scheduledAlarms['expedition_3_complete']!.title,
+              '원정 완료 · 제3함대',
+            );
+            expect(alarm.body, '东京急行 원정에서 무사히 모항으로 귀환했습니다!');
+          }
+          if (code == 'en') {
+            final originalPreemptSeconds =
+                settingsController.settings.expeditionPreemptSeconds;
+            expect(alarm.title, 'Expedition complete · 我的舰队');
+            expect(
+              fakePort.scheduledAlarms['expedition_3_complete']!.title,
+              'Expedition complete · Fleet 3',
+            );
+            expect(alarm.body, '东京急行 has safely returned to port!');
+            for (final seconds in [1, 2]) {
+              await settingsController.setExpeditionPreemptSeconds(seconds);
+              await Future<void>.delayed(Duration.zero);
+              expect(
+                fakePort.scheduledAlarms['expedition_2_preempt']!.body,
+                '东京急行 returns to port in $seconds ${seconds == 1 ? 'second' : 'seconds'}.',
+              );
+            }
+            await settingsController.setExpeditionPreemptSeconds(
+              originalPreemptSeconds,
+            );
+            await Future<void>.delayed(Duration.zero);
+          }
         }
         expect(fakePort.deliveredImmediateAlerts, isEmpty);
         final applyCount = fakePort.applyCount;

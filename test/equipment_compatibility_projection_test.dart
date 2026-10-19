@@ -74,6 +74,35 @@ void main() {
 
   final projection = EquipmentCompatibilityProjection(state);
 
+  test('translated search can distinguish same-name forms by master ID', () {
+    final rows = projection.rows(
+      equipmentMasterId: 10,
+      query: 'special survey',
+      nameWithIdResolver: (name, id) => id == 3 ? 'Special Survey Ship' : name,
+    );
+    expect(rows.map((row) => row.shipMaster.id), [3]);
+  });
+
+  test(
+    'translated and original names both match without changing raw rows',
+    () {
+      String translated(String name) => name.replaceAll('矢矧', 'Yahagi');
+      final translatedRows = projection.rows(
+        equipmentMasterId: 10,
+        query: '  YAHAGI  ',
+        nameResolver: translated,
+      );
+      final originalRows = projection.rows(
+        equipmentMasterId: 10,
+        query: '矢矧',
+        nameResolver: translated,
+      );
+      expect(translatedRows.map((row) => row.shipMaster.id), [1, 2, 3]);
+      expect(originalRows.map((row) => row.shipMaster.id), [1, 2, 3]);
+      expect(translatedRows.first.shipMaster.name, '矢矧');
+    },
+  );
+
   test('all rows keep remodel forms separate and exclude abyssal ships', () {
     final rows = projection.rows(equipmentMasterId: 10);
 

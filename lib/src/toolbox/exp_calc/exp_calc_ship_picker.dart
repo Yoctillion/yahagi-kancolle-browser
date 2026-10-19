@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../fleet/ship_portrait.dart';
 import '../../game_state/game_state.dart';
+import '../../localization/game_name_localizations.dart';
 import '../../inventory/owned_inventory_projection.dart';
 import '../../theme/app_fonts.dart';
 import 'exp_calc_strings.dart';
@@ -25,7 +26,7 @@ class ExpCalcShipPicker extends StatelessWidget {
     final ship = state.ships[selectedId];
     final label = ship == null
         ? AppLocalizations.of(context)!.expCalcFreeMode
-        : '${state.masterShips[ship.masterId]?.name ?? 'Ship #${ship.id}'} · Lv.${ship.level}';
+        : '${gameNames(context).shipName(state.masterShips[ship.masterId]?.name ?? 'Ship #${ship.id}', shipId: ship.masterId)} · Lv.${ship.level}';
     return Material(
       color: const Color(0xff0c202b),
       shape: RoundedRectangleBorder(
@@ -114,9 +115,10 @@ class _ShipDialogState extends State<_ShipDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final fontFamily = AppFonts.forLocale(
-      Localizations.localeOf(context).toString(),
-    );
+    final fontStyle = Theme.of(context).textTheme.bodyMedium;
+    final fontFamily =
+        fontStyle?.fontFamily ??
+        AppFonts.forLocale(Localizations.localeOf(context).toString());
     final size = MediaQuery.sizeOf(context);
     final ships = widget.ships
         .where(
@@ -209,6 +211,8 @@ class _ShipDialogState extends State<_ShipDialog> {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontFamily: fontFamily,
+                                        fontFamilyFallback:
+                                            fontStyle?.fontFamilyFallback,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -233,8 +237,11 @@ class _ShipDialogState extends State<_ShipDialog> {
                         final selected = ship?.id == widget.selectedId;
                         final name = ship == null
                             ? l10n.expCalcFreeMode
-                            : widget.state.masterShips[ship.masterId]?.name ??
-                                  'Ship #${ship.id}';
+                            : gameNames(context).shipName(
+                                widget.state.masterShips[ship.masterId]?.name ??
+                                    'Ship #${ship.id}',
+                                shipId: ship.masterId,
+                              );
                         return Semantics(
                           selected: selected,
                           button: true,
@@ -277,6 +284,8 @@ class _ShipDialogState extends State<_ShipDialog> {
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontFamily: fontFamily,
+                                            fontFamilyFallback:
+                                                fontStyle?.fontFamilyFallback,
                                             fontWeight: FontWeight.w700,
                                             fontSize: ship == null ? 12 : 18,
                                           ),
@@ -289,6 +298,8 @@ class _ShipDialogState extends State<_ShipDialog> {
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontFamily: fontFamily,
+                                            fontFamilyFallback:
+                                                fontStyle?.fontFamilyFallback,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 16.5,
                                           ),

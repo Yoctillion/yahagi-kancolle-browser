@@ -4,10 +4,11 @@ import 'package:flutter/foundation.dart';
 
 import 'battle_node_label_resolver.dart';
 import 'fcd_map_dataset.dart';
+import 'fcd_map_geometry.dart';
 import 'fcd_map_update_service.dart';
 
 final class FcdMapController extends ChangeNotifier
-    implements BattleNodeLabelResolver {
+    implements BattleNodeLabelResolver, BattleMapGeometryResolver {
   FcdMapController({
     required FcdMapDataset dataset,
     required FcdMapUpdateClient updater,
@@ -34,6 +35,12 @@ final class FcdMapController extends ChangeNotifier
   FcdMapUpdateResult? get lastResult => _lastResult;
   DateTime? get lastCheckedAt => _lastCheckedAt;
   String get sourceHost => _sourceHost;
+
+  @override
+  FcdMapGeometry? geometryFor({
+    required int mapAreaId,
+    required int mapInfoNo,
+  }) => _dataset.geometryFor(mapAreaId: mapAreaId, mapInfoNo: mapInfoNo);
 
   @override
   String? resolve({

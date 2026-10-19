@@ -15,7 +15,9 @@ import 'battle_models.dart';
 import 'battle_ship_details.dart';
 import 'battle_node_label_resolver.dart';
 import 'battle_session.dart';
+import 'fcd_map_geometry.dart';
 import 'sortie_damage_control_ledger.dart';
+import 'sortie_map_progress.dart';
 import 'prediction/battle_prediction_engine.dart';
 import 'prediction/battle_prediction_executor.dart';
 import 'prediction/poi/poi_battle_prediction_engine.dart';
@@ -110,6 +112,7 @@ final class BattleController extends ChangeNotifier
     _lastBattleCapturedAt = null;
     _lastError = null;
     _sortieDamageControls.endSortie();
+    _clearSortieMapProgress();
     _context = const BattleContext();
     _acceptedSequences.clear();
     _records
@@ -138,6 +141,9 @@ final class BattleController extends ChangeNotifier
   final SortieDamageControlLedger _sortieDamageControls =
       SortieDamageControlLedger();
   LiveBattle? _current;
+  SortieMapProgress? _sortieMapProgress;
+  bool _sortieMapFallbackAllowed = true;
+  CombatState? _sortieMapResetCombat;
   DateTime? _lastBattleCapturedAt;
   String? _lastError;
   bool _disposed = false;
@@ -160,6 +166,52 @@ final class BattleController extends ChangeNotifier
   GameState get gameStateSnapshot => gameState();
   String? get lastError => _lastError;
   BattleSession? get session => _session;
+
+  SortieMapProgress? get sortieMapProgress {
+    if (!_sortieMapFallbackAllowed ||
+        _context.practice ||
+        (accountSession != null && !accountSession!.current.isKnown)) {
+      return null;
+    }
+    final progress = _sortieMapProgress;
+    if (progress != null) return progress;
+
+    // A hot reload or an attachment during battle has no observed route
+    // history. Preserve only the current node that the active context knows.
+    if (_context.mapAreaId > 0 && _context.mapInfoNo > 0 && _context.node > 0) {
+      return SortieMapProgress(
+        mapAreaId: _context.mapAreaId,
+        mapInfoNo: _context.mapInfoNo,
+        routeIds: [_context.node],
+        bossRouteId: _context.bossNode > 0 ? _context.bossNode : null,
+        isPartial: true,
+      );
+    }
+    final combat = gameState().combatState;
+    if (!combat.isActive ||
+        combat.mapArea <= 0 ||
+        combat.mapInfo <= 0 ||
+        combat.currentNode <= 0) {
+      return null;
+    }
+    return SortieMapProgress(
+      mapAreaId: combat.mapArea,
+      mapInfoNo: combat.mapInfo,
+      routeIds: [combat.currentNode],
+      isPartial: true,
+    );
+  }
+
+  FcdMapGeometry? get sortieMapGeometry {
+    final progress = sortieMapProgress;
+    final resolver = nodeLabelResolver;
+    if (progress == null || resolver is! BattleMapGeometryResolver) return null;
+    return (resolver as BattleMapGeometryResolver).geometryFor(
+      mapAreaId: progress.mapAreaId,
+      mapInfoNo: progress.mapInfoNo,
+    );
+  }
+
   bool get isPredictionConfirmed =>
       _lastError == null &&
       (_session?.isConfirmed ?? true) &&
@@ -204,7 +256,14 @@ final class BattleController extends ChangeNotifier
   }
 
   void refreshNodeLabel() {
-    if (_disposed || _context.node <= 0) return;
+    if (_disposed) return;
+    final refreshGeometry =
+        sortieMapProgress != null &&
+        nodeLabelResolver is BattleMapGeometryResolver;
+    if (_context.node <= 0) {
+      if (refreshGeometry) notifyListeners();
+      return;
+    }
     final label = nodeLabelResolver
         .resolve(
           mapAreaId: _context.mapAreaId,
@@ -213,7 +272,10 @@ final class BattleController extends ChangeNotifier
         )
         ?.trim();
     final normalized = label == null || label.isEmpty ? null : label;
-    if (_context.nodeDisplayLabel == normalized) return;
+    if (_context.nodeDisplayLabel == normalized) {
+      if (refreshGeometry) notifyListeners();
+      return;
+    }
     _context = _context.copyWith(nodeDisplayLabel: normalized);
     final current = _current;
     if (current != null) _current = current.copyWith(context: _context);
@@ -298,6 +360,7 @@ final class BattleController extends ChangeNotifier
       _session = null;
       _predictionEngine = null;
       _sortieDamageControls.endSortie();
+      _clearSortieMapProgress();
       _context = const BattleContext();
       return;
     }
@@ -306,8 +369,21 @@ final class BattleController extends ChangeNotifier
       return;
     }
     final map = _map(data);
+    if (event.path.startsWith('/kcsapi/api_req_practice/')) {
+      _clearSortieMapProgress();
+    } else if (!_mapPaths.contains(event.path)) {
+      if (_battlePaths.contains(event.path)) {
+        _recoverPartialSortieMapProgress();
+      }
+      // Persist a node observed while attached mid-sortie before a subsequent
+      // navigation response advances the game-state snapshot to another node.
+      _sortieMapProgress ??= sortieMapProgress;
+    }
     if (_mapPaths.contains(event.path) ||
         event.path == '/kcsapi/api_req_map/air_raid') {
+      if (_mapPaths.contains(event.path)) {
+        _updateSortieMapProgress(map, event);
+      }
       if (event.path == '/kcsapi/api_req_map/start') {
         _sortieDamageControls.beginSortie();
       } else if (!_sortieDamageControls.isActive) {
@@ -393,14 +469,139 @@ final class BattleController extends ChangeNotifier
     }
   }
 
+  void _clearSortieMapProgress() {
+    _sortieMapProgress = null;
+    _sortieMapResetCombat = gameState().combatState;
+    // State consumers may still expose the preceding sortie when a reset is
+    // delivered. Do not revive that context through the partial fallback.
+    _sortieMapFallbackAllowed = false;
+  }
+
+  void _recoverPartialSortieMapProgress() {
+    if (_sortieMapFallbackAllowed || _context.practice) return;
+    final state = gameState();
+    final combat = state.combatState;
+    final resetCombat = _sortieMapResetCombat;
+    final scope = accountSession?.current;
+    if (!combat.isActive ||
+        combat.mapArea <= 0 ||
+        combat.mapInfo <= 0 ||
+        combat.currentNode <= 0 ||
+        (scope != null && state.memberId != scope.memberId) ||
+        resetCombat == null) {
+      return;
+    }
+    // Battle reducers can replace a combat object without changing its map
+    // position. Only a different active position establishes fresh context.
+    if (resetCombat.isActive &&
+        resetCombat.mapArea == combat.mapArea &&
+        resetCombat.mapInfo == combat.mapInfo &&
+        resetCombat.currentNode == combat.currentNode) {
+      return;
+    }
+    _sortieMapProgress = SortieMapProgress(
+      mapAreaId: combat.mapArea,
+      mapInfoNo: combat.mapInfo,
+      routeIds: [combat.currentNode],
+      isPartial: true,
+    );
+    _sortieMapFallbackAllowed = true;
+  }
+
+  void _updateSortieMapProgress(
+    Map<String, Object?> data,
+    CapturedApiEvent event,
+  ) {
+    final isStart = event.path == '/kcsapi/api_req_map/start';
+    final previous = isStart ? null : _sortieMapProgress;
+    if (isStart) _clearSortieMapProgress();
+    final (area, info) = _mapIdentityFromNavigation(data, event);
+    if (area <= 0 || info <= 0) return;
+
+    final sameMap =
+        previous != null &&
+        previous.mapAreaId == area &&
+        previous.mapInfoNo == info;
+    final routes = <int>[if (sameMap) ...previous.routeIds];
+    // Zero is a valid departure route on start, but api_no == 0 on next
+    // signals the end of movement rather than another traversed edge.
+    if (isStart && data.containsKey('api_from_no')) {
+      final from = int.tryParse('${data['api_from_no']}');
+      if (from != null && from >= 0) routes.add(from);
+    }
+    final node = _int(data['api_no']);
+    if (node > 0) routes.add(node);
+    if (routes.isEmpty) {
+      _clearSortieMapProgress();
+      return;
+    }
+
+    final contextBoss =
+        !isStart &&
+            previous == null &&
+            _context.mapAreaId == area &&
+            _context.mapInfoNo == info
+        ? _context.bossNode
+        : 0;
+    final boss = _positive(
+      data['api_bosscell_no'],
+      sameMap ? (previous.bossRouteId ?? 0) : contextBoss,
+    );
+    _sortieMapProgress = SortieMapProgress(
+      mapAreaId: area,
+      mapInfoNo: info,
+      routeIds: routes,
+      bossRouteId: boss > 0 ? boss : null,
+      isPartial: !isStart && (!sameMap || previous.isPartial),
+    );
+    _sortieMapFallbackAllowed = true;
+  }
+
+  (int, int) _mapIdentityFromNavigation(
+    Map<String, Object?> data,
+    CapturedApiEvent event,
+  ) {
+    var area = _positive(
+      data['api_maparea_id'],
+      _int(event.requestParams['api_maparea_id']),
+    );
+    var info = _positive(
+      data['api_mapinfo_no'],
+      _int(event.requestParams['api_mapinfo_no']),
+    );
+    final combat = gameState().combatState;
+    if (event.path != '/kcsapi/api_req_map/start' &&
+        (area <= 0 || info <= 0) &&
+        combat.isActive &&
+        (area <= 0 || area == combat.mapArea) &&
+        (info <= 0 || info == combat.mapInfo)) {
+      area = _positive(area, combat.mapArea);
+      info = _positive(info, combat.mapInfo);
+    }
+    if (event.path != '/kcsapi/api_req_map/start' && (area <= 0 || info <= 0)) {
+      final previousArea = _sortieMapProgress?.mapAreaId ?? _context.mapAreaId;
+      final previousInfo = _sortieMapProgress?.mapInfoNo ?? _context.mapInfoNo;
+      if ((area <= 0 || area == previousArea) &&
+          (info <= 0 || info == previousInfo)) {
+        area = _positive(area, previousArea);
+        info = _positive(info, previousInfo);
+      }
+    }
+    return (area, info);
+  }
+
   BattleContext _contextFromMap(
     Map<String, Object?> data,
     CapturedApiEvent event,
   ) {
     final state = gameState();
-    final mapAreaId = _positive(data['api_maparea_id'], _context.mapAreaId);
-    final mapInfoNo = _positive(data['api_mapinfo_no'], _context.mapInfoNo);
-    final node = _positive(data['api_no'], _context.node);
+    final isStart = event.path == '/kcsapi/api_req_map/start';
+    final (mapAreaId, mapInfoNo) = _mapIdentityFromNavigation(data, event);
+    final samePreviousMap =
+        !isStart &&
+        mapAreaId == _context.mapAreaId &&
+        mapInfoNo == _context.mapInfoNo;
+    final node = _positive(data['api_no'], isStart ? 0 : _context.node);
     final sortieFleetId = state.combatState.sortieFleetId;
     final deckId = _positive(
       event.requestParams['api_deck_id'],
@@ -418,7 +619,10 @@ final class BattleController extends ChangeNotifier
       mapAreaId: mapAreaId,
       mapInfoNo: mapInfoNo,
       node: node,
-      bossNode: _positive(data['api_bosscell_no'], _context.bossNode),
+      bossNode: _positive(
+        data['api_bosscell_no'],
+        samePreviousMap ? _context.bossNode : 0,
+      ),
       deckId: deckId,
       combinedFleetType: _combinedFleetTypeForDeck(state, deckId),
       eventId: _int(data['api_event_id'] ?? _context.eventId),

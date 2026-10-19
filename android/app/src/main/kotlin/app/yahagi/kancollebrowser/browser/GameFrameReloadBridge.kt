@@ -29,6 +29,11 @@ internal interface GameFrameReloadBridgePort {
     fun dispose()
 }
 
+internal interface PreparedGameFrameReloadBridgePort : GameFrameReloadBridgePort {
+    fun gamePagePresence(): GameModPagePresence
+    fun reloadPrepared(beforeDispatch: () -> Unit, onComplete: (String, Boolean) -> Unit)
+}
+
 internal object GameFrameReloadBridgeScript {
     const val objectName = "YahagiGameFrameReload"
 
@@ -204,7 +209,7 @@ internal class AndroidGameFrameReloadBridge(
     private val originPolicy: CaptureOriginPolicy = CaptureOriginPolicy(),
     private val mainHandler: Handler = Handler(Looper.getMainLooper()),
     private val onShortcutComplete: (String) -> Unit = {},
-) : GameFrameReloadBridgePort {
+) : PreparedGameFrameReloadBridgePort {
     private companion object {
         const val TAG = "GameFrameReload"
         const val RELOAD_TIMEOUT_MILLIS = 5_000L
@@ -224,6 +229,16 @@ internal class AndroidGameFrameReloadBridge(
     private var reloadDelivered = false
     private var mainDocumentId: String? = null
     private var mainFrameProxy: JavaScriptReplyProxy? = null
+    private var beforeReloadDispatch: (() -> Unit)? = null
+    private var reloadPosted = false
+
+    override fun gamePagePresence(): GameModPagePresence {
+        val webViews = mutableListOf<WebView>()
+        collectWebViews(activity.window.decorView, webViews)
+        return GameModPagePresencePolicy.classify(
+            webViews.size, webViews.singleOrNull()?.url, targetFrames.isNotEmpty(),
+        )
+    }
 
     override fun isSupported(): Boolean =
         WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) &&
@@ -282,34 +297,42 @@ internal class AndroidGameFrameReloadBridge(
         }
     }
 
-    override fun reload(onComplete: (String) -> Unit) {
+    override fun reload(onComplete: (String) -> Unit) =
+        reloadPrepared({}) { result, _ -> onComplete(result) }
+
+    override fun reloadPrepared(beforeDispatch: () -> Unit, onComplete: (String, Boolean) -> Unit) {
         if (!isSupported()) {
-            onComplete("unsupported")
+            onComplete("unsupported", false)
             return
         }
         if (attachedWebView == null || !listenerInstalled || scriptHandlers.isEmpty()) {
-            onComplete("blocked")
+            onComplete("blocked", false)
             return
         }
         if (coordinator.hasPending) {
-            onComplete("blocked")
+            onComplete("blocked", false)
             return
         }
 
         val mainProxy = mainFrameProxy
         val candidates = if (mainProxy != null) listOf(mainProxy) else frameProxies.toList()
         if (candidates.isEmpty()) {
-            onComplete("html_wrap_not_found")
+            onComplete("html_wrap_not_found", false)
             return
         }
 
+        beforeReloadDispatch = beforeDispatch
+        reloadPosted = false
         lateinit var requestId: String
         requestId = coordinator.start { result ->
+            val posted = reloadPosted
             cancelTimeout()
             activeRequestId = null
             reloadDelivered = false
+            beforeReloadDispatch = null
+            reloadPosted = false
             Log.i(TAG, "request=$requestId result=$result")
-            onComplete(result)
+            onComplete(result, posted)
         }
         activeRequestId = requestId
         Log.i(TAG, "request=$requestId probe candidates=${candidates.size} knownTargets=${targetFrames.size}")
@@ -391,15 +414,18 @@ internal class AndroidGameFrameReloadBridge(
                     reloadDelivered = true
                     armTimeout("blocked", RELOAD_TIMEOUT_MILLIS)
                     try {
+                        beforeReloadDispatch?.invoke()
+                        beforeReloadDispatch = null
                         replyProxy.postMessage(JSONObject()
                             .put("kind", "reload")
                             .put("requestId", requestId)
                             .toString())
-                    } catch (_: RuntimeException) {
+                        reloadPosted = true
+                    } catch (_: Exception) {
                         reloadDelivered = false
-                        armTimeout("html_wrap_not_found", PROBE_TIMEOUT_MILLIS)
                         targetFrames.remove(replyProxy)
                         frameProxies.remove(replyProxy)
+                        coordinator.cancel("blocked")
                     }
                 }
             }

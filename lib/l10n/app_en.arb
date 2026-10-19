@@ -1,0 +1,1927 @@
+{
+  "operationProtectionTitle": "Accidental action protection",
+  "confirmBeforeExitTitle": "Confirm before leaving",
+  "confirmBeforeExitDescription": "Ask for confirmation before leaving the app with the Back button or gesture.",
+  "confirmBeforeExitSaveFailed": "Could not save the exit confirmation setting. Please try again.",
+  "appExitConfirmTitle": "Return to the home screen?",
+  "appExitConfirmDescription": "The game will move to the background.",
+  "appExitStay": "Continue playing",
+  "appExitToDesktop": "Go to home screen",
+  "appExitFailed": "Could not return to the home screen. Please try again.",
+  "enterGameFullscreen": "Game fullscreen",
+  "exitGameFullscreen": "Exit fullscreen",
+  "exitFullscreenShort": "Exit",
+  "exitFullscreenConfirmTitle": "Exit game fullscreen?",
+  "exitFullscreenConfirmDescription": "The information panel and toolbar will be shown again.",
+  "exitFullscreenSkipConfirmation": "Do not ask again",
+  "exitFullscreenConfirmAction": "Exit fullscreen",
+  "gameFullscreenHint": "Tap the floating button or press Back to exit fullscreen. Drag the button to move it",
+  "gameFullscreenUnavailable": "Could not display the exit button. Restored the normal layout",
+  "questCompletionNotice": "Completed quests are available",
+  "questCompletionCount": "Completed quests awaiting rewards: {count}",
+  "@questCompletionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resourceTrend90d": "90 days",
+  "resourceTrendInventoryTitle": "Inventory trends",
+  "resourceTrendCustomize": "Visible resources",
+  "resourceTrendAtLeastOne": "Select at least one resource",
+  "resourceTrendBuildMaterial": "Instant construction material",
+  "resourceTrendRepairMaterial": "Instant repair material",
+  "resourceTrendDevMaterial": "Development material",
+  "resourceTrendImproveMaterial": "Improvement material",
+  "resourceTrendLatest": "Latest balance",
+  "resourceTrendChange": "Change over period",
+  "resourceTrendBaseline": "Change baseline: {time} JST",
+  "@resourceTrendBaseline": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resourceTrendObserved": "Last recorded: {time} JST",
+  "@resourceTrendObserved": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resourceTrendPartial": "No record at the start of this period. Changes use the first available record",
+  "resourceTrendInsufficient": "Not enough records to compare",
+  "resourceTrendNoPeriodData": "No resource records for this period",
+  "resourceTrendLoadError": "Could not load resource records",
+  "resourceTrendSaveError": "Could not save resource display settings",
+  "resourceTrendInspect": "Swipe to inspect",
+  "resourceTrendExpand": "Expand chart",
+  "resourceTrendSampled": "Long-range charts preserve peaks and troughs. Values show actual sampled records",
+  "resourceTrendLocalScale": "The vertical axis scales to the balance range",
+  "resourceTrendBaseShort": "Baseline",
+  "diagnosticLoggingSection": "Client diagnostic logs",
+  "diagnosticLoggingTitle": "Record client diagnostic logs",
+  "diagnosticLoggingDesc": "Records only performance and error summaries, without accounts, passwords, or login credentials",
+  "telemetryAnonymousStatsTitle": "Anonymous device and usage statistics",
+  "telemetryAnonymousStatsDesc": "Send anonymous statistics to help the developer improve the app. No account or personal information is included.",
+  "diagnosticPrivacyTitle": "Privacy-protected diagnostics",
+  "diagnosticPrivacyDesc": "Contents are checked again before export. Logs do not record accounts, passwords, Cookie data, tokens, request or response bodies, chats, or screenshots, and are never uploaded automatically.",
+  "diagnosticStatusEnabled": "Recording",
+  "diagnosticStatusDisabled": "Recording stopped",
+  "diagnosticStorageUsage": "Local log size: {size}",
+  "@diagnosticStorageUsage": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "exportDiagnosticFile": "Export diagnostic file",
+  "saveDiagnosticFile": "Save to device",
+  "shareDiagnosticFile": "Share diagnostic file",
+  "diagnosticSaveConfirmTitle": "Save diagnostic file?",
+  "diagnosticSaveConfirmDesc": "A JSON file that has passed a privacy check will be created. Select a destination folder. The client generates the filename automatically, and it cannot be changed.",
+  "diagnosticSaveAction": "Choose folder",
+  "diagnosticSaveSucceeded": "Saved: {fileName}",
+  "@diagnosticSaveSucceeded": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "diagnosticSaveFailed": "Could not save the diagnostic file",
+  "diagnosticShareConfirmTitle": "Share diagnostic file?",
+  "diagnosticShareConfirmDesc": "A JSON file that has passed a privacy check will be created, then the system share sheet will open. Check the recipient before sending.",
+  "diagnosticShareAction": "Share",
+  "diagnosticShareFailed": "Could not share the diagnostic file",
+  "clearDiagnosticData": "Clear diagnostic logs",
+  "diagnosticExportConfirmTitle": "Export diagnostic file?",
+  "diagnosticExportConfirmDesc": "A JSON file will be created and the system share sheet will open. The file contains only client performance, error summaries, and anonymous device runtime information. Check the recipient before sending.",
+  "diagnosticExportAction": "Export",
+  "diagnosticClearConfirmTitle": "Clear diagnostic logs?",
+  "diagnosticClearConfirmDesc": "Deletes diagnostic logs and temporary export copies within the app. Delete any separately saved or shared files yourself.",
+  "diagnosticClearFailed": "Could not clear diagnostic data. Please try again.",
+  "diagnosticExportFailed": "Could not export the diagnostic file",
+  "langKo": "한국어",
+  "langEn": "English",
+  "dataVersionLabel": "Data version",
+  "dataLastCheckedLabel": "Last checked",
+  "dataNotChecked": "Not checked yet",
+  "sortieMapDataTitle": "Sortie map data",
+  "enemyDataTitle": "Enemy ship data",
+  "dataCatalogUpToDate": "Data is up to date.\nVersion: {version}",
+  "@dataCatalogUpToDate": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "dataCatalogUpdated": "Data updated successfully.\n{before} → {after}",
+  "@dataCatalogUpdated": {
+    "placeholders": {
+      "before": {
+        "type": "String"
+      },
+      "after": {
+        "type": "String"
+      }
+    }
+  },
+  "dataCatalogIncompatible": "This app version is too old. Update the app first.",
+  "dataCatalogValidationFailed": "Updated data failed validation. Continuing with the current data.",
+  "dataCatalogStorageFailed": "Could not save the updated data.",
+  "dataCatalogNetworkFailed": "Network update failed. Please try again later.",
+  "questLocalProgress": "Local progress",
+  "questServerProgress": "Server progress: {progress}",
+  "@questServerProgress": {
+    "placeholders": {
+      "progress": {
+        "type": "String"
+      }
+    }
+  },
+  "@@locale": "en",
+  "appTitle": "ヤハギ",
+  "game": "Game",
+  "fleet": "Fleet",
+  "expedition": "Expedition",
+  "repair": "Repair",
+  "construction": "Construction",
+  "quests": "Quests",
+  "battleRecords": "Logbook",
+  "settings": "Settings",
+  "settingsTitle": "Settings",
+  "layoutSettings": "Interface and layout",
+  "uiDisplaySizeTitle": "UI size",
+  "uiDisplaySizeDesc": "Adjust the size of the top status bar and navigation menu",
+  "uiDisplaySizeNormal": "Normal",
+  "uiDisplaySizeCompact": "Compact",
+  "gameAreaRatio": "Game area ratio",
+  "infoPanelWidth": "Information panel width (not applied in portrait)",
+  "autoZoom": "Apply recommended ratio (game:menu 67:33)",
+  "enhancedDamagePulse": "Enhanced damage pulse",
+  "enhancedDamagePulseDesc": "Intensify the color, speed, and light effects inside portraits for light, moderate, and heavy damage. Turn off to use the standard effect.",
+  "informationPanelOnLeft": "Place the information panel on the left",
+  "informationPanelOnLeftDesc": "When off, the panel stays on the right. Portrait mode keeps a vertical layout.",
+  "workspaceMenuOnRight": "Place the menu on the right",
+  "workspaceMenuOnRightDesc": "When off, the menu stays on the left.",
+  "language": "Language",
+  "networkSettings": "Network settings",
+  "networkStatus": "Network status",
+  "proxyNotSupported": "Android System WebView on this device does not support in-app proxy settings.\nUse the system network or a device-wide VPN.",
+  "systemNetwork": "System network / VPN",
+  "systemNetworkDesc": "Use the system network environment without an in-app proxy.",
+  "httpProxy": "HTTP proxy",
+  "httpProxyDesc": "Connect to a custom HTTP proxy server.",
+  "socks5Proxy": "SOCKS5 proxy",
+  "socks5ProxyDesc": "Connect to a custom SOCKS5 proxy server.",
+  "hostAddress": "Host address (IP or domain)",
+  "hostHint": "For example, 192.168.1.10",
+  "port": "Port",
+  "currentSavedMode": "Saved mode",
+  "vpnStatus": "VPN status",
+  "vpnActive": "Active VPN detected",
+  "vpnInactive": "No active VPN detected",
+  "testConnection": "Test connection",
+  "applySettings": "Apply settings and reload game",
+  "restoreSystemNetwork": "Restore system network",
+  "gameSafety": "Heavy damage alerts",
+  "blockSortieTitle": "Heavy damage advance warning",
+  "blockSortieDesc": "After the game responds to a sortie or advance request, a warning requiring confirmation appears if a non-flagship ship in the sortie fleet is heavily damaged (excluding evacuated ships). The app does not block sortie or advance requests or automatically order a retreat.",
+  "storageAndCache": "Storage and cache",
+  "logoutAndClear": "Log out / clear account information",
+  "logoutAndClearDesc": "Clear the game login session. You will need to log in again next time.",
+  "clearQuestCache": "Clear quest data cache",
+  "clearQuestCacheDesc": "Clear locally cached, de-identified quest data. After restarting the app, open the in-game quest screen to fetch it again",
+  "clearWebCache": "Clear browser cache",
+  "clearWebCacheDesc": "Clear temporary pages and scripts cached by WebView.",
+  "baseSenkaResetTitle": "Reset base senka",
+  "baseSenkaResetDesc": "Set this month's accumulated base senka to 0.00. EO, quest, and other senka data are unaffected.",
+  "baseSenkaResetConfirmTitle": "Reset base senka",
+  "baseSenkaResetConfirmDesc": "Reset this month's accumulated base senka? Daily EO and quest rewards are kept. Future experience gains will accumulate from 0.00.",
+  "baseSenkaResetSuccess": "This month's accumulated base senka has been reset",
+  "baseSenkaManualTitle": "Enter base senka manually",
+  "baseSenkaCurrentValue": "This month: {value} senka",
+  "@baseSenkaCurrentValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "baseSenkaManualDialogTitle": "Enter this month's accumulated base senka",
+  "baseSenkaManualInputLabel": "Accumulated base senka this month",
+  "baseSenkaManualInvalid": "Enter a non-negative number with up to two decimal places",
+  "baseSenkaSetSuccess": "This month's accumulated base senka is now {value}",
+  "@baseSenkaSetSuccess": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "baseSenkaSaveFailed": "Could not save base senka. Please try again",
+  "senkaTodaySorties": "Today's sorties",
+  "fleetBrief": "Fleet summary",
+  "expeditionBrief": "Expedition summary",
+  "repairBrief": "Repair summary",
+  "repairDockMode": "Dock",
+  "anchorageRepairMode": "Anchorage",
+  "idle": "Empty",
+  "inactive": "Unused",
+  "repairing": "Repairing",
+  "outOfRepairRange": "Outside repair range",
+  "unableToRepair": "Cannot repair",
+  "constructionBrief": "Construction summary",
+  "questBrief": "Quest summary",
+  "preSortieCheck": "Pre-sortie checks",
+  "sortieCheckShipsMode": "Ships",
+  "sortieCheckMapsMode": "Maps",
+  "mapHpGauges": "Map gauges",
+  "noMapGaugeData": "No map gauge data",
+  "noMapGaugeDataHint": "Open a sortie map in the game to sync its data",
+  "showClearedMaps": "Show cleared maps",
+  "allMapsCleared": "All maps have been cleared",
+  "forecast": "Battle prediction",
+  "waitingForSortieData": "Waiting for sortie data",
+  "standby": "Standby",
+  "compact": "Compact",
+  "detailed": "Detailed",
+  "questDesc": "Quest description",
+  "baseReward": "Base rewards",
+  "accepted": "Accepted",
+  "completed": "Completed",
+  "updatedAt": "Updated",
+  "questDaily": "Daily",
+  "questWeekly": "Weekly",
+  "questMonthly": "Monthly",
+  "questOneTime": "One-time",
+  "questOther": "Other",
+  "questUnknown": "Unknown",
+  "inProgress": "In progress",
+  "clearWebCacheConfirmTitle": "Clear browser cache",
+  "clearWebCacheConfirmDesc": "Clear the browser cache? This deletes temporary data cached by WebView. Downloaded local game resources are unaffected.",
+  "confirmClear": "Clear",
+  "captureMode": "Data capture mode",
+  "gameAndSound": "Game and sound",
+  "gameSound": "Game audio",
+  "aboutApp": "About ヤハギ",
+  "aboutSubtitle": "Learning edition 1.0.2 · Disclaimer · Check for updates",
+  "version": "Learning edition 1.0.2",
+  "disclaimerTitle": "Disclaimer (DISCLAIMER)",
+  "disclaimerP1": "This project is a non-profit, unofficial third-party general-purpose browser tool provided solely for programming study and technical exchange. It is not affiliated with the official operators of Kantai Collection (KanColle) or any related rights holders.",
+  "disclaimerP2": "This software does not intervene in, block, replay, or modify communications with the game servers, and does not perform game actions on the player's behalf. The original author makes no express or implied warranties about its quality, including but not limited to freedom from bugs, fitness for purpose, or system stability.",
+  "disclaimerP3": "Under no circumstances is the original author legally or jointly liable for device damage, data loss, the risk of a game account ban, or any other direct or indirect loss resulting from using or being unable to use this software. Any copyright disputes, terms-of-service violations, or other risks arising from use beyond technical study are solely the user's responsibility.",
+  "viewOnGitHub": "View on GitHub",
+  "checkForUpdates": "Check for updates",
+  "openSourceLicense": "Open-source license: MIT License",
+  "newVersionFound": "🚀 A new version is available!",
+  "currentVersionLabel": "Current version",
+  "latestVersionLabel": "Latest version",
+  "updateContent": "What's new:",
+  "later": "Later",
+  "goDownload": "Download",
+  "alreadyLatest": "Up to date",
+  "alreadyLatestDesc": "You are using the latest version.",
+  "noRelease": "No releases",
+  "noReleaseDesc": "No Release has been published in the GitHub repository yet.",
+  "checkFailed": "Check failed",
+  "networkError": "Network error",
+  "networkErrorDesc": "An error occurred while checking for updates. Please try again later.",
+  "externalLinkOpenFailed": "Could not open the link. Check that a browser is installed.",
+  "noUpdateLog": "No release notes",
+  "battleWarningOff": "Off",
+  "battleWarningConfirm": "Confirmation dialog",
+  "logoutSnackbar": "Logged out and cleared account information.",
+  "logoutConfirmTitle": "Log out and clear account information",
+  "logoutConfirmDesc": "Clear the game page's Cookie data, local storage, and cache, then return to the login page. Continue?",
+  "logoutSucceeded": "Logged out. Please log in again.",
+  "logoutFailed": "Could not log out. Please try again later.",
+  "questCacheCleared": "Local quest data cache cleared",
+  "webCacheCleared": "Browser cache cleared",
+  "clearLogbook": "Clear logbook data",
+  "clearLogbookDesc": "Delete locally stored sortie, expedition, construction, development, ship removal, and resource records. This cannot be undone.",
+  "clearLogbookConfirmTitle": "Clear logbook data",
+  "clearLogbookConfirmDesc": "Clear all logbook data? Sortie, expedition, construction, development, ship removal, and resource records will be deleted. This cannot be undone.",
+  "logbookCleared": "All logbook data cleared",
+  "antiCatbomb": "Prevent disconnect errors",
+  "antiCatbombDesc": "If a game request fails due to a lost connection or similar issue, pause the game and keep retrying to prevent the cat error screen.",
+  "close": "Close",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "waitingForData": "Waiting for data",
+  "fleetNoShips": "There are no ships in this fleet",
+  "unorganized": "Not formed",
+  "speed": "Speed",
+  "totalLevel": "Total level",
+  "firepower": "Firepower",
+  "torpedo": "Torpedo",
+  "antiAir": "Anti-air",
+  "antiSub": "Anti-sub",
+  "airPower": "Air power",
+  "los": "LOS",
+  "avgCondition": "Minimum morale",
+  "losDetail": "LOS details",
+  "totalLos": "Total LOS",
+  "specialAttack": "Special attacks",
+  "unknownShip": "Unknown ship",
+  "unknownClass": "Unknown ship type",
+  "needsResupply": "Resupply needed",
+  "fuel": "Fuel",
+  "ammo": "Ammo",
+  "hp": "HP",
+  "waitingForEquip": "Waiting for equipment data update",
+  "fastSpeed": "Fast",
+  "slowSpeed": "Slow",
+  "gotIt": "Got it",
+  "unknownEquip": "Unknown equipment",
+  "noBonusStats": "No equipment stats",
+  "condition": "Morale",
+  "noExpeditionFleet": "No fleets on expedition",
+  "expeditionInProgress": "Expedition in progress",
+  "progress": "Progress",
+  "unlocked": "Locked",
+  "notRepairing": "Not in dock",
+  "repairProgress": "Repair progress",
+  "cost": "Cost",
+  "notConstructing": "No construction",
+  "lsc": "Large ship construction",
+  "normalConstruct": "Normal construction",
+  "constructing": "Under construction",
+  "constructProgress": "Construction progress",
+  "constructComplete": "Construction complete",
+  "allRatings": "All ratings",
+  "noBattleRecords": "No battle records yet",
+  "autoRecordHint": "Sorties are recorded automatically. No extra action is needed",
+  "thisSortie": "This sortie",
+  "historicalRecords": "Battle history",
+  "resourceTrend": "Resource trends",
+  "expeditionIncome": "Expedition income",
+  "noHistoricalRecords": "No battle history yet",
+  "none": "None",
+  "unknownNode": "Unknown node",
+  "noResourceRecords": "No resource records",
+  "resourceTrend24h": "24 hours",
+  "resourceTrend7d": "7 days",
+  "resourceTrend30d": "30 days",
+  "resourceTrendAll": "All records",
+  "resourceTrendMainGroup": "Four main resources",
+  "resourceTrendAuxGroup": "Other resources",
+  "gadgetBypass": "Game resource mirror and IP restriction bypass",
+  "gadgetBypassDesc": "Load static game client resources through a mirror. DMM region compatibility is applied automatically and is unaffected by this switch.",
+  "gadgetBypassEnable": "Enable mirror access",
+  "gadgetBypassEndpoint": "Mirror endpoint",
+  "endpointCustom": "Custom",
+  "gadgetBypassStatusOn": "Enabled",
+  "gadgetBypassStatusOff": "Disabled",
+  "gadgetBypassUnsupported": "Not supported on this device (requires Android 8.0+)",
+  "gadgetBypassClearCache": "Clear cache",
+  "gadgetBypassError": "Could not configure bypass",
+  "gadgetBypassDiagnose": "Check 403 errors and mirror connectivity",
+  "gadgetBypassDiagnosing": "Diagnosing...",
+  "gadgetBypassW00g": "Client server (w00g)",
+  "gadgetBypassEndpointProbe": "Mirror endpoint",
+  "gadgetBypassKcsapi": "Game data API (kcsapi)",
+  "gadgetBypassReachable": "Reachable",
+  "gadgetBypassUnreachable": "Unreachable",
+  "resourceTrendChart": "Resource trends (last 100 records)",
+  "steel": "Steel",
+  "bauxite": "Bauxite",
+  "noExpeditionRecords": "No expedition records",
+  "expeditionIncomeChart": "Expedition income (last 7 days)",
+  "langZh": "简体中文",
+  "langZhHant": "繁體中文",
+  "langJa": "日本語",
+  "node": "Node",
+  "friend": "Friendly",
+  "enemy": "Enemy",
+  "drop": "Drop",
+  "inExpedition": "On expedition",
+  "unknownProgress": "Progress unknown",
+  "waitingForPortDataDescription": "Enter the game's home port or reload the game page to update this information automatically",
+  "fleetNotFormed": "Not formed",
+  "fleetStandby": "Standing by in port",
+  "shipsCount": " ships",
+  "noValue": "None",
+  "lineOfSight": "LOS",
+  "averageCondition": "Minimum morale",
+  "moraleRecoveryCountdown": "Recovery countdown",
+  "moraleRecovered": "Recovered",
+  "toggleMoraleMetric": "Tap to switch between minimum morale and recovery countdown",
+  "losDetails": "LOS details",
+  "airPowerDetails": "Air power details",
+  "minimumValue": "Minimum",
+  "maximumValue": "Maximum",
+  "withoutBonus": "Without proficiency bonus",
+  "showAirPowerDetails": "Tap to view air power details",
+  "unknownShipType": "Unknown ship type",
+  "needsSupply": "Resupply needed",
+  "equipmentDataWaiting": "Waiting for equipment data update",
+  "highSpeed": "Fast",
+  "lowSpeed": "Slow",
+  "unknownEquipment": "Unknown equipment",
+  "noAdditionalStats": "No equipment stats",
+  "fatigue": "Morale",
+  "startupUpdateTitle": "New version available",
+  "backgroundAudio": "Background audio",
+  "backgroundAudioDesc": "Continue playing game audio when the app is in the background.",
+  "backgroundGameRetention": "Keep game in background",
+  "backgroundGameRetentionDesc": "Show an ongoing notification while the game is running to reduce the chance of the system ending the session after switching apps. May use more battery.",
+  "backgroundGameRetentionNotificationTitle": "ヤハギ is running in the background",
+  "backgroundGameRetentionNotificationBody": "Game session active · Tap to return to the game",
+  "screenAwake": "Keep screen on",
+  "screenAwakeDesc": "Keep the screen on while the app is in the foreground. May use more battery.",
+  "gameToolbar": "Game toolbar",
+  "toolbarAutoHide": "Auto-hide",
+  "toolbarPersistent": "Always visible",
+  "back": "Back",
+  "reload": "Reload",
+  "home": "Home",
+  "enterDmm": "DMM login",
+  "enableGameAudio": "Enable game audio",
+  "disableGameAudio": "Mute game audio",
+  "takeScreenshot": "Take screenshot",
+  "screenshotSaving": "Saving game screenshot…",
+  "fitGameScreen": "Fit game to screen",
+  "collapseToolbar": "Collapse toolbar",
+  "editDone": "Done editing",
+  "retryWithSystemNetwork": "Retry with system network",
+  "displayMode": "Display orientation",
+  "displayAuto": "Automatic",
+  "displayLandscape": "Landscape",
+  "displayPortrait": "Portrait",
+  "allRanks": "All ratings",
+  "battleFleetSummary": "Friendly {friendAlive}/{friendTotal}　Enemy {enemyAlive}/{enemyTotal}",
+  "@battleFleetSummary": {
+    "placeholders": {
+      "friendAlive": {
+        "type": "int"
+      },
+      "friendTotal": {
+        "type": "int"
+      },
+      "enemyAlive": {
+        "type": "int"
+      },
+      "enemyTotal": {
+        "type": "int"
+      }
+    }
+  },
+  "dropLabel": "Drop: {name}",
+  "@dropLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "item": "Item",
+  "friendFinalStatus": "Friendly final status",
+  "enemyFinalStatus": "Enemy final status",
+  "enemyFleet": "Enemy fleet",
+  "airStateLabel": "Air control: {label}",
+  "@airStateLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "postBattleWarningTitle": "Heavy damage safety warning",
+  "postBattleWarningHeadline": "A ship in the sortie fleet is heavily damaged!",
+  "postBattleWarningBody": "You selected advance with a heavily damaged ship! Stop all further actions immediately to avoid entering the next battle.",
+  "acknowledgeAndRetreat": "Understood",
+  "postBattleWarningBanner": "Post-battle safety warning: a ship in the sortie fleet is heavily damaged! Retreat now!",
+  "noActiveExpedition": "No expeditions in progress",
+  "noSortieWarnings": "No sortie warnings",
+  "preSortieCriticalWarning": "{fleetName} has a heavily damaged ship. Stop the sortie!",
+  "@preSortieCriticalWarning": {
+    "placeholders": {
+      "fleetName": {
+        "type": "String"
+      }
+    }
+  },
+  "preSortieSupplyWarning": "{fleetName} has ships needing resupply",
+  "@preSortieSupplyWarning": {
+    "placeholders": {
+      "fleetName": {
+        "type": "String"
+      }
+    }
+  },
+  "preSortieFatigueWarning": "{fleetName} has ships whose morale has not recovered",
+  "@preSortieFatigueWarning": {
+    "placeholders": {
+      "fleetName": {
+        "type": "String"
+      }
+    }
+  },
+  "preSortieMainEquipmentWarning": "{fleetName} missing equipment (normal slots): {shipNames}",
+  "@preSortieMainEquipmentWarning": {
+    "placeholders": {
+      "fleetName": {
+        "type": "String"
+      },
+      "shipNames": {
+        "type": "String"
+      }
+    }
+  },
+  "preSortieExtraEquipmentWarning": "{fleetName} missing equipment (expansion slots): {shipNames}",
+  "@preSortieExtraEquipmentWarning": {
+    "placeholders": {
+      "fleetName": {
+        "type": "String"
+      },
+      "shipNames": {
+        "type": "String"
+      }
+    }
+  },
+  "noPinnedQuests": "No quests in progress",
+  "questsNeedSync": "Open the quest screen to sync information",
+  "questAwaitingConfirmation": "Goal met (awaiting confirmation)",
+  "waitingQuestData": "Waiting for quest data",
+  "waitingQuestDataDesc": "Open the in-game quest list to sync accepted quests automatically",
+  "diagnosticsAndAbout": "Diagnostics and about",
+  "safetyBoundary": "Safety boundaries",
+  "applyingNetworkSettings": "Applying network settings…",
+  "networkSettingsApplied": "Network settings applied: {message}",
+  "@networkSettingsApplied": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "clearingProxy": "Clearing in-app proxy…",
+  "systemNetworkRestored": "System network restored.",
+  "screenshotSaved": "Game screenshot saved to the gallery: {path}",
+  "@screenshotSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "screenshotFailed": "Could not save the game screenshot. Please try again later.",
+  "startupUpdateMessage": "ヤハギ {version} has been released.",
+  "@startupUpdateMessage": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "gameStatusError": "Game status error",
+  "gameStatusErrorDesc": "The page or data capture is in an error state. Check diagnostics in Settings.",
+  "browserOnlyCaptureOff": "Browser-only mode · Data capture off",
+  "browserOnlyCaptureOffDesc": "The game page keeps running. Fleet, quest, and battle information will stop updating.",
+  "capturedCount": "Captured responses: {count}",
+  "@capturedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "waitingKcsapi": "Waiting for /kcsapi/ responses",
+  "ignoredNonTargetMessage": "Non-target message ignored",
+  "readOnlyNoActions": "Read-only access",
+  "readOnlyNoActionsDesc": "No automatic clicking, resupply, fleet formation, sorties, or quest reward claims.",
+  "noCookieRead": "No Cookie access",
+  "noCookieReadDesc": "The JS bridge captures game data such as API paths, sanitized request parameters, and responses. It does not read Cookie data.",
+  "browserIdle": "Waiting for page",
+  "browserLoading": "Loading page",
+  "browserReady": "Page ready",
+  "browserFailed": "Page load failed",
+  "capturePreparing": "Preparing game API capture",
+  "captureReady": "Capture ready",
+  "captureActive": "Capturing game API responses",
+  "captureUnsupported": "This WebView does not support cross-frame capture",
+  "captureFailed": "Could not start game API capture",
+  "captureCheckingDesc": "Checking Android WebView capture support.",
+  "captureReadyDesc": "Waiting for /kcsapi/ responses. You can play the game normally.",
+  "portCaptureVerified": "Home port API verified",
+  "captureReceived": "Game API response received.",
+  "captureLatest": "Latest capture: {path}",
+  "@captureLatest": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "captureUnsupportedDesc": "The game can still run. Only web browsing is supported on this device.",
+  "captureFailedDesc": "The game can still run. Reload the page to try again.",
+  "networkApplyFailed": "Settings failed [{code}]: {message}",
+  "@networkApplyFailed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "networkRestoreFailed": "Restore failed [{code}]: {message}",
+  "@networkRestoreFailed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "tcpConnection": "TCP connection",
+  "gameService": "Game service",
+  "externalNetwork": "Google (external network)",
+  "statusUnknown": "Unknown",
+  "statusSuccess": "Success",
+  "statusFailed": "Failed",
+  "statusSkipped": "Skipped",
+  "formula33": "Formula 33",
+  "fatigueValue": "Morale {value}",
+  "@fatigueValue": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "fcdMapSectionTitle": "Data updates",
+  "fcdMapDataTitle": "Battle prediction data",
+  "fcdMapDataVersion": "Data version: {version}",
+  "@fcdMapDataVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "fcdMapLastChecked": "Last checked: {time}",
+  "@fcdMapLastChecked": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "fcdMapNeverChecked": "Last checked: never",
+  "fcdMapSource": "Update source: {source}",
+  "@fcdMapSource": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "fcdMapAttribution": "Data source: poi FCD (MIT)",
+  "fcdMapCheckUpdates": "Check for battle prediction data updates",
+  "fcdMapUpToDate": "Battle prediction data is up to date.",
+  "fcdMapUpdated": "Battle prediction data updated from {oldVersion} to {newVersion}. Changes are effective immediately.",
+  "@fcdMapUpdated": {
+    "placeholders": {
+      "oldVersion": {
+        "type": "String"
+      },
+      "newVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "fcdMapNetworkError": "Could not connect to the data update source. Please try again later.",
+  "fcdMapValidationError": "Downloaded data failed validation. The current version was kept.",
+  "fcdMapStorageError": "Could not save the data. The current version was kept.",
+  "questCatalogDataTitle": "Quest data",
+  "questCatalogDataVersion": "Data version: {version}",
+  "@questCatalogDataVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "questCatalogNeverChecked": "Last checked: never",
+  "questCatalogLastChecked": "Last checked: {time}",
+  "@questCatalogLastChecked": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "questCatalogCheckUpdates": "Check for quest data updates",
+  "questCatalogUpToDate": "Quest data is up to date.",
+  "questCatalogUpdated": "Quest data updated from {oldVersion} to {newVersion}. Changes are effective immediately.",
+  "@questCatalogUpdated": {
+    "placeholders": {
+      "oldVersion": {
+        "type": "String"
+      },
+      "newVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "questCatalogNetworkError": "Could not connect to the quest data update source. Please try again later.",
+  "questCatalogValidationError": "Downloaded quest data failed validation. The current version was kept.",
+  "questCatalogStorageError": "Could not save quest data. The current version was kept.",
+  "gameFrameRateTitle": "Game frame rate",
+  "gameFrameRateAutomatic": "Automatic",
+  "gameFrameRateStable60": "60 FPS",
+  "gameFrameRateStable60Desc": "Always run at 60 FPS without automatically reducing the frame rate.",
+  "gameFrameRateStable30": "30 FPS",
+  "gameFrameRateStable30Desc": "Always run at 30 FPS to reduce battery use and heat.",
+  "gameFrameRateHighRefresh": "High refresh rate",
+  "gameFrameRateHighRefreshDesc": "Remove the 60 FPS limit and follow the screen's refresh rate. May increase battery use and heat.",
+  "gameFrameRateHighRefreshDialogTitle": "Enable high refresh rate?",
+  "gameFrameRateHighRefreshDialogBody": "This changes the game's frame rate and may increase battery use, heat, or cause animation issues. It also carries unknown account risks. You accept responsibility for any consequences.",
+  "gameFrameRateHighRefreshDialogConfirm": "Accept risks and enable",
+  "gameFrameRateAutomaticDesc": "Up to 60 FPS. Automatically reduce to 30 FPS if performance stays unstable, system battery saver is on, or the device gets hot.",
+  "gameFrameRateUnsupported": "This Android WebView does not support frame rate adjustments. The game's original frame rate will be used.",
+  "gameRenderingModeTitle": "Game rendering mode",
+  "gameRenderingModeStandard": "Lightweight",
+  "gameRenderingModeStandardDesc": "Flutter PlatformView + Texture Layer + WebGL. Reduces some compositing overhead, but may cause display or touch compatibility issues on some devices.",
+  "gameRenderingModeCompatibility": "Balanced",
+  "gameRenderingModeCompatibilityDesc": "Flutter PlatformView + Hybrid Composition + WebGL. Balances game performance and device compatibility.",
+  "gameRenderingModeCanvas": "Compatibility",
+  "gameRenderingModeCanvasDesc": "Flutter PlatformView + Hybrid Composition + Canvas. Bypasses WebGL to prioritize resolving GPU / WebGL compatibility issues. Rendering performance may be lower.",
+  "gameRenderingModeNativeActivity": "Independent native rendering (recommended)",
+  "gameRenderingModeNativeActivityDesc": "Activity Direct WebView + WebGL. In theory, this reduces compositing overhead and improves native compatibility.",
+  "gameRenderingModeConfirmTitle": "Switch game rendering mode?",
+  "gameRenderingModeConfirmMessage": "Switching rendering mode automatically restarts the app and reloads the game page. Finish any actions in progress first.",
+  "gameRenderingModeBattleWarning": "A battle may be in progress. Switching now could interrupt the battle page. Wait until the battle is over.",
+  "gameRenderingModeChanging": "Rebuilding game page…",
+  "gameRenderingModeApplied": "Rendering mode changed.",
+  "gameRenderingModeFailed": "Could not switch modes. The previous setting was kept or a safe mode was restored.",
+  "nativeGameSurfaceSwitchRenderingModeHint": "This device is not compatible with this mode. Scroll the left menu and go to [Settings - Screen and sound] to change the rendering mode.",
+  "nativeGameSurfacePageInitializationFailed": "Game page initialization failed [{stage}]: {errorType}",
+  "@nativeGameSurfacePageInitializationFailed": {
+    "placeholders": {
+      "stage": {
+        "type": "String"
+      },
+      "errorType": {
+        "type": "String"
+      }
+    }
+  },
+  "senka": "Senka",
+  "ownedInventory": "Inventory",
+  "improvement": "Improvement",
+  "briefing": "Summary",
+  "check": "Check",
+  "restoreDefaultOrder": "Restore default order",
+  "sortAscending": "Ascending",
+  "sortDescending": "Descending",
+  "sortPriority": "Priority {priority}",
+  "@sortPriority": {
+    "placeholders": {
+      "priority": {
+        "type": "int"
+      }
+    }
+  },
+  "sortLockedState": "Locked",
+  "sortTemporaryState": "Temporary sort",
+  "sortHeaderHint": "Tap to change sorting. Long-press or press Shift+Enter to lock",
+  "sortHeaderLockedHint": "Tap to reverse sorting. Long-press or press Shift+Enter to unlock",
+  "sortLockAction": "Lock as the next priority",
+  "sortUnlockAction": "Unlock current sort",
+  "settingsTabScreen": "Screen and sound",
+  "settingsTabSound": "Sound",
+  "settingsTabBattle": "Battle",
+  "settingsTabNotification": "Notifications",
+  "settingsTabNetwork": "Network",
+  "settingsTabData": "Data",
+  "settingsTabAboutSupport": "About",
+  "notificationSectionSystem": "System notification status",
+  "notificationSectionSystemDesc": "Allow notifications and exact alarms to receive expedition, dock, and other reminders on time while the screen is locked or the app is in the background. This helps prevent delays from system battery saving. Tap an item to open its system settings.",
+  "notificationPermissionGranted": "Notifications allowed",
+  "notificationPermissionDenied": "Notifications not allowed",
+  "notificationExactAlarmGranted": "Exact alarms allowed",
+  "notificationExactAlarmDenied": "Exact alarms not allowed. Using battery-compatible mode",
+  "notificationChannelsEnabled": "Notification channels available",
+  "notificationChannelsDisabled": "Notification channels disabled by the system",
+  "notificationSectionGeneral": "Global notification service",
+  "notificationEnableMaster": "Enable notifications",
+  "notificationSound": "Notification sound",
+  "notificationVibration": "Vibration",
+  "notificationSectionOngoing": "Ongoing background progress",
+  "notificationOngoingLive": "Persistent live progress card",
+  "notificationProgress": "Progress bar",
+  "notificationPercent": "Percentage",
+  "notificationCountdown": "Live countdown",
+  "notificationSectionTypes": "Notification types and timing",
+  "notificationExpedition": "Expedition",
+  "notificationRepair": "Dock repair",
+  "notificationAnchorage": "Anchorage repair",
+  "notificationConstruction": "Construction",
+  "notificationMorale": "Morale / sparkle",
+  "notificationPunctual": "On completion",
+  "notificationPreempt30s": "30 seconds early",
+  "notificationPreempt60s": "60 seconds early",
+  "notificationPreempt120s": "2 minutes early",
+  "notificationRepairPunctual": "On completion",
+  "notificationAnchorage20m": "First repair after 20 minutes",
+  "notificationAnchorageFull": "All repairs complete",
+  "notificationAnchorageBoth": "Both stages",
+  "frameRateSettingsSection": "Frame rate settings",
+  "battleAlertsSection": "Battle alerts",
+  "battleDamageVibration": "Vibrate on battle damage",
+  "battleDamageVibrationDesc": "Vibrate when a friendly ship first becomes moderately or heavily damaged in battle.",
+  "battleStatusEffectsSection": "Battle status effects",
+  "battleStatusEffectsEnabled": "Enable status effects",
+  "battleStatusEffectsEnabledDesc": "Turn damage pulses, damage vibration, and morale sparkle on or off together.",
+  "battleEffectDisplayScope": "Display scope",
+  "battleEffectDisplayScopeDesc": "Choose which ship views show damage pulses and morale sparkle.",
+  "battleEffectScopePredictionOnly": "Battle prediction only",
+  "battleEffectScopeFleetOnly": "Fleet only",
+  "battleEffectScopeAll": "All",
+  "battleDamagePulse": "Damage pulse",
+  "battleDamagePulseDesc": "Pulse portrait borders according to the current HP damage level.",
+  "battleDamageVibrationEffect": "Damage vibration",
+  "battleDamageVibrationEffectDesc": "Vibrate when a friendly ship first enters a selected damage state in battle.",
+  "battleMoraleSparkle": "Morale sparkle",
+  "battleMoraleSparkleDesc": "Show blinking or steady stars around portraits at Cond ≥ 50. Fatigue faces and warnings are unaffected.",
+  "battleMoraleSparkleBlinking": "Blinking",
+  "battleMoraleSparkleSteady": "Steady",
+  "battleEffectOff": "Off",
+  "battleEffectMinorOnly": "Light damage only",
+  "battleEffectModerateOnly": "Moderate damage only",
+  "battleEffectHeavyOnly": "Heavy damage only",
+  "battleEffectAll": "Enable all",
+  "battlePredictionSection": "Battle prediction",
+  "battleEnemyPreviewPortraits": "Pre-battle enemy portraits",
+  "battleEnemyPreviewPortraitsDesc": "Show enemy portraits before battle in the prediction panel.",
+  "battleLastFormationHint": "Show last formation",
+  "battleLastFormationHintDesc": "When reaching a sortie node, show the formation last used there in the prediction panel.",
+  "battleEnemyPreviewPosition": "Pre-battle enemy preview position",
+  "battleEnemyPreviewPositionDesc": "Show the pre-battle enemy preview above or below friendly HP bars.",
+  "battleEnemyPreviewPositionAbove": "Above",
+  "battleEnemyPreviewPositionBelow": "Below",
+  "battleSectionOrder": "Information section order",
+  "battleSectionOrderDescription": "Reorder the information sections",
+  "battleSectionOrderAdjust": "Adjust",
+  "battleSectionOrderHint": "Use the arrows to reorder. Changes are saved automatically",
+  "battleSectionSortieMap": "Sortie minimap",
+  "battleSectionEnemyPreview": "Enemy preview",
+  "battleSectionPredictionResult": "Prediction results",
+  "battleSectionOrderRestoreDefault": "Restore defaults",
+  "battleSectionOrderSaveFailed": "Could not save. Please try again.",
+  "battleSectionOrderMoveUp": "Move {section} up",
+  "@battleSectionOrderMoveUp": {
+    "placeholders": {
+      "section": {
+        "type": "String"
+      }
+    }
+  },
+  "battleSectionOrderMoveDown": "Move {section} down",
+  "@battleSectionOrderMoveDown": {
+    "placeholders": {
+      "section": {
+        "type": "String"
+      }
+    }
+  },
+  "battleLastFormation": "Last used: {formation}",
+  "@battleLastFormation": {
+    "placeholders": {
+      "formation": {
+        "type": "String"
+      }
+    }
+  },
+  "improvementDatasetTitle": "Improvement planning data",
+  "improvementDatasetVersion": "Data version {version}",
+  "@improvementDatasetVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "improvementDatasetNeverChecked": "Not checked manually yet",
+  "improvementDatasetLastChecked": "Last checked {time}",
+  "@improvementDatasetLastChecked": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "improvementDatasetManualUpdate": "Update improvement data manually",
+  "improvementDatasetUpToDate": "Data is up to date ({version})",
+  "@improvementDatasetUpToDate": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "improvementDatasetUpdated": "Improvement data updated from {oldVersion} to {newVersion}. The page has refreshed.",
+  "@improvementDatasetUpdated": {
+    "placeholders": {
+      "oldVersion": {
+        "type": "String"
+      },
+      "newVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "improvementDatasetNetworkError": "Network connection failed. Continuing with local data ({version}).",
+  "@improvementDatasetNetworkError": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "improvementDatasetValidationError": "Remote data failed validation. Local data ({version}) was kept.",
+  "@improvementDatasetValidationError": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "improvementDatasetStorageError": "Could not save data. Local data ({version}) was kept.",
+  "@improvementDatasetStorageError": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "networkValidationHostEmpty": "Enter an address",
+  "networkValidationControlCharacter": "Line breaks and control characters are not allowed",
+  "networkValidationHttpScheme": "Enter only the server address, without http://.",
+  "networkValidationSocksScheme": "Enter only the server address, without socks://.",
+  "networkValidationScheme": "Do not include a protocol prefix",
+  "networkValidationPath": "Paths are not allowed",
+  "networkValidationCredentials": "Usernames and passwords are not allowed",
+  "networkValidationIpv6": "Invalid IPv6 address (contains invalid characters)",
+  "networkValidationPortEmpty": "Enter a port",
+  "networkValidationPortDecimal": "The port cannot contain decimal places",
+  "networkValidationPortNegative": "The port cannot be negative",
+  "networkValidationPortZero": "The port cannot be 0",
+  "networkValidationPortInteger": "The port must be an integer",
+  "networkValidationPortRange": "The port must be between 1 and 65535",
+  "gadgetBypassRestricted": "Restricted",
+  "networkProxyOperationBusy": "Proxy settings are being applied",
+  "networkUnknownProxyMode": "Unknown proxy mode",
+  "shipGirl": "Ships",
+  "equipment": "Equipment",
+  "inventoryTypeSuffix": " types",
+  "inventoryFilterResults": "Filtered results ",
+  "inventoryOwned": "Owned",
+  "inventoryUnowned": "Not owned",
+  "unownedShipSummary": "Ships shown: {count} · Excluded: {excluded}",
+  "@unownedShipSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "excluded": {
+        "type": "int"
+      }
+    }
+  },
+  "unownedShipExcludedLabel": "Excluded",
+  "unownedShipReminderHint": "Newly acquired unchecked ships trigger normal alerts and vibration. Checked ships will not trigger alerts.",
+  "clearNewShipExclusions": "Clear exclusions",
+  "resetFilter": "Reset filters",
+  "unownedEquipmentSummary": "Unowned equipment shown: {count}",
+  "@unownedEquipmentSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "otherType": "Other",
+  "newShipFallbackName": "Ship No.{id}",
+  "@newShipFallbackName": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "newShipAlertTitle": "New unowned ship found",
+  "newShipAlertBody": "{names} · Remember to lock them",
+  "@newShipAlertBody": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "acknowledge": "Got it",
+  "shipName": "Ship name",
+  "shipType": "Ship type",
+  "level": "Level",
+  "armor": "Armor",
+  "luck": "Luck",
+  "evasion": "Evasion",
+  "lockedStatus": "Lock",
+  "equipmentName": "Equipment name",
+  "equipmentTotalRemaining": "Total (remaining)",
+  "equipmentImprovementProficiency": "Improvement / proficiency",
+  "equipmentOfficialId": "Official ID",
+  "equipmentInstanceId": "Instance ID",
+  "equipmentUsage": "Equipped status",
+  "highSpeedPlus": "Fast+",
+  "all": "All",
+  "equipmentMainGun": "Main guns",
+  "equipmentSecondaryGun": "Secondary / high-angle guns",
+  "equipmentMachineGun": "Machine guns",
+  "equipmentTorpedo": "Torpedoes / Midget submarines",
+  "equipmentCarrierAircraft": "Carrier aircraft",
+  "equipmentSeaplane": "Seaplanes",
+  "equipmentLandBasedAircraft": "Land-based aircraft",
+  "equipmentRadar": "Radar",
+  "equipmentLandingTransport": "Landing / transport",
+  "equipmentSupport": "Support / other",
+  "questAll": "All quests",
+  "chineseTranslation": "Chinese translation",
+  "searchQuest": "Search quests",
+  "filterQuest": "Filter quests",
+  "searchQuestHint": "Search ID, name, description, or rewards. Separate keywords with spaces to match any",
+  "questAvailable": "Not accepted",
+  "questAcceptedOnly": "Accepted only (including rewards pending)",
+  "questClaimable": "Rewards pending",
+  "questInferredCompleted": "Inferred complete",
+  "questStateUnknown": "Status unknown",
+  "questFilterHelp": "Unlocked includes unaccepted, active, and reward-pending quests. Locked includes unknown states. Completed includes reward-pending and inferred-complete quests.",
+  "questNoResults": "No matching quests",
+  "questNoResultsHint": "Try changing the search or clearing the filters.",
+  "questResultsCount": "Quests: {count}",
+  "@questResultsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clear": "Clear",
+  "done": "Done",
+  "clearAll": "Clear all",
+  "questType": "Quest type",
+  "allTypes": "All types",
+  "questFormation": "Fleet formation",
+  "questSortie": "Sortie",
+  "questExercise": "Exercise",
+  "questSupplyRepair": "Resupply / dock repair",
+  "questFactory": "Arsenal",
+  "questRemodeling": "Remodel",
+  "questPeriod": "Quest cycle",
+  "allPeriods": "All cycles",
+  "questSeasonal": "Quarterly",
+  "questYearly": "Yearly",
+  "unlockStatus": "Unlock status",
+  "allStatuses": "All statuses",
+  "questUnlocked": "Unlocked",
+  "questLocked": "Locked",
+  "noDescription": "No description",
+  "completionConditions": "Completion conditions",
+  "questRelations": "Quest relationships",
+  "prerequisiteQuests": "Prerequisite quests",
+  "followingQuests": "Following quests",
+  "notCompleted": "Not completed",
+  "gameResourceCacheTitle": "Local game resource cache",
+  "gameResourceCacheDesc": "Resources are downloaded from the official 艦隊これくしょん servers. The cache can be cleared at any time.",
+  "gameResourceCacheNone": "Temporary cache",
+  "gameResourceCacheNoneDesc": "No pre-downloads. Cache resources as you play, for up to 7 days and 2 GB. Expired files and data over the limit are cleared automatically.",
+  "gameResourceCacheLight": "Light cache",
+  "gameResourceCacheLightDesc": "Cache startup files, common UI, owned ship portraits, and equipment resources.",
+  "gameResourceCacheFull": "Local cache",
+  "gameResourceCacheFullDesc": "Pre-download basic resources (about 5.72 GB). You can keep playing while they download. New content is cached automatically as you play.",
+  "gameResourceCacheStart": "Start download",
+  "gameResourceCachePause": "Pause download",
+  "gameResourceCacheResume": "Resume download",
+  "gameResourceCacheCheck": "Check integrity",
+  "gameResourceCacheRepair": "Download missing files / repair",
+  "gameResourceCacheClear": "Clear local cache",
+  "gameResourceCacheIntegrityComplete": "Cache is complete",
+  "gameResourceCacheMissing": "Missing",
+  "gameResourceCacheDamaged": "Damaged",
+  "gameResourceCacheOutdated": "Pending verification",
+  "gameResourceCacheItems": "items",
+  "gameResourceCacheStoredSize": "Cached: {size}",
+  "@gameResourceCacheStoredSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "gameResourceCacheIntegritySummary": "Missing {missing} · Damaged {damaged} · Pending verification {pending}",
+  "@gameResourceCacheIntegritySummary": {
+    "placeholders": {
+      "missing": {
+        "type": "int"
+      },
+      "damaged": {
+        "type": "int"
+      },
+      "pending": {
+        "type": "int"
+      }
+    }
+  },
+  "gameResourceCachePendingRetained": "Resources pending verification are kept locally and are not deleted automatically.",
+  "gameResourceCacheDownloadConfirmTitle": "Download cache?",
+  "gameResourceCacheDownloadConfirmDesc": "Download resources for the selected mode in bulk from the official servers. You can pause and resume at any time.",
+  "gameResourceCacheMobileConfirmDesc": "You are using a mobile network. Continuing will use mobile data. Allow this download?",
+  "gameResourceCacheWaitingForWifi": "Waiting for Wi-Fi. Downloading will resume automatically when connected.",
+  "gameResourceCacheClearConfirmTitle": "Clear game resource cache?",
+  "gameResourceCacheClearConfirmDesc": "Delete downloaded game resources. The mode setting will be kept.",
+  "gameResourceCacheCapacityBlocked": "Not enough free storage, or the local game resource cache has reached its 50 GB limit.",
+  "gameResourceCacheActionFailed": "Could not complete the cache operation. Please try again later.",
+  "gameResourceCacheUnsupported": "This Android WebView does not support local game resource caching. Update WebView.",
+  "gameResourceCacheUnavailable": "Local cache initialization or cleanup failed. Check storage space and restart the app. Game browsing is unaffected.",
+  "gameResourceCacheManifestFailed": "Could not load the pre-download resource list. Try again after entering the game.",
+  "confirmGameRefreshTitle": "Refresh the game?",
+  "gameRefreshDialogDescription": "Refresh the game?\n\nRefresh game page works like a browser refresh.\nReload game reloads only the game frame and is usually faster, but may cause cat errors or network issues. Use at your own risk.",
+  "refreshGamePage": "Refresh game page",
+  "reloadGame": "Reload game",
+  "frameRefreshShortcutLabel": "Refresh game frame",
+  "frameRefreshShortcutConfirmTitle": "Refresh the game frame?",
+  "frameRefreshShortcutConfirmDescription": "Reloading only the game frame is usually faster, but may cause cat errors or network issues. Use at your own risk.",
+  "frameRefreshShortcutSkipConfirmation": "Do not ask again",
+  "frameRefreshShortcutConfirmAction": "Refresh",
+  "gameFrameNotFound": "Game frame not found. Enter the game and try again.",
+  "gameHtmlWrapNotFound": "Game content not found. Wait for the page to load and try again.",
+  "gameFrameReloadBlocked": "Could not reload the game frame. Please try again later.",
+  "gameFrameReloadUnsupported": "This device's Android WebView is too old to support injection into subframes.",
+  "logbookResourceDrop": "Resource drops",
+  "logbookItemDrop": "Item drops",
+  "logbookResourceNode": "Resource node",
+  "logbookFriendFormation": "Friendly formation",
+  "logbookEnemyFormation": "Enemy formation",
+  "logbookAirSuperiority": "Air control state",
+  "airSuperiorityParity": "Air parity",
+  "airSuperioritySecured": "Air supremacy",
+  "airSuperiorityAdvantage": "Air superiority",
+  "airSuperiorityDisadvantage": "Air disadvantage",
+  "airSuperiorityLost": "Air control lost",
+  "logbookHeavyDamageShips": "Heavily damaged ships",
+  "gameConnectorTitle": "Game connection",
+  "gameConnectorYahagi": "Yahagi connection",
+  "gameConnectorYahagiDesc": "Use the current official DMM login page.",
+  "gameConnectorOoi": "OOI connection (experimental)",
+  "gameConnectorOoiDesc": "Open the ooi.moe login page unchanged. Choose mode 1, 3, or 4 yourself.",
+  "gameConnectorConfirmTitle": "Switch game connection?",
+  "gameConnectorOoiRisk": "Your account credentials will be sent to the third-party site ooi.moe. Yahagi does not read, save, or automatically fill in your account or password.",
+  "gameConnectorActiveWarning": "Switching interrupts the current game page and opens the selected login page.",
+  "gameConnectorApplied": "Game connection changed.",
+  "gameConnectorSaveFailed": "Could not save the connection choice. The current connection was kept.",
+  "gameConnectorNavigationFailed": "The connection was saved, but the login page could not be opened. Please try again.",
+  "kcwikiReportSection": "KCWiki data contribution",
+  "kcwikiReportTitle": "Help KCWiki collect data",
+  "kcwikiReportDisabledDesc": "Off by default. When off, no data is collected, packaged, or sent. The game and local features are unaffected.",
+  "kcwikiReportEnabledDesc": "Enabled. Sends only routing, quest prerequisite, battle, friendly fleet, land-base/air raid, and improvement data.",
+  "kcwikiReportConfirmTitle": "Enable KCWiki data contribution?",
+  "kcwikiReportConfirmDesc": "When enabled, the app sends routing, quest prerequisite, battle, friendly fleet, land-base/air raid, and improvement records to the configured HTTPS address. It does not send login tokens, Cookie data, or request headers. Upload failures do not block game features.",
+  "kcwikiReportUnavailable": "This version has no secure HTTPS reporting address configured, so data contribution cannot be enabled.",
+  "kcwikiReportEnable": "Opt in",
+  "kcwikiReportSaveFailed": "Could not save KCWiki data contribution settings. Please try again.",
+  "kcwikiReportCaptureFailed": "Could not switch KCWiki data collection: {error}",
+  "@kcwikiReportCaptureFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "kcwikiReportWaiting": "Enabled. Waiting for data to contribute.",
+  "kcwikiReportProcessing": "Uploading: {module} · {time}",
+  "@kcwikiReportProcessing": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "kcwikiReportParseRecovered": "Recovered from a large-data parsing timeout. Processing subsequent data · {time}",
+  "@kcwikiReportParseRecovered": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "kcwikiReportFailureHttp": "HTTP {status}",
+  "@kcwikiReportFailureHttp": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "kcwikiReportFailureTimeout": "Connection timed out",
+  "kcwikiReportFailureNetwork": "Network failure",
+  "kcwikiReportFailureBodyTooLarge": "Data exceeds the per-upload limit",
+  "kcwikiReportFailureQueueFull": "Local queue is full",
+  "kcwikiReportFailureLocal": "Local processing failed",
+  "kcwikiReportCounters": "Succeeded {succeeded} · Failed {failed} · Dropped {dropped}",
+  "@kcwikiReportCounters": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      },
+      "dropped": {
+        "type": "int"
+      }
+    }
+  },
+  "kcwikiReportLastSuccess": "Last successful upload: {module} · {time} · Succeeded {succeeded} · Failed {failed} · Dropped {dropped}",
+  "@kcwikiReportLastSuccess": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      },
+      "dropped": {
+        "type": "int"
+      }
+    }
+  },
+  "kcwikiReportLastFailure": "Last failed upload: {module} ({status}) · {time} · Succeeded {succeeded} · Failed {failed} · Dropped {dropped}",
+  "@kcwikiReportLastFailure": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      },
+      "dropped": {
+        "type": "int"
+      }
+    }
+  },
+  "landBaseBrief": "Land base summary",
+  "landBaseNoData": "No data",
+  "landBaseAreaFallback": "Map area {areaId}",
+  "@landBaseAreaFallback": {
+    "placeholders": {
+      "areaId": {
+        "type": "int"
+      }
+    }
+  },
+  "landBaseUnitCount": "Air squadrons: {count}",
+  "@landBaseUnitCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "landBaseRange": "Combat radius",
+  "landBaseActionSortie": "Sortie",
+  "landBaseActionAirDefense": "Air defense",
+  "landBaseActionRest": "Rest",
+  "landBaseActionRetreat": "Evacuate",
+  "landBaseMissingPlanes": "Missing aircraft",
+  "landBaseRelocating": "Relocating",
+  "senkaInfoTab": "Senka information",
+  "senkaCalendarTab": "Senka calendar",
+  "senkaCalculatorTab": "Senka calculator",
+  "senkaSaveFailedWarning": "Could not save senka data. It may be lost after restarting",
+  "senkaLatestRanking": "Latest ranking senka",
+  "senkaTarget": "Target senka",
+  "senkaGap": "{value} senka short of target",
+  "@senkaGap": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaOver": "{value} senka above target",
+  "@senkaOver": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaPlannedEo": "Planned EO",
+  "senkaPlannedQuest": "Planned quests",
+  "senkaDailyRequired": "Daily requirement",
+  "senkaTodayRemaining": "Remaining today",
+  "senkaUnsettledDelta": "Gain since last tally",
+  "senkaAvailableDaysIncludingToday": "Days available (including today)",
+  "senkaProjected": "Projected senka",
+  "senkaUnit": "Senka",
+  "senkaInputTitle": "Enter {label}",
+  "@senkaInputTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaInvalidNumber": "Enter a valid number",
+  "senkaPlannedEoReward": "Planned EO senka rewards",
+  "senkaPlannedQuestReward": "Planned quest senka rewards",
+  "senkaTotal": "Total",
+  "senkaEoRewards": "EO senka rewards",
+  "senkaQuarterlyQuests": "Quarterly senka quests",
+  "senkaAnnualQuests": "Yearly senka quests",
+  "senkaOneTimeQuests": "One-time senka quests",
+  "senkaRewardLegend": "Yellow＋✕: deferred, excluded from projections. Green＋✓: planned completion, included in projections. Gray＋○: completed, not counted again.",
+  "senkaRewardDeferred": "Deferred",
+  "senkaRewardPlanned": "Planned (included)",
+  "senkaRewardCompleted": "Completed",
+  "senkaCalendarTitle": "Senka calendar: {year}-{month}",
+  "@senkaCalendarTitle": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "senkaCalendarSummary": "Recorded this month {recorded} · Base senka this month {base}",
+  "@senkaCalendarSummary": {
+    "placeholders": {
+      "recorded": {
+        "type": "String"
+      },
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaExperience": "Experience",
+  "senkaQuest": "Quests",
+  "senkaCalendarCell": "{year}-{month}-{day}, senka {value}",
+  "@senkaCalendarCell": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaServer": "Server",
+  "senkaRanking": "Senka ranking",
+  "senkaRank": "Rank",
+  "senkaUpdated": "Updated: {time}",
+  "@senkaUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaOrder": "Rank",
+  "senkaChange": "Change",
+  "senkaCurrent": "Current",
+  "senkaSortieStats": "Sortie map statistics",
+  "senkaLatestRecord": "Latest record",
+  "senkaMonthSorties": "Sorties this month",
+  "senkaBossArrivals": "Boss reached",
+  "senkaSWins": "S wins",
+  "senkaMonth": "This month",
+  "senkaToday": "Today",
+  "senkaShowHiddenAreas": "Show hidden maps",
+  "senkaShowHidden": "Show hidden",
+  "senkaArea": "Map",
+  "senkaBoss": "Boss",
+  "senkaSorties": "Sorties",
+  "senkaResult": "S / A",
+  "senkaActions": "Actions",
+  "senkaFavoriteArea": "Favorite map {map}",
+  "@senkaFavoriteArea": {
+    "placeholders": {
+      "map": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaHideArea": "Hide map {map}",
+  "@senkaHideArea": {
+    "placeholders": {
+      "map": {
+        "type": "String"
+      }
+    }
+  },
+  "senkaUnknownServer": "Unknown server",
+  "toolbox": "Toolbox",
+  "fleetExport": "Export data",
+  "otherTools": "Other",
+  "noro6": "noro6",
+  "jervis": "Jervis",
+  "exportToNoro6": "Export to noro6",
+  "exportToNoro6Mirror": "Export to noro6 (China mirror)",
+  "exportToJervis": "Export to Jervis",
+  "eventLandBasesOnly": "Export event map land bases only",
+  "landBaseExportLimitHint": "DeckBuilder supports up to 3 air squadrons at a time. With the filter off, the first 3 are exported in capture order.",
+  "fleetExportText": "Fleet export text",
+  "deckBuilderV4": "DeckBuilder v4",
+  "refreshExportText": "Refresh",
+  "copyExportText": "Copy text",
+  "openInSystemBrowser": "Open in system default browser",
+  "otherToolsComingSoon": "More tools are in development",
+  "otherToolsHint": "New helper tools will be added here.",
+  "waitingForPortData": "Waiting for home port data",
+  "externalFleetToolOpenFailed": "Could not open the external fleet tool. Check that a browser is installed.",
+  "fleetExportCopied": "Fleet export text copied.",
+  "fleetExportCopyFailed": "Could not copy. Please try again later.",
+  "equipmentCompatibilitySummary": "Can equip: owned {owned} / all {all}",
+  "@equipmentCompatibilitySummary": {
+    "placeholders": {
+      "owned": {
+        "type": "int"
+      },
+      "all": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityOwnedTab": "Owned ships {count}",
+  "@equipmentCompatibilityOwnedTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityAllTab": "All ships {count}",
+  "@equipmentCompatibilityAllTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityOwnedCompact": "Owned {count}",
+  "@equipmentCompatibilityOwnedCompact": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityAllCompact": "All {count}",
+  "@equipmentCompatibilityAllCompact": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilitySelectShipType": "Select ship type",
+  "equipmentCompatibilitySearchHint": "Search ships",
+  "equipmentCompatibilityAllSlots": "All slots",
+  "equipmentCompatibilityRegularSlot": "Normal slot",
+  "equipmentCompatibilityExpansionSlot": "Expansion slot",
+  "equipmentCompatibilityBothSlots": "Normal＋expansion slots",
+  "equipmentCompatibilityExpansionRequirement": "Expansion slot requires ★+{level}",
+  "@equipmentCompatibilityExpansionRequirement": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityOwnedLevels": "Lv.{levels}",
+  "@equipmentCompatibilityOwnedLevels": {
+    "placeholders": {
+      "levels": {
+        "type": "String"
+      }
+    }
+  },
+  "equipmentCompatibilityFleetNumbers": "Fleet {numbers}",
+  "@equipmentCompatibilityFleetNumbers": {
+    "placeholders": {
+      "numbers": {
+        "type": "String"
+      }
+    }
+  },
+  "equipmentCompatibilityEmpty": "No matching ships",
+  "equipmentCompatibilityOfficialId": "Equipment ID {id}",
+  "@equipmentCompatibilityOfficialId": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityOwnedCount": "Owned {count}",
+  "@equipmentCompatibilityOwnedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityRegularCount": "Normal slots {count}",
+  "@equipmentCompatibilityRegularCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilityExpansionCount": "Expansion slots {count}",
+  "@equipmentCompatibilityExpansionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "equipmentCompatibilitySource": "Rules source: official game master data",
+  "equipmentCompatibilityRulesWaiting": "Waiting for equipment rule data",
+  "equipmentCompatibilityEmptyOwned": "You do not own any ships that can equip this",
+  "equipmentCompatibilityEmptyAll": "No ship forms that can equip this were found",
+  "equipmentCompatibilityCategory": "Category: {category}",
+  "@equipmentCompatibilityCategory": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "equipmentCompatibilityShipClassId": "Ship class #{id}",
+  "@equipmentCompatibilityShipClassId": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "shipEquipmentCompatibilitySelectCategory": "Select equipment category",
+  "shipEquipmentCompatibilitySearchTitle": "Search equipment",
+  "shipEquipmentCompatibilitySearchHint": "Enter equipment name",
+  "shipEquipmentCompatibilityOwnedCount": "Owned X{count}",
+  "@shipEquipmentCompatibilityOwnedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shipEquipmentCompatibilityEmpty": "No compatible equipment found",
+  "equipmentDevelopment": "Equipment development",
+  "development": "Development",
+  "developmentCommandTitle": "Development console",
+  "developmentWorkbenchTitle": "Development workbench",
+  "developmentCalculator": "Development calculator",
+  "developmentFormula": "Development recipes",
+  "developmentOutputProbability": "Development probability",
+  "developmentFinalProbability": "Final probability",
+  "developmentAvailableRecipes": "Available recipes",
+  "developmentPoolType": "Pool type",
+  "developmentSelectSecretary": "Select secretary ship type",
+  "developmentOtherSecretaryGroup": "Other",
+  "developmentEquipmentType": "Type",
+  "developmentSecretary": "Secretary ship",
+  "developmentFuelShort": "Fuel",
+  "developmentAmmoShort": "Ammo",
+  "developmentSteelShort": "Steel",
+  "developmentBauxiteShort": "Baux",
+  "developmentOutputRate": "Development rate",
+  "developmentEquipment": "Equipment",
+  "developmentCurrentFlagship": "Current flagship",
+  "developmentUseFlagship": "Use current flagship",
+  "developmentFlagshipUnsupported": "No development pool is available for this flagship. The previous selection was kept",
+  "developmentSelectPool": "Secretary ship type",
+  "developmentCurrentRecipe": "Current recipe",
+  "developmentTargetEquipment": "Target equipment",
+  "developmentChooseTarget": "Choose target equipment",
+  "developmentSearchEquipment": "Search equipment",
+  "developmentSearchHint": "Enter equipment name or ID",
+  "developmentAllTypes": "All types",
+  "developmentTargetDrops": "Target results",
+  "developmentOtherDrops": "Other results",
+  "developmentInsufficient": "Insufficient resources",
+  "developmentReplaced": "Replaced results",
+  "developmentRecommendations": "Recommended recipes",
+  "developmentNoTargets": "Select target equipment to see recommended recipes",
+  "developmentNoResults": "No recipe can develop all selected targets",
+  "developmentTargetRate": "Target rate",
+  "developmentFailureRate": "Failure rate",
+  "developmentTotalResources": "Total resources",
+  "developmentApplyRecipe": "Apply recipe",
+  "developmentDataError": "Could not load equipment development data",
+  "developmentRetry": "Retry",
+  "developmentSelectedCount": "{count} selected",
+  "@developmentSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "developmentPoolBauxite": "Bauxite pool",
+  "developmentPoolAmmunition": "Ammo pool",
+  "developmentPoolFuelSteel": "Fuel / steel pool",
+  "battlePredictionUnconfirmed": "Data unconfirmed: HP and predictions are for reference only. Check the game screen.",
+  "mouseWheelCompatibility": "External mouse wheel compatibility",
+  "mouseWheelCompatibilityDescription": "Enable this if an external mouse wheel does not respond in the game. Takes effect immediately. Mouse clicks and touch remain available.",
+  "mouseWheelCompatibilitySaveFailed": "Could not save the setting. Please try again.",
+  "hdMode": "HD mode",
+  "hdModeDescription": "Use a UI optimized for large screens (8 inches or larger recommended). Enabling this on a small screen may cause display errors, layout overflow, or app crashes.",
+  "hdBottomLayout": "HD bottom layout",
+  "hdSplit": "Two 1×1 panels",
+  "hdWide": "One 1×2 panel",
+  "hdLeftModule": "Left panel",
+  "hdRightModule": "Right panel",
+  "hdWideModule": "Full-width panel",
+  "hdCustomize": "Customize layout",
+  "hdEditHint": "Long-press a handle to reorder or move a panel to the bottom. Drop it on another panel to swap positions. Check to show, uncheck to hide.",
+  "hdHalfWidth": "Half width 1×1",
+  "hdFullWidth": "Full width 1×2",
+  "hdDropArea": "Drop a panel here",
+  "workspaceMenuPosition": "Menu position",
+  "workspaceMenuPositionDesc": "Top places the menu directly below the game screen.",
+  "menuPositionTop": "Top",
+  "menuPositionBottom": "Bottom",
+  "menuPositionLeft": "Left",
+  "menuPositionRight": "Right",
+  "topNoticeSectionTitle": "Top bar messages",
+  "topNoticeEnabledTitle": "Top bar notifications",
+  "topNoticeEnabledSubtitle": "Show development, improvement, pre-sortie check, and quest completion alerts to the right of 「ヤハギ」 in the top bar",
+  "topNoticeDurationTitle": "Alert duration",
+  "topNoticeDurationSubtitle": "Time before an alert bubble closes automatically when left untouched",
+  "topNoticeDuration5s": "5 seconds (default)",
+  "topNoticeDuration10s": "10 seconds",
+  "topNoticeDuration15s": "15 seconds",
+  "questCompletionSingleNotice": "Quest completed: {title}",
+  "@questCompletionSingleNotice": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "questCompletionMultiNotice": "Quests completed: {count}. Open the quest screen",
+  "questPendingConfirmationSingleNotice": "Quest goal met (awaiting game confirmation): {title}",
+  "@questPendingConfirmationSingleNotice": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "questPendingConfirmationMultiNotice": "Quest goals met: {count} (awaiting game confirmation)",
+  "@questPendingConfirmationMultiNotice": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@questCompletionMultiNotice": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeDevSuccess": "Developed {name}",
+  "@noticeDevSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeDevFailed": "Equipment development failed",
+  "noticeDevFailedPenguin": "Equipment development failed",
+  "noticeDevSlotFailed": "Development failed",
+  "noticeDevDefaultName": "New equipment",
+  "noticeEquipImproveSuccess": "Equipment improvement succeeded",
+  "noticeEquipImproveFailed": "Equipment improvement failed",
+  "noticeModFailed": "Modernization failed",
+  "noticeModSuccess": "Modernization succeeded",
+  "noticeModSuccessDetail": "Modernization succeeded: {stats}",
+  "@noticeModSuccessDetail": {
+    "placeholders": {
+      "stats": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeModSuccessMaxCap": "Modernization succeeded (stats already capped)",
+  "statFirepower": "Firepower",
+  "statTorpedo": "Torpedo",
+  "statAntiAir": "Anti-air",
+  "statArmor": "Armor",
+  "statLuck": "Luck",
+  "statHp": "HP",
+  "statAsw": "Anti-sub",
+  "noticeMarriageLuck": "Marriage luck gain: Luck {arrow} +{delta} / +{remaining}",
+  "@noticeMarriageLuck": {
+    "placeholders": {
+      "arrow": {
+        "type": "String"
+      },
+      "delta": {
+        "type": "int"
+      },
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeMarriageLuckMax": "Marriage luck gain: Luck {arrow} +{delta} / MAX",
+  "@noticeMarriageLuckMax": {
+    "placeholders": {
+      "arrow": {
+        "type": "String"
+      },
+      "delta": {
+        "type": "int"
+      }
+    }
+  },
+  "noticePracticeExp": "Exercise EXP (approx.): S win {sExp} · A win {aExp}",
+  "@noticePracticeExp": {
+    "placeholders": {
+      "sExp": {
+        "type": "int"
+      },
+      "aExp": {
+        "type": "int"
+      }
+    }
+  },
+  "noticePracticeExpCtBonus": "Exercise EXP (approx.): S win {sExp} · A win {aExp} (training cruiser +{bonus})",
+  "@noticePracticeExpCtBonus": {
+    "placeholders": {
+      "sExp": {
+        "type": "int"
+      },
+      "aExp": {
+        "type": "int"
+      },
+      "bonus": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeSortieShipFull": "Ship capacity is full! You cannot obtain new ships on sortie",
+  "noticeSortieShipLow": "Ship slots remaining: {count}. Check home port capacity",
+  "@noticeSortieShipLow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeSortieItemFull": "Equipment capacity is full! You cannot obtain new equipment on sortie",
+  "noticeSortieItemLow": "Equipment slots remaining: {count}. Check home port capacity",
+  "@noticeSortieItemLow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeSortieShipAndItemFull": "Ship and equipment capacity are full! You cannot obtain new ships or equipment on sortie",
+  "noticeSortieShipAndItemLow": "Slots remaining: ships {shipCount} · equipment {itemCount}. Check home port capacity",
+  "@noticeSortieShipAndItemLow": {
+    "placeholders": {
+      "shipCount": {
+        "type": "int"
+      },
+      "itemCount": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeSortieExpansionSlotUnused": "The fleet has unused expansion slots",
+  "noticePreSortieCheckFailed": "Pre-sortie checks failed: {reasons}",
+  "@noticePreSortieCheckFailed": {
+    "placeholders": {
+      "reasons": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeSortieReasonUnresupplied": "Resupply incomplete",
+  "noticeSortieReasonFatigue": "Low ship morale (yellow/red faces)",
+  "noticeSortieReasonMainSlot": "Normal equipment slots not filled",
+  "noticeSortieReasonExpansionSlot": "Expansion slots unused",
+  "lockUi": "Lock interface",
+  "unlockUi": "Unlock interface",
+  "uiLockedToast": "Interface locked. Layout editing is disabled; feature switching remains available",
+  "uiUnlockedToast": "Interface unlocked",
+  "uiLockTitle": "Lock interface layout",
+  "uiLockDesc": "Disable long-press editing of cards and top bar resources, and drag-reordering of navigation. Feature pages can still be switched",
+  "filterVisibleItems": "Filter visible items",
+  "selectHeaderVisibleItems": "Select top bar items",
+  "expCalculator": "Experience calculator",
+  "expCalcShip": "Ship",
+  "expCalcCurrentLevel": "Current level",
+  "expCalcTargetLevel": "Target level",
+  "expCalcMap": "Map",
+  "expCalcRank": "Rating",
+  "expCalcBaseExp": "Base EXP",
+  "expCalcFlagship": "Flagship",
+  "expCalcMvp": "MVP",
+  "expCalcMapExp": "Map EXP",
+  "expCalcRemainExp": "Remaining EXP",
+  "expCalcBattle": "Battles",
+  "expCalcEmptyTrackList": "No leveling plans. Tap ＋ above to add one",
+  "expCalcBaseExpHelpTitle": "Base EXP reference for common maps",
+  "expCalcTrackAdded": "Added to the EXP tracking list",
+  "expCalcTrackDeleted": "Removed from the EXP tracking list",
+  "expCalcTrackLoadFailed": "Could not load the tracking list. Tap to retry",
+  "expCalcTrackSaveFailed": "Could not save the tracking list. Please try again",
+  "expCalcFreeMode": "Custom calculation (no ship selected)",
+  "expCalcAddNode": "Add battle node (cumulative battles)",
+  "expCalcRemoveNode": "Remove node",
+  "expCalcRouteTotal": "EXP per sortie",
+  "expCalcNodePoint": "Node",
+  "expCalcRouteSummary": "Sortie route",
+  "expCalcAddTrack": "Add to live tracking",
+  "expCalcCompletedTag": "0 runs (complete)",
+  "expCalcCardView": "Cards",
+  "expCalcTableView": "Table",
+  "expCalcTrackListTitle": "Leveling tracker",
+  "expCalcAutoSyncHint": "Remaining EXP and runs update automatically when home port data changes",
+  "expCalcDelete": "Delete",
+  "expCalcStep1Title": "Step 1 · Ship and target level",
+  "expCalcStep2Title": "Step 2 · Sortie nodes and route planning",
+  "expCalcResultHudTitle": "Sortie route calculation results",
+  "expCalcTargetGapLabel": "EXP needed to level up",
+  "expCalcTargetAlignHint": "Target EXP is matched to the experience table automatically",
+  "expCalcRouteSummaryPrefix": "Current route total",
+  "expCalcCombatNodesSuffix": "battle nodes",
+  "expCalcAccumulatedExpLabel": "Total EXP",
+  "customFontTitle": "Interface font",
+  "customFontDescription": "Import a font you like, then preview and apply it. Supports TTF and OTF, up to 32 MB.",
+  "customFontDefault": "Default font (follows interface language)",
+  "customFontImport": "Import font",
+  "customFontRestore": "Restore default",
+  "customFontPreviewTitle": "Font preview",
+  "customFontApply": "Apply font",
+  "customFontPreviewSample": "Fleet information · Sortie records · Screen settings",
+  "customFontPreviewNote": "Applying this font changes the client interface and keeps your choice after restarting.",
+  "customFontImportFailed": "Unable to import the font. Choose a valid TTF or OTF file.",
+  "customFontSaveFailed": "Unable to save the font setting. Please try again.",
+  "customFontUnsupported": "Font import is not supported on this platform yet.",
+  "customFontTooLarge": "The font file must not exceed 32 MB.",
+  "customFontLoadLimit": "The font switching limit for this session has been reached to keep memory usage bounded. Restart the app to apply another font. You can still preview fonts.",
+  "customFontPreviewFailed": "Unable to generate the font preview. Please try again.",
+  "customFontPreviewRetry": "Retry preview"
+}

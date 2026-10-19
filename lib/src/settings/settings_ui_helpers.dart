@@ -158,7 +158,8 @@ mixin SettingsUIHelpers {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: SettingsTileTypography.title),
+              Expanded(child: Text(title, style: SettingsTileTypography.title)),
+              const SizedBox(width: 12),
               Text(
                 '${(value * 100).toInt()}%',
                 style: TextStyle(
