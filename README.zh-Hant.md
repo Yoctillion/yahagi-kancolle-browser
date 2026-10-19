@@ -9,7 +9,7 @@
 
 [下載應用程式](https://github.com/yamatosaki/yahagi-kancolle-browser/releases/latest) · [版本更新](https://github.com/yamatosaki/yahagi-kancolle-browser/releases) · [問題回報](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
 
-[简体中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.md) ｜ 繁體中文 ｜ [日本語](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ja.md)
+[简体中文](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.md) ｜ 繁體中文 ｜ [日本語](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ja.md) ｜ [English](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.en.md) ｜ [한국어](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/README.ko.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/yamatosaki/yahagi-kancolle-browser/blob/master/LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://www.android.com/)
@@ -22,7 +22,7 @@
 
 ヤハギ將遊戲畫面與常用輔助資訊放在一起。遊玩時，可以同步查看艦隊狀態、任務進度、未卜先知戰鬥資訊和航海記錄；準備出擊或安排日常時，也能使用改修規劃、開發計算、遠征檢查、海域查詢及經驗計算等工具。
 
-應用程式支援手機、平板和摺疊螢幕，提供可調整的資訊版面與適合大螢幕裝置的 HD 版面，並支援簡體中文、繁體中文和日語介面。
+應用程式支援手機、平板和摺疊螢幕，提供可調整的資訊版面與適合大螢幕裝置的 HD 版面，並支援簡體中文、繁體中文、日語、英語和韓語介面。
 
 遊戲操作始終由玩家自行完成。ヤハギ根據遊戲頁面已經收到的資料整理輔助資訊，不會代替玩家編成、補給、出擊、開發、改修或領取任務。
 
