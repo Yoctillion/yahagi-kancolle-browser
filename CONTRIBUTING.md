@@ -1,5 +1,7 @@
 # 贡献指南
 
+简体中文 ｜ [English](CONTRIBUTING.en.md) ｜ [한국어](CONTRIBUTING.ko.md)
+
 欢迎通过 Issue 和 Pull Request 改进 Yahagi。
 
 ## 开发流程

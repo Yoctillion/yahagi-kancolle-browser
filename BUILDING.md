@@ -1,5 +1,7 @@
 # 源码构建与验证
 
+简体中文 ｜ [English](BUILDING.en.md) ｜ [한국어](BUILDING.ko.md)
+
 本指南面向需要自行构建 Android 客户端或参与开发的人。安装已发布应用请使用 [GitHub Releases](https://github.com/yamatosaki/yahagi-kancolle-browser/releases)。主分支源码可能领先于安装包；需要某个发布版本的源码时，请选择发布页对应的标签，并以该标签的配置为准。
 
 ## 开发环境
