@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
+import '../layout/flat_list_row.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
@@ -66,6 +67,9 @@ class ConstructionSummaryCard extends StatelessWidget {
             showLogo: showLogo,
             showTitle: showTitle,
             child: ModuleSlotGrid(
+              runSpacing: PanelStyleScope.of(context) == PanelStyle.flat
+                  ? 0
+                  : 8,
               emptyLabel: '暂无建造',
               children: [
                 for (var i = 0; i < 4; i++)
@@ -132,6 +136,40 @@ class ConstructionSummaryCard extends StatelessWidget {
         disabled = false;
         active = true;
       }
+    }
+
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      final completed = active && dock != null && dock.isCompletedAt(now);
+      return FlatListRow(
+        key: Key('construction-summary-slot-$position'),
+        onTap: onOpenConstruction,
+        name: flatRowName(
+          active ? '$position · $name' : '$position',
+          color: disabled ? const Color(0xff4a5c68) : Colors.white,
+        ),
+        trailing: active && dock != null
+            ? flatRowTrailing(
+                completed
+                    ? Text(
+                        fleetText(context, '已完成'),
+                        style: flatRowTextStyle(color: flatDoneColor),
+                      )
+                    : OperationCountdownText(
+                        completionTime: dock.completionTime,
+                        completedText: fleetText(context, '已完成'),
+                        completedColor: flatDoneColor,
+                        countingColor: flatTimeColor,
+                        style: flatRowTextStyle(),
+                      ),
+              )
+            : Text(
+                fleetText(context, disabled ? '锁' : '闲置'),
+                maxLines: 1,
+                style: flatRowTextStyle(
+                  color: disabled ? const Color(0xff4a5c68) : flatIdleColor,
+                ),
+              ),
+      );
     }
 
     return LayoutBuilder(

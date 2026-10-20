@@ -254,8 +254,10 @@ class ModuleSlotGrid extends StatelessWidget {
     required this.children,
     required this.emptyLabel,
     this.columns = 2,
+    this.runSpacing = 8,
   });
   final int columns;
+  final double runSpacing;
   final List<Widget> children;
   final String emptyLabel;
   @override
@@ -270,7 +272,7 @@ class ModuleSlotGrid extends StatelessWidget {
       : LayoutBuilder(
           builder: (context, constraints) => Wrap(
             spacing: 8,
-            runSpacing: 8,
+            runSpacing: runSpacing,
             children: [
               for (final child in children)
                 SizedBox(

@@ -8,6 +8,7 @@ import '../expedition/expedition_mission_picker.dart' show expeditionDisplayId;
 import 'fleet_ui_strings.dart';
 import 'operation_progress.dart';
 import '../layout/module_summaries.dart';
+import '../layout/flat_list_row.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
 
@@ -126,7 +127,11 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
               final mission = state.masterMissions[fleet.mission.missionId];
               final missionName = mission?.name ?? fleetText(context, '未知远征');
               return Padding(
-                padding: const EdgeInsets.only(bottom: 6.0),
+                padding: EdgeInsets.only(
+                  bottom: PanelStyleScope.of(context) == PanelStyle.flat
+                      ? 0
+                      : 6.0,
+                ),
                 child: _buildExpeditionItem(
                   fleet.id,
                   fleet.name,
@@ -140,6 +145,10 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
                       fontWeight: FontWeight.bold,
                     ),
                     countingColor: const Color(0xffd4a85f),
+                    completedColor:
+                        PanelStyleScope.of(context) == PanelStyle.flat
+                        ? flatDoneColor
+                        : null,
                   ),
                 ),
               );
@@ -157,6 +166,9 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
     String mission,
     Widget time,
   ) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return _buildFlatExpeditionItem(fleetId, fleet, number, mission, time);
+    }
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -274,6 +286,48 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
             },
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFlatExpeditionItem(
+    int fleetId,
+    String fleet,
+    String number,
+    String mission,
+    Widget time,
+  ) {
+    Widget label(String kind, String text, Color color) => Text(
+      text,
+      key: Key('expedition-summary-$kind-$fleetId'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: flatRowTextStyle(color: color),
+    );
+    final showFleet = widget.visible.contains('fleet');
+    final showNumber = widget.visible.contains('number');
+    return KeyedSubtree(
+      key: Key('expedition-summary-row-$fleetId'),
+      child: FlatListRow(
+        onTap: widget.onOpenExpedition,
+        leading: [
+          if (showFleet)
+            Flexible(child: label('fleet', fleet, const Color(0xff03a9f4))),
+          if (showFleet && showNumber) const SizedBox(width: 4),
+          if (showNumber) label('number', number, flatTimeColor),
+          if (showFleet || showNumber) const SizedBox(width: 6),
+        ],
+        name: widget.visible.contains('name')
+            ? flatRowName(mission, key: Key('expedition-summary-name-$fleetId'))
+            : null,
+        trailing: widget.visible.contains('time')
+            ? flatRowTrailing(
+                KeyedSubtree(
+                  key: Key('expedition-summary-time-$fleetId'),
+                  child: time,
+                ),
+              )
+            : null,
       ),
     );
   }

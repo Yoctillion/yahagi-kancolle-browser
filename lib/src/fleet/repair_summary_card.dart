@@ -5,6 +5,7 @@ import 'fleet_ui_strings.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
+import '../layout/flat_list_row.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
@@ -96,6 +97,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     final modeSelector = _RepairSummaryModeSelector(
+      flat: _flat,
       mode: _mode,
       dockLabel: fleetText(context, '入渠修理'),
       anchorageLabel: fleetText(context, '泊地修理'),
@@ -129,6 +131,8 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     );
   }
 
+  bool get _flat => PanelStyleScope.of(context) == PanelStyle.flat;
+
   bool _isDockActive(RepairDock? dock) =>
       dock != null &&
       dock.isRepairing &&
@@ -138,6 +142,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     final docks = {for (final dock in state.repairDocks) dock.id: dock};
     return ModuleSlotGrid(
       key: const Key('repair-summary-dock-grid'),
+      runSpacing: _flat ? 0 : 8,
       emptyLabel: '暂无修理',
       children: [
         for (var id = 1; id <= 4; id++)
@@ -184,7 +189,11 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       key: Key('repair-summary-dock-slot-$position'),
       state: state,
       master: master,
-      name: widget.visible.contains('empty') ? name : '$position · $name',
+      name: _flat
+          ? (active ? '$position · $name' : '$position')
+          : widget.visible.contains('empty')
+          ? name
+          : '$position · $name',
       disabled: disabled,
       fitFullName: true,
       dotColor: active ? const Color(0xffffc940) : null,
@@ -195,9 +204,9 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
               child: OperationCountdownText(
                 completionTime: dock.completionTime,
                 completedText: strings.completed,
-                completedColor: const Color(0xff4caf50),
+                completedColor: _flat ? flatDoneColor : const Color(0xff4caf50),
                 countingColor: const Color(0xffd4a85f),
-                style: operationSummaryTimeStyle,
+                style: _flat ? flatRowTextStyle() : operationSummaryTimeStyle,
                 maxLines: 1,
               ),
             )
@@ -243,6 +252,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         onSelected: (id) => setState(() => _selectedFleetId = id),
       ),
       slots: ModuleSlotGrid(
+        runSpacing: _flat ? 0 : 8,
         columns: HdModuleColumns.of(context) > 1
             ? HdModuleColumns.of(context)
             : 2,
@@ -354,6 +364,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         onSelected: (id) => setState(() => _selectedFleetId = id),
       ),
       slots: ModuleSlotGrid(
+        runSpacing: _flat ? 0 : 8,
         columns: HdModuleColumns.of(context) > 1
             ? HdModuleColumns.of(context)
             : 2,
@@ -496,6 +507,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
 
 class _RepairSummaryModeSelector extends StatelessWidget {
   const _RepairSummaryModeSelector({
+    required this.flat,
     required this.mode,
     required this.dockLabel,
     required this.anchorageLabel,
@@ -503,6 +515,7 @@ class _RepairSummaryModeSelector extends StatelessWidget {
     required this.onChanged,
   });
 
+  final bool flat;
   final RepairCenterMode mode;
   final String dockLabel;
   final String anchorageLabel;
@@ -513,19 +526,21 @@ class _RepairSummaryModeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('repair-summary-mode-selector'),
-      height: 26,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: const Color(0xff10212e),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xff294052)),
-      ),
+      height: flat ? 20 : 26,
+      padding: EdgeInsets.all(flat ? 0 : 2),
+      decoration: flat
+          ? null
+          : BoxDecoration(
+              color: const Color(0xff10212e),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: const Color(0xff294052)),
+            ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final english = Localizations.localeOf(context).languageCode == 'en';
           final labelWidth = constraints.maxWidth / 3 - 14;
           final style = DefaultTextStyle.of(context).style.merge(
-            const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+            TextStyle(fontSize: flat ? 10.5 : 10, fontWeight: FontWeight.w700),
           );
           final useShortLabels = [dockLabel, anchorageLabel, nosakiLabel].any((
             label,
@@ -553,6 +568,7 @@ class _RepairSummaryModeSelector extends StatelessWidget {
                       : dockLabel,
                   tooltip: dockLabel,
                   compactIcon: Icons.build_outlined,
+                  flat: flat,
                   selected: mode == RepairCenterMode.dock,
                   onTap: () => onChanged(RepairCenterMode.dock),
                 ),
@@ -567,6 +583,7 @@ class _RepairSummaryModeSelector extends StatelessWidget {
                       : anchorageLabel,
                   tooltip: anchorageLabel,
                   compactIcon: Icons.anchor,
+                  flat: flat,
                   selected: mode == RepairCenterMode.anchorage,
                   onTap: () => onChanged(RepairCenterMode.anchorage),
                 ),
@@ -579,6 +596,7 @@ class _RepairSummaryModeSelector extends StatelessWidget {
                       : nosakiLabel,
                   tooltip: nosakiLabel,
                   compactIcon: Icons.auto_awesome,
+                  flat: flat,
                   selected: mode == RepairCenterMode.nosaki,
                   onTap: () => onChanged(RepairCenterMode.nosaki),
                 ),
@@ -599,8 +617,10 @@ class _ModeButton extends StatelessWidget {
     required this.onTap,
     required this.tooltip,
     required this.compactIcon,
+    this.flat = false,
   });
 
+  final bool flat;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -610,7 +630,7 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xff5b4829) : Colors.transparent,
+      color: selected && !flat ? const Color(0xff5b4829) : Colors.transparent,
       borderRadius: BorderRadius.circular(5),
       child: InkWell(
         borderRadius: BorderRadius.circular(5),
@@ -627,7 +647,7 @@ class _ModeButton extends StatelessWidget {
                       color: selected
                           ? const Color(0xffffcf67)
                           : const Color(0xff8197a5),
-                      fontSize: 10,
+                      fontSize: flat ? 10.5 : 10,
                       fontWeight: FontWeight.w700,
                     ),
                   );
@@ -781,6 +801,17 @@ class _RepairCapsule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return FlatListRow(
+        key: contentKey,
+        onTap: onTap,
+        name: flatRowName(
+          name,
+          color: disabled ? const Color(0xff4a5c68) : Colors.white,
+        ),
+        trailing: flatRowTrailing(detail),
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         // Keep the name and countdown readable before allocating a portrait.
