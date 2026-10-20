@@ -1,4 +1,9 @@
+import 'dart:math' as math;
+
+import 'package:flutter/painting.dart';
+
 import '../settings/ui_display_size.dart';
+import 'display_corners.dart';
 
 /// HD 下极简档整体按紧凑档处理，因此游戏页隐藏顶栏只在非 HD 生效。
 bool usesMinimalGameShell({
@@ -10,3 +15,32 @@ bool usesMinimalGameShell({
 
 bool usesFlatPanel({required UiDisplaySize size, required bool hd}) =>
     size.isMinimal && !hd;
+
+UiDisplaySize effectiveUiDisplaySize(UiDisplaySize size, {required bool hd}) =>
+    size.isMinimal && hd ? UiDisplaySize.compact : size;
+
+/// 极简游戏页没有顶栏，导航栏两端直接贴到屏幕角。横屏下横向导航栏总在底部
+/// （「上方」位置也是排在游戏列下面），所以只看底部两角；它的两端是左右，
+/// 与手势条无关，不让底部安全区。
+EdgeInsets minimalNavigationInsets({
+  required CornerRadii corners,
+  required double bottomSafeArea,
+  required bool horizontal,
+  required bool onRight,
+  bool leftAtEdge = true,
+  bool rightAtEdge = true,
+}) {
+  if (horizontal) {
+    return EdgeInsets.only(
+      left: leftAtEdge ? cornerInset(corners.bottomLeft) : 0,
+      right: rightAtEdge ? cornerInset(corners.bottomRight) : 0,
+    );
+  }
+  return EdgeInsets.only(
+    top: cornerInset(onRight ? corners.topRight : corners.topLeft),
+    bottom: math.max(
+      cornerInset(onRight ? corners.bottomRight : corners.bottomLeft),
+      bottomSafeArea,
+    ),
+  );
+}

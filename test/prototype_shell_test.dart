@@ -53,7 +53,68 @@ import 'package:yahagi_kancolle_browser/src/toolbox/toolbox_page.dart';
 import 'package:yahagi_kancolle_browser/src/development/equipment_development_page.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_completion_feedback.dart';
+import 'package:yahagi_kancolle_browser/src/settings/ui_display_size.dart';
+import 'package:yahagi_kancolle_browser/src/quest/quest_completion_drawer.dart';
 import 'fixtures/kcsapi_fixtures.dart';
+
+const _phoneLandscape = Size(873, 393);
+
+Future<LayoutSettingsController> _pumpMinimalShell(
+  WidgetTester tester, {
+  Size size = _phoneLandscape,
+  UiDisplaySize uiSize = UiDisplaySize.minimal,
+  Widget? gameSurface,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = size;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  final layout = await LayoutSettingsController.load(
+    _MemoryLayoutSettingsStore(),
+  );
+  await layout.setUiDisplaySize(uiSize);
+  final gameStateController = GameStateController();
+  addTearDown(gameStateController.dispose);
+  await tester.pumpWidget(
+    YahagiApp(
+      layoutSettingsController: layout,
+      networkSettingsController: NetworkSettingsController(
+        store: _MemoryNetworkSettingsStore(),
+      ),
+      gadgetBypassController: GadgetBypassController(
+        store: _MemoryGadgetBypassStore(),
+        port: _FakeGadgetBypassPort(),
+      ),
+      safetySettingsController: await SafetySettingsController.load(
+        MemorySafetySettingsStore(),
+      ),
+      displayModeController: await DisplayModeController.load(
+        MemoryDisplayModeStore(),
+      ),
+      controller: PrototypeStatusController(),
+      browserController: GameBrowserController(port: _NoopBrowserPort()),
+      captureModeController: await CaptureModeController.load(
+        _MemoryModeStore(),
+      ),
+      gameCaptureController: GameCaptureController(),
+      gameStateController: gameStateController,
+      battleController: BattleController(
+        gameState: () => gameStateController.state,
+      ),
+      audioController: await GameAudioController.load(_MemoryAudioStore()),
+      toolbarController: GameToolbarController(),
+      gameSurface: gameSurface ?? const ColoredBox(color: Colors.black),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return layout;
+}
+
+double _headerHeight(WidgetTester tester) =>
+    tester.getTopLeft(find.byKey(const Key('workspace-content-expanded'))).dy;
+
+double _sidebarWidth(WidgetTester tester) =>
+    tester.getSize(find.byKey(const Key('workspace-navigation-sidebar'))).width;
 
 Future<void> _tapWorkspaceNavigationItem(
   WidgetTester tester,
@@ -2469,6 +2530,147 @@ void main() {
       }
     },
   );
+
+  group('minimal game shell', () {
+    testWidgets(
+      'minimal landscape game page hides header and shows menu button',
+      (tester) async {
+        await _pumpMinimalShell(tester);
+
+        expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
+        expect(find.byKey(const Key('minimal-menu-button')), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('workspace-information-panel')),
+            matching: find.byKey(const Key('information-panel-resources')),
+          ),
+          findsOneWidget,
+        );
+        expect(_headerHeight(tester), 0);
+        expect(_sidebarWidth(tester), 34);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('minimal keeps header on other workspaces', (tester) async {
+      await _pumpMinimalShell(tester);
+
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(_headerHeight(tester), 28);
+      expect(_sidebarWidth(tester), 34);
+      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal portrait keeps 28dp header with resources', (
+      tester,
+    ) async {
+      await _pumpMinimalShell(tester, size: const Size(393, 873));
+
+      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(_headerHeight(tester), 28);
+      expect(
+        find.byKey(const Key('information-panel-resources')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('HD treats minimal as compact', (tester) async {
+      final layout = await _pumpMinimalShell(tester);
+
+      await layout.setHdEnabled(true);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(_headerHeight(tester), 36);
+      expect(_sidebarWidth(tester), 41);
+      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      expect(
+        find.byKey(const Key('information-panel-resources')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('switching compact and minimal keeps game surface alive', (
+      tester,
+    ) async {
+      var disposeCount = 0;
+      var deactivateCount = 0;
+      final layout = await _pumpMinimalShell(
+        tester,
+        uiSize: UiDisplaySize.compact,
+        gameSurface: _LifecycleProbe(
+          key: const Key('minimal-switch-game-surface'),
+          onDispose: () => disposeCount++,
+          onDeactivate: () => deactivateCount++,
+        ),
+      );
+      final gameSurface = find.byKey(const Key('minimal-switch-game-surface'));
+      final originalElement = tester.element(gameSurface);
+      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+
+      for (final size in [
+        UiDisplaySize.minimal,
+        UiDisplaySize.compact,
+        UiDisplaySize.minimal,
+      ]) {
+        await layout.setUiDisplaySize(size);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('minimal-menu-button')),
+          size.isMinimal ? findsOneWidget : findsNothing,
+        );
+        expect(disposeCount, 0);
+        expect(deactivateCount, 0);
+        expect(tester.element(gameSurface), same(originalElement));
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('quest notice replaces panel resources in minimal', (
+      tester,
+    ) async {
+      await _pumpMinimalShell(tester);
+      final panel = find.byKey(const Key('workspace-information-panel'));
+      final resources = find.byKey(const Key('information-panel-resources'));
+      final drawer = find.descendant(
+        of: panel,
+        matching: find.byKey(const Key('quest-completion-drawer')),
+      );
+      double resourcesOpacity() => tester
+          .widget<AnimatedOpacity>(
+            find
+                .ancestor(of: resources, matching: find.byType(AnimatedOpacity))
+                .first,
+          )
+          .opacity;
+      expect(resourcesOpacity(), 1);
+
+      final context = tester.element(panel);
+      QuestCompletionDrawerHost.show(
+        context,
+        '任务完成',
+        tone: TopNoticeTone.quest,
+      );
+      await tester.pumpAndSettle();
+
+      expect(drawer, findsOneWidget);
+      expect(resourcesOpacity(), 0);
+
+      QuestCompletionDrawerHost.hide(context);
+      await tester.pumpAndSettle();
+
+      expect(drawer, findsNothing);
+      expect(resources, findsOneWidget);
+      expect(resourcesOpacity(), 1);
+    });
+  });
 }
 
 class _RepairNavigationReducer extends GameStateReducer {

@@ -117,6 +117,7 @@ class CompactResourceBar extends StatefulWidget {
     this.layout = ResourceBarLayout.strip,
     this.gridColumns = 3,
     this.gridPadding = EdgeInsets.zero,
+    this.uiSize,
   });
 
   final GameState state;
@@ -134,6 +135,9 @@ class CompactResourceBar extends StatefulWidget {
   final ResourceBarLayout layout;
   final int gridColumns;
   final EdgeInsets gridPadding;
+
+  /// Overrides the settings size, e.g. HD lays minimal out as compact.
+  final UiDisplaySize? uiSize;
 
   @override
   State<CompactResourceBar> createState() => _CompactResourceBarState();
@@ -265,7 +269,8 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   }
 
   Widget _buildBar(LayoutSettingsController? controller) {
-    final uiSize = controller?.uiDisplaySize ?? UiDisplaySize.normal;
+    final uiSize =
+        widget.uiSize ?? controller?.uiDisplaySize ?? UiDisplaySize.normal;
     final isCompact = uiSize.isCompactOrSmaller;
     final barHeight = headerCapsuleHeight(uiSize);
     final separatorWidth = isCompact && !uiSize.isMinimal ? 5.0 : 6.0;
