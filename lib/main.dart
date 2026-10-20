@@ -1970,7 +1970,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       ),
     );
     // 安全区里是 home indicator 的手势区，横栏只展示，免得抢手势。
-    return inSafeArea ? IgnorePointer(child: bar) : bar;
+    return IgnorePointer(ignoring: inSafeArea, child: bar);
   }
 
   void _setGameFullscreen(bool fullscreen) {
@@ -2051,8 +2051,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     // hiding it makes the workspace taller and would flip the answer back.
     // The top bar sits inside the game workspace, so only side and bottom
     // bars are subtracted. A resource top bar stays in both outcomes, so it
-    // cannot flip the answer and is subtracted. 内嵌的底部横栏同理：另一种结果
-    // 把差不多的高度花在顶栏上，扣掉它也不会把结论翻回去。
+    // cannot flip the answer and is subtracted. The inline bottom bar is also
+    // safe: whether it exists depends only on the window size and settings, not
+    // on the layout computed here.
     final shellNavigationExtent = workspaceNavigationExtent(uiSize);
     final minimalShellWorkspace = Size(
       windowSize.width - (menuHorizontal ? 0 : shellNavigationExtent),

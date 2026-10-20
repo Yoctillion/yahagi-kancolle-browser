@@ -1350,8 +1350,8 @@ void main() {
                   )
                   .padding
               as EdgeInsets;
-      expect(padding.left, lessThanOrEqualTo(6));
-      expect(padding.right, lessThanOrEqualTo(6));
+      expect(padding.left, 0);
+      expect(padding.right, 0);
       expect(padding.top, lessThanOrEqualTo(4));
       expect(padding.bottom, lessThanOrEqualTo(4));
       expect(

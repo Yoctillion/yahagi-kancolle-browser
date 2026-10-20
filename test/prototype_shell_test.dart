@@ -3281,6 +3281,27 @@ void main() {
         expect(tester.takeException(), isNull);
       });
 
+      testWidgets('inline mode clears a small bottom inset', (tester) async {
+        useBottomInset(tester, 16);
+        mockCorners();
+        final layout = await _pumpMinimalShell(
+          tester,
+          gameSurface: const ColoredBox(key: probe, color: Colors.black),
+        );
+        await layout.setWorkspaceMenuPosition('right');
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        await tester.pumpAndSettle();
+
+        final barRect = tester.getRect(find.byKey(bar));
+        expect(barRect.height, 22);
+        expect(barRect.bottom, _phoneLandscape.height - 16);
+        expect(gameColumn(tester).bottom, barRect.top);
+        expect(ignoringAncestors(), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('inline mode keeps a wide game inside the shorter column', (
         tester,
       ) async {

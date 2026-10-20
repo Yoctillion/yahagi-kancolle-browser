@@ -10,7 +10,7 @@ class FlatEmptyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+    padding: const EdgeInsets.symmetric(vertical: 4),
     child: Text(
       text,
       style: const TextStyle(color: flatIdleColor, fontSize: flatRowFontSize),
