@@ -104,6 +104,7 @@ import 'src/layout/adaptive_layout.dart';
 import 'src/layout/display_corners.dart';
 import 'src/layout/hd_workspace_geometry.dart';
 import 'src/layout/minimal_layout.dart';
+import 'src/layout/module_summaries.dart';
 import 'src/layout/panel_style.dart';
 import 'src/layout/hd_bottom_strip.dart';
 import 'src/layout/hd_portrait_grid.dart';
@@ -3302,6 +3303,7 @@ class WorkspaceNavigation extends StatelessWidget {
                               : controller.reorderWorkspaceMenu,
                           itemBuilder: (context, index) {
                             final destination = ordered[index];
+                            final navState = gameStateController?.state;
                             void handleTap() {
                               onSelected(destination.pageIndex);
                             }
@@ -3335,43 +3337,26 @@ class WorkspaceNavigation extends StatelessWidget {
                                       completedCount: switch (destination.id) {
                                         'quests' => completedQuestCount,
                                         'expedition' =>
-                                          gameStateController?.state.fleets
-                                                  .where(
-                                                    (fleet) =>
-                                                        fleet
-                                                            .mission
-                                                            .isActive &&
-                                                        now.isBefore(
-                                                          fleet
-                                                              .mission
-                                                              .completionTime!,
-                                                        ),
-                                                  )
-                                                  .length ??
-                                              0,
+                                          navState == null
+                                              ? 0
+                                              : activeExpeditionFleets(
+                                                  navState,
+                                                  now,
+                                                ).length,
                                         'construction' =>
-                                          gameStateController
-                                                  ?.state
-                                                  .constructionDocks
-                                                  .where(
-                                                    (dock) =>
-                                                        dock.isCompletedAt(now),
-                                                  )
-                                                  .length ??
-                                              0,
+                                          navState == null
+                                              ? 0
+                                              : completedConstructionCount(
+                                                  navState,
+                                                  now,
+                                                ),
                                         'repair' =>
-                                          gameStateController?.state.repairDocks
-                                                  .where(
-                                                    (dock) =>
-                                                        dock.isRepairing &&
-                                                        (dock.completionTime ==
-                                                                null ||
-                                                            now.isBefore(
-                                                              dock.completionTime!,
-                                                            )),
-                                                  )
-                                                  .length ??
-                                              0,
+                                          navState == null
+                                              ? 0
+                                              : busyRepairDocks(
+                                                  navState,
+                                                  now,
+                                                ).length,
                                         _ => 0,
                                       },
                                       countKey: Key(switch (destination.id) {

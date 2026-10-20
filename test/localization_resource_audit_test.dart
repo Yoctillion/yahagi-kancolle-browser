@@ -396,6 +396,13 @@ void main() {
       'expCalcTableView',
       'expCalcMap',
       'expCalcMvp',
+      // Damage grades, dock usage and construction status are shared game terms.
+      'summaryFleetHeavy',
+      'summaryFleetMedium',
+      'summaryRepair',
+      'summaryRepairBusy',
+      'summaryConstruction',
+      'summaryWarnings',
     };
     const reviewedJa = <String>{
       // The warning title uses shared game terminology.
@@ -471,6 +478,12 @@ void main() {
       // 海域 is shared game terminology; MVP is the game's Latin abbreviation.
       'expCalcMap',
       'expCalcMvp',
+      // Damage grades and construction status use the same kanji in Japanese.
+      'summaryFleetHeavy',
+      'summaryFleetMedium',
+      'summaryRepairBusy',
+      'summaryConstruction',
+      'summaryWarnings',
     };
 
     Set<String> identical(String locale) {

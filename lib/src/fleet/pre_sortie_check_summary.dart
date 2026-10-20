@@ -6,6 +6,7 @@ import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import 'dashboard_card.dart';
 import '../layout/hd_dashboard_content.dart';
+import '../layout/module_summaries.dart';
 import 'fleet_ui_strings.dart';
 import 'ship_status_style.dart';
 import '../settings/layout_settings_controller.dart';
@@ -89,6 +90,9 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
             lookupAppLocalizations(const Locale('zh'));
 
         return DashboardCard(
+          collapsedSummary: widget.collapsed
+              ? preSortieSummary(l10n, _generateWarnings(state, l10n).length)
+              : null,
           headerAction: moduleDisplayGear(
             context,
             'pre_sortie',

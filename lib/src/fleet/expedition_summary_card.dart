@@ -7,6 +7,9 @@ import '../settings/module_display_settings.dart';
 import '../expedition/expedition_mission_picker.dart' show expeditionDisplayId;
 import 'fleet_ui_strings.dart';
 import 'operation_progress.dart';
+import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
+import '../performance/second_tick_scope.dart';
 
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import '../expedition/expedition_check_card.dart';
@@ -59,31 +62,40 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
             AppLocalizations.of(context) ??
             lookupAppLocalizations(const Locale('zh'));
 
-        return DashboardCard(
-          headerAction: moduleDisplayGear(
-            context,
-            'expedition',
-            widget.onOpenDisplaySettings,
+        // 倒计时只在扁平折叠摘要里需要逐秒刷新。
+        return SecondTickBuilder(
+          enabled:
+              widget.collapsed &&
+              PanelStyleScope.of(context) == PanelStyle.flat,
+          builder: (context, now, _) => DashboardCard(
+            collapsedSummary: widget.collapsed
+                ? expeditionSummary(strings, state, now)
+                : null,
+            headerAction: moduleDisplayGear(
+              context,
+              'expedition',
+              widget.onOpenDisplaySettings,
+            ),
+            title: strings.expeditionBrief,
+            icon: const Icon(Icons.explore_outlined),
+            collapsed: widget.collapsed,
+            onToggleCollapse: widget.onToggleCollapse,
+            showLogo: widget.showLogo,
+            showTitle: widget.showTitle,
+            trailing: ExpeditionModeSelector(
+              mode: _mode,
+              compact: true,
+              summaryLabel: ExpeditionStrings.of(context).modeProgress,
+              checkLabel: ExpeditionStrings.of(context).modeCheck,
+              onChanged: (mode) => setState(() => _mode = mode),
+            ),
+            child: _mode == ExpeditionSummaryMode.summary
+                ? _buildSummaryContent(state, activeFleets, strings)
+                : ExpeditionCheckContent(
+                    controller: widget.controller,
+                    onOpenDetails: widget.onOpenExpeditionCheck,
+                  ),
           ),
-          title: strings.expeditionBrief,
-          icon: const Icon(Icons.explore_outlined),
-          collapsed: widget.collapsed,
-          onToggleCollapse: widget.onToggleCollapse,
-          showLogo: widget.showLogo,
-          showTitle: widget.showTitle,
-          trailing: ExpeditionModeSelector(
-            mode: _mode,
-            compact: true,
-            summaryLabel: ExpeditionStrings.of(context).modeProgress,
-            checkLabel: ExpeditionStrings.of(context).modeCheck,
-            onChanged: (mode) => setState(() => _mode = mode),
-          ),
-          child: _mode == ExpeditionSummaryMode.summary
-              ? _buildSummaryContent(state, activeFleets, strings)
-              : ExpeditionCheckContent(
-                  controller: widget.controller,
-                  onOpenDetails: widget.onOpenExpeditionCheck,
-                ),
         );
       },
     );

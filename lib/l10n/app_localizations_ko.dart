@@ -3676,4 +3676,54 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get browserMenuDismissHint => '바깥을 눌러 닫기';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return '대파 $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return '중파 $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return '최저 피로도 $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return '진행 중 $active/3 · 최근 $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return '사용 중 $busy/$total · 최근 $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return '사용 중 $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return '완료 $done · 건조 중 $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return '완료 가능 $done · 진행 중 $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return '출격 $sortie · 방공 $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return '경고 $count';
+  }
 }

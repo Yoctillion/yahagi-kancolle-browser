@@ -5,6 +5,8 @@ import 'fleet_ui_strings.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
+import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
 import 'anchorage_repair_calculator.dart';
 import 'anchorage_repair_view.dart';
@@ -57,8 +59,11 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         Localizations.localeOf(context);
         Widget? dockCard;
         int? previousDockMask;
+        // 扁平折叠态的摘要带倒计时，需要继续逐秒刷新且不能复用缓存。
+        final summaryTicks =
+            widget.collapsed && PanelStyleScope.of(context) == PanelStyle.flat;
         return SecondTickBuilder(
-          enabled: !widget.collapsed,
+          enabled: !widget.collapsed || summaryTicks,
           builder: (context, now, _) {
             _now = now;
             // Countdown texts tick independently. Rebuild the dock card only
@@ -69,7 +74,9 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
               for (var i = 0; i < state.repairDocks.length; i++) {
                 if (_isDockActive(state.repairDocks[i])) mask |= 1 << i;
               }
-              if (dockCard != null && previousDockMask == mask) {
+              if (!summaryTicks &&
+                  dockCard != null &&
+                  previousDockMask == mask) {
                 return dockCard!;
               }
               previousDockMask = mask;
@@ -101,6 +108,9 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       RepairCenterMode.nosaki => _buildNosakiSummary(state, strings),
     };
     return DashboardCard(
+      collapsedSummary: widget.collapsed
+          ? repairSummary(strings, state, now)
+          : null,
       headerAction: moduleDisplayGear(
         context,
         'repair',

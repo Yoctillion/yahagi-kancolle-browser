@@ -4,6 +4,7 @@ import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../fleet/dashboard_card.dart';
 import '../layout/hd_dashboard_content.dart';
+import '../layout/module_summaries.dart';
 import '../settings/module_display_settings.dart';
 import 'quest_catalog_controller.dart';
 
@@ -52,6 +53,7 @@ class PinnedQuestsSummary extends StatelessWidget {
             lookupAppLocalizations(const Locale('zh'));
 
         return DashboardCard(
+          collapsedSummary: collapsed ? questSummary(l10n, state) : null,
           headerAction: moduleDisplayGear(
             context,
             'quests',

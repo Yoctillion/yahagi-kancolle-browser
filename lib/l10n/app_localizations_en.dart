@@ -3769,4 +3769,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get browserMenuDismissHint => 'Tap outside to close';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return 'Heavy $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return 'Moderate $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return 'Min morale $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return 'Active $active/3 · Next $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return 'In use $busy/$total · Next $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return 'In use $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return 'Done $done · Building $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return 'Ready $done · Active $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return 'Sortie $sortie · Air defense $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return 'Warnings $count';
+  }
 }

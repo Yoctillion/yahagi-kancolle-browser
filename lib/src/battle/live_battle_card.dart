@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'battle_ui_text.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import '../layout/module_summaries.dart';
 
 import 'battle_controller.dart';
 import 'battle_models.dart';
@@ -156,6 +157,13 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
         final mapSection = _buildMapSection(battle);
         return DashboardCard(
           key: const Key('live-battle-card'),
+          collapsedSummary: widget.collapsed
+              ? battleSummary(
+                  AppLocalizations.of(context) ??
+                      lookupAppLocalizations(const Locale('zh')),
+                  battle,
+                )
+              : null,
           title: AppLocalizations.of(context)?.forecast ?? '未卜先知',
           icon: const Icon(Icons.remove_red_eye_outlined),
           collapsed: widget.collapsed,

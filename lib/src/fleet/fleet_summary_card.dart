@@ -15,6 +15,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'fleet_ship_status_capsule.dart';
 import 'fleet_line_of_sight_details.dart';
 import '../performance/second_tick_scope.dart';
+import '../layout/module_summaries.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'fleet_air_power_details.dart';
 import 'morale_recovery_display.dart';
@@ -118,6 +119,14 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
             }
             return DashboardCard(
               title: AppLocalizations.of(context)?.fleetBrief ?? '编队简报',
+              collapsedSummary: widget.collapsed
+                  ? fleetSummary(
+                      AppLocalizations.of(context) ??
+                          lookupAppLocalizations(const Locale('zh')),
+                      state,
+                      _selectedFleetId,
+                    )
+                  : null,
               icon: const Icon(Icons.directions_boat_filled_outlined),
               collapsed: widget.collapsed,
               onToggleCollapse: widget.onToggleCollapse,

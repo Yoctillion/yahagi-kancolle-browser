@@ -6799,6 +6799,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'点击空白处关闭'**
   String get browserMenuDismissHint;
+
+  /// No description provided for @summaryFleetHeavy.
+  ///
+  /// In zh, this message translates to:
+  /// **'大破 {count}'**
+  String summaryFleetHeavy(int count);
+
+  /// No description provided for @summaryFleetMedium.
+  ///
+  /// In zh, this message translates to:
+  /// **'中破 {count}'**
+  String summaryFleetMedium(int count);
+
+  /// No description provided for @summaryFleetMinMorale.
+  ///
+  /// In zh, this message translates to:
+  /// **'最低疲劳 {value}'**
+  String summaryFleetMinMorale(int value);
+
+  /// No description provided for @summaryExpedition.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中 {active}/3 · 最近 {time}'**
+  String summaryExpedition(int active, String time);
+
+  /// No description provided for @summaryRepair.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用中 {busy}/{total} · 最近 {time}'**
+  String summaryRepair(int busy, int total, String time);
+
+  /// No description provided for @summaryRepairBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用中 {busy}/{total}'**
+  String summaryRepairBusy(int busy, int total);
+
+  /// No description provided for @summaryConstruction.
+  ///
+  /// In zh, this message translates to:
+  /// **'完成 {done} · 建造中 {building}'**
+  String summaryConstruction(int done, int building);
+
+  /// No description provided for @summaryQuests.
+  ///
+  /// In zh, this message translates to:
+  /// **'可完成 {done} · 进行中 {active}'**
+  String summaryQuests(int done, int active);
+
+  /// No description provided for @summaryLandBase.
+  ///
+  /// In zh, this message translates to:
+  /// **'出击 {sortie} · 防空 {defense}'**
+  String summaryLandBase(int sortie, int defense);
+
+  /// No description provided for @summaryWarnings.
+  ///
+  /// In zh, this message translates to:
+  /// **'警告 {count}'**
+  String summaryWarnings(int count);
 }
 
 class _AppLocalizationsDelegate

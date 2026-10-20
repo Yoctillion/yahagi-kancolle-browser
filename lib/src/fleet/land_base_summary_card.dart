@@ -6,6 +6,7 @@ import '../game_state/game_state_controller.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
 import '../layout/hd_dashboard_content.dart';
+import '../layout/module_summaries.dart';
 import '../settings/module_display_settings.dart';
 import 'equipment_type_icon.dart';
 import 'fleet_ship_status_capsule.dart';
@@ -65,6 +66,9 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
       bases.sort((left, right) => left.baseId.compareTo(right.baseId));
 
       return DashboardCard(
+        collapsedSummary: widget.collapsed
+            ? landBaseSummary(l10n, bases)
+            : null,
         headerAction: moduleDisplayGear(
           context,
           'land_base',

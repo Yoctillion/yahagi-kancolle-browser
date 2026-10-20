@@ -3612,6 +3612,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get browserMenuDismissHint => '点击空白处关闭';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return '大破 $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return '中破 $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return '最低疲劳 $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return '进行中 $active/3 · 最近 $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return '使用中 $busy/$total · 最近 $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return '使用中 $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return '完成 $done · 建造中 $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return '可完成 $done · 进行中 $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return '出击 $sortie · 防空 $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return '警告 $count';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -7224,4 +7274,54 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get browserMenuDismissHint => '點擊空白處關閉';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return '大破 $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return '中破 $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return '最低疲勞 $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return '進行中 $active/3 · 最近 $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return '使用中 $busy/$total · 最近 $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return '使用中 $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return '完成 $done · 建造中 $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return '可完成 $done · 進行中 $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return '出擊 $sortie · 防空 $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return '警告 $count';
+  }
 }

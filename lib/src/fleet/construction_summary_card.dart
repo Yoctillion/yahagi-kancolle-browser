@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
+import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
 import 'dashboard_card.dart';
 import '../settings/module_display_settings.dart';
@@ -40,30 +42,42 @@ class ConstructionSummaryCard extends StatelessWidget {
       builder: (context, _) {
         final state = controller.state;
         final docks = state.constructionDocks;
-        return DashboardCard(
-          headerAction: moduleDisplayGear(
-            context,
-            'construction',
-            onOpenDisplaySettings,
-          ),
-          title: AppLocalizations.of(context)?.constructionBrief ?? '建造简报',
-          icon: const Icon(Icons.handyman_outlined),
-          collapsed: collapsed,
-          onToggleCollapse: onToggleCollapse,
-          showLogo: showLogo,
-          showTitle: showTitle,
-          child: ModuleSlotGrid(
-            emptyLabel: '暂无建造',
-            children: [
-              for (var i = 0; i < 4; i++)
-                if (visible.contains('empty') ||
-                    (docks.length > i && docks[i].isBuilding))
-                  _buildConstructionSlot(
-                    docks.length > i ? docks[i] : null,
+        // 倒计时只在扁平折叠摘要里需要逐秒刷新。
+        return SecondTickBuilder(
+          enabled: collapsed && PanelStyleScope.of(context) == PanelStyle.flat,
+          builder: (context, now, _) => DashboardCard(
+            collapsedSummary: collapsed
+                ? constructionSummary(
+                    AppLocalizations.of(context) ??
+                        lookupAppLocalizations(const Locale('zh')),
                     state,
-                    i + 1,
-                  ),
-            ],
+                    now,
+                  )
+                : null,
+            headerAction: moduleDisplayGear(
+              context,
+              'construction',
+              onOpenDisplaySettings,
+            ),
+            title: AppLocalizations.of(context)?.constructionBrief ?? '建造简报',
+            icon: const Icon(Icons.handyman_outlined),
+            collapsed: collapsed,
+            onToggleCollapse: onToggleCollapse,
+            showLogo: showLogo,
+            showTitle: showTitle,
+            child: ModuleSlotGrid(
+              emptyLabel: '暂无建造',
+              children: [
+                for (var i = 0; i < 4; i++)
+                  if (visible.contains('empty') ||
+                      (docks.length > i && docks[i].isBuilding))
+                    _buildConstructionSlot(
+                      docks.length > i ? docks[i] : null,
+                      state,
+                      i + 1,
+                    ),
+              ],
+            ),
           ),
         );
       },
