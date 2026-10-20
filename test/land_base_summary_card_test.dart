@@ -1,3 +1,4 @@
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/src/layout/hd_bottom_strip.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
@@ -563,6 +564,63 @@ void main() {
     expect(second.top, greaterThan(first.bottom));
     expect(third.left, closeTo(first.left, 0.1));
     expect(third.top, greaterThan(second.bottom));
+  });
+  testWidgets('flat scope drops tile fills but keeps every land base item', (
+    tester,
+  ) async {
+    final base = _base(currentHp: 150, conditions: const <int>[60, 1, 1, 1]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 200,
+              child: LandBaseAirGroupRow(state: _state(base), base: base),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final row = find.byKey(const Key('land-base-row-62-1'));
+    final filled = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(of: row, matching: find.byType(DecoratedBox)),
+        )
+        .where((box) {
+          final decoration = box.decoration;
+          return decoration is BoxDecoration &&
+              decoration.shape == BoxShape.rectangle &&
+              (decoration.color != null ||
+                  decoration.borderRadius != null ||
+                  decoration.boxShadow != null);
+        });
+    expect(filled, isEmpty);
+    expect(find.text('第一基地航空队'), findsOneWidget);
+    for (final key in const <String>[
+      'land-base-action-chip-62-1',
+      'land-base-air-power-chip-62-1',
+      'land-base-range-chip-62-1',
+      'land-base-hp-value-62-1',
+      'land-base-hp-meter-62-1',
+      'land-base-portrait-62-1',
+      'land-base-squadron-strip-62-1',
+    ]) {
+      expect(find.byKey(Key(key)), findsOneWidget, reason: key);
+    }
+    expect(find.textContaining('150/200'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('land-base-air-power-chip-62-1')))
+          .style
+          ?.fontSize,
+      11,
+    );
+    for (var id = 1; id <= 4; id++) {
+      expect(find.byKey(Key('land-base-slot-62-1-$id')), findsOneWidget);
+    }
   });
 }
 

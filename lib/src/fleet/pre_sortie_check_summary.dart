@@ -5,8 +5,10 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import 'dashboard_card.dart';
+import '../layout/flat_list_row.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import 'fleet_ui_strings.dart';
 import 'ship_status_style.dart';
 import '../settings/layout_settings_controller.dart';
@@ -130,18 +132,44 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
 
   Widget _buildShipsCheckView(GameState state, AppLocalizations l10n) {
     final warnings = _generateWarnings(state, l10n);
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     if (warnings.isEmpty) {
       return Center(
         child: Text(
           l10n.noSortieWarnings,
-          style: const TextStyle(
-            color: Color(0xff8197a5),
-            fontSize: 13,
+          style: TextStyle(
+            color: const Color(0xff8197a5),
+            fontSize: flat ? flatRowFontSize : 13,
             fontWeight: FontWeight.w700,
           ),
         ),
       );
     }
+
+    Widget buildFlatWarning(_PreSortieWarning warning) => Padding(
+      key: Key(
+        'pre-sortie-warning-surface-${warning.fleetId}-${warning.kind.keyName}',
+      ),
+      padding: const EdgeInsets.only(bottom: flatRowSpacing),
+      child: InkWell(
+        key: Key(
+          'pre-sortie-warning-${warning.fleetId}-${warning.kind.keyName}',
+        ),
+        onTap: () => widget.onOpenFleet(warning.fleetId),
+        child: Row(
+          children: [
+            Icon(warning.kind.icon, color: warning.kind.foreground, size: 12),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                warning.message,
+                style: flatRowTextStyle(color: warning.kind.foreground),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
 
     Widget buildWarning(_PreSortieWarning warning) => Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -186,6 +214,12 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
         ),
       ),
     );
+    if (flat) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: warnings.map(buildFlatWarning).toList(),
+      );
+    }
     final columns = HdModuleColumns.of(context);
     if (columns == 1) {
       return Column(
@@ -236,6 +270,8 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
   }
 
   Widget _buildMapsGaugeView(GameState state, AppLocalizations l10n) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final emptyFontSize = flat ? flatRowFontSize : 13.0;
     final allGauges = state.memberMapInfos.values
         .where((m) => m.hasGauge)
         .toList();
@@ -249,9 +285,9 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
             children: [
               Text(
                 l10n.noMapGaugeData,
-                style: const TextStyle(
-                  color: Color(0xff8197a5),
-                  fontSize: 13,
+                style: TextStyle(
+                  color: const Color(0xff8197a5),
+                  fontSize: emptyFontSize,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -306,9 +342,9 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 l10n.allMapsCleared,
-                style: const TextStyle(
-                  color: Color(0xff8197a5),
-                  fontSize: 12,
+                style: TextStyle(
+                  color: const Color(0xff8197a5),
+                  fontSize: flat ? flatRowFontSize : 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -627,6 +663,54 @@ class _MapGaugeRow extends StatelessWidget {
     final percentage = gauge.percentage;
     final isCleared = gauge.isGaugeCleared;
 
+    final flatTagColor = switch (gauge.categoryTag) {
+      'Extra' => const Color(0xff64b5f6),
+      'SP Normal' => const Color(0xff4db6ac),
+      'Event' => const Color(0xffba68c8),
+      _ => const Color(0xff90a4ae),
+    };
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final nameColor = isCleared
+        ? const Color(0xff607786)
+        : const Color(0xffdce6eb);
+    final valueColor = isCleared
+        ? const Color(0xff607786)
+        : const Color(0xff70c7bc);
+    if (flat) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: flatRowSpacing / 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FlatListRow(
+              tags: [
+                Text(
+                  fleetText(context, gauge.categoryTag),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: flatRowTextStyle(color: flatTagColor),
+                ),
+              ],
+              name: flatRowName(
+                '${gauge.code} $displayName$rankText$gaugeNumText',
+                color: nameColor,
+              ),
+              trailing: flatRowTrailing(
+                Text(
+                  '${gauge.currentGaugeValue} / ${gauge.maxGaugeValue}',
+                  style: flatRowTextStyle(color: valueColor).copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            _gaugeBar(percentage, 4),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Container(
@@ -693,39 +777,35 @@ class _MapGaugeRow extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 5),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: Container(
-                height: 5,
-                color: const Color(0xff142735),
-                alignment: Alignment.centerLeft,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Container(
-                      width: constraints.maxWidth * percentage,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: percentage > 0
-                              ? (gauge.isEvent
-                                    ? const [
-                                        Color(0xff7e57c2),
-                                        Color(0xffab47bc),
-                                      ]
-                                    : const [
-                                        Color(0xff26a69a),
-                                        Color(0xff4db6ac),
-                                      ])
-                              : const [Color(0xff37474f), Color(0xff455a64)],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+            _gaugeBar(percentage, 5),
           ],
         ),
       ),
     );
   }
+
+  Widget _gaugeBar(double percentage, double height) => ClipRRect(
+    borderRadius: BorderRadius.circular(3),
+    child: Container(
+      height: height,
+      color: const Color(0xff142735),
+      alignment: Alignment.centerLeft,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Container(
+            width: constraints.maxWidth * percentage,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: percentage > 0
+                    ? (gauge.isEvent
+                          ? const [Color(0xff7e57c2), Color(0xffab47bc)]
+                          : const [Color(0xff26a69a), Color(0xff4db6ac)])
+                    : const [Color(0xff37474f), Color(0xff455a64)],
+              ),
+            ),
+          );
+        },
+      ),
+    ),
+  );
 }

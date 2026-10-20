@@ -1,3 +1,4 @@
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/hd_dashboard_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -354,6 +355,149 @@ void main() {
       await testCondition(85, false);
     },
   );
+  testWidgets('flat scope shows warnings as plain rows without pill fills', (
+    tester,
+  ) async {
+    final state = GameState(
+      masterShips: const <int, MasterShip>{
+        101: MasterShip(
+          id: 101,
+          name: '瑞鹤改二甲',
+          shipTypeId: 18,
+          maxFuel: 100,
+          maxAmmo: 100,
+          slotCount: 2,
+        ),
+      },
+      ships: const <int, OwnedShip>{
+        1001: OwnedShip(
+          id: 1001,
+          masterId: 101,
+          level: 99,
+          currentHp: 2,
+          maxHp: 10,
+          currentFuel: 50,
+          currentAmmo: 50,
+          condition: 18,
+          slotIds: <int>[7001],
+          extraSlotId: -1,
+        ),
+      },
+      fleets: const <Fleet>[
+        Fleet(id: 1, name: '第1舰队', shipIds: <int>[1001]),
+      ],
+      hasMasterData: true,
+      hasPortData: true,
+    );
+    final controller = GameStateController(gameStateStore: _StaticStore(state));
+    addTearDown(controller.dispose);
+    await controller.idle;
+    final opened = <int>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 200,
+              child: PreSortieCheckSummary(
+                controller: controller,
+                collapsed: false,
+                onToggleCollapse: () {},
+                onOpenFleet: opened.add,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('第1舰队 存在大破舰，停止出击！'), findsOneWidget);
+    expect(find.text('第1舰队 舰娘未补给'), findsOneWidget);
+    expect(find.text('第1舰队 舰娘疲劳未恢复'), findsOneWidget);
+    expect(find.text('第1舰队 装备缺失（主装备槽）：瑞鹤改二甲'), findsOneWidget);
+    expect(find.text('第1舰队 装备缺失（增设槽）：瑞鹤改二甲'), findsOneWidget);
+    expect(tester.widget<Text>(find.text('第1舰队 舰娘未补给')).style?.fontSize, 11);
+    expect(
+      find.byKey(const Key('pre-sortie-warning-surface-1-critical')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(PreSortieCheckSummary),
+        matching: find.byWidgetPredicate(
+          (w) => w is Material && w.shape is RoundedRectangleBorder,
+        ),
+      ),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const Key('pre-sortie-warning-1-supply')));
+    expect(opened, <int>[1]);
+  });
+  testWidgets('flat scope map gauge rows have no tile fill', (tester) async {
+    final state = GameState(
+      hasPortData: true,
+      memberMapInfos: {
+        105: MemberMapInfo(
+          id: 15,
+          mapAreaId: 1,
+          mapNo: 5,
+          name: '海域1',
+          requiredDefeatCount: 4,
+          defeatCount: 1,
+        ),
+      },
+    );
+    final controller = GameStateController(gameStateStore: _StaticStore(state));
+    addTearDown(controller.dispose);
+    await controller.idle;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 200,
+              child: PreSortieCheckSummary(
+                controller: controller,
+                collapsed: false,
+                onToggleCollapse: () {},
+                onOpenFleet: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('sortie-check-mode-maps')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final row = find.byKey(const Key('map-gauge-row-1-5'));
+    expect(row, findsOneWidget);
+    final tiles = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(of: row, matching: find.byType(DecoratedBox)),
+        )
+        .where((box) {
+          final decoration = box.decoration;
+          return decoration is BoxDecoration &&
+              decoration.color == const Color(0xff0d1a26);
+        });
+    expect(tiles, isEmpty);
+    expect(find.textContaining('1 / 4'), findsNothing);
+    expect(find.textContaining('海域1'), findsOneWidget);
+  });
 }
 
 class _StaticStore extends GameStateStore {

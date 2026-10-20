@@ -14,13 +14,13 @@ const _tagMaxFraction = 0.2;
 class FlatListRow extends StatelessWidget {
   const FlatListRow({
     super.key,
-    required this.onTap,
+    this.onTap,
     this.tags = const <Widget>[],
     this.name,
     this.trailing,
   });
 
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final List<Widget> tags;
   final Widget? name;
   final Widget? trailing;
