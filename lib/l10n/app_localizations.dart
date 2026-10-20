@@ -733,6 +733,30 @@ abstract class AppLocalizations {
   /// **'折叠资源'**
   String get panelResourcesCollapse;
 
+  /// No description provided for @minimalResourcePositionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'资源位置'**
+  String get minimalResourcePositionTitle;
+
+  /// No description provided for @minimalResourcePositionDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'极简档手机横屏游戏页的资源显示在信息栏顶部，或游戏上方的细横栏'**
+  String get minimalResourcePositionDesc;
+
+  /// No description provided for @minimalResourcePositionPanel.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息栏'**
+  String get minimalResourcePositionPanel;
+
+  /// No description provided for @minimalResourcePositionTopBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'顶部横栏'**
+  String get minimalResourcePositionTopBar;
+
   /// No description provided for @gameAreaRatio.
   ///
   /// In zh, this message translates to:

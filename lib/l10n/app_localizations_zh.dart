@@ -345,6 +345,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get panelResourcesCollapse => '折叠资源';
 
   @override
+  String get minimalResourcePositionTitle => '资源位置';
+
+  @override
+  String get minimalResourcePositionDesc => '极简档手机横屏游戏页的资源显示在信息栏顶部，或游戏上方的细横栏';
+
+  @override
+  String get minimalResourcePositionPanel => '信息栏';
+
+  @override
+  String get minimalResourcePositionTopBar => '顶部横栏';
+
+  @override
   String get gameAreaRatio => '游戏区域占比';
 
   @override
@@ -4010,6 +4022,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get panelResourcesCollapse => '摺疊資源';
+
+  @override
+  String get minimalResourcePositionTitle => '資源位置';
+
+  @override
+  String get minimalResourcePositionDesc => '極簡檔手機橫屏遊戲頁的資源顯示在資訊欄頂部，或遊戲上方的細橫欄';
+
+  @override
+  String get minimalResourcePositionPanel => '資訊欄';
+
+  @override
+  String get minimalResourcePositionTopBar => '頂部橫欄';
 
   @override
   String get gameAreaRatio => '遊戲區域佔比';

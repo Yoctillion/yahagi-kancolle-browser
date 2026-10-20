@@ -54,6 +54,35 @@ void main() {
     expect(controller.uiDisplaySize, UiDisplaySize.normal);
   });
 
+  test('minimal resource position defaults to panel and persists', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final controller = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(controller.minimalResourcePosition, MinimalResourcePosition.panel);
+    var notified = 0;
+    controller.addListener(() => notified++);
+    await controller.setMinimalResourcePosition(MinimalResourcePosition.topBar);
+    expect(notified, 1);
+    final restored = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(restored.minimalResourcePosition, MinimalResourcePosition.topBar);
+  });
+
+  test(
+    'unknown stored minimal resource position falls back to panel',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'layout_minimal_resource_position': 'bogus',
+      });
+      final controller = await LayoutSettingsController.load(
+        SharedPreferencesLayoutSettingsStore(),
+      );
+      expect(controller.minimalResourcePosition, MinimalResourcePosition.panel);
+    },
+  );
+
   test('information panel defaults right and persists both sides', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     var controller = await LayoutSettingsController.load(

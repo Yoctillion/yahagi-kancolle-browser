@@ -353,6 +353,19 @@ class AppLocalizationsKo extends AppLocalizations {
   String get panelResourcesCollapse => '자원 접기';
 
   @override
+  String get minimalResourcePositionTitle => '자원 위치';
+
+  @override
+  String get minimalResourcePositionDesc =>
+      '미니멀에서 휴대폰 가로 모드일 때 게임 페이지의 자원을 정보 바 상단 또는 게임 위의 얇은 바에 표시합니다';
+
+  @override
+  String get minimalResourcePositionPanel => '정보 바';
+
+  @override
+  String get minimalResourcePositionTopBar => '상단 바';
+
+  @override
   String get gameAreaRatio => '게임 영역 비율';
 
   @override

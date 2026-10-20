@@ -350,6 +350,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get panelResourcesCollapse => '資源を折りたたむ';
 
   @override
+  String get minimalResourcePositionTitle => '資源の位置';
+
+  @override
+  String get minimalResourcePositionDesc =>
+      'ミニマルでスマートフォン横向き時、ゲームページの資源を情報バー上部またはゲーム上の細いバーに表示します';
+
+  @override
+  String get minimalResourcePositionPanel => '情報バー';
+
+  @override
+  String get minimalResourcePositionTopBar => '上部バー';
+
+  @override
   String get gameAreaRatio => 'ゲーム画面の比率';
 
   @override

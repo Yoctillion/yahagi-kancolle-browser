@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/main.dart';
@@ -13,6 +14,7 @@ import 'package:yahagi_kancolle_browser/src/audio/game_audio_store.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_channel.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_store.dart';
+import 'package:yahagi_kancolle_browser/src/layout/display_corners.dart';
 import 'package:yahagi_kancolle_browser/src/settings/header_resource_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
@@ -2726,6 +2728,138 @@ void main() {
       expect(drawer, findsNothing);
       expect(resources, findsOneWidget);
       expect(resourcesOpacity(), 1);
+    });
+
+    testWidgets('minimal top bar shows resources above the game and panel', (
+      tester,
+    ) async {
+      const corners = MethodChannel(displayCornersChannelName);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        corners,
+        (_) async => <String, Object>{
+          'topLeft': 120,
+          'topRight': 80,
+          'bottomLeft': 24,
+          'bottomRight': 24,
+        },
+      );
+      addTearDown(() => messenger.setMockMethodCallHandler(corners, null));
+      final layout = await _pumpMinimalShell(tester);
+      await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
+      await tester.pumpAndSettle();
+
+      expect(_headerHeight(tester), 28);
+      expect(
+        find.byKey(const Key('header-resource-material-1')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
+      expect(
+        find.byKey(const Key('information-panel-resources')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('minimal-menu-button')), findsOneWidget);
+      // 横栏两端让开屏幕顶部两个圆角。
+      final list = tester.getRect(
+        find.byKey(const Key('header-resource-list')),
+      );
+      expect(list.left, greaterThanOrEqualTo(cornerInset(120)));
+      expect(
+        list.right,
+        lessThanOrEqualTo(_phoneLandscape.width - cornerInset(80)),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal top bar takes quest notices in the header', (
+      tester,
+    ) async {
+      final layout = await _pumpMinimalShell(tester);
+      await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
+      await tester.pumpAndSettle();
+      final panel = find.byKey(const Key('workspace-information-panel'));
+
+      QuestCompletionDrawerHost.show(
+        tester.element(panel),
+        '任务完成',
+        tone: TopNoticeTone.quest,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('quest-completion-drawer')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: panel,
+          matching: find.byKey(const Key('quest-completion-drawer')),
+        ),
+        findsNothing,
+      );
+      QuestCompletionDrawerHost.hide(tester.element(panel));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('toggling the minimal top bar keeps the game and refits', (
+      tester,
+    ) async {
+      var disposeCount = 0;
+      var deactivateCount = 0;
+      final browserPort = _NoopBrowserPort();
+      final layout = await _pumpMinimalShell(
+        tester,
+        browserPort: browserPort,
+        gameSurface: _LifecycleProbe(
+          key: const Key('minimal-top-bar-game-surface'),
+          onDispose: () => disposeCount++,
+          onDeactivate: () => deactivateCount++,
+        ),
+      );
+      final gameSurface = find.byKey(const Key('minimal-top-bar-game-surface'));
+      final originalElement = tester.element(gameSurface);
+      final panelTop = tester
+          .getTopLeft(find.byKey(const Key('workspace-information-panel')))
+          .dy;
+
+      for (final position in [
+        MinimalResourcePosition.topBar,
+        MinimalResourcePosition.panel,
+        MinimalResourcePosition.topBar,
+      ]) {
+        final fitCalls = browserPort.fitGameScreenCalls;
+        await layout.setMinimalResourcePosition(position);
+        await tester.pumpAndSettle();
+        expect(browserPort.fitGameScreenCalls, greaterThan(fitCalls));
+        expect(
+          _headerHeight(tester),
+          position == MinimalResourcePosition.topBar ? 28 : 0,
+        );
+        expect(
+          tester
+              .getTopLeft(find.byKey(const Key('workspace-information-panel')))
+              .dy,
+          panelTop + _headerHeight(tester),
+        );
+        expect(disposeCount, 0);
+        expect(deactivateCount, 0);
+        expect(tester.element(gameSurface), same(originalElement));
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('minimal top bar leaves other workspaces unchanged', (
+      tester,
+    ) async {
+      final layout = await _pumpMinimalShell(tester);
+      await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(_headerHeight(tester), 28);
+      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      expect(tester.takeException(), isNull);
     });
 
     const surfaceProbe = Key('minimal-game-surface-probe');
