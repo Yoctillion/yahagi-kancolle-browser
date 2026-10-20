@@ -67,6 +67,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
     this.shipSubtitleCatalogController,
     this.telemetryController,
     this.backupService,
+    this.additionalSections,
   });
 
   final CaptureModeController captureModeController;
@@ -89,6 +90,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
   final ShipSubtitleCatalogController? shipSubtitleCatalogController;
   final TelemetryController? telemetryController;
   final RecordBackupService? backupService;
+  final List<Widget>? additionalSections;
 
   RecordBackupService? get _backupService =>
       backupService ?? RecordBackupService.shared;
@@ -368,6 +370,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                 ],
               ),
             ),
+            ...?additionalSections,
             const SizedBox(height: 40),
           ],
         ),

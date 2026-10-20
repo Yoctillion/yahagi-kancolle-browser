@@ -1,5 +1,6 @@
 import '../theme/app_palette.dart';
 import '../localization/runtime_message_text.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -71,15 +72,16 @@ class DiagnosticsSection extends StatelessWidget {
               ),
               warning: browserController.loadState == GamePageLoadState.failed,
             ),
-            if (gameRenderingModeController case final rendering?) ...[
-              const SizedBox(height: 8),
-              _DiagnosticCard(
-                title:
-                    '${l10n.gameRenderingModeTitle}: '
-                    '${_renderingModeLabel(l10n, rendering.mode)}',
-                subtitle: _renderingPipelineSummary(rendering.mode),
-              ),
-            ],
+            if (defaultTargetPlatform != TargetPlatform.iOS)
+              if (gameRenderingModeController case final rendering?) ...[
+                const SizedBox(height: 8),
+                _DiagnosticCard(
+                  title:
+                      '${l10n.gameRenderingModeTitle}: '
+                      '${_renderingModeLabel(l10n, rendering.mode)}',
+                  subtitle: _renderingPipelineSummary(rendering.mode),
+                ),
+              ],
             const SizedBox(height: 8),
             _DiagnosticCard(
               title: captureModeController.mode == CaptureMode.browserOnly

@@ -1,0 +1,38 @@
+name: iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/ios
+      - 'fix/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Unsigned on purpose: sideloading tools (AltStore, SideStore,
+      # Sideloadly, TrollStore) re-sign with the installer's own identity.
+      - run: flutter build ios --release --no-codesign -t lib/main_ios.dart
+      - name: Package IPA
+        run: |
+          version=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          mkdir Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry "YahagiKancolleBrowser_${version}_${GITHUB_SHA::7}_unsigned.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: '*_unsigned.ipa'
+          if-no-files-found: error

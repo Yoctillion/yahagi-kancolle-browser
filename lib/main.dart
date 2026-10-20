@@ -1076,6 +1076,8 @@ class YahagiApp extends StatelessWidget {
     this.gameRouteObserver,
     this.nativeWebViewGenerationSink,
     this.backupMaintenanceOverlay,
+    this.additionalDataSections,
+    this.onSettingsNavTap,
   });
 
   final LayoutSettingsController layoutSettingsController;
@@ -1129,6 +1131,8 @@ class YahagiApp extends StatelessWidget {
   final RouteObserver<ModalRoute<dynamic>>? gameRouteObserver;
   final void Function(int)? nativeWebViewGenerationSink;
   final ValueListenable<Widget?>? backupMaintenanceOverlay;
+  final List<Widget>? additionalDataSections;
+  final void Function(BuildContext context)? onSettingsNavTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1253,6 +1257,8 @@ class YahagiApp extends StatelessWidget {
                   showDeveloperDiagnostics: showDeveloperDiagnostics,
                   diagnosticController: diagnosticController,
                   telemetryController: telemetryController,
+                  additionalDataSections: additionalDataSections,
+                  onSettingsNavTap: onSettingsNavTap,
                   gameSurface: Builder(
                     builder: (context) => GameWorkspaceActive(
                       active:
@@ -1489,6 +1495,8 @@ class YahagiShell extends StatefulWidget {
     this.showDeveloperDiagnostics = false,
     this.diagnosticController,
     this.telemetryController,
+    this.additionalDataSections,
+    this.onSettingsNavTap,
   });
 
   final LayoutSettingsController layoutSettingsController;
@@ -1539,6 +1547,8 @@ class YahagiShell extends StatefulWidget {
   final bool showDeveloperDiagnostics;
   final DiagnosticController? diagnosticController;
   final TelemetryController? telemetryController;
+  final List<Widget>? additionalDataSections;
+  final void Function(BuildContext context)? onSettingsNavTap;
 
   @override
   State<YahagiShell> createState() => _YahagiShellState();
@@ -1809,6 +1819,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
   }
 
   void _selectWorkspace(int index) {
+    if (index == 8) {
+      widget.onSettingsNavTap?.call(context);
+    }
     if (index != 0) {
       widget.toolbarController.collapse();
       if (_gameFullscreen) _setGameFullscreen(false);
@@ -3283,6 +3296,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                         ),
                                       if (_workspaceIndex == 8)
                                         SettingsPage(
+                                          additionalDataSections:
+                                              widget.additionalDataSections,
                                           layoutSettingsController:
                                               widget.layoutSettingsController,
                                           networkSettingsController:

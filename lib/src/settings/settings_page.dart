@@ -88,6 +88,7 @@ class SettingsPage extends StatelessWidget {
     this.isBattleActive = false,
     this.diagnosticController,
     this.telemetryController,
+    this.additionalDataSections,
   });
 
   final LayoutSettingsController layoutSettingsController;
@@ -131,6 +132,7 @@ class SettingsPage extends StatelessWidget {
   final bool isBattleActive;
   final DiagnosticController? diagnosticController;
   final TelemetryController? telemetryController;
+  final List<Widget>? additionalDataSections;
 
   @override
   Widget build(BuildContext context) {
@@ -188,6 +190,7 @@ class SettingsPage extends StatelessWidget {
           improvementPlannerController: improvementPlannerController,
           shipSubtitleCatalogController: shipSubtitleCatalogController,
           telemetryController: telemetryController,
+          additionalSections: additionalDataSections,
         ),
         AboutSupportSettingsPage(
           currentVersion: currentVersion,
