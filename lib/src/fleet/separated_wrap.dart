@@ -18,11 +18,11 @@ class SeparatedWrap extends MultiChildRenderObjectWidget {
 
   @override
   RenderObject createRenderObject(BuildContext context) =>
-      _RenderSeparatedWrap(separator, style, Directionality.of(context));
+      RenderSeparatedWrap(separator, style, Directionality.of(context));
 
   @override
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
-    (renderObject as _RenderSeparatedWrap)
+    (renderObject as RenderSeparatedWrap)
       ..separator = separator
       ..style = style
       ..textDirection = Directionality.of(context);
@@ -31,11 +31,11 @@ class SeparatedWrap extends MultiChildRenderObjectWidget {
 
 class _Parent extends ContainerBoxParentData<RenderBox> {}
 
-class _RenderSeparatedWrap extends RenderBox
+class RenderSeparatedWrap extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, _Parent>,
         RenderBoxContainerDefaultsMixin<RenderBox, _Parent> {
-  _RenderSeparatedWrap(this._separator, this._style, this._textDirection) {
+  RenderSeparatedWrap(this._separator, this._style, this._textDirection) {
     _rebuildPainter();
   }
 
@@ -74,6 +74,12 @@ class _RenderSeparatedWrap extends RenderBox
       ..textDirection = _textDirection
       ..layout();
   }
+
+  /// Rects of the painted separators, for tests.
+  @visibleForTesting
+  List<Rect> get debugSeparatorRects => [
+    for (final at in _separatorOffsets) at & _painter.size,
+  ];
 
   double get _separatorWidth => _painter.width + _gap * 2;
 

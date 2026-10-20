@@ -106,16 +106,28 @@ class DisplayCorners extends InheritedNotifier<DisplayCornersController> {
   static CornerRadii of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<DisplayCorners>();
     final radii = scope?.notifier?.radii ?? CornerRadii.fallback;
-    // iOS has no way to query the radius; full-screen iPhones (non-zero safe
-    // area) all have ~55dp corners, which the 24dp fallback badly underestimates.
+    // iOS has no way to query the radius. Only notch/island iPhones have ~55dp
+    // corners; iPads and home-button iPhones have a status bar but near-square
+    // corners, so they keep the 24dp fallback.
     if (radii == CornerRadii.fallback &&
-        defaultTargetPlatform == TargetPlatform.iOS) {
-      final padding = MediaQuery.maybeViewPaddingOf(context);
-      if (padding != null && padding != EdgeInsets.zero) {
-        return iosFullScreenCorners;
-      }
+        defaultTargetPlatform == TargetPlatform.iOS &&
+        _isFullScreenIphone(context)) {
+      return iosFullScreenCorners;
     }
     return radii;
+  }
+
+  static bool _isFullScreenIphone(BuildContext context) {
+    final padding = MediaQuery.maybeViewPaddingOf(context);
+    final size = MediaQuery.maybeSizeOf(context);
+    if (padding == null || size == null || size.shortestSide >= 600) {
+      return false;
+    }
+    final largest = math.max(
+      padding.top,
+      math.max(padding.left, padding.right),
+    );
+    return largest >= 44;
   }
 
   static const iosFullScreenCorners = CornerRadii.all(55);
