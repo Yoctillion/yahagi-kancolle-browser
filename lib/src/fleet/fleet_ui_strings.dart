@@ -7,6 +7,7 @@ import '../../l10n/app_localizations.dart';
 /// untranslated literals.
 abstract final class FleetUiKeys {
   static const unknownShipType = '未知舰种';
+  static const unknownShip = '未知舰娘';
   static const noFurtherRemodel = '无后续改造';
   static const dataIncomplete = '数据未齐';
   static const remodel = '改造';

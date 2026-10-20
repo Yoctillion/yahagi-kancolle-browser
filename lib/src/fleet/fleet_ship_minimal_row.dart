@@ -261,13 +261,13 @@ class FleetShipMinimalRow extends StatelessWidget {
   ) {
     final typeLabel = _show('type')
         ? fleetShipTypeLabel(context, state, master, shipTypeLabelMode) ??
-              fleetText(context, '未知舰种')
+              fleetText(context, FleetUiKeys.unknownShipType)
         : null;
     final name =
         (master == null
             ? null
             : gameNames(context).shipName(master.name, shipId: master.id)) ??
-        fleetText(context, '未知舰娘');
+        fleetText(context, FleetUiKeys.unknownShip);
     final openingAsw = _show('mechanisms')
         ? detectShipCombatMechanisms(
             state,

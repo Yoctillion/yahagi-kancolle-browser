@@ -48,6 +48,6 @@ String? fleetShipTypeLabel(
   if (mode == FleetShipTypeLabelMode.localizedName) return localized;
   return fleetShipTypeAbbreviation(
     master?.shipTypeId ?? 0,
-    fallback: localized ?? fleetText(context, '未知舰种'),
+    fallback: localized ?? fleetText(context, FleetUiKeys.unknownShipType),
   );
 }
