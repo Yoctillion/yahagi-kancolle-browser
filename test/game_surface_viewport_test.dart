@@ -485,4 +485,134 @@ void main() {
       }
     });
   });
+
+  group('GameSurfaceViewport docked bottom inset avoidance', () {
+    // iPhone landscape: Dynamic Island on both sides, home indicator below.
+    const screenSize = Size(852, 393);
+    const viewPadding = EdgeInsets.only(left: 59, right: 59, bottom: 21);
+
+    Future<Rect> pumpDocked(
+      WidgetTester tester, {
+      required Rect dock,
+      required bool avoidBottomInset,
+      bool centerAboveBottomInset = false,
+    }) async {
+      tester.view.physicalSize = screenSize;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: screenSize,
+            viewPadding: viewPadding,
+          ),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Stack(
+              children: [
+                Positioned.fromRect(
+                  rect: dock,
+                  child: GameSurfaceViewport(
+                    aspectRatio: 1200 / 720,
+                    isLandscape: true,
+                    avoidBottomInset: avoidBottomInset,
+                    centerAboveBottomInset: centerAboveBottomInset,
+                    child: const SizedBox.expand(key: Key('test-game-surface')),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.getRect(find.byKey(const Key('test-game-surface')));
+    }
+
+    // Game panel below a 40pt header, taking 67% of the width on the left.
+    const bottomLeftDock = Rect.fromLTWH(0, 40, 571, 353);
+
+    testWidgets('docked game stays above home indicator but not side cutout', (
+      tester,
+    ) async {
+      final gameRect = await pumpDocked(
+        tester,
+        dock: bottomLeftDock,
+        avoidBottomInset: true,
+      );
+
+      final safeBottom = screenSize.height - viewPadding.bottom;
+      expect(gameRect.bottom, closeTo(safeBottom, 0.001));
+      expect(gameRect.height, closeTo(safeBottom - bottomLeftDock.top, 0.001));
+      expect(gameRect.left, lessThan(viewPadding.left));
+      expect(gameRect.right, lessThanOrEqualTo(bottomLeftDock.right));
+      expect(gameRect.width / gameRect.height, closeTo(1200 / 720, 0.001));
+    });
+
+    testWidgets('docked game keeps full width when it fits above indicator', (
+      tester,
+    ) async {
+      const narrowDock = Rect.fromLTWH(0, 40, 500, 353);
+      final gameRect = await pumpDocked(
+        tester,
+        dock: narrowDock,
+        avoidBottomInset: true,
+      );
+
+      expect(gameRect.left, 0.0);
+      expect(gameRect.width, narrowDock.width);
+      expect(
+        gameRect.bottom,
+        lessThanOrEqualTo(screenSize.height - viewPadding.bottom),
+      );
+    });
+
+    testWidgets('docked game keeps width priority when off-screen-edge', (
+      tester,
+    ) async {
+      const innerDock = Rect.fromLTWH(100, 40, 400, 300);
+      final gameRect = await pumpDocked(
+        tester,
+        dock: innerDock,
+        avoidBottomInset: true,
+      );
+
+      expect(gameRect.left, innerDock.left);
+      expect(gameRect.width, innerDock.width);
+    });
+
+    testWidgets('docked game ignores insets unless avoidance is enabled', (
+      tester,
+    ) async {
+      final gameRect = await pumpDocked(
+        tester,
+        dock: bottomLeftDock,
+        avoidBottomInset: false,
+      );
+
+      expect(gameRect.left, 0.0);
+      expect(gameRect.width, bottomLeftDock.width);
+    });
+
+    testWidgets('minimal centering supersedes docked avoidance', (
+      tester,
+    ) async {
+      final minimalOnly = await pumpDocked(
+        tester,
+        dock: bottomLeftDock,
+        avoidBottomInset: false,
+        centerAboveBottomInset: true,
+      );
+      final both = await pumpDocked(
+        tester,
+        dock: bottomLeftDock,
+        avoidBottomInset: true,
+        centerAboveBottomInset: true,
+      );
+
+      expect(both, minimalOnly);
+    });
+  });
 }
