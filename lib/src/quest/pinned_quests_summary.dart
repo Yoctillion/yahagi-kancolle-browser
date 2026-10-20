@@ -272,14 +272,12 @@ class PinnedQuestsSummary extends StatelessWidget {
       };
 
   Widget _flatRow(BuildContext context, AppLocalizations l10n, GameQuest q) {
-    Widget tag(Key? key, String text) => Flexible(
-      child: Text(
-        text,
-        key: key,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: flatRowTextStyle(color: q.categoryColor),
-      ),
+    Widget tag(Key? key, String text) => Text(
+      text,
+      key: key,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: flatRowTextStyle(color: q.categoryColor),
     );
     final showType = visible.contains('type');
     final showNumber = visible.contains('number');
@@ -290,18 +288,13 @@ class PinnedQuestsSummary extends StatelessWidget {
       key: Key('quest-summary-item-${q.id}'),
       child: FlatListRow(
         onTap: () => onOpenQuest(q.id),
-        leading: [
-          if (showType) ...[
-            tag(null, _categoryLabel(l10n, q)),
-            const SizedBox(width: 4),
-          ],
-          if (showNumber) ...[
+        tags: [
+          if (showType) tag(null, _categoryLabel(l10n, q)),
+          if (showNumber)
             tag(
               Key('quest-summary-number-${q.id}'),
               catalogController?.catalog.byGameId(q.id)?.code ?? '#${q.id}',
             ),
-            const SizedBox(width: 4),
-          ],
         ],
         name: visible.contains('name')
             ? flatRowName(

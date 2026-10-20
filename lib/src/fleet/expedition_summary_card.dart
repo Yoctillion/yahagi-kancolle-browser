@@ -310,12 +310,9 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
       key: Key('expedition-summary-row-$fleetId'),
       child: FlatListRow(
         onTap: widget.onOpenExpedition,
-        leading: [
-          if (showFleet)
-            Flexible(child: label('fleet', fleet, const Color(0xff03a9f4))),
-          if (showFleet && showNumber) const SizedBox(width: 4),
+        tags: [
+          if (showFleet) label('fleet', fleet, const Color(0xff03a9f4)),
           if (showNumber) label('number', number, flatTimeColor),
-          if (showFleet || showNumber) const SizedBox(width: 6),
         ],
         name: widget.visible.contains('name')
             ? flatRowName(mission, key: Key('expedition-summary-name-$fleetId'))

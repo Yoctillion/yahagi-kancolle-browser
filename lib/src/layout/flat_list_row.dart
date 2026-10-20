@@ -6,19 +6,22 @@ const flatTimeColor = Color(0xffd4a85f);
 const flatDoneColor = Color(0xff4cc06a);
 const flatIdleColor = Color(0xff8197a5);
 
-/// 极简档的模块行：无底色，左侧编号和名称，右侧右对齐的时间或状态。
-/// 窄面板下名称先被截断；trailing 最多占一半宽度，超出由调用方的控件自行收缩。
+/// 极简档的模块行：无底色，左侧标签和名称，右侧右对齐的时间或状态。
+/// 标签按自身宽度排布且各自封顶，trailing 封顶一半宽度，名称独占其余空间；
+/// 两项封顶之和加间隙始终小于行宽，窄面板下只会截断名称。
+const _tagMaxFraction = 0.2;
+
 class FlatListRow extends StatelessWidget {
   const FlatListRow({
     super.key,
     required this.onTap,
-    this.leading = const <Widget>[],
+    this.tags = const <Widget>[],
     this.name,
     this.trailing,
   });
 
   final VoidCallback onTap;
-  final List<Widget> leading;
+  final List<Widget> tags;
   final Widget? name;
   final Widget? trailing;
 
@@ -31,7 +34,15 @@ class FlatListRow extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) => Row(
             children: [
-              ...leading,
+              for (final tag in tags) ...[
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth * _tagMaxFraction,
+                  ),
+                  child: tag,
+                ),
+                SizedBox(width: tag == tags.last ? 6 : 4),
+              ],
               Expanded(child: name ?? const SizedBox.shrink()),
               if (trailing != null)
                 ConstrainedBox(

@@ -1250,6 +1250,91 @@ void main() {
       expect(opened, isTrue);
     });
 
+    testWidgets('远征行短标签时名称占满剩余宽度', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(
+          GameState(
+            fleets: <Fleet>[
+              Fleet(
+                id: 2,
+                name: 'F2',
+                mission: FleetMission(
+                  state: 1,
+                  missionId: 5,
+                  completionTime: DateTime.now().toUtc().add(
+                    const Duration(hours: 1),
+                  ),
+                ),
+              ),
+            ],
+            hasPortData: true,
+          ),
+        ),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        ExpeditionSummaryCard(
+          controller: controller,
+          collapsed: false,
+          visible: const {'fleet', 'name'},
+          onToggleCollapse: () {},
+          onOpenExpedition: () {},
+          onOpenExpeditionCheck: (_) {},
+        ),
+      );
+      final rowWidth = tester
+          .getSize(find.byKey(const Key('expedition-summary-row-2')))
+          .width;
+      final nameWidth = tester
+          .getSize(find.byKey(const Key('expedition-summary-name-2')))
+          .width;
+      expect(nameWidth, greaterThan(rowWidth / 2));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('任务行短标签时名称占满剩余宽度', (tester) async {
+      final controller = GameStateController(
+        questStore: _StaticQuestStore(<int, GameQuest>{
+          101: const GameQuest(
+            id: 101,
+            title: 'Short',
+            detail: 'd',
+            category: 1,
+            type: 1,
+            state: 2,
+            progressFlag: 1,
+          ),
+        }),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        PinnedQuestsSummary(
+          controller: controller,
+          collapsed: false,
+          visible: const {'number', 'name', 'progress'},
+          onToggleCollapse: () {},
+          onOpenQuest: (_) {},
+        ),
+      );
+      final rowWidth = tester
+          .getSize(find.byKey(const Key('quest-summary-item-101')))
+          .width;
+      final nameWidth = tester
+          .getSize(
+            find.ancestor(
+              of: find.text('Short'),
+              matching: find.byType(Expanded),
+            ),
+          )
+          .width;
+      expect(nameWidth, greaterThan(rowWidth / 2));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('任务行仍可点击', (tester) async {
       final controller = GameStateController(
         questStore: _StaticQuestStore(<int, GameQuest>{
