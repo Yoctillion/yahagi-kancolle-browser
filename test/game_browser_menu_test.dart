@@ -23,11 +23,12 @@ class _ActionCounter {
   void hit(String action) => calls[action] = (calls[action] ?? 0) + 1;
 
   GameBrowserActions actions({
+    GameBrowserMode mode = GameBrowserMode.realWeb,
     bool isMuted = false,
     bool interactionEnabled = true,
     Future<void> Function()? onReload,
   }) => GameBrowserActions(
-    mode: GameBrowserMode.realWeb,
+    mode: mode,
     interactionEnabled: interactionEnabled,
     onBack: () async => hit('back'),
     onReload: onReload ?? () async => hit('reload'),
@@ -97,6 +98,32 @@ void main() {
     }
     expect(find.byKey(const Key('game-browser-menu-close')), findsOneWidget);
     expect(find.text('开声音'), findsOneWidget);
+  });
+
+  testWidgets('local prototype offers DMM instead of back and home', (
+    tester,
+  ) async {
+    final counter = _ActionCounter();
+    await _openMenu(
+      tester,
+      counter.actions(mode: GameBrowserMode.localPrototype),
+    );
+
+    expect(find.byKey(const Key('game-browser-menu-dmm')), findsOneWidget);
+    expect(find.byKey(const Key('game-browser-menu-reload')), findsOneWidget);
+    expect(find.byKey(const Key('game-browser-menu-back')), findsNothing);
+    expect(find.byKey(const Key('game-browser-menu-home')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('game-browser-menu-dmm')));
+    await tester.pumpAndSettle();
+    expect(counter.calls, {'dmm': 1});
+    expect(find.byKey(const Key('game-browser-menu-close')), findsNothing);
+  });
+
+  testWidgets('real web hides the DMM entry', (tester) async {
+    await _openMenu(tester, _ActionCounter().actions());
+
+    expect(find.byKey(const Key('game-browser-menu-dmm')), findsNothing);
   });
 
   testWidgets('tapping barrier closes without invoking actions', (

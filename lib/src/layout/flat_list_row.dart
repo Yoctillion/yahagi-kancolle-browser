@@ -7,8 +7,9 @@ const flatDoneColor = Color(0xff4cc06a);
 const flatIdleColor = Color(0xff8197a5);
 
 /// 极简档的模块行：无底色，左侧标签和名称，右侧右对齐的时间或状态。
-/// 标签按自身宽度排布且各自封顶，trailing 封顶一半宽度，名称独占其余空间；
-/// 两项封顶之和加间隙始终小于行宽，窄面板下只会截断名称。
+/// 标签按自身宽度排布且各自封顶，trailing 封顶一半宽度，名称独占其余空间。
+/// 两个标签和 trailing 都顶到封顶时，固定部分是 0.9 倍行宽加约 10dp 间隙，
+/// 行宽约 100dp 以下会溢出；信息栏常见宽度下只会截断名称。
 const _tagMaxFraction = 0.2;
 
 class FlatListRow extends StatelessWidget {

@@ -3,6 +3,7 @@ package app.yahagi.kancollebrowser.display
 import android.os.Build
 import android.view.RoundedCorner
 import android.view.WindowInsets
+import androidx.annotation.RequiresApi
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
@@ -37,6 +38,7 @@ internal class DisplayCornerChannel(
         )
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun WindowInsets.radiusOf(position: Int): Int? =
         getRoundedCorner(position)?.radius
 }
