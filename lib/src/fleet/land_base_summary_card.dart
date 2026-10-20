@@ -5,6 +5,7 @@ import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
+import '../layout/flat_empty_text.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/flat_text_toggle.dart';
 import '../layout/hd_dashboard_content.dart';
@@ -90,15 +91,17 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
           onSelected: (selected) => setState(() => _selectedAreaId = selected),
         ),
         child: bases.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.all(16),
-                child: Center(
-                  child: Text(
-                    l10n.landBaseNoData,
-                    style: const TextStyle(color: Color(0xff8197a5)),
-                  ),
-                ),
-              )
+            ? PanelStyleScope.of(context) == PanelStyle.flat
+                  ? FlatEmptyText(l10n.landBaseNoData)
+                  : Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                        child: Text(
+                          l10n.landBaseNoData,
+                          style: const TextStyle(color: Color(0xff8197a5)),
+                        ),
+                      ),
+                    )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
@@ -234,6 +237,15 @@ class LandBaseAirGroupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return _FlatLandBaseRow(
+        key: Key('land-base-row-$_keySuffix'),
+        state: state,
+        base: base,
+        visible: visible,
+        keySuffix: _keySuffix,
+      );
+    }
     final maximumHp = base.maxHp ?? 200;
     final currentHp = base.currentHp ?? maximumHp;
     final hpRatio = maximumHp <= 0
@@ -244,25 +256,18 @@ class LandBaseAirGroupRow extends StatelessWidget {
     );
     final airPower = LandBaseAirPower.calculate(state: state, base: base);
     final portraitMaster = _portraitMaster(state, base);
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
 
     return Container(
       key: Key('land-base-row-$_keySuffix'),
-      padding: flat ? EdgeInsets.zero : const EdgeInsets.fromLTRB(6, 4, 6, 4),
-      decoration: flat
-          ? null
-          : BoxDecoration(
-              color: const Color(0xff1c3547),
-              border: Border.all(color: const Color(0xff4c6b84), width: 1.2),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(
-                  color: Colors.black45,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
+      padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+      decoration: BoxDecoration(
+        color: const Color(0xff1c3547),
+        border: Border.all(color: const Color(0xff4c6b84), width: 1.2),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 3)),
+        ],
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final narrow = constraints.maxWidth < 460;
@@ -296,113 +301,56 @@ class LandBaseAirGroupRow extends StatelessWidget {
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              if (flat)
-                FlatListRow(
-                  tags: <Widget>[
-                    Text(
-                      _actionLabel(base.actionKind, l10n),
-                      key: Key('land-base-action-chip-$_keySuffix'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: flatRowTextStyle(
-                        color: _actionColor(base.actionKind),
+              SizedBox(
+                height: 20,
+                child: Row(
+                  key: Key('land-base-identity-line-$_keySuffix'),
+                  children: <Widget>[
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: _LandBaseNameChip(
+                        key: Key('land-base-name-$_keySuffix'),
+                        label: base.name,
                       ),
                     ),
-                  ],
-                  name: flatRowName(
-                    base.name,
-                    key: Key('land-base-name-$_keySuffix'),
-                  ),
-                  trailing: flatRowTrailing(
-                    Row(
-                      key: Key('land-base-identity-line-$_keySuffix'),
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        if (!visible.contains('portrait') &&
-                            fatigue != LandBaseFatigueLevel.none) ...[
-                          FatigueFace(
-                            level: fatigue == LandBaseFatigueLevel.red
-                                ? FatigueFaceLevel.red
-                                : FatigueFaceLevel.yellow,
-                            size: 14,
-                            faceKey: Key('land-base-fatigue-face-$_keySuffix'),
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        if (visible.contains('airPower'))
-                          Text(
-                            '${l10n.airPower} ${airPower.displayValue}',
-                            key: Key('land-base-air-power-chip-$_keySuffix'),
-                            style: flatRowTextStyle(
-                              color: const Color(0xffd4a74e),
-                            ),
-                          ),
-                        if (visible.contains('airPower') &&
-                            visible.contains('range'))
-                          const SizedBox(width: 6),
-                        if (visible.contains('range'))
-                          Text(
-                            '${l10n.landBaseRange} ${base.effectiveDistance}',
-                            key: Key('land-base-range-chip-$_keySuffix'),
-                            style: flatRowTextStyle(
-                              color: const Color(0xff70b8d8),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SizedBox(
-                  height: 20,
-                  child: Row(
-                    key: Key('land-base-identity-line-$_keySuffix'),
-                    children: <Widget>[
-                      Flexible(
-                        fit: FlexFit.loose,
-                        child: _LandBaseNameChip(
-                          key: Key('land-base-name-$_keySuffix'),
-                          label: base.name,
-                        ),
-                      ),
-                      if (!visible.contains('portrait') &&
-                          fatigue != LandBaseFatigueLevel.none) ...[
-                        const SizedBox(width: 4),
-                        FatigueFace(
-                          level: fatigue == LandBaseFatigueLevel.red
-                              ? FatigueFaceLevel.red
-                              : FatigueFaceLevel.yellow,
-                          size: 14,
-                          faceKey: Key('land-base-fatigue-face-$_keySuffix'),
-                        ),
-                      ],
+                    if (!visible.contains('portrait') &&
+                        fatigue != LandBaseFatigueLevel.none) ...[
                       const SizedBox(width: 4),
-                      _LandBaseActionChip(
-                        key: Key('land-base-action-chip-$_keySuffix'),
-                        label: _actionLabel(base.actionKind, l10n),
-                        color: _actionColor(base.actionKind),
+                      FatigueFace(
+                        level: fatigue == LandBaseFatigueLevel.red
+                            ? FatigueFaceLevel.red
+                            : FatigueFaceLevel.yellow,
+                        size: 14,
+                        faceKey: Key('land-base-fatigue-face-$_keySuffix'),
                       ),
-                      if (visible.contains('airPower')) ...[
-                        const SizedBox(width: 3),
-                        _LandBaseInfoChip(
-                          key: Key('land-base-air-power-chip-$_keySuffix'),
-                          label: '${l10n.airPower} ${airPower.displayValue}',
-                          color: const Color(0xffd4a74e),
-                        ),
-                      ],
-                      if (visible.contains('range')) ...[
-                        const SizedBox(width: 3),
-                        _LandBaseInfoChip(
-                          key: Key('land-base-range-chip-$_keySuffix'),
-                          label:
-                              '${l10n.landBaseRange} ${base.effectiveDistance}',
-                          color: const Color(0xff70b8d8),
-                        ),
-                      ],
                     ],
-                  ),
+                    const SizedBox(width: 4),
+                    _LandBaseActionChip(
+                      key: Key('land-base-action-chip-$_keySuffix'),
+                      label: _actionLabel(base.actionKind, l10n),
+                      color: _actionColor(base.actionKind),
+                    ),
+                    if (visible.contains('airPower')) ...[
+                      const SizedBox(width: 3),
+                      _LandBaseInfoChip(
+                        key: Key('land-base-air-power-chip-$_keySuffix'),
+                        label: '${l10n.airPower} ${airPower.displayValue}',
+                        color: const Color(0xffd4a74e),
+                      ),
+                    ],
+                    if (visible.contains('range')) ...[
+                      const SizedBox(width: 3),
+                      _LandBaseInfoChip(
+                        key: Key('land-base-range-chip-$_keySuffix'),
+                        label:
+                            '${l10n.landBaseRange} ${base.effectiveDistance}',
+                        color: const Color(0xff70b8d8),
+                      ),
+                    ],
+                  ],
                 ),
-              SizedBox(height: flat ? flatRowSpacing : 3),
+              ),
+              const SizedBox(height: 3),
               Row(
                 children: <Widget>[
                   if (visible.contains('portrait')) ...[
@@ -463,10 +411,8 @@ class LandBaseAirGroupRow extends StatelessWidget {
                         currentHp: currentHp,
                         maximumHp: maximumHp,
                         hpRatio: hpRatio,
-                        height: flat
-                            ? null
-                            : (portraitHeight > 34 ? portraitHeight : 34),
-                        trackHeight: flat ? 4 : hpTrackHeight,
+                        height: portraitHeight > 34 ? portraitHeight : 34,
+                        trackHeight: hpTrackHeight,
                       ),
                     )
                   else
@@ -477,10 +423,8 @@ class LandBaseAirGroupRow extends StatelessWidget {
                         currentHp: currentHp,
                         maximumHp: maximumHp,
                         hpRatio: hpRatio,
-                        height: flat
-                            ? null
-                            : (portraitHeight > 34 ? portraitHeight : 34),
-                        trackHeight: flat ? 4 : hpTrackHeight,
+                        height: portraitHeight > 34 ? portraitHeight : 34,
+                        trackHeight: hpTrackHeight,
                       ),
                     ),
                   SizedBox(width: sectionGap),
@@ -533,7 +477,7 @@ class _LandBaseStatusColumn extends StatelessWidget {
   final int currentHp;
   final int maximumHp;
   final double hpRatio;
-  final double? height;
+  final double height;
   final double trackHeight;
 
   @override
@@ -743,49 +687,31 @@ class _LandBaseSquadronSlot extends StatelessWidget {
         squadron != null &&
         squadron!.maxCount > 0 &&
         squadron!.currentCount < squadron!.maxCount;
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
-    final countFontSize = flat
-        ? flatRowFontSize
-        : isNearSquareLargeDisplay(context)
-        ? 10.0
-        : 8.0;
+    final countFontSize = isNearSquareLargeDisplay(context) ? 10.0 : 8.0;
     final suffix = '$areaId-$baseId-$squadronId';
     final content = Container(
       key: Key('land-base-slot-$suffix'),
-      height: flat ? 20 : 34,
-      decoration: flat
-          ? (missing || fatigueColor != null
-                ? BoxDecoration(
-                    border: Border.all(
-                      color: missing
-                          ? const Color(0xffef775f)
-                          : fatigueColor!.withValues(alpha: 0.9),
-                    ),
-                  )
-                : null)
-          : BoxDecoration(
-              color: const Color(0xff102331),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: missing
-                    ? const Color(0xffef775f)
-                    : fatigueColor?.withValues(alpha: 0.9) ??
-                          const Color(0xff294052),
-              ),
-              boxShadow: fatigueColor == null
-                  ? null
-                  : <BoxShadow>[
-                      BoxShadow(
-                        color: fatigueColor.withValues(alpha: 0.42),
-                        blurRadius: fatigue == LandBaseFatigueLevel.red ? 7 : 4,
-                      ),
-                    ],
-            ),
+      height: 34,
+      decoration: BoxDecoration(
+        color: const Color(0xff102331),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: missing
+              ? const Color(0xffef775f)
+              : fatigueColor?.withValues(alpha: 0.9) ?? const Color(0xff294052),
+        ),
+        boxShadow: fatigueColor == null
+            ? null
+            : <BoxShadow>[
+                BoxShadow(
+                  color: fatigueColor.withValues(alpha: 0.42),
+                  blurRadius: fatigue == LandBaseFatigueLevel.red ? 7 : 4,
+                ),
+              ],
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final iconSize = flat
-              ? (constraints.maxWidth - 8).clamp(14.0, 16.0)
-              : (constraints.maxWidth - 8).clamp(20.0, 26.0);
+          final iconSize = (constraints.maxWidth - 8).clamp(20.0, 26.0);
           return Stack(
             alignment: Alignment.center,
             children: <Widget>[
@@ -801,12 +727,10 @@ class _LandBaseSquadronSlot extends StatelessWidget {
                 child: Container(
                   key: Key('land-base-slot-count-$suffix'),
                   padding: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: flat
-                      ? null
-                      : BoxDecoration(
-                          color: const Color(0xcc102331),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xcc102331),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                   child: Text(
                     squadron == null ? '—' : '${squadron!.currentCount}',
                     style: TextStyle(
@@ -832,6 +756,283 @@ class _LandBaseSquadronSlot extends StatelessWidget {
             child: content,
           )
         : content;
+  }
+}
+
+class _FlatLandBaseRow extends StatelessWidget {
+  const _FlatLandBaseRow({
+    super.key,
+    required this.state,
+    required this.base,
+    required this.visible,
+    required this.keySuffix,
+  });
+
+  final GameState state;
+  final LandBaseState base;
+  final Set<String> visible;
+  final String keySuffix;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final portrait = visible.contains('portrait');
+    // 头像铺在文字底下，深色描边保证文字在亮色卡图上仍可读。
+    final shadows = portrait
+        ? const <Shadow>[Shadow(color: Colors.black, blurRadius: 3)]
+        : null;
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        FlatListRow(
+          tags: <Widget>[
+            Text(
+              _actionLabel(base.actionKind, l10n),
+              key: Key('land-base-action-chip-$keySuffix'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: flatRowTextStyle(
+                color: _actionColor(base.actionKind),
+                shadows: shadows,
+              ),
+            ),
+          ],
+          name: flatRowName(
+            base.name,
+            key: Key('land-base-name-$keySuffix'),
+            shadows: shadows,
+          ),
+          trailing: flatRowTrailing(_trailing(l10n, shadows)),
+        ),
+        const SizedBox(height: flatRowSpacing),
+        Row(
+          key: Key('land-base-squadron-strip-$keySuffix'),
+          children: <Widget>[
+            for (var squadronId = 1; squadronId <= 4; squadronId++) ...[
+              if (squadronId > 1) const SizedBox(width: 4),
+              Expanded(
+                child: _FlatSquadronCell(
+                  state: state,
+                  squadron: _squadron(base, squadronId),
+                  keySuffix: '$keySuffix-$squadronId',
+                  shadows: shadows,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+    if (!portrait) return content;
+    return Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: IgnorePointer(
+            key: Key('land-base-portrait-$keySuffix'),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: 0.6,
+              child: LayoutBuilder(
+                // 渐变起点 alpha 0.5，同一层里完成半透明与左→右渐隐。
+                builder: (context, box) => ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: <Color>[Color(0x80000000), Color(0x00000000)],
+                  ).createShader(bounds),
+                  child: SlotItemPortrait(
+                    item: _portraitMaster(state, base),
+                    serverOrigin: state.serverOrigin,
+                    width: box.maxWidth,
+                    height: box.maxHeight,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        content,
+      ],
+    );
+  }
+
+  Widget _trailing(AppLocalizations l10n, List<Shadow>? shadows) {
+    final maximumHp = base.maxHp ?? 200;
+    final currentHp = base.currentHp;
+    // 基地 HP 只在空袭后才有数据，平时恒为满血；只在已知且受损时占位。
+    final damaged = currentHp != null && currentHp < maximumHp;
+    final airPower = LandBaseAirPower.calculate(state: state, base: base);
+    final items = <Widget>[
+      if (damaged) _hpBlock(currentHp, maximumHp, shadows),
+      if (visible.contains('airPower'))
+        Text(
+          '${l10n.airPower} ${airPower.displayValue}',
+          key: Key('land-base-air-power-chip-$keySuffix'),
+          style: flatRowTextStyle(
+            color: const Color(0xffd4a74e),
+            shadows: shadows,
+          ),
+        ),
+      if (visible.contains('range'))
+        Text(
+          '${l10n.landBaseRange} ${base.effectiveDistance}',
+          key: Key('land-base-range-chip-$keySuffix'),
+          style: flatRowTextStyle(
+            color: const Color(0xff70b8d8),
+            shadows: shadows,
+          ),
+        ),
+    ];
+    return Row(
+      key: Key('land-base-identity-line-$keySuffix'),
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        for (var index = 0; index < items.length; index++) ...[
+          if (index > 0) const SizedBox(width: 6),
+          items[index],
+        ],
+      ],
+    );
+  }
+
+  Widget _hpBlock(int currentHp, int maximumHp, List<Shadow>? shadows) {
+    final hpRatio = maximumHp <= 0
+        ? 0.0
+        : (currentHp / maximumHp).clamp(0.0, 1.0);
+    final zeroHp = currentHp <= 0;
+    return Row(
+      key: Key('land-base-hp-value-$keySuffix'),
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(
+          Icons.favorite_rounded,
+          key: Key('land-base-hp-icon-$keySuffix'),
+          color: const Color(0xffef5a5a),
+          size: 10,
+        ),
+        const SizedBox(width: 2),
+        Text(
+          '$currentHp/$maximumHp',
+          style: TextStyle(
+            color: shipHpValueColor(hpRatio, isZeroHp: zeroHp),
+            fontSize: flatRowFontSize,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            shadows: shadows,
+          ),
+        ),
+        if (visible.contains('bars')) ...[
+          const SizedBox(width: 3),
+          ClipRRect(
+            key: Key('land-base-hp-meter-$keySuffix'),
+            borderRadius: BorderRadius.circular(1.5),
+            child: Container(
+              width: 20,
+              height: 3,
+              color: const Color(0xff294052),
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: hpRatio,
+                heightFactor: 1,
+                child: ColoredBox(
+                  color: shipHpBarColor(hpRatio, isZeroHp: zeroHp),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FlatSquadronCell extends StatelessWidget {
+  const _FlatSquadronCell({
+    required this.state,
+    required this.squadron,
+    required this.keySuffix,
+    required this.shadows,
+  });
+
+  final GameState state;
+  final LandBaseSquadronState? squadron;
+  final String keySuffix;
+  final List<Shadow>? shadows;
+
+  @override
+  Widget build(BuildContext context) {
+    final squadron = this.squadron;
+    final owned = squadron == null
+        ? null
+        : state.slotItems[squadron.slotItemId];
+    final master = owned == null
+        ? null
+        : state.masterSlotItems[owned.masterSlotItemId];
+    final iconId = master != null && master.type.length > 3
+        ? master.type[3]
+        : -1;
+    final proficiency = owned?.proficiency ?? 0;
+    final fatigueColor = squadron == null
+        ? null
+        : landBaseFatigueColor(landBaseFatigueLevel(<int>[squadron.condition]));
+    final missing =
+        squadron != null &&
+        squadron.maxCount > 0 &&
+        squadron.currentCount < squadron.maxCount;
+    final cell = Container(
+      key: Key('land-base-slot-$keySuffix'),
+      height: 18,
+      decoration: fatigueColor == null
+          ? null
+          : BoxDecoration(
+              border: Border(bottom: BorderSide(color: fatigueColor, width: 2)),
+            ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            EquipmentTypeIconImage(
+              key: Key('land-base-slot-icon-$keySuffix'),
+              iconId: iconId,
+              width: 14,
+              height: 14,
+            ),
+            if (proficiency > 0)
+              Image.asset(
+                'assets/images/airplane/alv${proficiency.clamp(1, 7)}.png',
+                key: Key('land-base-slot-proficiency-$keySuffix'),
+                width: 8,
+                height: 10,
+              ),
+            const SizedBox(width: 2),
+            Text(
+              squadron == null ? '—' : '${squadron.currentCount}',
+              key: Key('land-base-slot-count-$keySuffix'),
+              style: TextStyle(
+                color: missing
+                    ? const Color(0xffff8b78)
+                    : const Color(0xffe8f1f5),
+                fontSize: flatRowFontSize,
+                height: 1,
+                fontWeight: FontWeight.w900,
+                shadows: shadows,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    return squadron?.state == 2
+        ? Opacity(
+            key: Key('land-base-slot-relocating-$keySuffix'),
+            opacity: 0.38,
+            child: cell,
+          )
+        : cell;
   }
 }
 
