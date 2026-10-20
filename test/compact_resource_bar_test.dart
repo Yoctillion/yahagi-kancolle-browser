@@ -7,6 +7,7 @@ import 'package:yahagi_kancolle_browser/src/fleet/resource_grid.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
+import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
 
 void main() {
   testWidgets('furniture coin is hidden by default and can be enabled', (
@@ -890,5 +891,100 @@ void main() {
       expect(decoration is BoxDecoration ? decoration.border : null, isNull);
       expect(decoration is BoxDecoration ? decoration.color : null, isNull);
     }
+  });
+
+  Future<LayoutSettingsController> loadGridController() async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    return LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+  }
+
+  Widget gridHarness(
+    LayoutSettingsController controller, {
+    double width = 200,
+    double? senka,
+  }) {
+    return MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: TopNoticeHost(
+        child: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              child: CompactResourceBar(
+                state: const GameState(),
+                senka: senka,
+                rank: senka == null ? null : 123,
+                settingsController: controller,
+                layout: ResourceBarLayout.grid,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  testWidgets('grid layout wraps visible resources into 3 columns', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await tester.pumpWidget(gridHarness(controller));
+
+    expect(
+      find.byKey(const Key('information-panel-resources')),
+      findsOneWidget,
+    );
+    final first = tester.getTopLeft(
+      find.byKey(const Key('header-resource-material-1')),
+    );
+    final fourth = tester.getTopLeft(
+      find.byKey(const Key('header-resource-material-4')),
+    );
+    expect(fourth.dx, first.dx);
+    expect(fourth.dy, greaterThan(first.dy));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('grid layout keeps senka item numbers unclipped at 200dp width', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await tester.pumpWidget(gridHarness(controller, senka: 1234.5));
+
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('1234.5'), findsOneWidget);
+    final box = tester.getRect(find.byKey(const Key('header-senka-summary')));
+    final text = tester.getRect(find.textContaining('1234.5'));
+    expect(box.width, lessThanOrEqualTo(200));
+    expect(text.right, lessThanOrEqualTo(box.right));
+  });
+
+  testWidgets('grid layout long-press respects ui lock', (tester) async {
+    final controller = await loadGridController();
+    await controller.setUiLocked(true);
+    await tester.pumpWidget(gridHarness(controller));
+
+    await tester.longPress(find.byKey(const Key('header-resource-material-1')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('header-resource-edit-mode')), findsNothing);
+    expect(find.text('界面已锁定，布局自定义已禁用，功能切换不受影响'), findsOneWidget);
+  });
+
+  testWidgets('grid layout long-press enters edit mode when unlocked', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await tester.pumpWidget(gridHarness(controller));
+
+    await tester.longPress(find.byKey(const Key('header-resource-material-1')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('header-resource-edit-mode')), findsOneWidget);
   });
 }

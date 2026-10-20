@@ -99,6 +99,8 @@ class _ResourceItem extends StatelessWidget {
       'assets/images/material/${type.apiId.toString().padLeft(2, '0')}.png';
 }
 
+enum ResourceBarLayout { strip, grid }
+
 class CompactResourceBar extends StatefulWidget {
   const CompactResourceBar({
     super.key,
@@ -112,6 +114,9 @@ class CompactResourceBar extends StatefulWidget {
     this.onAnchorageTimerTap,
     this.onNosakiTimerTap,
     this.onFrameRefreshTap,
+    this.layout = ResourceBarLayout.strip,
+    this.gridColumns = 3,
+    this.gridPadding = EdgeInsets.zero,
   });
 
   final GameState state;
@@ -124,6 +129,11 @@ class CompactResourceBar extends StatefulWidget {
   final VoidCallback? onAnchorageTimerTap;
   final VoidCallback? onNosakiTimerTap;
   final VoidCallback? onFrameRefreshTap;
+
+  /// grid 用于游戏页没有顶栏时把资源放进信息栏；strip 是顶栏里的横向滚动条。
+  final ResourceBarLayout layout;
+  final int gridColumns;
+  final EdgeInsets gridPadding;
 
   @override
   State<CompactResourceBar> createState() => _CompactResourceBarState();
@@ -275,6 +285,14 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
+    if (widget.layout == ResourceBarLayout.grid && !isEditing) {
+      return _buildGrid(
+        ids,
+        controller: controller,
+        l10n: l10n,
+        uiSize: uiSize,
+      );
+    }
     return Listener(
       onPointerSignal: _onPointerSignal,
       child: SizedBox(
@@ -361,63 +379,129 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                     SizedBox(width: separatorWidth),
                 itemBuilder: (context, index) {
                   final id = ids[index];
-                  return GestureDetector(
-                    key: Key('header-resource-$id'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: id == headerFurnitureCoinId
-                        ? _toggleTheoreticalFurnitureCoins
-                        : _furnitureBoxCoinRates.containsKey(id)
-                        ? () => _toggleFurnitureBoxCoinMode(id)
-                        : switch (id) {
-                            headerSenkaId => widget.onSenkaTap,
-                            headerAnchorageTimerId =>
-                              widget.onAnchorageTimerTap,
-                            headerNosakiTimerId => widget.onNosakiTimerTap,
-                            headerFrameRefreshId => widget.onFrameRefreshTap,
-                            _ => null,
-                          },
-                    onLongPress: () {
-                      if (controller?.uiLocked == true) {
-                        TopNotice.show(context, message: l10n.uiLockedToast);
-                      } else {
-                        setState(() => _editing = true);
-                      }
-                    },
-                    child: Tooltip(
-                      message: switch (id) {
-                        headerSenkaId => fleetText(context, '战果'),
-                        headerAnchorageTimerId => fleetText(context, '泊地修理计时'),
-                        headerNosakiTimerId => fleetText(context, '野埼刷闪计时'),
-                        headerFrameRefreshId => l10n.frameRefreshShortcutLabel,
-                        headerShipCapacityId => l10n.shipGirl,
-                        headerEquipmentCapacityId => l10n.equipment,
-                        _ => fleetText(context, headerResourceById[id]!.label),
-                      },
-                      triggerMode:
-                          id == headerSenkaId ||
-                              id == headerAnchorageTimerId ||
-                              id == headerNosakiTimerId ||
-                              id == headerFrameRefreshId ||
-                              id == headerFurnitureCoinId ||
-                              _furnitureBoxCoinRates.containsKey(id)
-                          ? TooltipTriggerMode.manual
-                          : TooltipTriggerMode.tap,
-                      child: SizedBox(
-                        width: switch (id) {
-                          headerSenkaId => isCompact ? 132 : 142,
-                          headerAnchorageTimerId => isCompact ? 118 : 128,
-                          headerNosakiTimerId => isCompact ? 118 : 128,
-                          headerFrameRefreshId => isCompact ? 88 : 98,
-                          headerShipCapacityId => isCompact ? 108 : 118,
-                          headerEquipmentCapacityId => isCompact ? 126 : 138,
-                          _ => isCompact ? 74 : 82,
-                        },
-                        child: _buildDisplayItem(id, uiSize: uiSize),
-                      ),
-                    ),
+                  return _buildInteractiveItem(
+                    id,
+                    controller: controller,
+                    l10n: l10n,
+                    uiSize: uiSize,
+                    width: _stripItemWidth(id, isCompact),
                   );
                 },
               ),
+      ),
+    );
+  }
+
+  static const double _gridSpacing = 4;
+  static const double _gridRunSpacing = 2;
+
+  static bool _isWideGridItem(String id) =>
+      id == headerSenkaId ||
+      id == headerAnchorageTimerId ||
+      id == headerNosakiTimerId ||
+      id == headerFrameRefreshId ||
+      id == headerShipCapacityId ||
+      id == headerEquipmentCapacityId;
+
+  // 战果、计时器、容量的文字远宽于单列，独占整行才能不缩到看不清。
+  Widget _buildGrid(
+    List<String> ids, {
+    required LayoutSettingsController? controller,
+    required AppLocalizations l10n,
+    required HeaderUiSize uiSize,
+  }) {
+    final columns = widget.gridColumns < 1 ? 1 : widget.gridColumns;
+    return Padding(
+      key: const Key('information-panel-resources'),
+      padding: widget.gridPadding,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final fullWidth = constraints.maxWidth;
+          final cellWidth =
+              ((fullWidth - _gridSpacing * (columns - 1)) / columns).clamp(
+                0.0,
+                double.infinity,
+              );
+          return Wrap(
+            spacing: _gridSpacing,
+            runSpacing: _gridRunSpacing,
+            children: [
+              for (final id in ids)
+                _buildInteractiveItem(
+                  id,
+                  controller: controller,
+                  l10n: l10n,
+                  uiSize: uiSize,
+                  width: _isWideGridItem(id) ? fullWidth : cellWidth,
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  double _stripItemWidth(String id, bool isCompact) => switch (id) {
+    headerSenkaId => isCompact ? 132 : 142,
+    headerAnchorageTimerId => isCompact ? 118 : 128,
+    headerNosakiTimerId => isCompact ? 118 : 128,
+    headerFrameRefreshId => isCompact ? 88 : 98,
+    headerShipCapacityId => isCompact ? 108 : 118,
+    headerEquipmentCapacityId => isCompact ? 126 : 138,
+    _ => isCompact ? 74 : 82,
+  };
+
+  Widget _buildInteractiveItem(
+    String id, {
+    required LayoutSettingsController? controller,
+    required AppLocalizations l10n,
+    required HeaderUiSize uiSize,
+    required double width,
+  }) {
+    return GestureDetector(
+      key: Key('header-resource-$id'),
+      behavior: HitTestBehavior.opaque,
+      onTap: id == headerFurnitureCoinId
+          ? _toggleTheoreticalFurnitureCoins
+          : _furnitureBoxCoinRates.containsKey(id)
+          ? () => _toggleFurnitureBoxCoinMode(id)
+          : switch (id) {
+              headerSenkaId => widget.onSenkaTap,
+              headerAnchorageTimerId => widget.onAnchorageTimerTap,
+              headerNosakiTimerId => widget.onNosakiTimerTap,
+              headerFrameRefreshId => widget.onFrameRefreshTap,
+              _ => null,
+            },
+      onLongPress: () {
+        if (controller?.uiLocked == true) {
+          TopNotice.show(context, message: l10n.uiLockedToast);
+        } else {
+          setState(() => _editing = true);
+        }
+      },
+      child: Tooltip(
+        message: switch (id) {
+          headerSenkaId => fleetText(context, '战果'),
+          headerAnchorageTimerId => fleetText(context, '泊地修理计时'),
+          headerNosakiTimerId => fleetText(context, '野埼刷闪计时'),
+          headerFrameRefreshId => l10n.frameRefreshShortcutLabel,
+          headerShipCapacityId => l10n.shipGirl,
+          headerEquipmentCapacityId => l10n.equipment,
+          _ => fleetText(context, headerResourceById[id]!.label),
+        },
+        triggerMode:
+            id == headerSenkaId ||
+                id == headerAnchorageTimerId ||
+                id == headerNosakiTimerId ||
+                id == headerFrameRefreshId ||
+                id == headerFurnitureCoinId ||
+                _furnitureBoxCoinRates.containsKey(id)
+            ? TooltipTriggerMode.manual
+            : TooltipTriggerMode.tap,
+        child: SizedBox(
+          width: width,
+          child: _buildDisplayItem(id, uiSize: uiSize),
+        ),
       ),
     );
   }
