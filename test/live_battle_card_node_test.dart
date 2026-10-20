@@ -1903,6 +1903,88 @@ void main() {
   });
 
   group('flat compact battle', () {
+    Finder filledContainer(Color color) => find.byWidgetPredicate((widget) {
+      if (widget is! Container) return false;
+      final decoration = widget.decoration;
+      return decoration is BoxDecoration && decoration.color == color;
+    });
+
+    testWidgets('idle content is a bare short row without badge fill', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+
+      await _pumpFlatCompactCard(tester, controller);
+
+      final idle = find.byKey(const Key('battle-idle-content'));
+      expect(idle, findsOneWidget);
+      expect(
+        find.descendant(of: idle, matching: find.byType(Container)),
+        findsNothing,
+      );
+      expect(tester.getSize(idle).height, lessThanOrEqualTo(20));
+      expect(find.text('等待出击数据'), findsOneWidget);
+      expect(find.text('待机'), findsOneWidget);
+      expect(filledContainer(const Color(0xff203443)), findsNothing);
+    });
+
+    testWidgets('idle content and badge keep their fill outside flat', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+
+      await _pumpCard(tester, controller);
+
+      final idle = tester.widget<Container>(
+        find.byKey(const Key('battle-idle-content')),
+      );
+      expect(
+        (idle.decoration! as BoxDecoration).color,
+        const Color(0xff10212e),
+      );
+      expect(filledContainer(const Color(0xff203443)), findsOneWidget);
+    });
+
+    testWidgets('navigation header and status badge drop their fill', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller.accept(mapStartEvent);
+      await controller.idle;
+
+      await _pumpFlatCompactCard(tester, controller);
+
+      final header = tester.widget<Container>(
+        find.byKey(const Key('battle-navigation-header')),
+      );
+      expect(header.decoration, isNull);
+      expect(find.text('航向'), findsOneWidget);
+      expect(filledContainer(const Color(0xff18343c)), findsNothing);
+    });
+
+    testWidgets('navigation header keeps its fill outside flat', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller.accept(mapStartEvent);
+      await controller.idle;
+
+      await _pumpCard(tester, controller, compact: true);
+
+      final header = tester.widget<Container>(
+        find.byKey(const Key('battle-navigation-header')),
+      );
+      expect(
+        (header.decoration! as BoxDecoration).color,
+        const Color(0xff10212e),
+      );
+      expect(filledContainer(const Color(0xff18343c)), findsOneWidget);
+    });
+
     testWidgets('tag line replaces pills and keeps air state text', (
       tester,
     ) async {
