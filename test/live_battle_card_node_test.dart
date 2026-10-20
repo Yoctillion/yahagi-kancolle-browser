@@ -1929,6 +1929,49 @@ void main() {
       expect(text, contains(' · '));
     });
 
+    testWidgets('real boss node keeps its type segment next to the node name', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      final bossStart =
+          kcsapiEvent('/kcsapi/api_req_map/start', <String, Object?>{
+            'api_maparea_id': 1,
+            'api_mapinfo_no': 1,
+            'api_no': 5,
+            'api_bosscell_no': 5,
+            'api_event_id': 5,
+            'api_event_kind': 0,
+          }, sequence: 20);
+      controller
+        ..accept(bossStart)
+        ..accept(dayBattleEvent);
+      await controller.idle;
+
+      await _pumpFlatCompactCard(tester, controller);
+
+      final nodeName = controller.current!.context.forecastNodeLabel;
+      expect(nodeName, isNot(contains('Boss')));
+      final header = find.byType(AdaptiveBattleHeader);
+      expect(
+        find.descendant(of: header, matching: find.text(nodeName)),
+        findsOneWidget,
+      );
+      final segments = tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(const Key('battle-tag-line')),
+              matching: find.byType(Text),
+            ),
+          )
+          .textSpan!
+          .toPlainText()
+          .split('·')
+          .map((s) => s.trim())
+          .toList();
+      expect(segments, contains('Boss 战'));
+    });
+
     testWidgets('boss node type is not repeated in the tag line', (
       tester,
     ) async {
@@ -1984,6 +2027,7 @@ void main() {
           .split('·')
           .map((s) => s.trim())
           .toList();
+      expect(segmentsOf('tag-with-boss-name'), contains('制空：未知'));
       expect(segmentsOf('tag-with-boss-name'), isNot(contains('Boss 战')));
       expect(segmentsOf('tag-with-other-name'), contains('Boss 战'));
     });
