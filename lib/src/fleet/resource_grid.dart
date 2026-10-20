@@ -422,19 +422,21 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                 0.0,
                 double.infinity,
               );
-          return Wrap(
-            spacing: _gridSpacing,
-            runSpacing: _gridRunSpacing,
-            children: [
-              for (final id in ids)
-                _buildInteractiveItem(
-                  id,
-                  controller: controller,
-                  l10n: l10n,
-                  uiSize: uiSize,
-                  width: _isWideGridItem(id) ? fullWidth : cellWidth,
-                ),
-            ],
+          return _HeaderGridScope(
+            child: Wrap(
+              spacing: _gridSpacing,
+              runSpacing: _gridRunSpacing,
+              children: [
+                for (final id in ids)
+                  _buildInteractiveItem(
+                    id,
+                    controller: controller,
+                    l10n: l10n,
+                    uiSize: uiSize,
+                    width: _isWideGridItem(id) ? fullWidth : cellWidth,
+                  ),
+              ],
+            ),
           );
         },
       ),
@@ -776,9 +778,25 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   }
 }
 
+// 信息栏网格里的资源项没有胶囊，字号也固定，靠它与顶栏 strip 区分。
+class _HeaderGridScope extends InheritedWidget {
+  const _HeaderGridScope({required super.child});
+
+  @override
+  bool updateShouldNotify(_HeaderGridScope oldWidget) => false;
+}
+
+bool _inHeaderGrid(BuildContext context) =>
+    context.getInheritedWidgetOfExactType<_HeaderGridScope>() != null;
+
+const double _headerGridFontSize = 11;
+
+double _headerFontSize(BuildContext context, double stripSize) =>
+    _inHeaderGrid(context) ? _headerGridFontSize : stripSize;
+
 // 极简档的顶栏要把空间让给数值，所以不画胶囊底色和边框。
-BoxDecoration? _headerPillDecoration(HeaderUiSize uiSize) {
-  if (uiSize.isMinimal) return null;
+BoxDecoration? _headerPillDecoration(HeaderUiSize uiSize, {bool grid = false}) {
+  if (grid || uiSize.isMinimal) return null;
   return BoxDecoration(
     color: const Color(0xff142735),
     borderRadius: BorderRadius.circular(uiSize.isCompactOrSmaller ? 7 : 8),
@@ -801,7 +819,7 @@ class _HeaderFrameRefreshPill extends StatelessWidget {
       key: const Key('header-frame-refresh'),
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: _headerPillDecoration(uiSize),
+      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -819,7 +837,7 @@ class _HeaderFrameRefreshPill extends StatelessWidget {
                 maxLines: 1,
                 style: TextStyle(
                   color: const Color(0xffdce6eb),
-                  fontSize: isCompact ? 11 : 12,
+                  fontSize: _headerFontSize(context, isCompact ? 11 : 12),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -851,7 +869,7 @@ class _HeaderCapacityPill extends StatelessWidget {
     return Container(
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: _headerPillDecoration(uiSize),
+      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -862,7 +880,7 @@ class _HeaderCapacityPill extends StatelessWidget {
           softWrap: false,
           style: TextStyle(
             color: const Color(0xffdce6eb),
-            fontSize: isCompact ? 11.5 : 12.5,
+            fontSize: _headerFontSize(context, isCompact ? 11.5 : 12.5),
             fontWeight: FontWeight.w700,
             fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
           ),
@@ -916,7 +934,7 @@ class _HeaderAnchorageTimerSummary extends StatelessWidget {
       width: isCompact ? 118 : 128,
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: _headerPillDecoration(uiSize),
+      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -926,7 +944,7 @@ class _HeaderAnchorageTimerSummary extends StatelessWidget {
           maxLines: 1,
           style: TextStyle(
             color: isActive ? const Color(0xffdce6eb) : const Color(0xff9fb3bf),
-            fontSize: isCompact ? 11.5 : 12.5,
+            fontSize: _headerFontSize(context, isCompact ? 11.5 : 12.5),
             fontWeight: FontWeight.w700,
             fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
           ),
@@ -954,7 +972,7 @@ class _HeaderNosakiTimerSummary extends StatelessWidget {
       width: isCompact ? 118 : 128,
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: _headerPillDecoration(uiSize),
+      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -964,7 +982,7 @@ class _HeaderNosakiTimerSummary extends StatelessWidget {
           maxLines: 1,
           style: TextStyle(
             color: isActive ? const Color(0xffdce6eb) : const Color(0xff9fb3bf),
-            fontSize: isCompact ? 11.5 : 12.5,
+            fontSize: _headerFontSize(context, isCompact ? 11.5 : 12.5),
             fontWeight: FontWeight.w700,
             fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
           ),
@@ -993,7 +1011,7 @@ class _HeaderSenkaSummary extends StatelessWidget {
       width: isCompact ? 132 : 142,
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: _headerPillDecoration(uiSize),
+      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -1003,7 +1021,7 @@ class _HeaderSenkaSummary extends StatelessWidget {
           maxLines: 1,
           style: TextStyle(
             color: const Color(0xffe0b25c),
-            fontSize: isCompact ? 11.5 : 12.5,
+            fontSize: _headerFontSize(context, isCompact ? 11.5 : 12.5),
             fontWeight: FontWeight.w700,
             fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
           ),
@@ -1043,7 +1061,7 @@ class _HeaderResourceItem extends StatelessWidget {
     return Container(
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 5),
-      decoration: _headerPillDecoration(uiSize),
+      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       child: Row(
         children: [
           Image.asset(
@@ -1064,7 +1082,7 @@ class _HeaderResourceItem extends StatelessWidget {
                 maxLines: 1,
                 style: TextStyle(
                   color: const Color(0xffdce6eb),
-                  fontSize: isCompact ? 11.5 : 12.5,
+                  fontSize: _headerFontSize(context, isCompact ? 11.5 : 12.5),
                   fontWeight: FontWeight.w700,
                   fontFeatures: const <FontFeature>[
                     FontFeature.tabularFigures(),

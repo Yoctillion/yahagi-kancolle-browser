@@ -954,15 +954,57 @@ void main() {
     tester,
   ) async {
     final controller = await loadGridController();
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
     await tester.pumpWidget(gridHarness(controller, senka: 1234.5));
 
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('1234.5'), findsOneWidget);
-    final box = tester.getRect(find.byKey(const Key('header-senka-summary')));
-    final text = tester.getRect(find.textContaining('1234.5'));
-    expect(box.width, lessThanOrEqualTo(200));
-    expect(text.right, lessThanOrEqualTo(box.right));
+    final summary = find.byKey(const Key('header-senka-summary'));
+    expect(tester.getSize(summary).width, 200);
+    final value = find.textContaining('1234.5');
+    expect(value, findsOneWidget);
+    expect(tester.widget<Text>(value).style?.fontSize, 11);
+    // FittedBox 缩放会让渲染高度小于布局高度。
+    expect(
+      tester.getRect(value).height,
+      closeTo(tester.renderObject<RenderBox>(value).size.height, 0.01),
+    );
+    expect(tester.getRect(value).right, lessThanOrEqualTo(200));
   });
+
+  for (final size in [UiDisplaySize.normal, UiDisplaySize.minimal]) {
+    testWidgets('grid layout items have no capsule decoration at $size', (
+      tester,
+    ) async {
+      final controller = await loadGridController();
+      await controller.setUiDisplaySize(size);
+      await tester.pumpWidget(gridHarness(controller, senka: 1234.5));
+
+      for (final key in const [
+        'header-resource-material-1',
+        'header-senka-summary',
+        'header-ship-capacity',
+      ]) {
+        final item = find.byKey(Key(key));
+        expect(item, findsOneWidget);
+        final boxes = <Decoration?>[
+          for (final box in tester.widgetList<Container>(
+            find.descendant(of: item, matching: find.byType(Container)),
+          ))
+            box.decoration,
+          if (tester.widget(item) is Container)
+            (tester.widget(item) as Container).decoration,
+          for (final box in tester.widgetList<DecoratedBox>(
+            find.descendant(of: item, matching: find.byType(DecoratedBox)),
+          ))
+            box.decoration,
+        ];
+        for (final d in boxes) {
+          expect(d is BoxDecoration ? d.border : null, isNull, reason: key);
+          expect(d is BoxDecoration ? d.color : null, isNull, reason: key);
+        }
+      }
+    });
+  }
 
   testWidgets('grid layout long-press respects ui lock', (tester) async {
     final controller = await loadGridController();
