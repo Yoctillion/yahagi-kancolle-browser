@@ -1969,12 +1969,27 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         ? bottomSafeArea
         : 0.0;
     final contentTouchesBottom = !(menuHorizontal && !menuTop);
-    // Decided from the window rather than the workspace so the header and the
-    // panel resources always agree on who shows the resources.
+    // Judged on the workspace the game would get without the header: a
+    // stacked workspace leaves the panel too short for the resource grid, so
+    // the header must keep the resources. The header is left out because
+    // hiding it makes the workspace taller and would flip the answer back.
+    // The top bar sits inside the game workspace, so only side and bottom
+    // bars are subtracted.
+    final shellNavigationExtent = workspaceNavigationExtent(uiSize);
+    final minimalShellWorkspace = Size(
+      windowSize.width - (menuHorizontal ? 0 : shellNavigationExtent),
+      windowSize.height -
+          (menuHorizontal && !menuTop
+              ? shellNavigationExtent + navigationGestureInset
+              : 0),
+    );
     final minimalGameLayout = usesMinimalGameShell(
       size: uiSize,
       workspaceIndex: 0,
-      isLandscape: !usesVerticalWorkspace(windowSize, screenDisplayMode),
+      isLandscape: !usesVerticalWorkspace(
+        minimalShellWorkspace,
+        screenDisplayMode,
+      ),
       hd: hd,
     );
     final minimalShell = minimalGameLayout && _workspaceIndex == 0;
@@ -2536,7 +2551,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                           // workspace index so the rect holds
                                           // while the game is offstage.
                                           final gameTouchesBottom =
-                                              minimalGameLayout &&
+                                              flatPanel &&
                                               isLandscape &&
                                               !menuHorizontal;
                                           final portraitGamePanelExtra =

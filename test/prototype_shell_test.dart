@@ -2816,32 +2816,96 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal near-square window stacks the game off the bottom', (
+    void expectResourcesInHeader(WidgetTester tester, {String? reason}) {
+      expect(_headerHeight(tester), 28, reason: reason);
+      expect(
+        find.byKey(const Key('information-panel-resources')),
+        findsNothing,
+        reason: reason,
+      );
+      final headerResource = find.byKey(
+        const Key('header-resource-material-1'),
+      );
+      expect(headerResource, findsOneWidget, reason: reason);
+      expect(
+        tester.getRect(headerResource).bottom,
+        lessThanOrEqualTo(28),
+        reason: reason,
+      );
+    }
+
+    testWidgets('minimal near-square window keeps the header with resources', (
       tester,
     ) async {
       tester.view.viewPadding = const FakeViewPadding(bottom: 20);
       tester.view.padding = const FakeViewPadding(bottom: 20);
       addTearDown(tester.view.resetViewPadding);
       addTearDown(tester.view.resetPadding);
-      // 窗口按横屏判定（去顶栏），扣掉侧栏后的工作区却是竖排，游戏在上方。
-      final layout = await _pumpMinimalShell(tester);
-      // 竖排工作区的信息栏只剩约 110 高，只留三行素材，避免资源区本身溢出。
-      for (final id in const [
-        headerSenkaId,
-        headerAnchorageTimerId,
-        headerNosakiTimerId,
-        headerShipCapacityId,
-        headerEquipmentCapacityId,
-      ]) {
-        await layout.toggleHeaderResourceVisible(id);
+      // 整窗 1.375 偏横，扣掉侧栏后的工作区 736×560 却是竖排。
+      await _pumpMinimalShell(tester, size: const Size(770, 560));
+
+      expectResourcesInHeader(tester);
+      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      // 留出顶栏后工作区 736×532 回到横排，侧栏布局下游戏列贴屏幕底边。
+      expect(viewport(tester).isLandscape, isTrue);
+      expect(viewport(tester).centerAboveBottomInset, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal shell follows the workspace orientation near 1.35', (
+      tester,
+    ) async {
+      // h = 560：不含顶栏的工作区宽在 (532·1.35, 560·1.35] 内仍算竖排而保留
+      // 顶栏，留出顶栏后实际工作区为横排；再宽 1dp 才隐藏顶栏。
+      await _pumpMinimalShell(tester, size: const Size(757, 560));
+      for (final width in const [757.0, 790.0]) {
+        tester.view.physicalSize = Size(width, 560);
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
+        expectResourcesInHeader(tester, reason: '$width');
+        expect(viewport(tester).isLandscape, isTrue, reason: '$width');
+        expect(tester.takeException(), isNull, reason: '$width');
       }
-      tester.view.physicalSize = const Size(770, 560);
+
+      tester.view.physicalSize = const Size(791, 560);
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();
       expect(_headerHeight(tester), 0);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('workspace-information-panel')),
+          matching: find.byKey(const Key('information-panel-resources')),
+        ),
+        findsOneWidget,
+      );
+      expect(viewport(tester).isLandscape, isTrue);
+      expect(tester.takeException(), isNull);
+    });
 
-      expect(viewport(tester).isLandscape, isFalse);
-      expect(viewport(tester).centerAboveBottomInset, isFalse);
+    testWidgets('minimal near-square menu move toggles the header and refits', (
+      tester,
+    ) async {
+      final browserPort = _NoopBrowserPort();
+      final layout = await _pumpMinimalShell(
+        tester,
+        size: const Size(770, 560),
+        browserPort: browserPort,
+      );
+      expect(_headerHeight(tester), 28);
+
+      // 底部横栏不占宽度，工作区 770 宽偏横，外壳改回无顶栏。
+      final fitCalls = browserPort.fitGameScreenCalls;
+      await layout.setWorkspaceMenuPosition('bottom');
+      await tester.pumpAndSettle();
+      expect(_headerHeight(tester), 0);
+      expect(browserPort.fitGameScreenCalls, greaterThan(fitCalls));
+      expect(tester.takeException(), isNull);
+
+      final fitCallsBack = browserPort.fitGameScreenCalls;
+      await layout.setWorkspaceMenuPosition('left');
+      await tester.pumpAndSettle();
+      expect(_headerHeight(tester), 28);
+      expect(browserPort.fitGameScreenCalls, greaterThan(fitCallsBack));
       expect(tester.takeException(), isNull);
     });
 
