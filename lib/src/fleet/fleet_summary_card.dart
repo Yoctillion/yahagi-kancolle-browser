@@ -7,6 +7,7 @@ import '../game_state/game_state.dart';
 import 'dashboard_card.dart';
 import '../layout/hd_dashboard_content.dart';
 import 'combat_mechanism.dart';
+import 'fleet_ship_minimal_row.dart';
 import 'ship_repair_status.dart';
 import 'fleet_ui_strings.dart';
 
@@ -16,6 +17,7 @@ import 'fleet_ship_status_capsule.dart';
 import 'fleet_line_of_sight_details.dart';
 import '../performance/second_tick_scope.dart';
 import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'fleet_air_power_details.dart';
 import 'morale_recovery_display.dart';
@@ -88,11 +90,19 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
             ? null
             : detectFleetSpecialAttack(state, selectedFleet);
         final twoColumns = HdModuleColumns.of(context) > 1;
-        final fleetSwitcher = _FleetSegmentedSwitcher(
-          fleets: state.fleets,
-          selectedFleetId: _selectedFleetId,
-          onSelected: (id) => setState(() => _selectedFleetId = id),
-        );
+        final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+        void selectFleet(int id) => setState(() => _selectedFleetId = id);
+        final fleetSwitcher = flat
+            ? _FleetUnderlineSwitcher(
+                fleets: state.fleets,
+                selectedFleetId: _selectedFleetId,
+                onSelected: selectFleet,
+              )
+            : _FleetSegmentedSwitcher(
+                fleets: state.fleets,
+                selectedFleetId: _selectedFleetId,
+                onSelected: selectFleet,
+              );
         // Keep the ship subtree until captured data, preferences, locale, or
         // repair badges change. Only morale/countdown metrics need every tick.
         Localizations.localeOf(context);
@@ -174,6 +184,29 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                           style: TextStyle(color: Color(0xff8197a5)),
                         ),
                       )
+                    : flat
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < ships.length; i++) ...[
+                            if (i > 0)
+                              const SizedBox(
+                                height: 1,
+                                child: ColoredBox(color: Color(0xff1b3142)),
+                              ),
+                            FleetShipMinimalRow(
+                              state: state,
+                              ship: ships[i],
+                              visible: widget.visible,
+                              shipTypeLabelMode: widget.shipTypeLabelMode,
+                              damagePulseFilter: widget.damagePulseFilter,
+                              moraleSparkleMode: widget.moraleSparkleMode,
+                              repairStatus: repairStatuses[ships[i].id],
+                              onTap: () => widget.onOpenFleet(_selectedFleetId),
+                            ),
+                          ],
+                        ],
+                      )
                     : HdDashboardItems(
                         children: [
                           for (final ship in ships)
@@ -229,15 +262,17 @@ class _FleetSummaryBody extends StatelessWidget {
         ],
       );
     }
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ?switcher,
         if (metrics != null) ...[
-          if (switcher != null) const SizedBox(height: 4),
+          if (switcher != null) SizedBox(height: flat ? 2 : 4),
           metrics!,
-          const SizedBox(height: 6),
-        ],
+          SizedBox(height: flat ? 2 : 6),
+        ] else if (flat && switcher != null)
+          const SizedBox(height: 2),
         ships,
       ],
     );
@@ -282,11 +317,7 @@ class _FleetSegmentedSwitcher extends StatelessWidget {
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      fleetSelectorLabelModeSetting ==
-                                  FleetSelectorLabelMode.number ||
-                              fleet.name.trim().isEmpty
-                          ? '${fleet.id}'
-                          : fleet.name,
+                      _fleetSelectorLabel(fleet),
                       style: TextStyle(
                         color: isSelected
                             ? const Color(0xffffdc88)
@@ -304,6 +335,68 @@ class _FleetSegmentedSwitcher extends StatelessWidget {
       ),
     );
   }
+}
+
+String _fleetSelectorLabel(Fleet fleet) =>
+    fleetSelectorLabelModeSetting == FleetSelectorLabelMode.number ||
+        fleet.name.trim().isEmpty
+    ? '${fleet.id}'
+    : fleet.name;
+
+class _FleetUnderlineSwitcher extends StatelessWidget {
+  const _FleetUnderlineSwitcher({
+    required this.fleets,
+    required this.selectedFleetId,
+    required this.onSelected,
+  });
+
+  final List<Fleet> fleets;
+  final int selectedFleetId;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    key: const Key('fleet-summary-switcher'),
+    height: 22,
+    child: Row(
+      children: [
+        for (final fleet in fleets.take(4))
+          Expanded(
+            child: InkWell(
+              key: Key('fleet-summary-selector-${fleet.id}'),
+              onTap: () => onSelected(fleet.id),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      width: 2,
+                      color: fleet.id == selectedFleetId
+                          ? const Color(0xff8a6628)
+                          : Colors.transparent,
+                    ),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    _fleetSelectorLabel(fleet),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: fleet.id == selectedFleetId
+                          ? const Color(0xffffdc88)
+                          : const Color(0xff9fb3bf),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _FleetSummaryMetrics extends StatelessWidget {
@@ -408,24 +501,46 @@ class _FleetSummaryMetrics extends StatelessWidget {
             .take(twoColumns ? 7 : maximumSummaryFields)
             .toList();
     if (values.isEmpty) return const SizedBox.shrink();
+    String? semanticLabelAt(int index) => switch (values[index].$1) {
+      'air-power' when hasAirPowerDetails => requiredL10n.showAirPowerDetails,
+      _ => null,
+    };
+    VoidCallback? onTapAt(int index) =>
+        values[index].$1 == 'air-power' && hasAirPowerDetails && current != null
+        ? () => showFleetAirPowerDetails(context, current)
+        : values[index].$1 == 'line-of-sight' &&
+              current != null &&
+              current.formula33.isNotEmpty
+        ? () => showFleetLineOfSightDetails(context, current)
+        : null;
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return Wrap(
+        key: const Key('fleet-summary-metrics'),
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (var index = 0; index < values.length; index++) ...[
+            if (index > 0)
+              const Text(
+                ' · ',
+                style: TextStyle(color: Color(0xff4f6676), fontSize: 10),
+              ),
+            _FlatSummaryMetric(
+              id: values[index].$1,
+              label: values[index].$2,
+              value: values[index].$3,
+              semanticLabel: semanticLabelAt(index),
+              onTap: onTapAt(index),
+            ),
+          ],
+        ],
+      );
+    }
     Widget metricAt(int index) => _FleetSummaryMetric(
       id: values[index].$1,
       label: values[index].$2,
       value: values[index].$3,
-      semanticLabel: switch (values[index].$1) {
-        'air-power' when hasAirPowerDetails => requiredL10n.showAirPowerDetails,
-        _ => null,
-      },
-      onTap:
-          values[index].$1 == 'air-power' &&
-              hasAirPowerDetails &&
-              current != null
-          ? () => showFleetAirPowerDetails(context, current)
-          : values[index].$1 == 'line-of-sight' &&
-                current != null &&
-                current.formula33.isNotEmpty
-          ? () => showFleetLineOfSightDetails(context, current)
-          : null,
+      semanticLabel: semanticLabelAt(index),
+      onTap: onTapAt(index),
     );
     final vertical = HdModuleColumns.of(context) > 1;
     return Flex(
@@ -514,6 +629,54 @@ class _FleetSummaryMetric extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    ),
+  );
+}
+
+class _FlatSummaryMetric extends StatelessWidget {
+  const _FlatSummaryMetric({
+    required this.id,
+    required this.label,
+    required this.value,
+    this.onTap,
+    this.semanticLabel,
+  });
+
+  final String id;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: onTap != null,
+    label: semanticLabel,
+    child: InkWell(
+      key: Key('fleet-summary-metric-$id'),
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            style: const TextStyle(color: Color(0xff8197a5), fontSize: 10),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            value,
+            key: Key('fleet-summary-metric-$id-value'),
+            maxLines: 1,
+            style: const TextStyle(
+              color: Color(0xffdce6eb),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     ),
   );

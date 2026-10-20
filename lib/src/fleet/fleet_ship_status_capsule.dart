@@ -111,22 +111,12 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
     final onTap = widget.onTap;
 
     final master = state.masterForShip(ship);
-    final type = state.masterShipTypes[master?.shipTypeId];
-    final typeLabel =
-        widget.shipTypeLabelMode == FleetShipTypeLabelMode.abbreviation
-        ? fleetShipTypeAbbreviation(
-            master?.shipTypeId ?? 0,
-            fallback:
-                (type == null
-                    ? null
-                    : gameNames(
-                        context,
-                      ).shipTypeName(type.name, typeId: type.id)) ??
-                fleetText(context, '未知舰种'),
-          )
-        : (type == null
-              ? null
-              : gameNames(context).shipTypeName(type.name, typeId: type.id));
+    final typeLabel = fleetShipTypeLabel(
+      context,
+      state,
+      master,
+      widget.shipTypeLabelMode,
+    );
     final hpRatio = _ratio(ship.currentHp, ship.maxHp);
     final fuelRatio = _ratio(ship.currentFuel, master?.maxFuel ?? 0);
     final ammoRatio = _ratio(ship.currentAmmo, master?.maxAmmo ?? 0);
@@ -302,30 +292,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                                       ShipRepairStatus.retreat
                                                   ? ColorFiltered(
                                                       colorFilter:
-                                                          const ColorFilter.matrix(
-                                                            <double>[
-                                                              0.2126,
-                                                              0.7152,
-                                                              0.0722,
-                                                              0,
-                                                              0,
-                                                              0.2126,
-                                                              0.7152,
-                                                              0.0722,
-                                                              0,
-                                                              0,
-                                                              0.2126,
-                                                              0.7152,
-                                                              0.0722,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              1,
-                                                              0,
-                                                            ],
-                                                          ),
+                                                          shipRetreatGrayscale,
                                                       child: ShipPortrait(
                                                         ship: master,
                                                         serverOrigin:

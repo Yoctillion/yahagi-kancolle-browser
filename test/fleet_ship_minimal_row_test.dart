@@ -1,0 +1,295 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_minimal_row.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/ship_repair_status.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/ship_status_visuals.dart';
+import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
+import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
+import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
+import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
+import 'package:yahagi_kancolle_browser/src/settings/fleet_display_options.dart';
+
+import 'fixtures/fleet_display_sample.dart';
+
+class _Store extends GameStateStore {
+  _Store(this.state);
+  final GameState state;
+  @override
+  Future<GameState> load() async => state;
+}
+
+/// Ship 1: destroyer with sonar and 100 ASW (opening ASW only).
+/// Ship 2: Saratoga Mk.II with a night fighter (night carrier attack only).
+GameState _mechanismState() => GameState.empty.copyWith(
+  hasPortData: true,
+  masterShipTypes: {
+    2: const MasterShipType(id: 2, name: '驱逐'),
+    11: const MasterShipType(id: 11, name: '正规空母'),
+  },
+  masterShips: {
+    1: const MasterShip(
+      id: 1,
+      name: '如月改二',
+      shipTypeId: 2,
+      speed: 10,
+      maxFuel: 15,
+      maxAmmo: 20,
+    ),
+    545: const MasterShip(
+      id: 545,
+      name: 'Saratoga Mk.II',
+      shipTypeId: 11,
+      speed: 10,
+      maxFuel: 80,
+      maxAmmo: 90,
+      slotCapacities: [27, 19, 15, 6],
+    ),
+  },
+  ships: {
+    1: const OwnedShip(
+      id: 1,
+      masterId: 1,
+      level: 76,
+      currentHp: 30,
+      maxHp: 30,
+      condition: 49,
+      currentFuel: 15,
+      currentAmmo: 20,
+      antiSub: 100,
+      slotIds: [1],
+    ),
+    2: const OwnedShip(
+      id: 2,
+      masterId: 545,
+      level: 120,
+      currentHp: 80,
+      maxHp: 80,
+      condition: 49,
+      currentFuel: 80,
+      currentAmmo: 90,
+      slotIds: [2],
+    ),
+  },
+  masterSlotItems: {
+    10: const MasterSlotItem(id: 10, name: '三式水中探信仪', type: [0, 0, 14, 18]),
+    254: const MasterSlotItem(id: 254, name: 'F6F-3N', type: [0, 0, 6, 45]),
+  },
+  slotItems: {
+    1: const OwnedSlotItem(instanceId: 1, masterSlotItemId: 10),
+    2: const OwnedSlotItem(instanceId: 2, masterSlotItemId: 254),
+  },
+  fleets: const [
+    Fleet(id: 1, name: '第一舰队', shipIds: [1, 2]),
+  ],
+);
+
+Widget _app(Widget child, {Locale locale = const Locale('zh')}) => MaterialApp(
+  locale: locale,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(
+    body: Align(alignment: Alignment.topLeft, child: child),
+  ),
+);
+
+Widget _row(
+  GameState state,
+  int shipId, {
+  Set<String> visible = defaultFields,
+  ShipRepairStatus? repairStatus,
+}) => SizedBox(
+  width: 320,
+  child: FleetShipMinimalRow(
+    state: state,
+    ship: state.ships[shipId]!,
+    visible: visible,
+    shipTypeLabelMode: FleetShipTypeLabelMode.localizedName,
+    damagePulseFilter: DamagePulseFilter.all,
+    moraleSparkleMode: MoraleSparkleMode.blinking,
+    repairStatus: repairStatus,
+  ),
+);
+
+Future<GameStateController> _controller(GameState state) async {
+  final controller = GameStateController(gameStateStore: _Store(state));
+  await controller.initialize();
+  return controller;
+}
+
+Widget _flatCard(
+  GameStateController controller, {
+  double width = 360,
+  Locale locale = const Locale('zh'),
+  Set<String> visible = defaultFields,
+  ValueChanged<int>? onOpenFleet,
+}) => _app(
+  SizedBox(
+    width: width,
+    child: PanelStyleScope(
+      style: PanelStyle.flat,
+      child: FleetSummaryCard(
+        controller: controller,
+        collapsed: false,
+        onToggleCollapse: () {},
+        onOpenFleet: onOpenFleet ?? (_) {},
+        visible: visible,
+      ),
+    ),
+  ),
+  locale: locale,
+);
+
+void main() {
+  test('morale bands follow the game thresholds', () {
+    expect(moraleBandOf(50), MoraleBand.sparkle);
+    expect(moraleBandOf(49), MoraleBand.normal);
+    expect(moraleBandOf(40), MoraleBand.normal);
+    expect(moraleBandOf(39), MoraleBand.mild);
+    expect(moraleBandOf(30), MoraleBand.mild);
+    expect(moraleBandOf(29), MoraleBand.tired);
+    expect(moraleBandOf(20), MoraleBand.tired);
+    expect(moraleBandOf(19), MoraleBand.exhausted);
+  });
+
+  testWidgets('only opening ASW is shown among ship mechanisms', (
+    tester,
+  ) async {
+    final state = _mechanismState();
+    await tester.pumpWidget(
+      _app(Column(children: [_row(state, 1), _row(state, 2)])),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('minimal-oasw-1')), findsOneWidget);
+    expect(find.text('先制对潜'), findsOneWidget);
+    expect(find.byKey(const Key('minimal-oasw-2')), findsNothing);
+    expect(find.textContaining('夜'), findsNothing);
+
+    await tester.pumpWidget(
+      _app(_row(state, 1, visible: defaultFields.difference({'mechanisms'}))),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('minimal-oasw-1')), findsNothing);
+  });
+
+  testWidgets('display toggles control supply bars and the speed tag', (
+    tester,
+  ) async {
+    final state = demoState();
+    await tester.pumpWidget(
+      _app(
+        _row(
+          state,
+          1,
+          visible: defaultFields.difference({'fuel', 'shipSpeed'}),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('minimal-supply-fuel-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-supply-ammo-1')), findsOneWidget);
+    expect(find.text('高速'), findsNothing);
+
+    await tester.pumpWidget(
+      _app(_row(state, 1, visible: defaultFields.difference({'fuel'}))),
+    );
+    await tester.pump();
+    expect(find.text('高速'), findsOneWidget);
+  });
+
+  testWidgets('retreated ships show zero hp and a desaturated portrait', (
+    tester,
+  ) async {
+    final state = demoState();
+    await tester.pumpWidget(
+      _app(_row(state, 1, repairStatus: ShipRepairStatus.retreat)),
+    );
+    await tester.pump();
+
+    final hp = tester.widget<Text>(find.byKey(const Key('minimal-hp-value-1')));
+    expect(hp.data, startsWith('0/'));
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('minimal-ship-row-1')),
+        matching: find.byType(ColorFiltered),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('退避'), findsOneWidget);
+  });
+
+  testWidgets('flat fleet card uses minimal rows without hp frames', (
+    tester,
+  ) async {
+    final controller = await _controller(demoState());
+    addTearDown(controller.dispose);
+    int? opened;
+
+    await tester.pumpWidget(
+      _flatCard(controller, onOpenFleet: (id) => opened = id),
+    );
+    await tester.pump();
+
+    expect(find.byType(ShipHpFrame), findsNothing);
+    expect(find.byType(ShipMoraleMark), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'minimal-ship-row-',
+            ),
+      ),
+      findsNWidgets(6),
+    );
+    expect(
+      find.byKey(const Key('fleet-summary-metric-speed-value')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('minimal-ship-row-1')));
+    expect(opened, 1);
+
+    await tester.tap(find.byKey(const Key('fleet-summary-selector-2')));
+    await tester.pump();
+    expect(find.byKey(const Key('minimal-ship-row-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-ship-row-5')), findsOneWidget);
+  });
+
+  testWidgets('long names do not overflow at 190dp', (tester) async {
+    final base = demoState();
+    final state = base.copyWith(
+      masterShips: {
+        for (final entry in base.masterShips.entries)
+          entry.key: MasterShip(
+            id: entry.value.id,
+            name: 'Very Long Destroyer Name Kai Ni',
+            shipTypeId: entry.value.shipTypeId,
+            speed: entry.value.speed,
+            maxFuel: entry.value.maxFuel,
+            maxAmmo: entry.value.maxAmmo,
+            slotCount: entry.value.slotCount,
+            slotCapacities: entry.value.slotCapacities,
+          ),
+      },
+    );
+    final controller = await _controller(state);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _flatCard(
+        controller,
+        width: 190,
+        locale: const Locale('en'),
+        visible: {...defaultFields, 'firepower', 'anti-sub'},
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('minimal-ship-row-1')), findsOneWidget);
+  });
+}

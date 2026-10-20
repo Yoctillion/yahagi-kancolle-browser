@@ -9,6 +9,13 @@ const yahagiStatusYellow = Color(0xffffc940);
 const yahagiStatusGreen = Color(0xff29a634);
 const yahagiStatusZeroHp = Color(0xff71818b);
 
+const shipRetreatGrayscale = ColorFilter.matrix(<double>[
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0, 0, 0, 1, 0, //
+]);
+
 @immutable
 class DamagePulseVisualSpec {
   const DamagePulseVisualSpec({
