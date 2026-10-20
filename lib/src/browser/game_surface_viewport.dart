@@ -21,7 +21,7 @@ import '../settings/display_mode_store.dart';
 /// the game surface remains completely stable across fullscreen toggles,
 /// orientation changes, and layout resizing, guaranteeing that the platform
 /// view is never disposed or recreated during UI reflows.
-class GameSurfaceViewport extends StatelessWidget {
+class GameSurfaceViewport extends StatefulWidget {
   const GameSurfaceViewport({
     super.key,
     required this.child,
@@ -30,6 +30,7 @@ class GameSurfaceViewport extends StatelessWidget {
     this.isLandscape = false,
     this.displayMode = DisplayMode.auto,
     this.fitWithinBounds = false,
+    this.avoidSystemInsets = false,
     this.viewPadding,
     this.backgroundColor = const Color(0xff0a1823),
   });
@@ -40,6 +41,12 @@ class GameSurfaceViewport extends StatelessWidget {
   final bool isLandscape;
   final DisplayMode displayMode;
   final bool fitWithinBounds;
+
+  /// Keeps the game clear of every system inset (home indicator, display
+  /// cutouts) that overlaps this viewport's on-screen bounds, also while
+  /// docked in the workspace, shrinking it instead of letting width-priority
+  /// layout run under the inset.
+  final bool avoidSystemInsets;
   final EdgeInsets? viewPadding;
   final Color backgroundColor;
 
@@ -126,26 +133,70 @@ class GameSurfaceViewport extends StatelessWidget {
   }
 
   @override
+  State<GameSurfaceViewport> createState() => _GameSurfaceViewportState();
+}
+
+class _GameSurfaceViewportState extends State<GameSurfaceViewport> {
+  EdgeInsets _dockedInsets = EdgeInsets.zero;
+
+  @override
   Widget build(BuildContext context) {
-    final padding = viewPadding ?? MediaQuery.viewPaddingOf(context);
-    final effectivePadding = fullscreen ? padding : EdgeInsets.zero;
+    final padding = widget.viewPadding ?? MediaQuery.viewPaddingOf(context);
+    final EdgeInsets effectivePadding;
+    if (widget.fullscreen) {
+      effectivePadding = padding;
+    } else if (widget.avoidSystemInsets) {
+      // The docked position is only known after layout, so the overlap is
+      // measured post-frame. Every workspace reflow that moves this box goes
+      // through a rebuild of it, which re-measures.
+      final screenSize = MediaQuery.sizeOf(context);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _measureDockedInsets(padding, screenSize),
+      );
+      effectivePadding = _dockedInsets;
+    } else {
+      effectivePadding = EdgeInsets.zero;
+    }
 
     return ColoredBox(
-      color: backgroundColor,
+      color: widget.backgroundColor,
       child: ClipRect(
         child: CustomSingleChildLayout(
           delegate: _GameSurfaceLayoutDelegate(
-            aspectRatio: aspectRatio,
-            fullscreen: fullscreen,
-            isLandscape: isLandscape,
-            displayMode: displayMode,
-            fitWithinBounds: fitWithinBounds,
+            aspectRatio: widget.aspectRatio,
+            fullscreen: widget.fullscreen,
+            isLandscape: widget.isLandscape,
+            displayMode: widget.displayMode,
+            fitWithinBounds: widget.fitWithinBounds,
+            strictInsets: widget.avoidSystemInsets,
             padding: effectivePadding,
           ),
-          child: child,
+          child: widget.child,
         ),
       ),
     );
+  }
+
+  void _measureDockedInsets(EdgeInsets viewPadding, Size screenSize) {
+    if (!mounted) return;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final rect = box.localToGlobal(Offset.zero) & box.size;
+    final insets = EdgeInsets.fromLTRB(
+      (viewPadding.left - rect.left).clamp(0.0, viewPadding.left),
+      (viewPadding.top - rect.top).clamp(0.0, viewPadding.top),
+      (rect.right - (screenSize.width - viewPadding.right)).clamp(
+        0.0,
+        viewPadding.right,
+      ),
+      (rect.bottom - (screenSize.height - viewPadding.bottom)).clamp(
+        0.0,
+        viewPadding.bottom,
+      ),
+    );
+    if (insets != _dockedInsets) {
+      setState(() => _dockedInsets = insets);
+    }
   }
 }
 
@@ -156,6 +207,7 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
     required this.isLandscape,
     required this.displayMode,
     required this.fitWithinBounds,
+    required this.strictInsets,
     required this.padding,
   });
 
@@ -164,7 +216,16 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
   final bool isLandscape;
   final DisplayMode displayMode;
   final bool fitWithinBounds;
+  final bool strictInsets;
   final EdgeInsets padding;
+
+  // Width priority always spans the full width and falls back to centering in
+  // the whole container when the safe height is short, so it can sit under
+  // insets on any edge.
+  bool _widthPriorityClearsInsets(Size size) =>
+      padding.left == 0 &&
+      padding.right == 0 &&
+      size.height - padding.vertical >= size.width / aspectRatio;
 
   Rect _calculateRect(Size size) {
     if (size.width <= 0 || size.height <= 0) {
@@ -179,7 +240,9 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
       fullscreen: fullscreen,
     );
 
-    if (isWidthPriority && !fitWithinBounds) {
+    if (isWidthPriority &&
+        !fitWithinBounds &&
+        (!strictInsets || _widthPriorityClearsInsets(size))) {
       return GameSurfaceViewport.computeWidthPriorityGameRect(
         containerWidth: size.width,
         containerHeight: size.height,
@@ -215,6 +278,7 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
         oldDelegate.isLandscape != isLandscape ||
         oldDelegate.displayMode != displayMode ||
         oldDelegate.fitWithinBounds != fitWithinBounds ||
+        oldDelegate.strictInsets != strictInsets ||
         oldDelegate.padding != padding;
   }
 }

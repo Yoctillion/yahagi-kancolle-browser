@@ -444,4 +444,97 @@ void main() {
       },
     );
   });
+
+  group('GameSurfaceViewport docked system inset avoidance', () {
+    // iPhone landscape: Dynamic Island on both sides, home indicator below.
+    const screenSize = Size(852, 393);
+    const viewPadding = EdgeInsets.only(left: 59, right: 59, bottom: 21);
+
+    Future<Rect> pumpDocked(
+      WidgetTester tester, {
+      required Rect dock,
+      required bool avoidSystemInsets,
+    }) async {
+      tester.view.physicalSize = screenSize;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: screenSize,
+            viewPadding: viewPadding,
+          ),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Stack(
+              children: [
+                Positioned.fromRect(
+                  rect: dock,
+                  child: GameSurfaceViewport(
+                    aspectRatio: 1200 / 720,
+                    isLandscape: true,
+                    avoidSystemInsets: avoidSystemInsets,
+                    child: const SizedBox.expand(key: Key('test-game-surface')),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.getRect(find.byKey(const Key('test-game-surface')));
+    }
+
+    // Game panel below a 40pt header, taking 67% of the width on the left.
+    const bottomLeftDock = Rect.fromLTWH(0, 40, 571, 353);
+
+    testWidgets('docked game clears overlapping home indicator and cutout', (
+      tester,
+    ) async {
+      final gameRect = await pumpDocked(
+        tester,
+        dock: bottomLeftDock,
+        avoidSystemInsets: true,
+      );
+
+      expect(gameRect.left, greaterThanOrEqualTo(viewPadding.left));
+      expect(
+        gameRect.bottom,
+        lessThanOrEqualTo(screenSize.height - viewPadding.bottom),
+      );
+      expect(gameRect.top, greaterThanOrEqualTo(bottomLeftDock.top));
+      expect(gameRect.right, lessThanOrEqualTo(bottomLeftDock.right));
+      expect(gameRect.width / gameRect.height, closeTo(1200 / 720, 0.001));
+    });
+
+    testWidgets('docked game keeps width priority when off-screen-edge', (
+      tester,
+    ) async {
+      const innerDock = Rect.fromLTWH(100, 40, 400, 300);
+      final gameRect = await pumpDocked(
+        tester,
+        dock: innerDock,
+        avoidSystemInsets: true,
+      );
+
+      expect(gameRect.left, innerDock.left);
+      expect(gameRect.width, innerDock.width);
+    });
+
+    testWidgets('docked game ignores insets unless avoidance is enabled', (
+      tester,
+    ) async {
+      final gameRect = await pumpDocked(
+        tester,
+        dock: bottomLeftDock,
+        avoidSystemInsets: false,
+      );
+
+      expect(gameRect.left, 0.0);
+      expect(gameRect.width, bottomLeftDock.width);
+    });
+  });
 }
