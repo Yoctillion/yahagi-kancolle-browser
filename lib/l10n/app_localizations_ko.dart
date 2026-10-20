@@ -334,13 +334,17 @@ class AppLocalizationsKo extends AppLocalizations {
   String get uiDisplaySizeTitle => 'UI 크기';
 
   @override
-  String get uiDisplaySizeDesc => '상단 상태 표시줄과 탐색 메뉴의 표시 크기를 조정합니다';
+  String get uiDisplaySizeDesc =>
+      '상단 바, 탐색 바, 정보 바의 표시 밀도를 조정합니다. 미니멀은 휴대폰 가로 모드에서 게임 페이지의 상단 바를 숨깁니다';
 
   @override
   String get uiDisplaySizeNormal => '보통';
 
   @override
   String get uiDisplaySizeCompact => '작게';
+
+  @override
+  String get uiDisplaySizeMinimal => '미니멀';
 
   @override
   String get gameAreaRatio => '게임 영역 비율';

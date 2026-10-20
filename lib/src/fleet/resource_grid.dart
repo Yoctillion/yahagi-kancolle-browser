@@ -256,7 +256,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
 
   Widget _buildBar(LayoutSettingsController? controller) {
     final uiSize = controller?.uiDisplaySize ?? UiDisplaySize.normal;
-    final isCompact = uiSize == UiDisplaySize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     final barHeight = headerCapsuleHeight(uiSize);
     final separatorWidth = isCompact ? 5.0 : 6.0;
 
@@ -465,7 +465,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     required bool visible,
     HeaderUiSize uiSize = HeaderUiSize.normal,
   }) {
-    final isCompact = uiSize == HeaderUiSize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     if (id == headerSenkaId) {
       return _EditableHeaderSenkaItem(
         senka: widget.senka,
@@ -699,7 +699,7 @@ class _HeaderFrameRefreshPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = uiSize == HeaderUiSize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
@@ -757,7 +757,7 @@ class _HeaderCapacityPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = uiSize == HeaderUiSize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     return Container(
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
@@ -823,7 +823,7 @@ class _HeaderAnchorageTimerSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = uiSize == HeaderUiSize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     final isActive = elapsed != '--:--:--';
     return Container(
       key: const Key('header-anchorage-timer-summary'),
@@ -865,7 +865,7 @@ class _HeaderNosakiTimerSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = uiSize == HeaderUiSize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     final isActive = elapsed != '--:--:--';
     return Container(
       key: const Key('header-nosaki-timer-summary'),
@@ -909,7 +909,7 @@ class _HeaderSenkaSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = uiSize == HeaderUiSize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     return Container(
       key: const Key('header-senka-summary'),
       width: isCompact ? 132 : 142,
@@ -962,7 +962,7 @@ class _HeaderResourceItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = uiSize == HeaderUiSize.compact;
+    final isCompact = uiSize.isCompactOrSmaller;
     final suffix = showFurnitureCoinSuffix
         ? fleetText(context, '家具コイン').replaceFirst('家具', '')
         : '';
@@ -1030,7 +1030,7 @@ class _EditableHeaderResourceItem extends StatelessWidget {
   Widget build(BuildContext context) => Opacity(
     opacity: visible ? 1 : 0.42,
     child: SizedBox(
-      width: uiSize == HeaderUiSize.compact ? 74 : 82,
+      width: uiSize.isCompactOrSmaller ? 74 : 82,
       child: _HeaderResourceItem(
         spec: spec,
         value: value,
@@ -1059,7 +1059,7 @@ class _EditableHeaderSenkaItem extends StatelessWidget {
   Widget build(BuildContext context) => Opacity(
     opacity: visible ? 1 : 0.42,
     child: SizedBox(
-      width: uiSize == HeaderUiSize.compact ? 132 : 142,
+      width: uiSize.isCompactOrSmaller ? 132 : 142,
       child: _HeaderSenkaSummary(senka: senka, rank: rank, uiSize: uiSize),
     ),
   );
@@ -1080,7 +1080,7 @@ class _EditableHeaderAnchorageTimerItem extends StatelessWidget {
   Widget build(BuildContext context) => Opacity(
     opacity: visible ? 1 : 0.42,
     child: SizedBox(
-      width: uiSize == HeaderUiSize.compact ? 118 : 128,
+      width: uiSize.isCompactOrSmaller ? 118 : 128,
       child: _HeaderAnchorageTimerSummary(elapsed: elapsed, uiSize: uiSize),
     ),
   );
@@ -1101,7 +1101,7 @@ class _EditableHeaderNosakiTimerItem extends StatelessWidget {
   Widget build(BuildContext context) => Opacity(
     opacity: visible ? 1 : 0.42,
     child: SizedBox(
-      width: uiSize == HeaderUiSize.compact ? 118 : 128,
+      width: uiSize.isCompactOrSmaller ? 118 : 128,
       child: _HeaderNosakiTimerSummary(elapsed: elapsed, uiSize: uiSize),
     ),
   );

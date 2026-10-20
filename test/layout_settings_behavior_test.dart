@@ -32,6 +32,28 @@ void main() {
     },
   );
 
+  test('minimal ui display size persists across reloads', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final controller = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+    final restored = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(restored.uiDisplaySize, UiDisplaySize.minimal);
+  });
+
+  test('unknown stored ui display size falls back to normal', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'layout_ui_display_size': 'bogus',
+    });
+    final controller = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(controller.uiDisplaySize, UiDisplaySize.normal);
+  });
+
   test('information panel defaults right and persists both sides', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     var controller = await LayoutSettingsController.load(

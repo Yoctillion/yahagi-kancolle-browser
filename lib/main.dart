@@ -1797,8 +1797,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       ]),
       builder: (context, _) => GameBrowserToolbar(
         compact:
-            widget.layoutSettingsController.uiDisplaySize ==
-            UiDisplaySize.compact,
+            widget.layoutSettingsController.uiDisplaySize.isCompactOrSmaller,
         enableBackdropBlur:
             widget.gameRenderingModeController?.mode.enablesToolbarBlur ?? true,
         interactionEnabled:
@@ -1945,7 +1944,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                         builder: (context, _) {
                           final uiSize =
                               widget.layoutSettingsController.uiDisplaySize;
-                          final isCompact = uiSize == UiDisplaySize.compact;
+                          final isCompact = uiSize.isCompactOrSmaller;
                           final headerHeight = topHeaderHeight(uiSize);
                           final isGameWorkspace = _workspaceIndex == 0;
                           final isToolbarVisible =
@@ -3108,7 +3107,7 @@ class WorkspaceNavigation extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final menuSize = controller.uiDisplaySize;
     final menuExtent = workspaceNavigationExtent(menuSize);
-    final isCompact = menuSize == UiDisplaySize.compact;
+    final isCompact = menuSize.isCompactOrSmaller;
     final itemExtent = isCompact ? 50.0 : 52.0;
     return SecondTickBuilder(
       now: clock,
@@ -3353,7 +3352,7 @@ class _NavigationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = menuSize == UiDisplaySize.compact;
+    final isCompact = menuSize.isCompactOrSmaller;
     final btnSize = horizontal
         ? (isCompact ? const Size(42, 35) : const Size(44, 40))
         : (isCompact ? const Size(35, 42) : const Size(40, 44));

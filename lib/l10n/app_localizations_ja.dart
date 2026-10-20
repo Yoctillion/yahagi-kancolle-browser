@@ -331,13 +331,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get uiDisplaySizeTitle => 'UIの表示サイズ';
 
   @override
-  String get uiDisplaySizeDesc => '上部ステータスバーとメニューバーの表示サイズを調整します';
+  String get uiDisplaySizeDesc =>
+      '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでは、スマートフォンの横向き時にゲームページの上部バーを非表示にします';
 
   @override
   String get uiDisplaySizeNormal => '標準';
 
   @override
   String get uiDisplaySizeCompact => 'コンパクト';
+
+  @override
+  String get uiDisplaySizeMinimal => 'ミニマル';
 
   @override
   String get gameAreaRatio => 'ゲーム画面の比率';

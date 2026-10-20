@@ -185,6 +185,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                                 value: UiDisplaySize.compact,
                                 child: Text(l10n.uiDisplaySizeCompact),
                               ),
+                              DropdownMenuItem(
+                                value: UiDisplaySize.minimal,
+                                child: Text(l10n.uiDisplaySizeMinimal),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value != null) {
