@@ -13,6 +13,8 @@ import 'expedition_mission_picker.dart';
 import 'expedition_rule_catalog.dart';
 import 'expedition_selection_store.dart';
 import 'expedition_strings.dart';
+import '../layout/flat_list_row.dart';
+import '../layout/panel_style.dart';
 
 class ExpeditionCheckContent extends StatefulWidget {
   const ExpeditionCheckContent({
@@ -104,6 +106,8 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     super.dispose();
   }
 
+  bool get _flat => PanelStyleScope.of(context) == PanelStyle.flat;
+
   @override
   Widget build(BuildContext context) {
     final strings = ExpeditionStrings.of(context);
@@ -124,7 +128,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _controls(strings),
-          const SizedBox(height: 10),
+          SizedBox(height: _flat ? 4 : 10),
           _statusBox(
             strings.waiting,
             false,
@@ -166,16 +170,30 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         fleet,
       ),
     );
+    final flat = _flat;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _controls(strings),
-        const SizedBox(height: 8),
+        SizedBox(height: flat ? 4 : 8),
         _fleetSelector(fleets),
-        const SizedBox(height: 7),
+        SizedBox(height: flat ? 2 : 7),
         _missionSelector(state, missionId),
-        const SizedBox(height: 8),
-        if (_greatSuccess)
+        SizedBox(height: flat ? 4 : 8),
+        if (_greatSuccess && flat) ...[
+          _statusBox(
+            '${strings.normalCheck}：${evaluation.normalPassed ? strings.passed : strings.failed}',
+            evaluation.normalPassed,
+            onTap: () => widget.onOpenDetails(_fleetId),
+          ),
+          _statusBox(
+            evaluation.greatSuccessPassed
+                ? '${strings.greatSuccess}：${strings.passed} (${evaluation.greatSuccessRate.toStringAsFixed(2)}%)'
+                : '${strings.greatSuccess}：${strings.failed}',
+            evaluation.greatSuccessPassed,
+            onTap: () => widget.onOpenDetails(_fleetId),
+          ),
+        ] else if (_greatSuccess)
           Row(
             children: [
               Expanded(
@@ -204,19 +222,19 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             onTap: () => widget.onOpenDetails(_fleetId),
           ),
         if (_detailed) ...[
-          const SizedBox(height: 10),
-          _sectionTitle(strings.expectedIncome),
-          const SizedBox(height: 5),
-          _resourceGrid(income),
-          const SizedBox(height: 10),
-          _sectionTitle(strings.conditions),
-          const SizedBox(height: 5),
+          SizedBox(height: flat ? 6 : 10),
+          _sectionTitle(strings.expectedIncome, flat),
+          SizedBox(height: flat ? 2 : 5),
+          _resourceGrid(income, flat),
+          SizedBox(height: flat ? 6 : 10),
+          _sectionTitle(strings.conditions, flat),
+          SizedBox(height: flat ? 2 : 5),
           for (final condition in [
             ...evaluation.normalConditions,
             if (_greatSuccess) ...evaluation.greatSuccessConditions,
             evaluation.daihatsuFill,
           ])
-            _conditionRow(context, condition, strings),
+            _conditionRow(context, condition, strings, flat),
         ],
       ],
     );
@@ -229,11 +247,13 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
           key: const Key('expedition-mode-segments'),
           children: [
             _segmentButton(
+              key: const Key('expedition-mode-compact'),
               label: strings.compact,
               selected: !_detailed,
               onTap: () => setState(() => _detailed = false),
             ),
             _segmentButton(
+              key: const Key('expedition-mode-detailed'),
               label: strings.detailed,
               selected: _detailed,
               onTap: () => setState(() => _detailed = true),
@@ -244,11 +264,13 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
           key: const Key('expedition-success-segments'),
           children: [
             _segmentButton(
+              key: const Key('expedition-success-normal'),
               label: strings.success,
               selected: !_greatSuccess,
               onTap: () => setState(() => _greatSuccess = false),
             ),
             _segmentButton(
+              key: const Key('expedition-success-great'),
               label: strings.greatSuccess,
               selected: _greatSuccess,
               onTap: () => setState(() => _greatSuccess = true),
@@ -257,7 +279,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         ),
         if (_greatSuccess) _targetMenu(),
       ];
-      if (constraints.maxWidth >= 440) {
+      if (constraints.maxWidth >= 440 && !_flat) {
         return Row(
           children: [
             for (var index = 0; index < controlGroups.length; index++) ...[
@@ -269,8 +291,8 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         );
       }
       return Wrap(
-        spacing: 8,
-        runSpacing: 6,
+        spacing: _flat ? 10 : 8,
+        runSpacing: _flat ? 2 : 6,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [...controlGroups],
       );
@@ -281,6 +303,27 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     Key? key,
     required List<Widget> children,
     bool expandChildren = false,
+  }) {
+    if (_flat) {
+      return Wrap(
+        key: key,
+        spacing: 8,
+        runSpacing: 2,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: children,
+      );
+    }
+    return _cardSegmentGroup(
+      key: key,
+      children: children,
+      expandChildren: expandChildren,
+    );
+  }
+
+  Widget _cardSegmentGroup({
+    Key? key,
+    required List<Widget> children,
+    required bool expandChildren,
   }) => Container(
     key: key,
     height: 26,
@@ -305,6 +348,42 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     required bool selected,
     required VoidCallback onTap,
     bool command = false,
+  }) {
+    if (_flat) {
+      return InkWell(
+        key: key,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selected ? flatTimeColor : flatIdleColor,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+    return _cardSegmentButton(
+      key: key,
+      label: label,
+      selected: selected,
+      onTap: onTap,
+      command: command,
+    );
+  }
+
+  Widget _cardSegmentButton({
+    Key? key,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    required bool command,
   }) => Material(
     key: key,
     color: selected ? const Color(0xff8a6628) : Colors.transparent,
@@ -352,22 +431,22 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     child: _segmentGroup(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7),
+          padding: EdgeInsets.symmetric(horizontal: _flat ? 0 : 7),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 '$_target%',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xffdce6eb),
+                style: TextStyle(
+                  fontSize: _flat ? 10.5 : 10,
+                  color: _flat ? flatTimeColor : const Color(0xffdce6eb),
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.arrow_drop_down,
                 size: 14,
-                color: Color(0xffdce6eb),
+                color: _flat ? flatTimeColor : const Color(0xffdce6eb),
               ),
             ],
           ),
@@ -417,6 +496,28 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     bool neutral = false,
     VoidCallback? onTap,
   }) {
+    if (_flat) {
+      return InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1),
+          child: Text(
+            text,
+            key: const Key('expedition-status-text'),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: flatRowTextStyle(
+              color: neutral
+                  ? flatIdleColor
+                  : passed
+                  ? flatDoneColor
+                  : _flatFailColor,
+            ),
+          ),
+        ),
+      );
+    }
     final color = neutral
         ? const Color(0xff244457)
         : passed
@@ -453,59 +554,78 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
 double _expeditionSummaryTextSize(double availableWidth) =>
     availableWidth < 340 ? 11 : 12;
 
-Widget _sectionTitle(String text) => Text(
+// 复用条件行里的未通过红，扁平档不新增配色。
+const _flatFailColor = Color(0xffff5964);
+
+Widget _sectionTitle(String text, bool flat) => Text(
   text,
-  style: const TextStyle(
-    color: Color(0xffd4a85f),
-    fontSize: 13,
-    fontWeight: FontWeight.w800,
+  style: TextStyle(
+    color: const Color(0xffd4a85f),
+    fontSize: flat ? 11 : 13,
+    fontWeight: flat ? FontWeight.w700 : FontWeight.w800,
   ),
 );
 
-Widget _resourceGrid(ExpeditionIncome income) {
+Widget _resourceGrid(ExpeditionIncome income, bool flat) {
   final values = income.values;
+  final gap = flat ? 2.0 : 6.0;
   return Column(
     children: [
-      _resourceRow(1, values[0], 2, values[1]),
-      const SizedBox(height: 6),
-      _resourceRow(3, values[2], 4, values[3]),
+      _resourceRow(1, values[0], 2, values[1], flat),
+      SizedBox(height: gap),
+      _resourceRow(3, values[2], 4, values[3], flat),
       if (income.items.isNotEmpty) ...[
-        const SizedBox(height: 6),
-        _itemsRow(income.items),
+        SizedBox(height: gap),
+        _itemsRow(income.items, flat),
       ],
     ],
   );
 }
 
-Widget _resourceRow(int id1, int val1, int id2, int val2) => Row(
+Widget _resourceRow(int id1, int val1, int id2, int val2, bool flat) => Row(
   children: [
-    Expanded(child: _resourceTile(id1, val1)),
-    const SizedBox(width: 6),
-    Expanded(child: _resourceTile(id2, val2)),
+    Expanded(child: _resourceTile(id1, val1, flat)),
+    SizedBox(width: flat ? 8 : 6),
+    Expanded(child: _resourceTile(id2, val2, flat)),
   ],
 );
 
-Widget _itemsRow(List<ExpeditionRewardItem> items) {
+Widget _itemsRow(List<ExpeditionRewardItem> items, bool flat) {
+  final gap = SizedBox(width: flat ? 8 : 6);
   if (items.length == 1) {
     return Row(
       children: [
-        Expanded(child: _itemTile(items[0])),
-        const SizedBox(width: 6),
+        Expanded(child: _itemTile(items[0], flat)),
+        gap,
         const Expanded(child: SizedBox()),
       ],
     );
   }
   return Row(
     children: [
-      Expanded(child: _itemTile(items[0])),
-      const SizedBox(width: 6),
-      Expanded(child: _itemTile(items[1])),
+      Expanded(child: _itemTile(items[0], flat)),
+      gap,
+      Expanded(child: _itemTile(items[1], flat)),
     ],
   );
 }
 
-Widget _resourceTile(int apiId, int value) {
+Widget _resourceTile(int apiId, int value, bool flat) {
   final assetId = apiId.toString().padLeft(2, '0');
+  if (flat) {
+    return Row(
+      children: [
+        Image.asset(
+          'assets/images/material/$assetId.png',
+          width: 13,
+          height: 13,
+          filterQuality: FilterQuality.medium,
+        ),
+        const Spacer(),
+        Text('$value', style: flatRowTextStyle()),
+      ],
+    );
+  }
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
@@ -527,7 +647,7 @@ Widget _resourceTile(int apiId, int value) {
   );
 }
 
-Widget _itemTile(ExpeditionRewardItem item) {
+Widget _itemTile(ExpeditionRewardItem item, bool flat) {
   // Map useitem ID to material asset ID for common items
   String assetId;
   String? label;
@@ -569,6 +689,39 @@ Widget _itemTile(ExpeditionRewardItem item) {
   String kindText = item.kind == ExpeditionRewardKind.greatSuccess
       ? '(大成功获得)'
       : '(有几率获得)';
+  if (flat) {
+    return Row(
+      children: [
+        if (['05', '06', '07', '08', '10', '11', '12'].contains(assetId))
+          Image.asset(
+            'assets/images/material/$assetId.png',
+            width: 13,
+            height: 13,
+            filterQuality: FilterQuality.medium,
+          )
+        else
+          Flexible(
+            child: UiText(
+              label ?? '道具',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: flatIdleColor, fontSize: 11),
+            ),
+          ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: UiText(
+            kindText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: flatIdleColor, fontSize: 11),
+          ),
+        ),
+        const Spacer(),
+        Text('${item.count}', style: flatRowTextStyle()),
+      ],
+    );
+  }
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
@@ -608,12 +761,40 @@ Widget _conditionRow(
   BuildContext context,
   ExpeditionConditionResult condition,
   ExpeditionStrings strings,
+  bool flat,
 ) {
   final color = condition.passed
       ? const Color(0xff28d978)
       : condition.auxiliary
       ? const Color(0xffffc247)
       : const Color(0xffff5964);
+  if (flat) {
+    return FlatListRow(
+      tags: [
+        Text(
+          condition.passed
+              ? '✓'
+              : condition.auxiliary
+              ? '!'
+              : '×',
+          style: flatRowTextStyle(color: color),
+        ),
+      ],
+      name: Text(
+        gameNames(context).entityText(strings.conditionLabel(condition)),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: flatRowTextStyle(),
+      ),
+      trailing: flatRowTrailing(
+        Text(
+          strings.conditionActual(condition),
+          maxLines: 1,
+          style: flatRowTextStyle(color: color),
+        ),
+      ),
+    );
+  }
   return Container(
     margin: const EdgeInsets.only(bottom: 5),
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
