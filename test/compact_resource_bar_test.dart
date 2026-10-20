@@ -904,6 +904,7 @@ void main() {
     LayoutSettingsController controller, {
     double width = 200,
     double? senka,
+    GameState state = const GameState(),
   }) {
     return MaterialApp(
       locale: const Locale('zh'),
@@ -916,7 +917,7 @@ void main() {
             child: SizedBox(
               width: width,
               child: CompactResourceBar(
-                state: const GameState(),
+                state: state,
                 senka: senka,
                 rank: senka == null ? null : 123,
                 settingsController: controller,
@@ -969,6 +970,54 @@ void main() {
       closeTo(tester.renderObject<RenderBox>(value).size.height, 0.01),
     );
     expect(tester.getRect(value).right, lessThanOrEqualTo(200));
+  });
+
+  testWidgets('grid layout rows are 20dp tall with numbers unclipped', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+    await controller.toggleHeaderResourceVisible(headerFrameRefreshId);
+    await tester.pumpWidget(
+      gridHarness(
+        controller,
+        senka: 1234.5,
+        state: const GameState(
+          resources: <GameResourceType, int>{GameResourceType.fuel: 123456},
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    for (final key in const [
+      'header-resource-material-1',
+      'header-senka-summary',
+      'header-anchorage-timer-summary',
+      'header-nosaki-timer-summary',
+      'header-ship-capacity',
+      'header-equipment-capacity',
+      'header-frame-refresh',
+    ]) {
+      expect(tester.getSize(find.byKey(Key(key))).height, 20, reason: key);
+    }
+    final first = tester.getTopLeft(
+      find.byKey(const Key('header-resource-material-1')),
+    );
+    final seventh = tester.getTopLeft(
+      find.byKey(const Key('header-resource-material-7')),
+    );
+    expect(seventh.dy - first.dy, 2 * (20 + 2));
+    for (final (key, value) in const [
+      ('header-resource-material-1', '123456'),
+      ('header-senka-summary', '1234.5'),
+    ]) {
+      final item = tester.getRect(find.byKey(Key(key)));
+      final text = tester.getRect(find.textContaining(value));
+      expect(text.left, greaterThanOrEqualTo(item.left), reason: value);
+      expect(text.top, greaterThanOrEqualTo(item.top), reason: value);
+      expect(text.right, lessThanOrEqualTo(item.right), reason: value);
+      expect(text.bottom, lessThanOrEqualTo(item.bottom), reason: value);
+    }
   });
 
   for (final size in [UiDisplaySize.normal, UiDisplaySize.minimal]) {

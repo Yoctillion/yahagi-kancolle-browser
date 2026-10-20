@@ -799,6 +799,12 @@ const double _headerGridFontSize = 11;
 double _headerFontSize(BuildContext context, double stripSize) =>
     _inHeaderGrid(context) ? _headerGridFontSize : stripSize;
 
+// 网格没有胶囊边框要包住，行高贴着 11 号字收紧，省下信息栏的纵向空间。
+const double _headerGridItemHeight = 20;
+
+double _headerItemHeight(BuildContext context, bool isCompact) =>
+    _inHeaderGrid(context) ? _headerGridItemHeight : (isCompact ? 26 : 30);
+
 // 极简档的顶栏要把空间让给数值，所以不画胶囊底色和边框。
 BoxDecoration? _headerPillDecoration(HeaderUiSize uiSize, {bool grid = false}) {
   if (grid || uiSize.isMinimal) return null;
@@ -822,7 +828,7 @@ class _HeaderFrameRefreshPill extends StatelessWidget {
         lookupAppLocalizations(const Locale('zh'));
     return Container(
       key: const Key('header-frame-refresh'),
-      height: isCompact ? 26 : 30,
+      height: _headerItemHeight(context, isCompact),
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
       decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       child: Row(
@@ -872,7 +878,7 @@ class _HeaderCapacityPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCompact = uiSize.isCompactOrSmaller;
     return Container(
-      height: isCompact ? 26 : 30,
+      height: _headerItemHeight(context, isCompact),
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
       decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
@@ -937,7 +943,7 @@ class _HeaderAnchorageTimerSummary extends StatelessWidget {
     return Container(
       key: const Key('header-anchorage-timer-summary'),
       width: isCompact ? 118 : 128,
-      height: isCompact ? 26 : 30,
+      height: _headerItemHeight(context, isCompact),
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
       decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
@@ -975,7 +981,7 @@ class _HeaderNosakiTimerSummary extends StatelessWidget {
     return Container(
       key: const Key('header-nosaki-timer-summary'),
       width: isCompact ? 118 : 128,
-      height: isCompact ? 26 : 30,
+      height: _headerItemHeight(context, isCompact),
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
       decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
@@ -1014,7 +1020,7 @@ class _HeaderSenkaSummary extends StatelessWidget {
     return Container(
       key: const Key('header-senka-summary'),
       width: isCompact ? 132 : 142,
-      height: isCompact ? 26 : 30,
+      height: _headerItemHeight(context, isCompact),
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
       decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       alignment: Alignment.centerLeft,
@@ -1064,7 +1070,7 @@ class _HeaderResourceItem extends StatelessWidget {
         ? fleetText(context, '家具コイン').replaceFirst('家具', '')
         : '';
     return Container(
-      height: isCompact ? 26 : 30,
+      height: _headerItemHeight(context, isCompact),
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 5),
       decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       child: Row(
