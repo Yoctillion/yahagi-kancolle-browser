@@ -1886,11 +1886,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           final playerRanking = senkaController?.state.playerRankingRow;
           return CompactResourceBar(
             layout: ResourceBarLayout.grid,
-            gridPadding: EdgeInsets.fromLTRB(
-              8 + (cornerOnLeft ? cornerInset(corners.topLeft) : 0),
-              6,
-              8 + (cornerOnRight ? cornerInset(corners.topRight) : 0),
-              2,
+            gridPadding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+            gridCornerRadii: (
+              left: cornerOnLeft ? corners.topLeft : 0,
+              right: cornerOnRight ? corners.topRight : 0,
             ),
             state: gameState.state,
             senka: playerRanking?.senka,

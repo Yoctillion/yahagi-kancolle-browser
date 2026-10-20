@@ -6,6 +6,7 @@ import 'fleet_ui_strings.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
+import '../layout/display_corners.dart';
 import '../settings/header_resource_settings.dart';
 import '../settings/layout_settings_controller.dart';
 import '../performance/second_tick_scope.dart';
@@ -122,6 +123,7 @@ class CompactResourceBar extends StatefulWidget {
     this.layout = ResourceBarLayout.strip,
     this.gridColumns = 4,
     this.gridPadding = EdgeInsets.zero,
+    this.gridCornerRadii = (left: 0, right: 0),
     this.uiSize,
   });
 
@@ -140,6 +142,9 @@ class CompactResourceBar extends StatefulWidget {
   final ResourceBarLayout layout;
   final int gridColumns;
   final EdgeInsets gridPadding;
+
+  /// 网格贴着屏幕顶角那侧要避让的圆角半径，不贴角的一侧为 0。
+  final ({double left, double right}) gridCornerRadii;
 
   /// Overrides the settings size, e.g. HD lays minimal out as compact.
   final UiDisplaySize? uiSize;
@@ -406,7 +411,6 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   static const double _gridRunSpacing = 2;
   static const double _gridToggleExtent = 24;
   static const double _gridToggleMaxOverhang = 8;
-  static const int _gridWideColumns = 2;
 
   static bool _isWideGridItem(String id) =>
       id == headerSenkaId ||
@@ -430,23 +434,50 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     }
   }
 
-  // 宽项和普通资源各自按列数分行，换类时另起一行，这样两类项都保持用户排的顺序，
-  // 列也能上下对齐。
-  static List<List<String>> _gridRows(List<String> ids, int columns) {
+  // 宽项和普通资源分组成行，换类时另起一行，两类项都保持用户排的顺序。宽项按
+  // 自然宽度贪心装行（各行可用宽度因圆角内缩而不同）；普通资源按列数分行，列能
+  // 上下对齐。
+  static List<List<String>> _gridRows(
+    List<String> ids,
+    int columns, {
+    required double Function(int row) rowWidth,
+    required double Function(String id) naturalWidth,
+  }) {
     final rows = <List<String>>[];
     var row = <String>[];
+    var used = 0.0;
     for (final id in ids) {
       final wide = _isWideGridItem(id);
       if (row.isNotEmpty &&
           (_isWideGridItem(row.first) != wide ||
-              row.length == (wide ? _gridWideColumns : columns))) {
+              (wide
+                  ? used + _gridSpacing + naturalWidth(id) >
+                        rowWidth(rows.length)
+                  : row.length == columns))) {
         rows.add(row);
         row = <String>[];
+      }
+      if (wide) {
+        used = (row.isEmpty ? 0 : used + _gridSpacing) + naturalWidth(id);
       }
       row.add(id);
     }
     if (row.isNotEmpty) rows.add(row);
     return rows;
+  }
+
+  /// 网格项内容不缩放时需要的宽度。
+  double _gridNaturalWidth(
+    BuildContext context,
+    String id, {
+    required HeaderUiSize uiSize,
+  }) {
+    if (id == headerFrameRefreshId) {
+      return _HeaderFrameRefreshPill(uiSize: uiSize).gridNaturalWidth(context);
+    }
+    final wide = _buildGridWideItem(id);
+    assert(wide != null, 'no grid natural width for $id');
+    return wide?.naturalWidth(context) ?? 0;
   }
 
   Widget _buildGrid(
@@ -457,58 +488,103 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   }) {
     final columns = widget.gridColumns < 1 ? 1 : widget.gridColumns;
     final collapsed = _gridCollapsed(controller);
-    final List<List<String>> rows;
-    if (collapsed) {
-      final plain = ids.where((id) => !_isWideGridItem(id)).take(columns);
-      rows = [if (plain.isNotEmpty) plain.toList()];
-    } else {
-      rows = _gridRows(ids, columns);
-    }
-    // 折叠按钮压在末行右端，向右伸进内边距（至多 8）以少占末格；点击框必须留在
-    // Stack 内才能被点到，所以伸出量受右内边距限制。
     final padding = widget.gridPadding;
-    final toggleOverhang = math.min(_gridToggleMaxOverhang, padding.right);
-    final toggleReserve = _gridToggleExtent - toggleOverhang;
-    return Stack(
-      key: const Key('information-panel-resources'),
-      children: [
-        Padding(
-          padding: padding,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              Widget buildRow(List<String> row, {required bool last}) {
-                final perRow = _isWideGridItem(row.first)
-                    ? _gridWideColumns
-                    : columns;
-                final cellWidth =
-                    ((width - _gridSpacing * (perRow - 1)) / perRow).clamp(
-                      0.0,
-                      double.infinity,
-                    );
-                // 末行没排满时按钮落在空位里，排满了才让末格让出按钮的位置。
-                final reserve = last && row.length == perRow
-                    ? toggleReserve
-                    : 0.0;
-                return Row(
-                  children: [
-                    for (var i = 0; i < row.length; i++) ...[
-                      if (i > 0) const SizedBox(width: _gridSpacing),
-                      _buildInteractiveItem(
-                        row[i],
-                        controller: controller,
-                        l10n: l10n,
-                        uiSize: uiSize,
-                        width: i == row.length - 1
-                            ? (cellWidth - reserve).clamp(0.0, double.infinity)
-                            : cellWidth,
-                      ),
-                    ],
-                  ],
-                );
-              }
+    final radii = widget.gridCornerRadii;
+    // 极简游戏页没有顶栏，网格顶边就是屏幕顶边。圆弧在每行图标顶线处的切入量各
+    // 不相同：大圆角下首行要让得比 45° 的固定量多，后几行则几乎不必让。
+    ({double left, double right}) cornerInsets(int row) {
+      final iconTop =
+          padding.top +
+          row * (_headerGridItemHeight + _gridRunSpacing) +
+          (_headerGridItemHeight - _headerGridIconSize) / 2;
+      return (
+        left: cornerInsetAt(radii.left, iconTop),
+        right: cornerInsetAt(radii.right, iconTop),
+      );
+    }
 
-              return _HeaderGridScope(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = math.max(0.0, constraints.maxWidth - padding.horizontal);
+        double rowWidth(int row) {
+          final insets = cornerInsets(row);
+          return math.max(0.0, width - insets.left - insets.right);
+        }
+
+        final naturalWidths = <String, double>{};
+        double naturalWidth(String id) => naturalWidths[id] ??=
+            _gridNaturalWidth(context, id, uiSize: uiSize);
+
+        final List<List<String>> rows;
+        if (collapsed) {
+          final plain = ids.where((id) => !_isWideGridItem(id)).take(columns);
+          rows = [if (plain.isNotEmpty) plain.toList()];
+        } else {
+          rows = _gridRows(
+            ids,
+            columns,
+            rowWidth: rowWidth,
+            naturalWidth: naturalWidth,
+          );
+        }
+        // 折叠按钮压在末行右端，向右伸进留白（至多 8）以少占末格；点击框必须留
+        // 在 Stack 内才能被点到，所以伸出量受末行右侧留白限制。
+        final toggleRight =
+            padding.right + cornerInsets(math.max(0, rows.length - 1)).right;
+        final toggleOverhang = math.min(_gridToggleMaxOverhang, toggleRight);
+        final toggleReserve = _gridToggleExtent - toggleOverhang;
+
+        Widget buildRow(int index) {
+          final row = rows[index];
+          final last = index == rows.length - 1;
+          final available = rowWidth(index);
+          final List<double> cellWidths;
+          if (_isWideGridItem(row.first)) {
+            // 余量平分给各格让行仍满宽；宽项行总是满的，是末行时要给按钮让位。
+            final natural = [for (final id in row) naturalWidth(id)];
+            final used =
+                natural.fold(0.0, (sum, w) => sum + w) +
+                _gridSpacing * (row.length - 1);
+            final extra =
+                (available - (last ? toggleReserve : 0) - used) / row.length;
+            cellWidths = [for (final w in natural) math.max(0.0, w + extra)];
+          } else {
+            final cell = math.max(
+              0.0,
+              (available - _gridSpacing * (columns - 1)) / columns,
+            );
+            // 末行没排满时按钮落在空位里，排满了才让末格让出按钮的位置。
+            final reserve = last && row.length == columns ? toggleReserve : 0.0;
+            cellWidths = [
+              for (var i = 0; i < row.length; i++)
+                i == row.length - 1 ? math.max(0.0, cell - reserve) : cell,
+            ];
+          }
+          return Padding(
+            padding: EdgeInsets.only(left: cornerInsets(index).left),
+            child: Row(
+              children: [
+                for (var i = 0; i < row.length; i++) ...[
+                  if (i > 0) const SizedBox(width: _gridSpacing),
+                  _buildInteractiveItem(
+                    row[i],
+                    controller: controller,
+                    l10n: l10n,
+                    uiSize: uiSize,
+                    width: cellWidths[i],
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+
+        return Stack(
+          key: const Key('information-panel-resources'),
+          children: [
+            Padding(
+              padding: padding,
+              child: _HeaderGridScope(
                 child: SizedBox(
                   width: width,
                   child: Column(
@@ -517,26 +593,26 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                     children: [
                       for (var i = 0; i < rows.length; i++) ...[
                         if (i > 0) const SizedBox(height: _gridRunSpacing),
-                        buildRow(rows[i], last: i == rows.length - 1),
+                        buildRow(i),
                       ],
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-        ),
-        Positioned(
-          right: padding.right - toggleOverhang,
-          bottom: padding.bottom,
-          child: _buildGridToggle(
-            controller,
-            collapsed: collapsed,
-            l10n: l10n,
-            iconInset: toggleOverhang,
-          ),
-        ),
-      ],
+              ),
+            ),
+            Positioned(
+              right: toggleRight - toggleOverhang,
+              bottom: padding.bottom,
+              child: _buildGridToggle(
+                controller,
+                collapsed: collapsed,
+                l10n: l10n,
+                iconInset: toggleOverhang,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -643,7 +719,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     );
   }
 
-  Widget? _buildGridWideItem(String id) {
+  _HeaderGridValue? _buildGridWideItem(String id) {
     const dim = Color(0xff9fb3bf);
     const bright = Color(0xffdce6eb);
     switch (id) {
@@ -661,7 +737,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
           key: const Key('header-anchorage-timer-summary'),
           icon: Icons.anchor,
           label: fleetText(context, '泊地修理计时'),
-          value: elapsed,
+          value: _gridTimerText(elapsed),
           color: elapsed == '--:--:--' ? dim : bright,
         );
       case headerNosakiTimerId:
@@ -670,7 +746,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
           key: const Key('header-nosaki-timer-summary'),
           icon: Icons.auto_awesome,
           label: fleetText(context, '野埼刷闪计时'),
-          value: elapsed,
+          value: _gridTimerText(elapsed),
           color: elapsed == '--:--:--' ? dim : bright,
         );
       case headerShipCapacityId || headerEquipmentCapacityId:
@@ -690,6 +766,10 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     }
     return null;
   }
+
+  // 空闲时网格只留短横线，省下的宽度让别的宽项能挤进同一行。
+  static String _gridTimerText(String elapsed) =>
+      elapsed == '--:--:--' ? '--' : elapsed;
 
   Widget _buildDisplayItem(
     String id, {
@@ -997,6 +1077,28 @@ double _headerFontSize(BuildContext context, double stripSize) =>
 // 网格没有胶囊边框要包住，行高贴着 11 号字收紧，省下信息栏的纵向空间。
 const double _headerGridItemHeight = 20;
 
+const double _headerGridIconSize = 12;
+
+double _headerTextWidth(BuildContext context, String text, TextStyle style) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: text,
+      style: DefaultTextStyle.of(context).style.merge(style),
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    locale: Localizations.maybeLocaleOf(context),
+    maxLines: 1,
+  )..layout();
+  final width = painter.width;
+  painter.dispose();
+  return width;
+}
+
+// 向上取整再留 1dp，免得测量与实际排版的小数差让数值在格子边上缩放抖动。
+double _headerGridNaturalWidth(double contentWidth) =>
+    contentWidth.ceilToDouble() + 1;
+
 double _headerStripItemHeight(bool isCompact) => isCompact ? 26 : 30;
 
 double _headerItemHeight(BuildContext context, bool isCompact) =>
@@ -1020,28 +1122,36 @@ class _HeaderGridValue extends StatelessWidget {
   final String value;
   final Color color;
 
+  static const double _iconGap = 3;
+
+  TextStyle get _style => TextStyle(
+    color: color,
+    fontSize: _headerGridFontSize,
+    fontWeight: FontWeight.w700,
+    fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+  );
+
+  double naturalWidth(BuildContext context) => _headerGridNaturalWidth(
+    _headerGridIconSize + _iconGap + _headerTextWidth(context, value, _style),
+  );
+
   @override
   Widget build(BuildContext context) => SizedBox(
     height: _headerGridItemHeight,
     child: Row(
       children: [
-        Icon(icon, size: 12, color: color, semanticLabel: label),
-        const SizedBox(width: 3),
+        Icon(
+          icon,
+          size: _headerGridIconSize,
+          color: color,
+          semanticLabel: label,
+        ),
+        const SizedBox(width: _iconGap),
         Expanded(
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                color: color,
-                fontSize: _headerGridFontSize,
-                fontWeight: FontWeight.w700,
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-              ),
-            ),
+            child: Text(value, maxLines: 1, softWrap: false, style: _style),
           ),
         ),
       ],
@@ -1064,37 +1174,52 @@ class _HeaderFrameRefreshPill extends StatelessWidget {
 
   final HeaderUiSize uiSize;
 
+  bool get _isCompact => uiSize.isCompactOrSmaller;
+  double get _horizontalPadding => _isCompact ? 6 : 8;
+  double get _iconSize => _isCompact ? 15 : 17;
+  double get _iconGap => _isCompact ? 3 : 4;
+
+  static String _label(BuildContext context) =>
+      (AppLocalizations.of(context) ??
+              lookupAppLocalizations(const Locale('zh')))
+          .frameRefreshShortcutLabel;
+
+  static TextStyle _style(double fontSize) => TextStyle(
+    color: const Color(0xffdce6eb),
+    fontSize: fontSize,
+    fontWeight: FontWeight.w700,
+  );
+
+  double gridNaturalWidth(BuildContext context) => _headerGridNaturalWidth(
+    _horizontalPadding * 2 +
+        _iconSize +
+        _iconGap +
+        _headerTextWidth(context, _label(context), _style(_headerGridFontSize)),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final isCompact = uiSize.isCompactOrSmaller;
-    final l10n =
-        AppLocalizations.of(context) ??
-        lookupAppLocalizations(const Locale('zh'));
     return Container(
       key: const Key('header-frame-refresh'),
-      height: _headerItemHeight(context, isCompact),
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
+      height: _headerItemHeight(context, _isCompact),
+      padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
       decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.refresh_rounded,
-            size: isCompact ? 15 : 17,
+            size: _iconSize,
             color: const Color(0xffd4a85f),
           ),
-          SizedBox(width: isCompact ? 3 : 4),
+          SizedBox(width: _iconGap),
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                l10n.frameRefreshShortcutLabel,
+                _label(context),
                 maxLines: 1,
-                style: TextStyle(
-                  color: const Color(0xffdce6eb),
-                  fontSize: _headerFontSize(context, isCompact ? 11 : 12),
-                  fontWeight: FontWeight.w700,
-                ),
+                style: _style(_headerFontSize(context, _isCompact ? 11 : 12)),
               ),
             ),
           ),
