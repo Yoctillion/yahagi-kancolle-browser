@@ -243,6 +243,7 @@ class LandBaseAirGroupRow extends StatelessWidget {
         state: state,
         base: base,
         visible: visible,
+        damagePulseMode: damagePulseMode,
         keySuffix: _keySuffix,
       );
     }
@@ -765,12 +766,14 @@ class _FlatLandBaseRow extends StatelessWidget {
     required this.state,
     required this.base,
     required this.visible,
+    required this.damagePulseMode,
     required this.keySuffix,
   });
 
   final GameState state;
   final LandBaseState base;
   final Set<String> visible;
+  final DamagePulseFilter damagePulseMode;
   final String keySuffix;
 
   @override
@@ -836,19 +839,21 @@ class _FlatLandBaseRow extends StatelessWidget {
               alignment: Alignment.centerLeft,
               widthFactor: 0.6,
               child: LayoutBuilder(
-                // 渐变起点 alpha 0.5，同一层里完成半透明与左→右渐隐。
-                builder: (context, box) => ShaderMask(
-                  blendMode: BlendMode.dstIn,
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: <Color>[Color(0x80000000), Color(0x00000000)],
-                  ).createShader(bounds),
-                  child: SlotItemPortrait(
-                    item: _portraitMaster(state, base),
-                    serverOrigin: state.serverOrigin,
-                    width: box.maxWidth,
-                    height: box.maxHeight,
-                  ),
-                ),
+                builder: (context, box) {
+                  // 渐变起点 alpha 0.5，同一层里完成半透明与左→右渐隐。
+                  return ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: <Color>[Color(0x80000000), Color(0x00000000)],
+                    ).createShader(bounds),
+                    child: SlotItemPortrait(
+                      item: _portraitMaster(state, base),
+                      serverOrigin: state.serverOrigin,
+                      width: box.maxWidth,
+                      height: box.maxHeight,
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -902,6 +907,32 @@ class _FlatLandBaseRow extends StatelessWidget {
         ? 0.0
         : (currentHp / maximumHp).clamp(0.0, 1.0);
     final zeroHp = currentHp <= 0;
+    final barColor = shipHpBarColor(hpRatio, isZeroHp: zeroHp);
+    final value = Text(
+      '$currentHp/$maximumHp',
+      style: TextStyle(
+        color: shipHpValueColor(hpRatio, isZeroHp: zeroHp),
+        fontSize: flatRowFontSize,
+        fontWeight: FontWeight.w800,
+        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+        shadows: shadows,
+      ),
+    );
+    final meter = ClipRRect(
+      key: Key('land-base-hp-meter-$keySuffix'),
+      borderRadius: BorderRadius.circular(1.5),
+      child: Container(
+        width: 20,
+        height: 3,
+        color: const Color(0xff294052),
+        alignment: Alignment.centerLeft,
+        child: FractionallySizedBox(
+          widthFactor: hpRatio,
+          heightFactor: 1,
+          child: ColoredBox(color: barColor),
+        ),
+      ),
+    );
     return Row(
       key: Key('land-base-hp-value-$keySuffix'),
       mainAxisSize: MainAxisSize.min,
@@ -913,37 +944,43 @@ class _FlatLandBaseRow extends StatelessWidget {
           size: 10,
         ),
         const SizedBox(width: 2),
-        Text(
-          '$currentHp/$maximumHp',
-          style: TextStyle(
-            color: shipHpValueColor(hpRatio, isZeroHp: zeroHp),
-            fontSize: flatRowFontSize,
-            fontWeight: FontWeight.w800,
-            fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-            shadows: shadows,
-          ),
-        ),
+        // 受损脉冲挂在血条上；血条关掉时退而挂在数值上，免得极简档丢掉受损提示。
         if (visible.contains('bars')) ...[
+          value,
           const SizedBox(width: 3),
-          ClipRRect(
-            key: Key('land-base-hp-meter-$keySuffix'),
-            borderRadius: BorderRadius.circular(1.5),
-            child: Container(
-              width: 20,
-              height: 3,
-              color: const Color(0xff294052),
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: hpRatio,
-                heightFactor: 1,
-                child: ColoredBox(
-                  color: shipHpBarColor(hpRatio, isZeroHp: zeroHp),
-                ),
-              ),
-            ),
-          ),
-        ],
+          _damagePulse(currentHp, maximumHp, barColor, meter),
+        ] else
+          _damagePulse(currentHp, maximumHp, barColor, value),
       ],
+    );
+  }
+
+  Widget _damagePulse(
+    int currentHp,
+    int maximumHp,
+    Color barColor,
+    Widget child,
+  ) {
+    if (damagePulseMode == DamagePulseFilter.off) return child;
+    return DamagePulseBuilder(
+      currentHp: currentHp,
+      maxHp: maximumHp,
+      filter: damagePulseMode,
+      normalColor: barColor,
+      builder: (context, spec, phase) => spec.pulses
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(1.5),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: spec.color.withValues(alpha: 0.3 + 0.5 * phase),
+                    blurRadius: 2 + 3 * phase,
+                  ),
+                ],
+              ),
+              child: child,
+            )
+          : child,
     );
   }
 }

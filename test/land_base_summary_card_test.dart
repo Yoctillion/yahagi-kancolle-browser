@@ -2,6 +2,7 @@ import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_empty_text.dart';
 import 'package:yahagi_kancolle_browser/src/layout/hd_bottom_strip.dart';
+import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 import 'package:flutter/material.dart';
@@ -612,13 +613,23 @@ void main() {
 
     expect(tester.takeException(), isNull);
     final row = find.byKey(const Key('land-base-row-62-1'));
+    // 受损脉冲的辉光不是底色块，单独排除。
+    final pulseGlows = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(DamagePulseBuilder),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .toSet();
     final filled = tester
         .widgetList<DecoratedBox>(
           find.descendant(of: row, matching: find.byType(DecoratedBox)),
         )
         .where((box) {
           final decoration = box.decoration;
-          return decoration is BoxDecoration &&
+          return !pulseGlows.contains(box) &&
+              decoration is BoxDecoration &&
               decoration.shape == BoxShape.rectangle &&
               (decoration.color != null ||
                   decoration.borderRadius != null ||
@@ -775,6 +786,47 @@ void main() {
     expect(find.byKey(const Key('land-base-hp-meter-62-1')), findsNothing);
   });
 
+  testWidgets('flat 下受损脉冲跟随 damagePulseMode', (tester) async {
+    final base = _base(currentHp: 40, conditions: const <int>[1, 1, 1, 1]);
+    final hpValue = find.byKey(const Key('land-base-hp-value-62-1'));
+    final pulse = find.descendant(
+      of: hpValue,
+      matching: find.byType(DamagePulseBuilder),
+    );
+    final glow = find.descendant(
+      of: hpValue,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is DecoratedBox &&
+            (widget.decoration as BoxDecoration).boxShadow != null,
+      ),
+    );
+    for (final visible in const <Set<String>>[
+      <String>{'bars', 'airPower', 'range'},
+      <String>{'airPower', 'range'},
+    ]) {
+      await tester.pumpWidget(
+        _flatRow(base: base, width: 200, visible: visible),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      expect(pulse, findsOneWidget, reason: '$visible');
+      expect(glow, findsOneWidget, reason: '$visible');
+
+      await tester.pumpWidget(
+        _flatRow(
+          base: base,
+          width: 200,
+          visible: visible,
+          damagePulseMode: DamagePulseFilter.off,
+        ),
+      );
+      expect(hpValue, findsOneWidget);
+      expect(pulse, findsNothing, reason: '$visible');
+      expect(glow, findsNothing, reason: '$visible');
+    }
+  });
+
   testWidgets('flat 下熟练度、疲劳下划线与未满搭载数', (tester) async {
     final base = _base(
       currentHp: 200,
@@ -860,6 +912,7 @@ Widget _flatRow({
   required double width,
   Set<String> visible = const <String>{'portrait', 'bars', 'airPower', 'range'},
   TextScaler textScaler = TextScaler.noScaling,
+  DamagePulseFilter damagePulseMode = DamagePulseFilter.all,
 }) => MaterialApp(
   theme: ThemeData(fontFamily: _appFont),
   builder: (context, child) => MediaQuery(
@@ -877,6 +930,7 @@ Widget _flatRow({
             state: state ?? _state(base),
             base: base,
             visible: visible,
+            damagePulseMode: damagePulseMode,
           ),
         ),
       ),
