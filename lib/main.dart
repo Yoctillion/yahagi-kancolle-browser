@@ -1509,6 +1509,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
   int _workspaceIndex = 0;
   bool _gameFullscreen = false;
   Size? _normalWorkspaceSize;
+  bool _gameWorkspaceSizeFrozen = false;
   int? _expeditionCheckFleetId;
   int? _fleetCenterInitialFleetId;
   int? _repairCenterInitialFleetId;
@@ -1735,11 +1736,15 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     _applyOrientationPolicy();
     if (mounted) {
       setState(() {});
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        widget.browserController.fitGameScreen().catchError((Object _) {});
-      });
+      _fitGameScreenAfterFrame();
     }
+  }
+
+  void _fitGameScreenAfterFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.browserController.fitGameScreen().catchError((Object _) {});
+    });
   }
 
   void _applyOrientationPolicy() {
@@ -1911,11 +1916,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
   void _setGameFullscreen(bool fullscreen) {
     if (_gameFullscreen == fullscreen) return;
     setState(() => _gameFullscreen = fullscreen);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        widget.browserController.fitGameScreen().catchError((Object _) {});
-      }
-    });
+    _fitGameScreenAfterFrame();
   }
 
   Future<void> _refreshGameFrameFromHeader() async {
@@ -1959,20 +1960,28 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       widget.layoutSettingsController.uiDisplaySize,
       hd: hd,
     );
-    // A bottom horizontal navigation bar sits between the content and the
-    // screen edge, so only the nav bar needs to clear the gesture area then.
+    final flatPanel = usesFlatPanel(size: uiSize, hd: hd);
+    final bottomSafeArea = MediaQuery.viewPaddingOf(context).bottom;
+    // A horizontal bar on the bottom screen edge sits between the content and
+    // the gesture area, so in the flat layout the bar clears the gesture area
+    // itself and the content above it does not.
+    final navigationGestureInset = flatPanel && menuHorizontal
+        ? bottomSafeArea
+        : 0.0;
     final contentTouchesBottom = !(menuHorizontal && !menuTop);
     // Decided from the window rather than the workspace so the header and the
     // panel resources always agree on who shows the resources.
-    final minimalShell = usesMinimalGameShell(
+    final minimalGameLayout = usesMinimalGameShell(
       size: uiSize,
-      workspaceIndex: _workspaceIndex,
+      workspaceIndex: 0,
       isLandscape: !usesVerticalWorkspace(windowSize, screenDisplayMode),
       hd: hd,
     );
+    final minimalShell = minimalGameLayout && _workspaceIndex == 0;
 
     Widget buildWorkspaceNavigation(
       int completedCount, {
+      required bool atScreenBottom,
       bool leftAtEdge = true,
       bool rightAtEdge = true,
     }) => WorkspaceNavigation(
@@ -1989,16 +1998,18 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
               onTap: _openBrowserMenu,
             )
           : null,
-      endInsets: minimalShell
-          ? minimalNavigationInsets(
-              corners: DisplayCorners.of(context),
-              bottomSafeArea: MediaQuery.viewPaddingOf(context).bottom,
-              horizontal: menuHorizontal,
-              onRight: menuOnRight,
-              leftAtEdge: leftAtEdge,
-              rightAtEdge: rightAtEdge,
-            )
-          : EdgeInsets.zero,
+      endInsets:
+          (minimalShell
+              ? minimalNavigationInsets(
+                  corners: DisplayCorners.of(context),
+                  bottomSafeArea: bottomSafeArea,
+                  horizontal: menuHorizontal,
+                  onRight: menuOnRight,
+                  leftAtEdge: leftAtEdge,
+                  rightAtEdge: rightAtEdge,
+                )
+              : EdgeInsets.zero) +
+          EdgeInsets.only(bottom: atScreenBottom ? navigationGestureInset : 0),
     );
 
     Widget buildHeaderToolbar() => AnimatedBuilder(
@@ -2039,7 +2050,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
 
     final logbookMenuExtent = workspaceNavigationExtent(uiSize);
     final logbookOccupiedInsets = menuHorizontal
-        ? EdgeInsets.only(bottom: menuTop ? 0 : logbookMenuExtent)
+        ? EdgeInsets.only(
+            bottom: menuTop ? 0 : logbookMenuExtent + navigationGestureInset,
+          )
         : menuOnRight
         ? EdgeInsets.only(right: logbookMenuExtent)
         : EdgeInsets.only(left: logbookMenuExtent);
@@ -2447,7 +2460,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               visible: !_gameFullscreen,
                               maintainState: true,
                               maintainFocusability: true,
-                              child: buildWorkspaceNavigation(completedCount),
+                              child: buildWorkspaceNavigation(
+                                completedCount,
+                                atScreenBottom: !menuTop,
+                              ),
                             ),
                           Expanded(
                             key: const Key('workspace-content-expanded'),
@@ -2463,9 +2479,24 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                       child: LayoutBuilder(
                                         key: const Key('game-workspace'),
                                         builder: (context, actualConstraints) {
-                                          if (!_gameFullscreen) {
-                                            _normalWorkspaceSize =
+                                          // The header and navigation around
+                                          // this offstage subtree may differ
+                                          // on other workspaces; freeze it so
+                                          // the native surface keeps the
+                                          // bounds the game was fitted to.
+                                          if (_workspaceIndex != 0) {
+                                            _gameWorkspaceSizeFrozen = true;
+                                          } else if (!_gameFullscreen) {
+                                            final size =
                                                 actualConstraints.biggest;
+                                            // A window change while frozen was
+                                            // refitted against the old size.
+                                            if (_gameWorkspaceSizeFrozen &&
+                                                size != _normalWorkspaceSize) {
+                                              _fitGameScreenAfterFrame();
+                                            }
+                                            _gameWorkspaceSizeFrozen = false;
+                                            _normalWorkspaceSize = size;
                                           }
                                           final constraints =
                                               BoxConstraints.tight(
@@ -2498,6 +2529,16 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                               );
                                           final gameFlex =
                                               (gameAreaRatio * 1000).round();
+                                          // Only a side rail leaves the game
+                                          // column on the bottom screen edge;
+                                          // a stacked workspace puts the
+                                          // panel there. Not tied to the
+                                          // workspace index so the rect holds
+                                          // while the game is offstage.
+                                          final gameTouchesBottom =
+                                              minimalGameLayout &&
+                                              isLandscape &&
+                                              !menuHorizontal;
                                           final portraitGamePanelExtra =
                                               portraitGamePanelExtraExtent(
                                                 displayMode: widget
@@ -2517,8 +2558,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                     menuHorizontal &&
                                                     !_gameFullscreen,
                                                 centerAboveBottomInset:
-                                                    minimalShell &&
-                                                    contentTouchesBottom,
+                                                    gameTouchesBottom,
                                                 child: GameSurfaceBoundary(
                                                   child: widget.gameSurface,
                                                 ),
@@ -2549,14 +2589,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                             hdPortrait: hdPortrait,
                                             singleModule: module,
                                             bottomSafeArea:
-                                                usesFlatPanel(
-                                                      size: uiSize,
-                                                      hd: hd,
-                                                    ) &&
+                                                flatPanel &&
                                                     contentTouchesBottom
-                                                ? MediaQuery.viewPaddingOf(
-                                                    context,
-                                                  ).bottom
+                                                ? bottomSafeArea
                                                 : 0,
                                             excludedModules:
                                                 hdGeometry != null &&
@@ -2677,8 +2712,14 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                           final menuNavigationExtent =
                                               workspaceNavigationExtent(uiSize);
 
+                                          // In landscape the "top" bar is laid
+                                          // out under the game column, on the
+                                          // bottom screen edge.
                                           final topMenuExtent = menuTop
-                                              ? menuNavigationExtent
+                                              ? menuNavigationExtent +
+                                                    (isLandscape
+                                                        ? navigationGestureInset
+                                                        : 0)
                                               : 0.0;
                                           final extensionAboveGame = widget
                                               .layoutSettingsController
@@ -2926,7 +2967,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                                   .maxWidth)
                                                       : menuNavigationExtent,
                                                   height: menuHorizontal
-                                                      ? menuNavigationExtent
+                                                      ? topMenuExtent
                                                       : math.max(
                                                           0.0,
                                                           constraints
@@ -2937,6 +2978,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                   child:
                                                       buildWorkspaceNavigation(
                                                         completedCount,
+                                                        atScreenBottom:
+                                                            menuHorizontal &&
+                                                            isLandscape,
                                                         leftAtEdge: !infoOnLeft,
                                                         rightAtEdge: infoOnLeft,
                                                       ),
@@ -3232,6 +3276,7 @@ class WorkspaceNavigation extends StatelessWidget {
   final Widget? leading;
 
   /// Room left at both ends for screen corners and the bottom system inset.
+  /// Insets across the bar's thickness add to it instead of squeezing items.
   final EdgeInsets endInsets;
 
   @override
@@ -3245,8 +3290,12 @@ class WorkspaceNavigation extends StatelessWidget {
       now: clock,
       enabled: gameStateController != null,
       builder: (context, now, _) => Container(
-        width: controller.workspaceMenuHorizontal ? null : menuExtent,
-        height: controller.workspaceMenuHorizontal ? menuExtent : null,
+        width: controller.workspaceMenuHorizontal
+            ? null
+            : menuExtent + endInsets.horizontal,
+        height: controller.workspaceMenuHorizontal
+            ? menuExtent + endInsets.vertical
+            : null,
         decoration: BoxDecoration(
           color: const Color(0xff0a1823),
           border: controller.workspaceMenuHorizontal
@@ -3979,9 +4028,12 @@ class _InformationPanelState extends State<_InformationPanel> {
                   widget.singleModule == null && !widget.hdPortrait && !flat
                   ? const EdgeInsets.only(bottom: 6)
                   : EdgeInsets.zero,
-              child: flat
-                  ? PanelStyleScope(style: PanelStyle.flat, child: child)
-                  : child,
+              // Always wrapped: toggling the wrapper would change the cards'
+              // parent type and reset their selection state.
+              child: PanelStyleScope(
+                style: flat ? PanelStyle.flat : PanelStyle.card,
+                child: child,
+              ),
             );
 
             return KeyedSubtree(key: ValueKey(id), child: finalChild);

@@ -21,7 +21,7 @@ UiDisplaySize effectiveUiDisplaySize(UiDisplaySize size, {required bool hd}) =>
 
 /// 极简游戏页没有顶栏，导航栏两端直接贴到屏幕角。横屏下横向导航栏总在底部
 /// （「上方」位置也是排在游戏列下面），所以只看底部两角；它的两端是左右，
-/// 与手势条无关，不让底部安全区。
+/// 这里不含手势条，贴底横栏的底部安全区由调用方按栏的位置另加。
 EdgeInsets minimalNavigationInsets({
   required CornerRadii corners,
   required double bottomSafeArea,

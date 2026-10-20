@@ -13,9 +13,9 @@ import 'package:yahagi_kancolle_browser/src/audio/game_audio_store.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_channel.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_store.dart';
+import 'package:yahagi_kancolle_browser/src/settings/header_resource_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
-import 'package:yahagi_kancolle_browser/src/settings/workspace_menu_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_store.dart';
 import 'package:yahagi_kancolle_browser/src/settings/display_mode_controller.dart';
@@ -28,6 +28,7 @@ import 'package:yahagi_kancolle_browser/src/senka/senka_page.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_state.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_store.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_browser_controller.dart';
+import 'package:yahagi_kancolle_browser/src/browser/game_surface_viewport.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_workspace_visibility.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_toolbar_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/game_toolbar_display_controller.dart';
@@ -53,7 +54,6 @@ import 'package:yahagi_kancolle_browser/src/toolbox/toolbox_page.dart';
 import 'package:yahagi_kancolle_browser/src/development/equipment_development_page.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_completion_feedback.dart';
-import 'package:yahagi_kancolle_browser/src/settings/ui_display_size.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_completion_drawer.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -64,6 +64,8 @@ Future<LayoutSettingsController> _pumpMinimalShell(
   Size size = _phoneLandscape,
   UiDisplaySize uiSize = UiDisplaySize.minimal,
   Widget? gameSurface,
+  _NoopBrowserPort? browserPort,
+  GameStateController? gameState,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -73,7 +75,7 @@ Future<LayoutSettingsController> _pumpMinimalShell(
     _MemoryLayoutSettingsStore(),
   );
   await layout.setUiDisplaySize(uiSize);
-  final gameStateController = GameStateController();
+  final gameStateController = gameState ?? GameStateController();
   addTearDown(gameStateController.dispose);
   await tester.pumpWidget(
     YahagiApp(
@@ -92,7 +94,9 @@ Future<LayoutSettingsController> _pumpMinimalShell(
         MemoryDisplayModeStore(),
       ),
       controller: PrototypeStatusController(),
-      browserController: GameBrowserController(port: _NoopBrowserPort()),
+      browserController: GameBrowserController(
+        port: browserPort ?? _NoopBrowserPort(),
+      ),
       captureModeController: await CaptureModeController.load(
         _MemoryModeStore(),
       ),
@@ -2722,6 +2726,210 @@ void main() {
       expect(drawer, findsNothing);
       expect(resources, findsOneWidget);
       expect(resourcesOpacity(), 1);
+    });
+
+    const surfaceProbe = Key('minimal-game-surface-probe');
+    Size surfaceSize(WidgetTester tester) =>
+        tester.getSize(find.byKey(surfaceProbe, skipOffstage: false));
+
+    testWidgets('minimal keeps the game size while another workspace shows', (
+      tester,
+    ) async {
+      tester.view.viewPadding = const FakeViewPadding(bottom: 20);
+      tester.view.padding = const FakeViewPadding(bottom: 20);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      final layout = await _pumpMinimalShell(
+        tester,
+        gameSurface: const ColoredBox(key: surfaceProbe, color: Colors.black),
+      );
+      // 0.75 让游戏受高度限制，顶栏的 28dp 才会改变游戏尺寸。
+      await layout.setAutoZoom(false);
+      await layout.setGameAreaRatio(0.75);
+      await tester.pumpAndSettle();
+      final initial = surfaceSize(tester);
+
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      await tester.pumpAndSettle();
+      expect(_headerHeight(tester), 28);
+      expect(surfaceSize(tester), initial);
+
+      await tester.tap(find.byKey(const Key('workspace-nav-game')));
+      await tester.pumpAndSettle();
+      expect(_headerHeight(tester), 0);
+      expect(surfaceSize(tester), initial);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal refits the game when the window changed elsewhere', (
+      tester,
+    ) async {
+      final browserPort = _NoopBrowserPort();
+      final layout = await _pumpMinimalShell(
+        tester,
+        browserPort: browserPort,
+        gameSurface: const ColoredBox(key: surfaceProbe, color: Colors.black),
+      );
+      await layout.setAutoZoom(false);
+      await layout.setGameAreaRatio(0.75);
+      await tester.pumpAndSettle();
+      final initial = surfaceSize(tester);
+
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      await tester.pumpAndSettle();
+      tester.view.physicalSize = const Size(915, 412);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(surfaceSize(tester), initial);
+      final fitCalls = browserPort.fitGameScreenCalls;
+
+      await tester.tap(find.byKey(const Key('workspace-nav-game')));
+      await tester.pumpAndSettle();
+      expect(surfaceSize(tester), isNot(initial));
+      expect(browserPort.fitGameScreenCalls, greaterThan(fitCalls));
+      expect(tester.takeException(), isNull);
+    });
+
+    GameSurfaceViewport viewport(WidgetTester tester) =>
+        tester.widget<GameSurfaceViewport>(
+          find.byType(GameSurfaceViewport, skipOffstage: false),
+        );
+
+    testWidgets('minimal game reserves the bottom inset only above it', (
+      tester,
+    ) async {
+      tester.view.viewPadding = const FakeViewPadding(bottom: 20);
+      tester.view.padding = const FakeViewPadding(bottom: 20);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      final layout = await _pumpMinimalShell(tester);
+      expect(viewport(tester).centerAboveBottomInset, isTrue);
+
+      // 横屏下「上方」导航栏排在游戏列下面，游戏不贴屏幕底边。
+      await layout.setWorkspaceMenuPosition('top');
+      await tester.pumpAndSettle();
+      expect(viewport(tester).centerAboveBottomInset, isFalse);
+
+      await layout.setWorkspaceMenuPosition('bottom');
+      await tester.pumpAndSettle();
+      expect(viewport(tester).centerAboveBottomInset, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal near-square window stacks the game off the bottom', (
+      tester,
+    ) async {
+      tester.view.viewPadding = const FakeViewPadding(bottom: 20);
+      tester.view.padding = const FakeViewPadding(bottom: 20);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      // 窗口按横屏判定（去顶栏），扣掉侧栏后的工作区却是竖排，游戏在上方。
+      final layout = await _pumpMinimalShell(tester);
+      // 竖排工作区的信息栏只剩约 110 高，只留三行素材，避免资源区本身溢出。
+      for (final id in const [
+        headerSenkaId,
+        headerAnchorageTimerId,
+        headerNosakiTimerId,
+        headerShipCapacityId,
+        headerEquipmentCapacityId,
+      ]) {
+        await layout.toggleHeaderResourceVisible(id);
+      }
+      tester.view.physicalSize = const Size(770, 560);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(_headerHeight(tester), 0);
+
+      expect(viewport(tester).isLandscape, isFalse);
+      expect(viewport(tester).centerAboveBottomInset, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal bottom navigation clears the gesture area', (
+      tester,
+    ) async {
+      tester.view.viewPadding = const FakeViewPadding(bottom: 20);
+      tester.view.padding = const FakeViewPadding(bottom: 20);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      final layout = await _pumpMinimalShell(tester);
+      final screenHeight = _phoneLandscape.height;
+      final navItem = find.byKey(const Key('workspace-nav-fleet'));
+
+      for (final position in const ['bottom', 'top']) {
+        await layout.setWorkspaceMenuPosition(position);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getRect(navItem).bottom,
+          lessThanOrEqualTo(screenHeight - 20),
+          reason: position,
+        );
+        expect(tester.takeException(), isNull, reason: position);
+      }
+
+      await layout.setWorkspaceMenuPosition('bottom');
+      await tester.tap(navItem);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(navItem).bottom,
+        lessThanOrEqualTo(screenHeight - 20),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('compact bottom navigation keeps its height', (tester) async {
+      tester.view.viewPadding = const FakeViewPadding(bottom: 20);
+      tester.view.padding = const FakeViewPadding(bottom: 20);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      final layout = await _pumpMinimalShell(
+        tester,
+        uiSize: UiDisplaySize.compact,
+      );
+      await layout.setWorkspaceMenuPosition('bottom');
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .getSize(find.byKey(const Key('workspace-navigation-sidebar')))
+            .height,
+        41,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('switching compact and minimal keeps info card state', (
+      tester,
+    ) async {
+      final gameState = GameStateController(
+        reducer: _RepairNavigationReducer(),
+      );
+      gameState.accept(
+        CapturedApiEvent(
+          path: '/repair-navigation-test',
+          responseBody: '{}',
+          source: CaptureSource.manual,
+          capturedAt: DateTime.utc(2026, 8, 7),
+        ),
+      );
+      await gameState.idle;
+      final layout = await _pumpMinimalShell(
+        tester,
+        uiSize: UiDisplaySize.compact,
+        gameState: gameState,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('fleet-summary-selector-2')));
+      await tester.pumpAndSettle();
+      final card = find.byType(FleetSummaryCard);
+      final state = tester.state(card);
+
+      for (final size in [UiDisplaySize.minimal, UiDisplaySize.compact]) {
+        await layout.setUiDisplaySize(size);
+        await tester.pumpAndSettle();
+        expect(tester.state(card), same(state), reason: '$size');
+        expect(tester.takeException(), isNull);
+      }
     });
   });
 }
