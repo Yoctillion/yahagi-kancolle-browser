@@ -851,4 +851,44 @@ void main() {
     expect(tester.getSize(fuelPill).height, 26);
     expect(tester.getSize(fuelPill).width, 74);
   });
+
+  testWidgets('minimal resource items have no capsule border', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final controller = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: CompactResourceBar(
+            state: const GameState(),
+            settingsController: controller,
+          ),
+        ),
+      ),
+    );
+
+    final item = find.byKey(const Key('header-resource-material-1'));
+    expect(item, findsOneWidget);
+    expect(tester.getSize(item).width, 74);
+    final decorations = <Decoration?>[
+      for (final box in tester.widgetList<Container>(
+        find.descendant(of: item, matching: find.byType(Container)),
+      ))
+        box.decoration,
+      for (final box in tester.widgetList<DecoratedBox>(
+        find.descendant(of: item, matching: find.byType(DecoratedBox)),
+      ))
+        box.decoration,
+    ];
+    for (final decoration in decorations) {
+      expect(decoration is BoxDecoration ? decoration.border : null, isNull);
+      expect(decoration is BoxDecoration ? decoration.color : null, isNull);
+    }
+  });
 }

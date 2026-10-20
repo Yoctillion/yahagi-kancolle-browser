@@ -258,7 +258,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     final uiSize = controller?.uiDisplaySize ?? UiDisplaySize.normal;
     final isCompact = uiSize.isCompactOrSmaller;
     final barHeight = headerCapsuleHeight(uiSize);
-    final separatorWidth = isCompact ? 5.0 : 6.0;
+    final separatorWidth = isCompact && !uiSize.isMinimal ? 5.0 : 6.0;
 
     final order = controller?.headerResourceOrder ?? allHeaderResourceIds;
     final visible =
@@ -692,6 +692,16 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   }
 }
 
+// 极简档的顶栏要把空间让给数值，所以不画胶囊底色和边框。
+BoxDecoration? _headerPillDecoration(HeaderUiSize uiSize) {
+  if (uiSize.isMinimal) return null;
+  return BoxDecoration(
+    color: const Color(0xff142735),
+    borderRadius: BorderRadius.circular(uiSize.isCompactOrSmaller ? 7 : 8),
+    border: Border.all(color: const Color(0xff315064)),
+  );
+}
+
 class _HeaderFrameRefreshPill extends StatelessWidget {
   const _HeaderFrameRefreshPill({this.uiSize = HeaderUiSize.normal});
 
@@ -707,11 +717,7 @@ class _HeaderFrameRefreshPill extends StatelessWidget {
       key: const Key('header-frame-refresh'),
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: const Color(0xff142735),
-        borderRadius: BorderRadius.circular(isCompact ? 7 : 8),
-        border: Border.all(color: const Color(0xff315064)),
-      ),
+      decoration: _headerPillDecoration(uiSize),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -761,11 +767,7 @@ class _HeaderCapacityPill extends StatelessWidget {
     return Container(
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: const Color(0xff142735),
-        borderRadius: BorderRadius.circular(isCompact ? 7 : 8),
-        border: Border.all(color: const Color(0xff315064)),
-      ),
+      decoration: _headerPillDecoration(uiSize),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -830,11 +832,7 @@ class _HeaderAnchorageTimerSummary extends StatelessWidget {
       width: isCompact ? 118 : 128,
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: const Color(0xff142735),
-        borderRadius: BorderRadius.circular(isCompact ? 7 : 8),
-        border: Border.all(color: const Color(0xff315064)),
-      ),
+      decoration: _headerPillDecoration(uiSize),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -872,11 +870,7 @@ class _HeaderNosakiTimerSummary extends StatelessWidget {
       width: isCompact ? 118 : 128,
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: const Color(0xff142735),
-        borderRadius: BorderRadius.circular(isCompact ? 7 : 8),
-        border: Border.all(color: const Color(0xff315064)),
-      ),
+      decoration: _headerPillDecoration(uiSize),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -915,11 +909,7 @@ class _HeaderSenkaSummary extends StatelessWidget {
       width: isCompact ? 132 : 142,
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: const Color(0xff142735),
-        borderRadius: BorderRadius.circular(isCompact ? 7 : 8),
-        border: Border.all(color: const Color(0xff315064)),
-      ),
+      decoration: _headerPillDecoration(uiSize),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -969,11 +959,7 @@ class _HeaderResourceItem extends StatelessWidget {
     return Container(
       height: isCompact ? 26 : 30,
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 5),
-      decoration: BoxDecoration(
-        color: const Color(0xff142735),
-        borderRadius: BorderRadius.circular(isCompact ? 7 : 8),
-        border: Border.all(color: const Color(0xff315064)),
-      ),
+      decoration: _headerPillDecoration(uiSize),
       child: Row(
         children: [
           Image.asset(
