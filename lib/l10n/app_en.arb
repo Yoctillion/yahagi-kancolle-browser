@@ -1924,5 +1924,12 @@
   "customFontTooLarge": "The font file must not exceed 32 MB.",
   "customFontLoadLimit": "The font switching limit for this session has been reached to keep memory usage bounded. Restart the app to apply another font. You can still preview fonts.",
   "customFontPreviewFailed": "Unable to generate the font preview. Please try again.",
-  "customFontPreviewRetry": "Retry preview"
+  "customFontPreviewRetry": "Retry preview",
+  "browserMenuMute": "Mute",
+  "browserMenuUnmute": "Unmute",
+  "browserMenuScreenshot": "Screenshot",
+  "browserMenuFit": "Fix display",
+  "browserMenuFullscreen": "Fullscreen",
+  "browserMenuHome": "Home",
+  "browserMenuDismissHint": "Tap outside to close"
 }

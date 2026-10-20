@@ -6757,6 +6757,48 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重新预览'**
   String get customFontPreviewRetry;
+
+  /// No description provided for @browserMenuMute.
+  ///
+  /// In zh, this message translates to:
+  /// **'静音'**
+  String get browserMenuMute;
+
+  /// No description provided for @browserMenuUnmute.
+  ///
+  /// In zh, this message translates to:
+  /// **'开声音'**
+  String get browserMenuUnmute;
+
+  /// No description provided for @browserMenuScreenshot.
+  ///
+  /// In zh, this message translates to:
+  /// **'截图'**
+  String get browserMenuScreenshot;
+
+  /// No description provided for @browserMenuFit.
+  ///
+  /// In zh, this message translates to:
+  /// **'修复显示'**
+  String get browserMenuFit;
+
+  /// No description provided for @browserMenuFullscreen.
+  ///
+  /// In zh, this message translates to:
+  /// **'全屏'**
+  String get browserMenuFullscreen;
+
+  /// No description provided for @browserMenuHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'主页'**
+  String get browserMenuHome;
+
+  /// No description provided for @browserMenuDismissHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击空白处关闭'**
+  String get browserMenuDismissHint;
 }
 
 class _AppLocalizationsDelegate

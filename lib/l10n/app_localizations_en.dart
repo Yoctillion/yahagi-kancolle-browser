@@ -3748,4 +3748,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get customFontPreviewRetry => 'Retry preview';
+
+  @override
+  String get browserMenuMute => 'Mute';
+
+  @override
+  String get browserMenuUnmute => 'Unmute';
+
+  @override
+  String get browserMenuScreenshot => 'Screenshot';
+
+  @override
+  String get browserMenuFit => 'Fix display';
+
+  @override
+  String get browserMenuFullscreen => 'Fullscreen';
+
+  @override
+  String get browserMenuHome => 'Home';
+
+  @override
+  String get browserMenuDismissHint => 'Tap outside to close';
 }

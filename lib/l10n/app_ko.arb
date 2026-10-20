@@ -1924,5 +1924,12 @@
   "customFontTooLarge": "글꼴 파일은 32 MB를 초과할 수 없습니다.",
   "customFontLoadLimit": "메모리 사용량을 제한하기 위해 이번 실행에서 글꼴을 바꿀 수 있는 한도에 도달했습니다. 다른 글꼴을 적용하려면 앱을 다시 시작하세요. 미리보기는 계속 사용할 수 있습니다.",
   "customFontPreviewFailed": "글꼴 미리보기를 생성할 수 없습니다. 다시 시도하세요.",
-  "customFontPreviewRetry": "미리보기 다시 시도"
+  "customFontPreviewRetry": "미리보기 다시 시도",
+  "browserMenuMute": "음소거",
+  "browserMenuUnmute": "소리 켜기",
+  "browserMenuScreenshot": "스크린샷",
+  "browserMenuFit": "화면 맞춤",
+  "browserMenuFullscreen": "전체 화면",
+  "browserMenuHome": "홈",
+  "browserMenuDismissHint": "바깥을 눌러 닫기"
 }

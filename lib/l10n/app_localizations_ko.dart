@@ -3655,4 +3655,25 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get customFontPreviewRetry => '미리보기 다시 시도';
+
+  @override
+  String get browserMenuMute => '음소거';
+
+  @override
+  String get browserMenuUnmute => '소리 켜기';
+
+  @override
+  String get browserMenuScreenshot => '스크린샷';
+
+  @override
+  String get browserMenuFit => '화면 맞춤';
+
+  @override
+  String get browserMenuFullscreen => '전체 화면';
+
+  @override
+  String get browserMenuHome => '홈';
+
+  @override
+  String get browserMenuDismissHint => '바깥을 눌러 닫기';
 }

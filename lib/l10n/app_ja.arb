@@ -1330,5 +1330,12 @@
   "customFontTooLarge": "フォントファイルは32 MB以下にしてください。",
   "customFontLoadLimit": "メモリ使用量を抑えるため、今回の起動中に切り替えられるフォント数の上限に達しました。別のフォントを適用するにはアプリを再起動してください。プレビューは引き続き利用できます。",
   "customFontPreviewFailed": "フォントのプレビューを作成できません。もう一度お試しください。",
-  "customFontPreviewRetry": "再プレビュー"
+  "customFontPreviewRetry": "再プレビュー",
+  "browserMenuMute": "ミュート",
+  "browserMenuUnmute": "音声オン",
+  "browserMenuScreenshot": "スクショ",
+  "browserMenuFit": "表示修正",
+  "browserMenuFullscreen": "全画面",
+  "browserMenuHome": "ホーム",
+  "browserMenuDismissHint": "外側をタップで閉じる"
 }

@@ -1330,5 +1330,12 @@
   "customFontTooLarge": "字体文件不能超过 32 MB。",
   "customFontLoadLimit": "为控制内存占用，本次运行已达到字体切换上限。请重启应用后再应用新字体，仍可继续预览。",
   "customFontPreviewFailed": "字体预览生成失败，请重试。",
-  "customFontPreviewRetry": "重新预览"
+  "customFontPreviewRetry": "重新预览",
+  "browserMenuMute": "静音",
+  "browserMenuUnmute": "开声音",
+  "browserMenuScreenshot": "截图",
+  "browserMenuFit": "修复显示",
+  "browserMenuFullscreen": "全屏",
+  "browserMenuHome": "主页",
+  "browserMenuDismissHint": "点击空白处关闭"
 }

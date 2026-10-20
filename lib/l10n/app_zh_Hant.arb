@@ -1330,5 +1330,12 @@
   "customFontTooLarge": "字型檔案不能超過 32 MB。",
   "customFontLoadLimit": "為控制記憶體用量，本次執行已達字型切換上限。請重新啟動應用程式後再套用新字型，仍可繼續預覽。",
   "customFontPreviewFailed": "字型預覽產生失敗，請重試。",
-  "customFontPreviewRetry": "重新預覽"
+  "customFontPreviewRetry": "重新預覽",
+  "browserMenuMute": "靜音",
+  "browserMenuUnmute": "開聲音",
+  "browserMenuScreenshot": "截圖",
+  "browserMenuFit": "修復顯示",
+  "browserMenuFullscreen": "全螢幕",
+  "browserMenuHome": "主頁",
+  "browserMenuDismissHint": "點擊空白處關閉"
 }

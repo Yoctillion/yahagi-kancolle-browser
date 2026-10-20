@@ -32,6 +32,7 @@ import 'src/browser/game_load_event.dart';
 import 'src/browser/gadget_bypass_controller.dart';
 import 'src/browser/gadget_bypass_store.dart';
 import 'src/browser/game_browser_overlay.dart';
+import 'src/browser/game_browser_menu.dart';
 import 'src/browser/game_browser_toolbar.dart';
 import 'src/browser/game_fullscreen_controls.dart';
 import 'src/browser/app_exit_guard.dart';
@@ -1793,7 +1794,73 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     );
   }
 
-  void _openBrowserMenu() {}
+  void _openBrowserMenu() {
+    unawaited(showGameBrowserMenu(context, _browserActions(context)));
+  }
+
+  GameBrowserActions _browserActions(BuildContext context) =>
+      GameBrowserActions(
+        mode: widget.browserController.mode,
+        interactionEnabled:
+            !(widget.gameRenderingModeController?.isBusy ?? false),
+        onBack: () async {
+          await widget.browserController.goBack();
+        },
+        onReload: () async {
+          await showGameRefreshDialog(
+            context: context,
+            onRefreshPage: widget.browserController.reload,
+            onReloadGame: widget.browserController.reloadGameFrame,
+          );
+        },
+        onHome: () async {
+          await widget.browserController.goHome();
+        },
+        onEnterDmm: () async {
+          await widget.browserController.enterDmmLoginTest();
+        },
+        isMuted: widget.audioController.isMuted,
+        audioEnabled: widget.audioController.canToggle,
+        onToggleMuted: () async {
+          await widget.audioController.toggleMuted();
+        },
+        onFitScreen: () {
+          widget.browserController.fitGameScreen();
+        },
+        onEnterFullscreen: () => _setGameFullscreen(true),
+        onScreenshot: widget.gameScreenshotController == null
+            ? null
+            : () async {
+                final l10n = AppLocalizations.of(context)!;
+                TopNotice.show(context, message: l10n.screenshotSaving);
+                await WidgetsBinding.instance.endOfFrame;
+                if (!context.mounted) return;
+                final result = await widget.gameScreenshotController!.capture();
+                if (!context.mounted) return;
+                final message = result.path != null
+                    ? l10n.screenshotSaved(result.path!)
+                    : result.errorMessage == null
+                    ? l10n.screenshotFailed
+                    : '${l10n.screenshotFailed}\n${result.errorMessage}';
+                final isSuccess = result.path != null;
+                final tone = isSuccess
+                    ? TopNoticeTone.success
+                    : TopNoticeTone.error;
+                TopNotice.show(context, message: message, tone: tone);
+              },
+        uiLocked: widget.layoutSettingsController.uiLocked,
+        onToggleUiLock: () {
+          final next = !widget.layoutSettingsController.uiLocked;
+          unawaited(widget.layoutSettingsController.setUiLocked(next));
+          if (context.mounted) {
+            final l10n = AppLocalizations.of(context)!;
+            TopNotice.show(
+              context,
+              message: next ? l10n.uiLockedToast : l10n.uiUnlockedToast,
+            );
+          }
+        },
+      );
 
   Widget _buildPanelResources({
     required bool cornerOnLeft,
@@ -1936,75 +2003,33 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         ?widget.gameRenderingModeController,
         widget.layoutSettingsController,
       ]),
-      builder: (context, _) => GameBrowserToolbar(
-        compact: uiSize.isCompactOrSmaller,
-        enableBackdropBlur:
-            widget.gameRenderingModeController?.mode.enablesToolbarBlur ?? true,
-        interactionEnabled:
-            !(widget.gameRenderingModeController?.isBusy ?? false),
-        mode: widget.browserController.mode,
-        loadState: widget.browserController.loadState,
-        displayAddress: widget.browserController.displayAddress,
-        onBack: () async {
-          await widget.browserController.goBack();
-        },
-        onReload: () async {
-          await showGameRefreshDialog(
-            context: context,
-            onRefreshPage: widget.browserController.reload,
-            onReloadGame: widget.browserController.reloadGameFrame,
-          );
-        },
-        onHome: () async {
-          await widget.browserController.goHome();
-        },
-        onEnterDmm: () async {
-          await widget.browserController.enterDmmLoginTest();
-        },
-        isMuted: widget.audioController.isMuted,
-        audioEnabled: widget.audioController.canToggle,
-        onToggleMuted: () async {
-          await widget.audioController.toggleMuted();
-        },
-        onCollapse: widget.toolbarController.collapse,
-        onFitScreen: () {
-          widget.browserController.fitGameScreen();
-        },
-        onEnterFullscreen: () => _setGameFullscreen(true),
-        onScreenshot: widget.gameScreenshotController == null
-            ? null
-            : () async {
-                final l10n = AppLocalizations.of(context)!;
-                TopNotice.show(context, message: l10n.screenshotSaving);
-                await WidgetsBinding.instance.endOfFrame;
-                if (!context.mounted) return;
-                final result = await widget.gameScreenshotController!.capture();
-                if (!context.mounted) return;
-                final message = result.path != null
-                    ? l10n.screenshotSaved(result.path!)
-                    : result.errorMessage == null
-                    ? l10n.screenshotFailed
-                    : '${l10n.screenshotFailed}\n${result.errorMessage}';
-                final isSuccess = result.path != null;
-                final tone = isSuccess
-                    ? TopNoticeTone.success
-                    : TopNoticeTone.error;
-                TopNotice.show(context, message: message, tone: tone);
-              },
-        uiLocked: widget.layoutSettingsController.uiLocked,
-        onToggleUiLock: () {
-          final next = !widget.layoutSettingsController.uiLocked;
-          unawaited(widget.layoutSettingsController.setUiLocked(next));
-          if (context.mounted) {
-            final l10n = AppLocalizations.of(context)!;
-            TopNotice.show(
-              context,
-              message: next ? l10n.uiLockedToast : l10n.uiUnlockedToast,
-            );
-          }
-        },
-        persistent: false,
-      ),
+      builder: (context, _) {
+        final actions = _browserActions(context);
+        return GameBrowserToolbar(
+          compact: uiSize.isCompactOrSmaller,
+          enableBackdropBlur:
+              widget.gameRenderingModeController?.mode.enablesToolbarBlur ??
+              true,
+          interactionEnabled: actions.interactionEnabled,
+          mode: actions.mode,
+          loadState: widget.browserController.loadState,
+          displayAddress: widget.browserController.displayAddress,
+          onBack: actions.onBack,
+          onReload: actions.onReload,
+          onHome: actions.onHome,
+          onEnterDmm: actions.onEnterDmm,
+          isMuted: actions.isMuted,
+          audioEnabled: actions.audioEnabled,
+          onToggleMuted: actions.onToggleMuted,
+          onCollapse: widget.toolbarController.collapse,
+          onFitScreen: actions.onFitScreen,
+          onEnterFullscreen: actions.onEnterFullscreen,
+          onScreenshot: actions.onScreenshot,
+          uiLocked: actions.uiLocked,
+          onToggleUiLock: actions.onToggleUiLock,
+          persistent: false,
+        );
+      },
     );
 
     final logbookMenuExtent = workspaceNavigationExtent(uiSize);

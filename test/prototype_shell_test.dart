@@ -2552,6 +2552,19 @@ void main() {
       },
     );
 
+    testWidgets('minimal menu button opens the browser menu', (tester) async {
+      await _pumpMinimalShell(tester);
+
+      await tester.tap(find.byKey(const Key('minimal-menu-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('game-browser-menu-reload')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('game-browser-menu-close')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('game-browser-menu-close')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('minimal keeps header on other workspaces', (tester) async {
       await _pumpMinimalShell(tester);
 

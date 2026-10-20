@@ -3632,4 +3632,25 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get customFontPreviewRetry => '再プレビュー';
+
+  @override
+  String get browserMenuMute => 'ミュート';
+
+  @override
+  String get browserMenuUnmute => '音声オン';
+
+  @override
+  String get browserMenuScreenshot => 'スクショ';
+
+  @override
+  String get browserMenuFit => '表示修正';
+
+  @override
+  String get browserMenuFullscreen => '全画面';
+
+  @override
+  String get browserMenuHome => 'ホーム';
+
+  @override
+  String get browserMenuDismissHint => '外側をタップで閉じる';
 }

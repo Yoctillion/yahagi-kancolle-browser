@@ -3591,6 +3591,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get customFontPreviewRetry => '重新预览';
+
+  @override
+  String get browserMenuMute => '静音';
+
+  @override
+  String get browserMenuUnmute => '开声音';
+
+  @override
+  String get browserMenuScreenshot => '截图';
+
+  @override
+  String get browserMenuFit => '修复显示';
+
+  @override
+  String get browserMenuFullscreen => '全屏';
+
+  @override
+  String get browserMenuHome => '主页';
+
+  @override
+  String get browserMenuDismissHint => '点击空白处关闭';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -7182,4 +7203,25 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get customFontPreviewRetry => '重新預覽';
+
+  @override
+  String get browserMenuMute => '靜音';
+
+  @override
+  String get browserMenuUnmute => '開聲音';
+
+  @override
+  String get browserMenuScreenshot => '截圖';
+
+  @override
+  String get browserMenuFit => '修復顯示';
+
+  @override
+  String get browserMenuFullscreen => '全螢幕';
+
+  @override
+  String get browserMenuHome => '主頁';
+
+  @override
+  String get browserMenuDismissHint => '點擊空白處關閉';
 }
