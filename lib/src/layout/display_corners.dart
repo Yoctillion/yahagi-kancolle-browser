@@ -12,6 +12,16 @@ const displayCornersChannelName = 'app.yahagi.kancollebrowser/display_corners';
 /// the given radius.
 double cornerInset(double radiusDp) => radiusDp * (1 - 1 / math.sqrt2);
 
+/// How far content starting [y] dp from one screen edge must be pulled in
+/// along that edge to clear a corner of the given radius. [cornerInset] is the
+/// 45° case; a thin bar needs the arc at its own content line, which for a
+/// large radius intrudes much further than the 45° point.
+double cornerInsetAt(double radiusDp, double y) {
+  if (radiusDp <= 0 || y >= radiusDp) return 0;
+  final dy = radiusDp - math.max(0.0, y);
+  return radiusDp - math.sqrt(radiusDp * radiusDp - dy * dy);
+}
+
 @immutable
 class CornerRadii {
   const CornerRadii({

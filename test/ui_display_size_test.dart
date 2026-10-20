@@ -85,6 +85,19 @@ void main() {
       );
     });
 
+    test('vertical rail below a top bar skips the top corner', () {
+      expect(
+        minimalNavigationInsets(
+          corners: corners,
+          bottomSafeArea: 0,
+          horizontal: false,
+          onRight: false,
+          topAtEdge: false,
+        ),
+        EdgeInsets.only(bottom: cornerInset(30)),
+      );
+    });
+
     test('horizontal bar clears bottom corners only at screen edges', () {
       expect(
         minimalNavigationInsets(

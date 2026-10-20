@@ -19,6 +19,17 @@ void main() {
     expect(cornerInset(0), 0);
   });
 
+  test('cornerInsetAt follows the arc at a given distance from the edge', () {
+    expect(cornerInsetAt(55, 0), 55);
+    expect(cornerInsetAt(55, 6.5), closeTo(29.06, 0.01));
+    expect(cornerInsetAt(55, 55), 0);
+    expect(cornerInsetAt(55, 80), 0);
+    expect(cornerInsetAt(55, -3), 55);
+    expect(cornerInsetAt(0, 6.5), 0);
+    // 45° 处与 cornerInset 一致。
+    expect(cornerInsetAt(32, cornerInset(32)), closeTo(cornerInset(32), 1e-9));
+  });
+
   test('refresh converts px to dp and falls back per missing corner', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_channel, (call) async {

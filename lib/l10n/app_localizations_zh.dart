@@ -327,7 +327,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uiDisplaySizeTitle => '界面UI大小';
 
   @override
-  String get uiDisplaySizeDesc => '调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时隐藏游戏页顶栏';
+  String get uiDisplaySizeDesc => '调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时默认隐藏游戏页顶栏';
 
   @override
   String get uiDisplaySizeNormal => '普通';
@@ -4006,7 +4006,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get uiDisplaySizeTitle => '介面UI大小';
 
   @override
-  String get uiDisplaySizeDesc => '調整頂欄、導航欄與資訊欄的顯示密度；極簡檔在手機橫屏時隱藏遊戲頁頂欄';
+  String get uiDisplaySizeDesc => '調整頂欄、導航欄與資訊欄的顯示密度；極簡檔在手機橫屏時預設隱藏遊戲頁頂欄';
 
   @override
   String get uiDisplaySizeNormal => '標準';

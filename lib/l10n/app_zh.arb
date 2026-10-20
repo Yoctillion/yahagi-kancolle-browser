@@ -109,7 +109,7 @@
   "settingsTitle": "设置",
   "layoutSettings": "界面与布局",
   "uiDisplaySizeTitle": "界面UI大小",
-  "uiDisplaySizeDesc": "调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时隐藏游戏页顶栏",
+  "uiDisplaySizeDesc": "调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时默认隐藏游戏页顶栏",
   "uiDisplaySizeNormal": "普通",
   "uiDisplaySizeCompact": "紧凑",
   "uiDisplaySizeMinimal": "极简",

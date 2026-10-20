@@ -2027,6 +2027,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                   onRight: menuOnRight,
                   leftAtEdge: leftAtEdge,
                   rightAtEdge: rightAtEdge,
+                  topAtEdge: !minimalTopBar,
                 )
               : EdgeInsets.zero) +
           EdgeInsets.only(bottom: atScreenBottom ? navigationGestureInset : 0),
@@ -2140,16 +2141,26 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               widget.toolbarController.isVisible;
                           final corners = DisplayCorners.of(context);
                           final sidePadding = isCompact ? 8.0 : 10.0;
+                          // Minimal strip items have no capsule, so the
+                          // visible content starts at the centered 15dp icon;
+                          // the bar's ends must clear the arc on that line.
+                          final contentTop = (headerHeight - 15) / 2;
                           return Container(
                             height: headerHeight,
                             padding: minimalShell
                                 ? EdgeInsets.only(
                                     left:
                                         sidePadding +
-                                        cornerInset(corners.topLeft),
+                                        cornerInsetAt(
+                                          corners.topLeft,
+                                          contentTop,
+                                        ),
                                     right:
                                         sidePadding +
-                                        cornerInset(corners.topRight),
+                                        cornerInsetAt(
+                                          corners.topRight,
+                                          contentTop,
+                                        ),
                                   )
                                 : EdgeInsets.symmetric(horizontal: sidePadding),
                             decoration: const BoxDecoration(

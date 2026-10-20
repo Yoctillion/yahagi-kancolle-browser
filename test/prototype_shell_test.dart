@@ -2739,8 +2739,8 @@ void main() {
       messenger.setMockMethodCallHandler(
         corners,
         (_) async => <String, Object>{
-          'topLeft': 120,
-          'topRight': 80,
+          'topLeft': 55,
+          'topRight': 40,
           'bottomLeft': 24,
           'bottomRight': 24,
         },
@@ -2761,14 +2761,19 @@ void main() {
         findsNothing,
       );
       expect(find.byKey(const Key('minimal-menu-button')), findsOneWidget);
-      // 横栏两端让开屏幕顶部两个圆角。
+      // 横栏在导航栏上方占住了顶角，导航栏顶端不必再让圆角。
+      expect(
+        tester.getTopLeft(find.byKey(const Key('minimal-menu-button'))).dy,
+        28,
+      );
+      // 横栏两端在图标顶边（28 高的栏里 15 号图标居中，y=6.5）处让开圆弧。
       final list = tester.getRect(
         find.byKey(const Key('header-resource-list')),
       );
-      expect(list.left, greaterThanOrEqualTo(cornerInset(120)));
+      expect(list.left, greaterThanOrEqualTo(cornerInsetAt(55, 6.5)));
       expect(
         list.right,
-        lessThanOrEqualTo(_phoneLandscape.width - cornerInset(80)),
+        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
       );
       expect(tester.takeException(), isNull);
     });

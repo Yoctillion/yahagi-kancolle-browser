@@ -22,6 +22,7 @@ UiDisplaySize effectiveUiDisplaySize(UiDisplaySize size, {required bool hd}) =>
 /// 极简游戏页没有顶栏，导航栏两端直接贴到屏幕角。横屏下横向导航栏总在底部
 /// （「上方」位置也是排在游戏列下面），所以只看底部两角；它的两端是左右，
 /// 这里不含手势条，贴底横栏的底部安全区由调用方按栏的位置另加。
+/// 资源顶栏横跨整个屏幕顶边时竖栏顶端不再贴角，传 [topAtEdge] = false。
 EdgeInsets minimalNavigationInsets({
   required CornerRadii corners,
   required double bottomSafeArea,
@@ -29,6 +30,7 @@ EdgeInsets minimalNavigationInsets({
   required bool onRight,
   bool leftAtEdge = true,
   bool rightAtEdge = true,
+  bool topAtEdge = true,
 }) {
   if (horizontal) {
     return EdgeInsets.only(
@@ -37,7 +39,9 @@ EdgeInsets minimalNavigationInsets({
     );
   }
   return EdgeInsets.only(
-    top: cornerInset(onRight ? corners.topRight : corners.topLeft),
+    top: topAtEdge
+        ? cornerInset(onRight ? corners.topRight : corners.topLeft)
+        : 0,
     bottom: math.max(
       cornerInset(onRight ? corners.bottomRight : corners.bottomLeft),
       bottomSafeArea,

@@ -332,7 +332,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get uiDisplaySizeDesc =>
-      '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでは、スマートフォンの横向き時にゲームページの上部バーを非表示にします';
+      '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでは、スマートフォンの横向き時にゲームページの上部バーを既定で非表示にします';
 
   @override
   String get uiDisplaySizeNormal => '標準';

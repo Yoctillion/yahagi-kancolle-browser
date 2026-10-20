@@ -700,7 +700,7 @@ abstract class AppLocalizations {
   /// No description provided for @uiDisplaySizeDesc.
   ///
   /// In zh, this message translates to:
-  /// **'调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时隐藏游戏页顶栏'**
+  /// **'调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时默认隐藏游戏页顶栏'**
   String get uiDisplaySizeDesc;
 
   /// No description provided for @uiDisplaySizeNormal.

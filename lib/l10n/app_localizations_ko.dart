@@ -335,7 +335,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get uiDisplaySizeDesc =>
-      '상단 바, 탐색 바, 정보 바의 표시 밀도를 조정합니다. 미니멀은 휴대폰 가로 모드에서 게임 페이지의 상단 바를 숨깁니다';
+      '상단 바, 탐색 바, 정보 바의 표시 밀도를 조정합니다. 미니멀은 휴대폰 가로 모드에서 기본적으로 게임 페이지의 상단 바를 숨깁니다';
 
   @override
   String get uiDisplaySizeNormal => '보통';

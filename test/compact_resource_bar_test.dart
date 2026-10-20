@@ -906,6 +906,7 @@ void main() {
     double? senka,
     GameState state = const GameState(),
     Locale locale = const Locale('zh'),
+    EdgeInsets gridPadding = EdgeInsets.zero,
   }) {
     return MaterialApp(
       locale: locale,
@@ -923,6 +924,7 @@ void main() {
                 rank: senka == null ? null : 123,
                 settingsController: controller,
                 layout: ResourceBarLayout.grid,
+                gridPadding: gridPadding,
               ),
             ),
           ),
@@ -1017,6 +1019,98 @@ void main() {
       tester.getSize(find.byKey(const Key('information-panel-resources'))),
       isA<Size>().having((s) => s.height, 'height', lessThanOrEqualTo(5 * 22)),
     );
+  });
+
+  testWidgets(
+    'grid uses the full width and overlays the toggle on the last row',
+    (tester) async {
+      final controller = await loadGridController();
+      await controller.setUiDisplaySize(UiDisplaySize.minimal);
+      const padding = EdgeInsets.fromLTRB(8, 6, 8, 2);
+      await tester.pumpWidget(
+        gridHarness(
+          controller,
+          width: 250,
+          senka: 3128,
+          state: richState,
+          gridPadding: padding,
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      const cell = (250 - 8 - 8 - 3 * 4) / 4;
+      Rect rect(String key) => tester.getRect(find.byKey(Key(key)));
+      expect(rect('header-resource-material-1').width, cell);
+      expect(rect('header-resource-material-5').width, cell);
+      expect(
+        rect('header-resource-material-8').left,
+        rect('header-resource-material-4').left,
+      );
+      expect(rect('header-senka-summary').width, (250 - 8 - 8 - 4) / 2);
+
+      final toggle = rect('information-panel-resources-toggle');
+      final last = rect('header-resource-material-8');
+      expect(toggle.size, const Size(24, 24));
+      expect(toggle.left, greaterThanOrEqualTo(last.right));
+      expect(toggle.right, 250);
+      expect(toggle.center.dy, closeTo(last.center.dy, 2.01));
+      final icon = tester.getRect(find.byIcon(Icons.keyboard_arrow_up_rounded));
+      expect(icon.right, 250 - padding.right);
+      expect(icon.center.dy, closeTo(last.center.dy, 0.01));
+
+      // 回归：用户嫌字小。真机 11 号粗体等宽数字约 0.6–0.65em，6 位约 40–43dp，
+      // 数值位至少留 40 才能让缩放保持在 0.9 以上。测试字体每个字 1em，量不出真实缩放。
+      final fuelSlot = tester.getSize(
+        find.descendant(
+          of: find.byKey(const Key('header-resource-material-1')),
+          matching: find.byType(FittedBox),
+        ),
+      );
+      expect(fuelSlot.width, greaterThanOrEqualTo(40));
+
+      final expandedM1 = rect('header-resource-material-1');
+      final expandedM4 = rect('header-resource-material-4');
+      await tester.tap(
+        find.byKey(const Key('information-panel-resources-toggle')),
+      );
+      await tester.pumpAndSettle();
+      expect(rect('header-resource-material-1').left, expandedM1.left);
+      expect(rect('header-resource-material-4').left, expandedM4.left);
+      expect(
+        rect('information-panel-resources-toggle').left,
+        greaterThanOrEqualTo(rect('header-resource-material-4').right),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('grid toggle uses the free space of a short last row', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+    await controller.toggleHeaderResourceVisible('material-8');
+    await tester.pumpWidget(
+      gridHarness(controller, width: 250, state: richState),
+    );
+
+    const cell = (250 - 3 * 4) / 4;
+    expect(
+      tester.getSize(find.byKey(const Key('header-resource-material-7'))).width,
+      cell,
+    );
+    final toggle = tester.getRect(
+      find.byKey(const Key('information-panel-resources-toggle')),
+    );
+    expect(
+      toggle.left,
+      greaterThanOrEqualTo(
+        tester
+            .getRect(find.byKey(const Key('header-resource-material-7')))
+            .right,
+      ),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('grid wide items show an icon instead of the text label', (
