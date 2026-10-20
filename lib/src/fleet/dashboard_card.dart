@@ -84,7 +84,14 @@ class DashboardCard extends StatelessWidget {
                   }
                   return header;
                 }
-                final row = FittedBox(
+                if (flat) {
+                  return SizedBox(
+                    key: const Key('dashboard-card-header'),
+                    height: 24,
+                    child: _flatHeader(context),
+                  );
+                }
+                return FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: SizedBox(
@@ -146,19 +153,74 @@ class DashboardCard extends StatelessWidget {
                     ),
                   ),
                 );
-                return flat
-                    ? SizedBox(
-                        key: const Key('dashboard-card-header'),
-                        height: 24,
-                        child: row,
-                      )
-                    : row;
               },
             ),
             if (!collapsed) ...[const SizedBox(height: 0), child],
           ],
         ),
       ),
+    );
+  }
+
+  // Scaling the whole row would shrink the title whenever one child (badge,
+  // switcher, gear) is taller than the 24dp header, so only that child scales.
+  Widget _flatHeader(BuildContext context) {
+    Widget fit(Widget w, double height, AlignmentGeometry alignment) =>
+        SizedBox(
+          height: height,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: alignment,
+            child: w,
+          ),
+        );
+    return Row(
+      children: [
+        if (showLogo) ...[
+          IconTheme(
+            data: const IconThemeData(size: 13, color: Color(0xffd4a85f)),
+            child: icon,
+          ),
+          if (showTitle) const SizedBox(width: 6),
+        ],
+        if (showTitle)
+          Expanded(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _titleStyle(true),
+                  ),
+                ),
+                if (!collapsed && titleBadge != null) ...[
+                  const SizedBox(width: 8),
+                  fit(titleBadge!, 22, Alignment.centerLeft),
+                ],
+                if (_showSummary(true)) ...[
+                  const SizedBox(width: 8),
+                  Expanded(child: _summary()),
+                ],
+              ],
+            ),
+          )
+        else ...[
+          const Spacer(),
+          if (!collapsed && titleBadge != null) ...[
+            fit(titleBadge!, 22, Alignment.centerRight),
+            const SizedBox(width: 8),
+          ],
+        ],
+        if (!collapsed && trailing != null) ...[
+          fit(trailing!, 22, Alignment.centerRight),
+          const SizedBox(width: 3),
+        ],
+        if (headerAction != null) fit(headerAction!, 24, Alignment.center),
+        _collapseButton(context, true),
+      ],
     );
   }
 

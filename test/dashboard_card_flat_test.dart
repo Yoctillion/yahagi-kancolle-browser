@@ -73,6 +73,68 @@ void main() {
     expect(find.byKey(const Key('dashboard-card-summary')), findsNothing);
   });
 
+  Widget tallChildren({required bool collapsed, required double width}) =>
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              child: PanelStyleScope(
+                style: PanelStyle.flat,
+                child: DashboardCard(
+                  title: '舰队',
+                  icon: const Icon(Icons.sailing),
+                  collapsed: collapsed,
+                  onToggleCollapse: () {},
+                  titleBadge: const Chip(label: Text('待机')),
+                  trailing: const SizedBox(width: 60, height: 30),
+                  headerAction: const IconButton(
+                    onPressed: null,
+                    icon: Icon(Icons.settings),
+                  ),
+                  child: const SizedBox(height: 20),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  for (final width in [190.0, 260.0]) {
+    testWidgets('flat 标题行遇到偏高子项不整体缩放 ($width)', (tester) async {
+      await tester.pumpWidget(tallChildren(collapsed: false, width: width));
+      expect(tester.takeException(), isNull);
+      final header = find.byKey(const Key('dashboard-card-header'));
+      expect(tester.getSize(header).height, 24);
+      final title = find.text('舰队');
+      expect(tester.widget<Text>(title).style?.fontSize, 11);
+      expect(tester.getSize(title).height, greaterThanOrEqualTo(13));
+      for (final box in tester.widgetList<FittedBox>(
+        find.descendant(of: header, matching: find.byType(FittedBox)),
+      )) {
+        expect(
+          find.descendant(of: find.byWidget(box), matching: title),
+          findsNothing,
+        );
+      }
+      final card = tester.getRect(find.byType(DashboardCard));
+      final chevron = tester.getRect(find.byType(IconButton).last);
+      expect(card.right - chevron.right, lessThanOrEqualTo(8));
+    });
+  }
+
+  testWidgets('flat 折叠态折叠按钮贴右边缘', (tester) async {
+    await tester.pumpWidget(tallChildren(collapsed: true, width: 190));
+    expect(tester.takeException(), isNull);
+    final card = tester.getRect(find.byType(DashboardCard));
+    final chevron = tester.getRect(find.byType(IconButton).last);
+    expect(card.right - chevron.right, lessThanOrEqualTo(8));
+  });
+
   testWidgets('flat 展开时没有摘要且 trailing 照常显示', (tester) async {
     await tester.pumpWidget(
       _host(style: PanelStyle.flat, collapsed: false, summary: '3 队 · 满血'),
