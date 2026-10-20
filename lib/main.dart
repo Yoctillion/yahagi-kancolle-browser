@@ -1958,6 +1958,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       widget.layoutSettingsController.uiDisplaySize,
       hd: hd,
     );
+    // A bottom horizontal navigation bar sits between the content and the
+    // screen edge, so only the nav bar needs to clear the gesture area then.
+    final contentTouchesBottom = !(menuHorizontal && !menuTop);
     // Decided from the window rather than the workspace so the header and the
     // panel resources always agree on who shows the resources.
     final minimalShell = usesMinimalGameShell(
@@ -2513,7 +2516,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                     menuHorizontal &&
                                                     !_gameFullscreen,
                                                 centerAboveBottomInset:
-                                                    minimalShell,
+                                                    minimalShell &&
+                                                    contentTouchesBottom,
                                                 child: GameSurfaceBoundary(
                                                   child: widget.gameSurface,
                                                 ),
@@ -2543,7 +2547,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 hdPortrait,
                                             hdPortrait: hdPortrait,
                                             singleModule: module,
-                                            bottomSafeArea: minimalShell
+                                            bottomSafeArea:
+                                                usesFlatPanel(
+                                                      size: uiSize,
+                                                      hd: hd,
+                                                    ) &&
+                                                    contentTouchesBottom
                                                 ? MediaQuery.viewPaddingOf(
                                                     context,
                                                   ).bottom

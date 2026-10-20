@@ -2593,6 +2593,46 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    double? panelBottomPadding(WidgetTester tester) {
+      final list = tester.widget<ListView>(
+        find.descendant(
+          of: find.byKey(const Key('workspace-information-panel')),
+          matching: find.byType(ListView),
+        ),
+      );
+      return (list.padding! as EdgeInsets).bottom;
+    }
+
+    testWidgets('minimal portrait panel clears the bottom safe area', (
+      tester,
+    ) async {
+      tester.view.viewPadding = const FakeViewPadding(bottom: 20);
+      tester.view.padding = const FakeViewPadding(bottom: 20);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      await _pumpMinimalShell(tester, size: const Size(393, 873));
+
+      expect(panelBottomPadding(tester), 20);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal landscape with bottom nav leaves panel unpadded', (
+      tester,
+    ) async {
+      tester.view.viewPadding = const FakeViewPadding(bottom: 20);
+      tester.view.padding = const FakeViewPadding(bottom: 20);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      final layout = await _pumpMinimalShell(tester);
+      expect(panelBottomPadding(tester), 20);
+
+      await layout.setWorkspaceMenuPosition('bottom');
+      await tester.pumpAndSettle();
+
+      expect(panelBottomPadding(tester), 0);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('HD treats minimal as compact', (tester) async {
       final layout = await _pumpMinimalShell(tester);
 
