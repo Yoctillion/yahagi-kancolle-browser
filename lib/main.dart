@@ -99,6 +99,7 @@ import 'src/localization/game_name_localizations.dart';
 import 'src/game_state/game_api_event_pipeline.dart';
 import 'src/game_state/game_state_store.dart';
 import 'src/layout/adaptive_layout.dart';
+import 'src/layout/display_corners.dart';
 import 'src/layout/hd_workspace_geometry.dart';
 import 'src/layout/hd_bottom_strip.dart';
 import 'src/layout/hd_portrait_grid.dart';
@@ -1126,16 +1127,18 @@ class YahagiApp extends StatelessWidget {
         final routeObserver = gameRouteObserver ?? yahagiGameRouteObserver;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          builder: (context, child) => GameNameLocalizationScope(
-            controller: shipSubtitleCatalogController,
-            child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(boldText: true),
-              child: Stack(
-                children: [
-                  child ?? const SizedBox.shrink(),
-                  if (backupMaintenanceOverlay?.value case final overlay?)
-                    Positioned.fill(child: overlay),
-                ],
+          builder: (context, child) => DisplayCornersHost(
+            child: GameNameLocalizationScope(
+              controller: shipSubtitleCatalogController,
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(boldText: true),
+                child: Stack(
+                  children: [
+                    child ?? const SizedBox.shrink(),
+                    if (backupMaintenanceOverlay?.value case final overlay?)
+                      Positioned.fill(child: overlay),
+                  ],
+                ),
               ),
             ),
           ),

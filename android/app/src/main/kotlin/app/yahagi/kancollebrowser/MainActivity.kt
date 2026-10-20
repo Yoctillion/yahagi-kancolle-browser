@@ -93,6 +93,7 @@ import app.yahagi.kancollebrowser.nativewebview.NativeWebViewStartupGuard
 import app.yahagi.kancollebrowser.nativewebview.SharedPreferencesNativeWebViewStartupStore
 import app.yahagi.kancollebrowser.notification.AppNotificationManager
 import app.yahagi.kancollebrowser.notification.NotificationProgressService
+import app.yahagi.kancollebrowser.display.DisplayCornerChannel
 import app.yahagi.kancollebrowser.navigation.AppNavigationChannel
 import app.yahagi.kancollebrowser.mods.GameModManager
 import app.yahagi.kancollebrowser.subtitles.ShipSubtitleBridge
@@ -223,6 +224,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     private var gameMouseWheelChannel: GameMouseWheelChannel? = null
     private var gameFullscreenChannel: GameFullscreenChannel? = null
     private var appNavigationChannel: MethodChannel? = null
+    private var displayCornerChannel: MethodChannel? = null
     private var gameFrameReloadManager: GameFrameReloadManager? = null
     private var gameFrameReloadChannel: MethodChannel? = null
     private var gameModManager: GameModManager? = null
@@ -345,6 +347,16 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             AppNavigationChannel.METHOD_CHANNEL_NAME,
         ).also {
             it.setMethodCallHandler(AppNavigationChannel { moveTaskToBack(true) })
+        }
+
+        displayCornerChannel?.setMethodCallHandler(null)
+        displayCornerChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DisplayCornerChannel.METHOD_CHANNEL_NAME,
+        ).also {
+            it.setMethodCallHandler(
+                DisplayCornerChannel { window.decorView.rootWindowInsets },
+            )
         }
 
         recordBackupHandler?.dispose()
@@ -773,6 +785,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         disposeGameMods()
         appNavigationChannel?.setMethodCallHandler(null)
         appNavigationChannel = null
+        displayCornerChannel?.setMethodCallHandler(null)
+        displayCornerChannel = null
         gameFullscreenChannel?.dispose()
         gameFullscreenChannel = null
         disposeCompositionImageHandler()
@@ -838,6 +852,8 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         disposeGameMods()
         appNavigationChannel?.setMethodCallHandler(null)
         appNavigationChannel = null
+        displayCornerChannel?.setMethodCallHandler(null)
+        displayCornerChannel = null
         gameFullscreenChannel?.dispose()
         gameFullscreenChannel = null
         gameMouseWheelChannel?.dispose()
