@@ -721,6 +721,18 @@ abstract class AppLocalizations {
   /// **'极简'**
   String get uiDisplaySizeMinimal;
 
+  /// No description provided for @panelResourcesExpand.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开资源'**
+  String get panelResourcesExpand;
+
+  /// No description provided for @panelResourcesCollapse.
+  ///
+  /// In zh, this message translates to:
+  /// **'折叠资源'**
+  String get panelResourcesCollapse;
+
   /// No description provided for @gameAreaRatio.
   ///
   /// In zh, this message translates to:

@@ -339,6 +339,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uiDisplaySizeMinimal => '极简';
 
   @override
+  String get panelResourcesExpand => '展开资源';
+
+  @override
+  String get panelResourcesCollapse => '折叠资源';
+
+  @override
   String get gameAreaRatio => '游戏区域占比';
 
   @override
@@ -3998,6 +4004,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get uiDisplaySizeMinimal => '極簡';
+
+  @override
+  String get panelResourcesExpand => '展開資源';
+
+  @override
+  String get panelResourcesCollapse => '摺疊資源';
 
   @override
   String get gameAreaRatio => '遊戲區域佔比';

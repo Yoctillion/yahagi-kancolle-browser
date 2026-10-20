@@ -347,6 +347,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get uiDisplaySizeMinimal => '미니멀';
 
   @override
+  String get panelResourcesExpand => '자원 펼치기';
+
+  @override
+  String get panelResourcesCollapse => '자원 접기';
+
+  @override
   String get gameAreaRatio => '게임 영역 비율';
 
   @override

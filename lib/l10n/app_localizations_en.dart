@@ -358,6 +358,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get uiDisplaySizeMinimal => 'Minimal';
 
   @override
+  String get panelResourcesExpand => 'Expand resources';
+
+  @override
+  String get panelResourcesCollapse => 'Collapse resources';
+
+  @override
   String get gameAreaRatio => 'Game area ratio';
 
   @override

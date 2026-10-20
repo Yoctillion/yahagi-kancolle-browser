@@ -113,6 +113,8 @@
   "uiDisplaySizeNormal": "普通",
   "uiDisplaySizeCompact": "紧凑",
   "uiDisplaySizeMinimal": "极简",
+  "panelResourcesExpand": "展开资源",
+  "panelResourcesCollapse": "折叠资源",
   "gameAreaRatio": "游戏区域占比",
   "infoPanelWidth": "信息面板宽度（竖屏模式无效）",
   "autoZoom": "应用推荐显示比例（游戏与菜单比例 67:33）",

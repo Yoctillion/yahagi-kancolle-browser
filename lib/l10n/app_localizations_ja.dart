@@ -344,6 +344,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get uiDisplaySizeMinimal => 'ミニマル';
 
   @override
+  String get panelResourcesExpand => '資源を展開';
+
+  @override
+  String get panelResourcesCollapse => '資源を折りたたむ';
+
+  @override
   String get gameAreaRatio => 'ゲーム画面の比率';
 
   @override

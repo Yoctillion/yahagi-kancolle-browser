@@ -101,6 +101,9 @@ class _ResourceItem extends StatelessWidget {
 
 enum ResourceBarLayout { strip, grid }
 
+/// 借用信息栏模块的折叠列表持久化网格的折叠状态。
+const panelResourcesCollapseId = 'panel-resources';
+
 class CompactResourceBar extends StatefulWidget {
   const CompactResourceBar({
     super.key,
@@ -115,7 +118,7 @@ class CompactResourceBar extends StatefulWidget {
     this.onNosakiTimerTap,
     this.onFrameRefreshTap,
     this.layout = ResourceBarLayout.strip,
-    this.gridColumns = 3,
+    this.gridColumns = 4,
     this.gridPadding = EdgeInsets.zero,
     this.uiSize,
   });
@@ -399,6 +402,8 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
 
   static const double _gridSpacing = 4;
   static const double _gridRunSpacing = 2;
+  static const double _gridToggleExtent = 24;
+  static const int _gridWideColumns = 2;
 
   static bool _isWideGridItem(String id) =>
       id == headerSenkaId ||
@@ -408,7 +413,39 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
       id == headerShipCapacityId ||
       id == headerEquipmentCapacityId;
 
-  // 战果、计时器、容量的文字远宽于单列，独占整行才能不缩到看不清。
+  bool _localGridCollapsed = false;
+
+  bool _gridCollapsed(LayoutSettingsController? controller) =>
+      controller?.dashboardCardCollapsed.contains(panelResourcesCollapseId) ??
+      _localGridCollapsed;
+
+  void _toggleGridCollapsed(LayoutSettingsController? controller) {
+    if (controller == null) {
+      setState(() => _localGridCollapsed = !_localGridCollapsed);
+    } else {
+      controller.toggleDashboardCardCollapsed(panelResourcesCollapseId);
+    }
+  }
+
+  // 宽项和普通资源各自按列数分行，换类时另起一行，这样两类项都保持用户排的顺序，
+  // 列也能上下对齐。
+  static List<List<String>> _gridRows(List<String> ids, int columns) {
+    final rows = <List<String>>[];
+    var row = <String>[];
+    for (final id in ids) {
+      final wide = _isWideGridItem(id);
+      if (row.isNotEmpty &&
+          (_isWideGridItem(row.first) != wide ||
+              row.length == (wide ? _gridWideColumns : columns))) {
+        rows.add(row);
+        row = <String>[];
+      }
+      row.add(id);
+    }
+    if (row.isNotEmpty) rows.add(row);
+    return rows;
+  }
+
   Widget _buildGrid(
     List<String> ids, {
     required LayoutSettingsController? controller,
@@ -416,34 +453,103 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     required HeaderUiSize uiSize,
   }) {
     final columns = widget.gridColumns < 1 ? 1 : widget.gridColumns;
+    final collapsed = _gridCollapsed(controller);
+    final List<List<String>> rows;
+    if (collapsed) {
+      final plain = ids.where((id) => !_isWideGridItem(id)).take(columns);
+      rows = [if (plain.isNotEmpty) plain.toList()];
+    } else {
+      rows = _gridRows(ids, columns);
+    }
     return Padding(
       key: const Key('information-panel-resources'),
       padding: widget.gridPadding,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fullWidth = constraints.maxWidth;
-          final cellWidth =
-              ((fullWidth - _gridSpacing * (columns - 1)) / columns).clamp(
-                0.0,
-                double.infinity,
-              );
-          return _HeaderGridScope(
-            child: Wrap(
-              spacing: _gridSpacing,
-              runSpacing: _gridRunSpacing,
+          // 折叠按钮单独占右侧一列，展开和折叠时同一项的位置不变。
+          final rowWidth = (constraints.maxWidth - _gridToggleExtent).clamp(
+            0.0,
+            double.infinity,
+          );
+          Widget buildRow(List<String> row) {
+            final perRow = _isWideGridItem(row.first)
+                ? _gridWideColumns
+                : columns;
+            final cellWidth =
+                ((rowWidth - _gridSpacing * (perRow - 1)) / perRow).clamp(
+                  0.0,
+                  double.infinity,
+                );
+            return Row(
               children: [
-                for (final id in ids)
+                for (var i = 0; i < row.length; i++) ...[
+                  if (i > 0) const SizedBox(width: _gridSpacing),
                   _buildInteractiveItem(
-                    id,
+                    row[i],
                     controller: controller,
                     l10n: l10n,
                     uiSize: uiSize,
-                    width: _isWideGridItem(id) ? fullWidth : cellWidth,
+                    width: cellWidth,
                   ),
+                ],
+              ],
+            );
+          }
+
+          return _HeaderGridScope(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var i = 0; i < rows.length; i++) ...[
+                        if (i > 0) const SizedBox(height: _gridRunSpacing),
+                        buildRow(rows[i]),
+                      ],
+                    ],
+                  ),
+                ),
+                _buildGridToggle(controller, collapsed: collapsed, l10n: l10n),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  // 折叠与信息栏模块一样不受界面锁影响：锁只禁止改布局，不禁止收起内容。
+  Widget _buildGridToggle(
+    LayoutSettingsController? controller, {
+    required bool collapsed,
+    required AppLocalizations l10n,
+  }) {
+    return Semantics(
+      button: true,
+      label: collapsed
+          ? l10n.panelResourcesExpand
+          : l10n.panelResourcesCollapse,
+      child: SizedBox.square(
+        key: const Key('information-panel-resources-toggle'),
+        dimension: _gridToggleExtent,
+        child: InkResponse(
+          radius: _gridToggleExtent / 2,
+          onTap: () => _toggleGridCollapsed(controller),
+          child: Align(
+            // 点击框贴着末行底边，比 20dp 的行高出 4dp；图标对齐末行的中线。
+            alignment: const Alignment(1, 4 / 9),
+            child: Icon(
+              collapsed
+                  ? Icons.keyboard_arrow_down_rounded
+                  : Icons.keyboard_arrow_up_rounded,
+              size: 15,
+              color: const Color(0xff8fa8b6),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -513,10 +619,62 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     );
   }
 
+  Widget? _buildGridWideItem(String id) {
+    const dim = Color(0xff9fb3bf);
+    const bright = Color(0xffdce6eb);
+    switch (id) {
+      case headerSenkaId:
+        return _HeaderGridValue(
+          key: const Key('header-senka-summary'),
+          icon: Icons.emoji_events_rounded,
+          label: fleetText(context, '战果'),
+          value: '${_formatSenka(widget.senka)}(#${widget.rank ?? '--'})',
+          color: const Color(0xffe0b25c),
+        );
+      case headerAnchorageTimerId:
+        final elapsed = _anchorageElapsed;
+        return _HeaderGridValue(
+          key: const Key('header-anchorage-timer-summary'),
+          icon: Icons.anchor,
+          label: fleetText(context, '泊地修理计时'),
+          value: elapsed,
+          color: elapsed == '--:--:--' ? dim : bright,
+        );
+      case headerNosakiTimerId:
+        final elapsed = _nosakiElapsed;
+        return _HeaderGridValue(
+          key: const Key('header-nosaki-timer-summary'),
+          icon: Icons.auto_awesome,
+          label: fleetText(context, '野埼刷闪计时'),
+          value: elapsed,
+          color: elapsed == '--:--:--' ? dim : bright,
+        );
+      case headerShipCapacityId || headerEquipmentCapacityId:
+        final ships = id == headerShipCapacityId;
+        final capacity = _capacity(id);
+        return _HeaderGridValue(
+          key: Key(
+            ships ? 'header-ship-capacity' : 'header-equipment-capacity',
+          ),
+          icon: ships
+              ? Icons.directions_boat_filled_rounded
+              : Icons.build_rounded,
+          label: capacity.label,
+          value: '${capacity.current ?? '—'}/${capacity.maximum ?? '—'}',
+          color: bright,
+        );
+    }
+    return null;
+  }
+
   Widget _buildDisplayItem(
     String id, {
     HeaderUiSize uiSize = HeaderUiSize.normal,
   }) {
+    if (widget.layout == ResourceBarLayout.grid) {
+      final wide = _buildGridWideItem(id);
+      if (wide != null) return wide;
+    }
     if (id == headerSenkaId) {
       return _HeaderSenkaSummary(
         senka: widget.senka,
@@ -608,16 +766,12 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     );
   }
 
-  Widget _buildCapacityPill(
-    String id, {
-    HeaderUiSize uiSize = HeaderUiSize.normal,
-  }) {
+  ({String label, int? current, int? maximum}) _capacity(String id) {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     final ships = id == headerShipCapacityId;
-    return _HeaderCapacityPill(
-      key: Key(ships ? 'header-ship-capacity' : 'header-equipment-capacity'),
+    return (
       label: ships ? l10n.shipGirl : l10n.equipment,
       current: widget.state.hasPortData
           ? (ships
@@ -627,6 +781,23 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
       maximum: ships
           ? widget.state.maxShipCount
           : widget.state.maxEquipmentCount,
+    );
+  }
+
+  Widget _buildCapacityPill(
+    String id, {
+    HeaderUiSize uiSize = HeaderUiSize.normal,
+  }) {
+    final capacity = _capacity(id);
+    return _HeaderCapacityPill(
+      key: Key(
+        id == headerShipCapacityId
+            ? 'header-ship-capacity'
+            : 'header-equipment-capacity',
+      ),
+      label: capacity.label,
+      current: capacity.current,
+      maximum: capacity.maximum,
       uiSize: uiSize,
     );
   }
@@ -804,6 +975,51 @@ const double _headerGridItemHeight = 20;
 
 double _headerItemHeight(BuildContext context, bool isCompact) =>
     _inHeaderGrid(context) ? _headerGridItemHeight : (isCompact ? 26 : 30);
+
+// 网格里宽项只分到半行，「战果：」这类文字前缀换成小图标把宽度留给数值；
+// 完整名称由外层 Tooltip 和图标的读屏标签提供。
+class _HeaderGridValue extends StatelessWidget {
+  const _HeaderGridValue({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: _headerGridItemHeight,
+    child: Row(
+      children: [
+        Icon(icon, size: 12, color: color, semanticLabel: label),
+        const SizedBox(width: 3),
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: color,
+                fontSize: _headerGridFontSize,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 // 极简档的顶栏要把空间让给数值，所以不画胶囊底色和边框。
 BoxDecoration? _headerPillDecoration(HeaderUiSize uiSize, {bool grid = false}) {
@@ -1069,20 +1285,23 @@ class _HeaderResourceItem extends StatelessWidget {
     final suffix = showFurnitureCoinSuffix
         ? fleetText(context, '家具コイン').replaceFirst('家具', '')
         : '';
+    // 网格四列很窄，又没有胶囊要留边，去掉内边距、缩小图标，尽量不缩数值。
+    final grid = _inHeaderGrid(context);
+    final iconSize = grid ? 13.0 : (isCompact ? 15.0 : 17.0);
     return Container(
       height: _headerItemHeight(context, isCompact),
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 5),
-      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
+      padding: EdgeInsets.symmetric(horizontal: grid ? 0 : (isCompact ? 4 : 5)),
+      decoration: _headerPillDecoration(uiSize, grid: grid),
       child: Row(
         children: [
           Image.asset(
             spec.assetPath,
-            width: isCompact ? 15 : 17,
-            height: isCompact ? 15 : 17,
+            width: iconSize,
+            height: iconSize,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.medium,
           ),
-          SizedBox(width: isCompact ? 3 : 4),
+          SizedBox(width: grid ? 2 : (isCompact ? 3 : 4)),
           Expanded(
             child: FittedBox(
               fit: BoxFit.scaleDown,

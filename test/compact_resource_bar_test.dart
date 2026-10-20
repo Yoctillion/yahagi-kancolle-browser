@@ -905,9 +905,10 @@ void main() {
     double width = 200,
     double? senka,
     GameState state = const GameState(),
+    Locale locale = const Locale('zh'),
   }) {
     return MaterialApp(
-      locale: const Locale('zh'),
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: TopNoticeHost(
@@ -930,7 +931,7 @@ void main() {
     );
   }
 
-  testWidgets('grid layout wraps visible resources into 3 columns', (
+  testWidgets('grid layout wraps visible resources into 4 columns', (
     tester,
   ) async {
     final controller = await loadGridController();
@@ -946,10 +947,262 @@ void main() {
     final fourth = tester.getTopLeft(
       find.byKey(const Key('header-resource-material-4')),
     );
-    expect(fourth.dx, first.dx);
-    expect(fourth.dy, greaterThan(first.dy));
+    final fifth = tester.getTopLeft(
+      find.byKey(const Key('header-resource-material-5')),
+    );
+    expect(fourth.dy, first.dy);
+    expect(fourth.dx, greaterThan(first.dx));
+    expect(fifth.dx, first.dx);
+    expect(fifth.dy, greaterThan(first.dy));
     expect(tester.takeException(), isNull);
   });
+
+  const richState = GameState(
+    resources: <GameResourceType, int>{
+      GameResourceType.fuel: 146449,
+      GameResourceType.ammunition: 159378,
+      GameResourceType.steel: 157012,
+      GameResourceType.bauxite: 143589,
+      GameResourceType.instantBuild: 771,
+      GameResourceType.instantRepair: 889,
+      GameResourceType.developmentMaterial: 501,
+      GameResourceType.improvementMaterial: 11,
+    },
+    maxShipCount: 750,
+    maxEquipmentCount: 3431,
+    hasPortData: true,
+  );
+
+  testWidgets('grid puts wide items two per row and plain items four per row', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+    await tester.pumpWidget(
+      gridHarness(controller, width: 250, senka: 3128, state: richState),
+    );
+
+    expect(tester.takeException(), isNull);
+    Offset topLeft(String key) => tester.getTopLeft(find.byKey(Key(key)));
+    final senka = topLeft('header-senka-summary');
+    final anchorage = topLeft('header-anchorage-timer-summary');
+    final nosaki = topLeft('header-nosaki-timer-summary');
+    final ships = topLeft('header-ship-capacity');
+    final equipment = topLeft('header-equipment-capacity');
+    expect(anchorage.dy, senka.dy);
+    expect(anchorage.dx, greaterThan(senka.dx));
+    expect(nosaki.dy, greaterThan(senka.dy));
+    expect(ships.dy, nosaki.dy);
+    expect(ships.dx, anchorage.dx);
+    expect(equipment.dy, greaterThan(nosaki.dy));
+    expect(equipment.dx, senka.dx);
+    // 落单的宽项只占半格，不拉满整行。
+    expect(
+      tester.getSize(find.byKey(const Key('header-equipment-capacity'))).width,
+      lessThan(125),
+    );
+
+    final m1 = topLeft('header-resource-material-1');
+    expect(m1.dy, greaterThan(equipment.dy));
+    for (final id in [2, 3, 4]) {
+      expect(topLeft('header-resource-material-$id').dy, m1.dy);
+    }
+    final m5 = topLeft('header-resource-material-5');
+    expect(m5.dx, m1.dx);
+    expect(m5.dy, greaterThan(m1.dy));
+    for (final id in [6, 7, 8]) {
+      expect(topLeft('header-resource-material-$id').dy, m5.dy);
+    }
+    expect(
+      tester.getSize(find.byKey(const Key('information-panel-resources'))),
+      isA<Size>().having((s) => s.height, 'height', lessThanOrEqualTo(5 * 22)),
+    );
+  });
+
+  testWidgets('grid wide items show an icon instead of the text label', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+    await tester.pumpWidget(
+      gridHarness(controller, width: 250, senka: 3128, state: richState),
+    );
+
+    final grid = find.byKey(const Key('information-panel-resources'));
+    for (final label in ['战果', '泊地', '野埼', '舰娘', '装备']) {
+      expect(
+        find.descendant(of: grid, matching: find.textContaining(label)),
+        findsNothing,
+        reason: label,
+      );
+    }
+    for (final (key, icon, label) in const [
+      ('header-senka-summary', Icons.emoji_events_rounded, '战果'),
+      ('header-anchorage-timer-summary', Icons.anchor, '泊地'),
+      ('header-nosaki-timer-summary', Icons.auto_awesome, '野埼'),
+      ('header-ship-capacity', Icons.directions_boat_filled_rounded, '舰娘'),
+      ('header-equipment-capacity', Icons.build_rounded, '装备'),
+    ]) {
+      final item = find.byKey(Key(key));
+      expect(
+        find.descendant(of: item, matching: find.byIcon(icon)),
+        findsOneWidget,
+        reason: key,
+      );
+      final tooltip = tester.widget<Tooltip>(
+        find.ancestor(of: item, matching: find.byType(Tooltip)).first,
+      );
+      expect(tooltip.message, contains(label), reason: key);
+    }
+    expect(find.text('3128(#123)'), findsOneWidget);
+    expect(find.text('0/750'), findsOneWidget);
+    expect(find.byIcon(Icons.anchor).evaluate().length, 1);
+  });
+
+  testWidgets('grid collapses to the first four plain resources and persists', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+    await tester.pumpWidget(
+      gridHarness(controller, width: 250, senka: 3128, state: richState),
+    );
+    final toggle = find.byKey(const Key('information-panel-resources-toggle'));
+    expect(
+      find.descendant(
+        of: toggle,
+        matching: find.byIcon(Icons.keyboard_arrow_up_rounded),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.getSize(toggle), const Size(24, 24));
+    final lastItem = tester.getRect(
+      find.byKey(const Key('header-resource-material-8')),
+    );
+    final toggleRect = tester.getRect(toggle);
+    expect(toggleRect.left, greaterThanOrEqualTo(lastItem.right));
+    expect(toggleRect.center.dy, closeTo(lastItem.center.dy, 2.01));
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    void expectCollapsed() {
+      for (final id in [1, 2, 3, 4]) {
+        expect(
+          find.byKey(Key('header-resource-material-$id')),
+          findsOneWidget,
+          reason: 'material-$id',
+        );
+      }
+      for (final key in [
+        'header-resource-material-5',
+        'header-resource-material-8',
+        'header-senka-summary',
+        'header-equipment-capacity',
+      ]) {
+        expect(find.byKey(Key(key)), findsNothing, reason: key);
+      }
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('information-panel-resources-toggle')),
+          matching: find.byIcon(Icons.keyboard_arrow_down_rounded),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+
+    expectCollapsed();
+    expect(
+      controller.dashboardCardCollapsed,
+      contains(panelResourcesCollapseId),
+    );
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getStringList('layout_dashboard_card_collapsed'),
+      contains('panel-resources'),
+    );
+
+    final restored = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    await tester.pumpWidget(
+      gridHarness(restored, width: 250, senka: 3128, state: richState),
+    );
+    await tester.pumpAndSettle();
+    expectCollapsed();
+
+    await tester.tap(
+      find.byKey(const Key('information-panel-resources-toggle')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('header-senka-summary')), findsOneWidget);
+    expect(
+      restored.dashboardCardCollapsed,
+      isNot(contains(panelResourcesCollapseId)),
+    );
+  });
+
+  testWidgets('grid collapse still toggles while the UI is locked', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await controller.setUiLocked(true);
+    await tester.pumpWidget(gridHarness(controller, width: 250));
+
+    await tester.tap(
+      find.byKey(const Key('information-panel-resources-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      controller.dashboardCardCollapsed,
+      contains(panelResourcesCollapseId),
+    );
+    expect(find.byKey(const Key('header-resource-material-5')), findsNothing);
+  });
+
+  for (final locale in const [Locale('zh'), Locale('en')]) {
+    testWidgets('grid fits 190dp without clipping numbers in $locale', (
+      tester,
+    ) async {
+      final controller = await loadGridController();
+      await controller.setUiDisplaySize(UiDisplaySize.minimal);
+      await controller.toggleHeaderResourceVisible(headerFrameRefreshId);
+      await tester.pumpWidget(
+        gridHarness(
+          controller,
+          width: 190,
+          senka: 31280.5,
+          state: richState,
+          locale: locale,
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      for (final (key, value) in const [
+        ('header-senka-summary', '31280.5(#123)'),
+        ('header-ship-capacity', '0/750'),
+        ('header-equipment-capacity', '0/3431'),
+        ('header-anchorage-timer-summary', '--:--:--'),
+        ('header-resource-material-1', '146449'),
+        ('header-resource-material-2', '159378'),
+        ('header-resource-material-4', '143589'),
+      ]) {
+        final item = find.byKey(Key(key));
+        final text = find.descendant(of: item, matching: find.text(value));
+        expect(text, findsOneWidget, reason: key);
+        final itemRect = tester.getRect(item);
+        final textRect = tester.getRect(text);
+        expect(textRect.left, greaterThanOrEqualTo(itemRect.left), reason: key);
+        expect(
+          textRect.right,
+          lessThanOrEqualTo(itemRect.right + 0.01),
+          reason: key,
+        );
+      }
+    });
+  }
 
   testWidgets('grid layout keeps senka item numbers unclipped at 200dp width', (
     tester,
@@ -960,16 +1213,14 @@ void main() {
 
     expect(tester.takeException(), isNull);
     final summary = find.byKey(const Key('header-senka-summary'));
-    expect(tester.getSize(summary).width, 200);
+    expect(tester.getSize(summary).width, lessThan(100));
     final value = find.textContaining('1234.5');
     expect(value, findsOneWidget);
     expect(tester.widget<Text>(value).style?.fontSize, 11);
-    // FittedBox 缩放会让渲染高度小于布局高度。
-    expect(
-      tester.getRect(value).height,
-      closeTo(tester.renderObject<RenderBox>(value).size.height, 0.01),
-    );
-    expect(tester.getRect(value).right, lessThanOrEqualTo(200));
+    // 半格放不下时整体缩小而不是裁掉，数值仍完整落在格子里。
+    final cell = tester.getRect(summary);
+    expect(tester.getRect(value).left, greaterThanOrEqualTo(cell.left));
+    expect(tester.getRect(value).right, lessThanOrEqualTo(cell.right + 0.01));
   });
 
   testWidgets('grid layout rows are 20dp tall with numbers unclipped', (
@@ -1006,7 +1257,7 @@ void main() {
     final seventh = tester.getTopLeft(
       find.byKey(const Key('header-resource-material-7')),
     );
-    expect(seventh.dy - first.dy, 2 * (20 + 2));
+    expect(seventh.dy - first.dy, 20 + 2);
     for (final (key, value) in const [
       ('header-resource-material-1', '123456'),
       ('header-senka-summary', '1234.5'),

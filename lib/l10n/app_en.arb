@@ -162,6 +162,8 @@
   "uiDisplaySizeNormal": "Normal",
   "uiDisplaySizeCompact": "Compact",
   "uiDisplaySizeMinimal": "Minimal",
+  "panelResourcesExpand": "Expand resources",
+  "panelResourcesCollapse": "Collapse resources",
   "gameAreaRatio": "Game area ratio",
   "infoPanelWidth": "Information panel width (not applied in portrait)",
   "autoZoom": "Apply recommended ratio (game:menu 67:33)",

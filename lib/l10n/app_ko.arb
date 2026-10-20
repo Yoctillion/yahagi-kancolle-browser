@@ -162,6 +162,8 @@
   "uiDisplaySizeNormal": "보통",
   "uiDisplaySizeCompact": "작게",
   "uiDisplaySizeMinimal": "미니멀",
+  "panelResourcesExpand": "자원 펼치기",
+  "panelResourcesCollapse": "자원 접기",
   "gameAreaRatio": "게임 영역 비율",
   "infoPanelWidth": "정보 패널 너비 (세로 화면에서는 적용 안 됨)",
   "autoZoom": "권장 표시 비율 적용 (게임:메뉴 67:33)",

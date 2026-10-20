@@ -113,6 +113,8 @@
   "uiDisplaySizeNormal": "標準",
   "uiDisplaySizeCompact": "コンパクト",
   "uiDisplaySizeMinimal": "ミニマル",
+  "panelResourcesExpand": "資源を展開",
+  "panelResourcesCollapse": "資源を折りたたむ",
   "gameAreaRatio": "ゲーム画面の比率",
   "infoPanelWidth": "情報パネルの幅（縦画面では無効）",
   "autoZoom": "推奨表示比率を適用（ゲームとメニューの比率 67:33）",

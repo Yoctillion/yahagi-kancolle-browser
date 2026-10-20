@@ -113,6 +113,8 @@
   "uiDisplaySizeNormal": "標準",
   "uiDisplaySizeCompact": "緊湊",
   "uiDisplaySizeMinimal": "極簡",
+  "panelResourcesExpand": "展開資源",
+  "panelResourcesCollapse": "摺疊資源",
   "gameAreaRatio": "遊戲區域佔比",
   "infoPanelWidth": "資訊面板寬度（直向模式無效）",
   "autoZoom": "套用建議顯示比例（遊戲與選單比例 67:33）",
