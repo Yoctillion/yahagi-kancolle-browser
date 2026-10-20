@@ -660,7 +660,7 @@ void main() {
     }
   });
 
-  testWidgets('flat 下槽位行高随内容且槽位不再固定 34', (tester) async {
+  testWidgets('flat 下隐藏头像时槽位行整体高度随内容 <=22', (tester) async {
     final base = _base(currentHp: 200, conditions: const <int>[1, 1, 1, 1]);
     tester.view.physicalSize = const Size(190, 600);
     tester.view.devicePixelRatio = 1;
@@ -679,7 +679,11 @@ void main() {
             style: PanelStyle.flat,
             child: SizedBox(
               width: 190,
-              child: LandBaseAirGroupRow(state: _state(base), base: base),
+              child: LandBaseAirGroupRow(
+                state: _state(base),
+                base: base,
+                visible: const <String>{'bars', 'airPower', 'range'},
+              ),
             ),
           ),
         ),
@@ -687,10 +691,40 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    for (var id = 1; id <= 4; id++) {
-      final slot = find.byKey(Key('land-base-slot-62-1-$id'));
-      expect(tester.getSize(slot).height, lessThanOrEqualTo(22));
-    }
+    final status = tester.getSize(
+      find.byKey(const Key('land-base-status-column-62-1')),
+    );
+    final strip = find.byKey(const Key('land-base-squadron-strip-62-1'));
+    final slotRow = tester.getSize(
+      find.ancestor(of: strip, matching: find.byType(Row)).first,
+    );
+    expect(status.height, lessThan(34));
+    expect(slotRow.height, lessThanOrEqualTo(26));
+
+    tester.platformDispatcher.clearAllTestValues();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 190,
+              child: LandBaseAirGroupRow(
+                state: _state(base),
+                base: base,
+                visible: const <String>{'bars', 'airPower', 'range'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester
+          .getSize(find.ancestor(of: strip, matching: find.byType(Row)).first)
+          .height,
+      lessThanOrEqualTo(22),
+    );
   });
 }
 

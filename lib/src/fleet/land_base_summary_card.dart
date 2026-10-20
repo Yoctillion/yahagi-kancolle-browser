@@ -463,8 +463,10 @@ class LandBaseAirGroupRow extends StatelessWidget {
                         currentHp: currentHp,
                         maximumHp: maximumHp,
                         hpRatio: hpRatio,
-                        height: portraitHeight > 34 ? portraitHeight : 34,
-                        trackHeight: hpTrackHeight,
+                        height: flat
+                            ? null
+                            : (portraitHeight > 34 ? portraitHeight : 34),
+                        trackHeight: flat ? 4 : hpTrackHeight,
                       ),
                     )
                   else
@@ -475,8 +477,10 @@ class LandBaseAirGroupRow extends StatelessWidget {
                         currentHp: currentHp,
                         maximumHp: maximumHp,
                         hpRatio: hpRatio,
-                        height: portraitHeight > 34 ? portraitHeight : 34,
-                        trackHeight: hpTrackHeight,
+                        height: flat
+                            ? null
+                            : (portraitHeight > 34 ? portraitHeight : 34),
+                        trackHeight: flat ? 4 : hpTrackHeight,
                       ),
                     ),
                   SizedBox(width: sectionGap),
@@ -529,7 +533,7 @@ class _LandBaseStatusColumn extends StatelessWidget {
   final int currentHp;
   final int maximumHp;
   final double hpRatio;
-  final double height;
+  final double? height;
   final double trackHeight;
 
   @override
