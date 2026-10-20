@@ -1874,6 +1874,22 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     required bool cornerOnRight,
   }) {
     final corners = DisplayCorners.of(context);
+    return _buildGameResourceBar(
+      layout: ResourceBarLayout.grid,
+      gridPadding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+      gridCornerRadii: (
+        left: cornerOnLeft ? corners.topLeft : 0,
+        right: cornerOnRight ? corners.topRight : 0,
+      ),
+    );
+  }
+
+  /// 极简游戏页没有顶栏时的资源条，任务完成等通知临时占用它的位置。
+  Widget _buildGameResourceBar({
+    required ResourceBarLayout layout,
+    EdgeInsets gridPadding = EdgeInsets.zero,
+    ({double left, double right}) gridCornerRadii = (left: 0, right: 0),
+  }) {
     final senkaController = widget.senkaController;
     return QuestCompletionHeaderSlot(
       child: AnimatedBuilder(
@@ -1885,12 +1901,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           final gameState = widget.gameStateController;
           final playerRanking = senkaController?.state.playerRankingRow;
           return CompactResourceBar(
-            layout: ResourceBarLayout.grid,
-            gridPadding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
-            gridCornerRadii: (
-              left: cornerOnLeft ? corners.topLeft : 0,
-              right: cornerOnRight ? corners.topRight : 0,
-            ),
+            layout: layout,
+            gridPadding: gridPadding,
+            gridCornerRadii: gridCornerRadii,
             state: gameState.state,
             senka: playerRanking?.senka,
             rank: playerRanking?.rank,
