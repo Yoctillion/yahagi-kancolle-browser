@@ -15,6 +15,7 @@ import '../fleet/dashboard_card.dart';
 import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
+import '../layout/flat_list_row.dart';
 import '../layout/flat_text_toggle.dart';
 import '../layout/panel_style.dart';
 import '../game_state/game_state.dart';
@@ -152,6 +153,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -189,21 +191,21 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
               if (!idle && !widget.controller.isPredictionConfirmed)
                 Padding(
                   key: const Key('battle-unconfirmed-warning'),
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: flat ? 4 : 8),
                   child: Text(
                     (AppLocalizations.of(context) ??
                             lookupAppLocalizations(const Locale('zh')))
                         .battlePredictionUnconfirmed,
-                    style: const TextStyle(
-                      color: Color(0xffffc95c),
-                      fontSize: 12,
+                    style: TextStyle(
+                      color: const Color(0xffffc95c),
+                      fontSize: flat ? flatRowFontSize : 12,
                     ),
                   ),
                 ),
               if (idle) ...[
                 if (mapSection != null) ...[
                   mapSection,
-                  const SizedBox(height: 9),
+                  SizedBox(height: flat ? 4 : 9),
                 ],
                 const _IdleBattleContent(),
               ] else if (_mode == BattlePanelMode.detailed)
@@ -366,25 +368,33 @@ class _CompactBattlePanel extends StatelessWidget {
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     if (navigation) {
       final navigationHeader = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xff10212e),
-          borderRadius: BorderRadius.circular(7),
-        ),
+        key: const Key('battle-navigation-header'),
+        padding: flat
+            ? const EdgeInsets.symmetric(vertical: 2)
+            : const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        decoration: flat
+            ? null
+            : BoxDecoration(
+                color: const Color(0xff10212e),
+                borderRadius: BorderRadius.circular(7),
+              ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.explore_outlined,
-              size: 18,
-              color: Color(0xff70c7bc),
+              size: flat ? 13 : 18,
+              color: const Color(0xff70c7bc),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: flat ? 4 : 8),
             Expanded(
               child: BattleUiText(
                 battle.context.forecastNodeLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: flat ? flatRowFontSize : null,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -433,7 +443,7 @@ class _CompactBattlePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           navigationHeader,
-          const SizedBox(height: 7),
+          SizedBox(height: flat ? 4 : 7),
           BattlePredictionSections(
             order: sectionOrder,
             legacyEnemyPreviewPosition: enemyPreviewPosition,
@@ -444,7 +454,7 @@ class _CompactBattlePanel extends StatelessWidget {
               children: [
                 if (raid != null) ...[
                   LandBaseRaidPanel(result: raid, compact: true),
-                  const SizedBox(height: 9),
+                  SizedBox(height: flat ? 4 : 9),
                 ],
                 friendlyFleets,
               ],
@@ -939,20 +949,23 @@ class _IdleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final label = Text(
+      AppLocalizations.of(context)?.standby ?? '待机',
+      style: TextStyle(
+        color: const Color(0xff9db2bf),
+        fontSize: flat ? 10.5 : 11,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    if (flat) return label;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: const Color(0xff203443),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        AppLocalizations.of(context)?.standby ?? '待机',
-        style: TextStyle(
-          color: Color(0xff9db2bf),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+      child: label,
     );
   }
 }
@@ -962,7 +975,35 @@ class _IdleBattleContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final text = AppLocalizations.of(context)?.waitingForSortieData ?? '等待出击数据';
+    if (flat) {
+      return Padding(
+        key: const Key('battle-idle-content'),
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.explore_outlined,
+              size: 13,
+              color: Color(0xff70c7bc),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: flatIdleColor,
+                  fontSize: flatRowFontSize,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
+      key: const Key('battle-idle-content'),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: const Color(0xff10212e),
@@ -978,7 +1019,7 @@ class _IdleBattleContent extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              AppLocalizations.of(context)?.waitingForSortieData ?? '等待出击数据',
+              text,
               style: const TextStyle(
                 color: Color(0xff9db2bf),
                 fontWeight: FontWeight.w600,
@@ -1015,20 +1056,23 @@ class _StatusBadge extends StatelessWidget {
         : forecast
         ? const Color(0xff4a3b21)
         : const Color(0xff183e38);
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final text = BattleUiText(
+      label,
+      style: TextStyle(
+        color: foreground,
+        fontSize: flat ? 10.5 : 11,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    if (flat) return text;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: BattleUiText(
-        label,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+      child: text,
     );
   }
 }

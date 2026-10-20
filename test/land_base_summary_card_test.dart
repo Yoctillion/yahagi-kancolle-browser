@@ -1,13 +1,18 @@
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_empty_text.dart';
 import 'package:yahagi_kancolle_browser/src/layout/hd_bottom_strip.dart';
+import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/land_base_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_status_visuals.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/slot_item_portrait.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 
@@ -606,29 +611,27 @@ void main() {
     tester,
   ) async {
     final base = _base(currentHp: 150, conditions: const <int>[60, 1, 1, 1]);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PanelStyleScope(
-            style: PanelStyle.flat,
-            child: SizedBox(
-              width: 200,
-              child: LandBaseAirGroupRow(state: _state(base), base: base),
-            ),
-          ),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_flatRow(base: base, width: 200));
 
     expect(tester.takeException(), isNull);
     final row = find.byKey(const Key('land-base-row-62-1'));
+    // 受损脉冲的辉光不是底色块，单独排除。
+    final pulseGlows = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(DamagePulseBuilder),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .toSet();
     final filled = tester
         .widgetList<DecoratedBox>(
           find.descendant(of: row, matching: find.byType(DecoratedBox)),
         )
         .where((box) {
           final decoration = box.decoration;
-          return decoration is BoxDecoration &&
+          return !pulseGlows.contains(box) &&
+              decoration is BoxDecoration &&
               decoration.shape == BoxShape.rectangle &&
               (decoration.color != null ||
                   decoration.borderRadius != null ||
@@ -647,12 +650,42 @@ void main() {
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget, reason: key);
     }
-    expect(find.textContaining('150/200'), findsOneWidget);
     expect(
-      tester
-          .widget<Text>(find.byKey(const Key('land-base-air-power-chip-62-1')))
-          .style
-          ?.fontSize,
+      find.descendant(
+        of: find.byKey(const Key('land-base-hp-value-62-1')),
+        matching: find.text('150'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('/200'), findsNothing);
+    final meter = tester.getRect(
+      find.byKey(const Key('land-base-hp-meter-62-1')),
+    );
+    expect(meter.height, 2);
+    expect(meter.width, tester.getSize(row).width);
+    expect(
+      meter.top,
+      greaterThanOrEqualTo(
+        tester.getRect(find.byKey(const Key('land-base-name-62-1'))).bottom,
+      ),
+    );
+    expect(
+      meter.bottom,
+      lessThanOrEqualTo(
+        tester
+            .getRect(find.byKey(const Key('land-base-squadron-strip-62-1')))
+            .top,
+      ),
+    );
+    for (final key in const <String>[
+      'land-base-status-column-62-1',
+      'land-base-fatigue-face-62-1',
+      'land-base-portrait-hp-frame-62-1',
+    ]) {
+      expect(find.byKey(Key(key)), findsNothing, reason: key);
+    }
+    expect(
+      _chipText(tester, 'land-base-air-power-chip-62-1').style?.fontSize,
       11,
     );
     for (var id = 1; id <= 4; id++) {
@@ -660,76 +693,374 @@ void main() {
     }
   });
 
-  testWidgets('flat 下隐藏头像时槽位行整体高度随内容 <=22', (tester) async {
-    final base = _base(currentHp: 200, conditions: const <int>[1, 1, 1, 1]);
-    tester.view.physicalSize = const Size(190, 600);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(
-      MaterialApp(
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
-          child: child!,
+  group('flat 中队格版式', () {
+    // 测试字体每字 1em，与真机字形尺寸偏差大；行高与等宽验收用应用实际的中文字体量。
+    setUpAll(() async {
+      await (FontLoader(
+        _appFont,
+      )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
+    });
+
+    testWidgets('flat 下宽 190 时四格等宽、无溢出且整行高度 <=40', (tester) async {
+      final base = _base(currentHp: 150, conditions: const <int>[1, 1, 1, 1]);
+      tester.view.physicalSize = const Size(190, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        _flatRow(
+          base: base,
+          width: 190,
+          visible: const <String>{'bars', 'airPower', 'range'},
         ),
-        home: Scaffold(
-          body: PanelStyleScope(
-            style: PanelStyle.flat,
-            child: SizedBox(
-              width: 190,
-              child: LandBaseAirGroupRow(
-                state: _state(base),
-                base: base,
-                visible: const <String>{'bars', 'airPower', 'range'},
-              ),
-            ),
+      );
+
+      expect(tester.takeException(), isNull);
+      final widths = <double>[
+        for (var id = 1; id <= 4; id++)
+          tester.getSize(find.byKey(Key('land-base-slot-62-1-$id'))).width,
+      ];
+      for (final width in widths) {
+        expect(width, closeTo(widths.first, 0.01));
+      }
+      expect(
+        tester.getSize(find.byKey(const Key('land-base-slot-62-1-1'))).height,
+        18,
+      );
+      expect(find.byKey(const Key('land-base-hp-meter-62-1')), findsOneWidget);
+      final damagedHeight = tester
+          .getSize(find.byKey(const Key('land-base-row-62-1')))
+          .height;
+      expect(damagedHeight, lessThanOrEqualTo(40));
+
+      final healthy = _base(
+        currentHp: 200,
+        conditions: const <int>[1, 1, 1, 1],
+      );
+      await tester.pumpWidget(
+        _flatRow(
+          base: healthy,
+          width: 190,
+          visible: const <String>{'bars', 'airPower', 'range'},
+        ),
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('land-base-row-62-1'))).height,
+        damagedHeight,
+      );
+
+      await tester.pumpWidget(
+        _flatRow(
+          base: base,
+          width: 190,
+          textScaler: const TextScaler.linear(1.3),
+          visible: const <String>{'bars', 'airPower', 'range'},
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('flat 下头像铺在两行底下，不增加整行高度', (tester) async {
+      final base = _base(currentHp: 150, conditions: const <int>[1, 1, 1, 1]);
+      await tester.pumpWidget(
+        _flatRow(
+          base: base,
+          width: 190,
+          visible: const <String>{'bars', 'airPower', 'range'},
+        ),
+      );
+      final row = find.byKey(const Key('land-base-row-62-1'));
+      final withoutPortrait = tester.getSize(row).height;
+      expect(find.byKey(const Key('land-base-portrait-62-1')), findsNothing);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('land-base-name-62-1')))
+            .style
+            ?.shadows,
+        isNull,
+      );
+
+      await tester.pumpWidget(_flatRow(base: base, width: 190));
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('land-base-portrait-62-1')), findsOneWidget);
+      expect(tester.getSize(row).height, withoutPortrait);
+      for (final key in const <String>[
+        'land-base-action-chip-62-1',
+        'land-base-name-62-1',
+        'land-base-air-power-chip-62-1',
+        'land-base-slot-count-62-1-1',
+      ]) {
+        expect(_chipText(tester, key).style?.shadows, const <Shadow>[
+          Shadow(color: Colors.black, blurRadius: 3),
+        ], reason: key);
+      }
+    });
+
+    testWidgets('flat 下没有可用卡图时不画头像层也不加描边', (tester) async {
+      final base = _base(currentHp: 150, conditions: const <int>[1, 1, 1, 1]);
+      await tester.pumpWidget(
+        _flatRow(
+          base: base,
+          state: GameState(
+            serverOrigin: 'https://example.test',
+            landBases: <LandBaseState>[base],
           ),
+          width: 190,
         ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('land-base-portrait-62-1')), findsNothing);
+      expect(find.byType(SlotItemPortrait), findsNothing);
+      expect(_chipText(tester, 'land-base-name-62-1').style?.shadows, isNull);
+    });
+
+    testWidgets('flat 下宽 210 受损时右侧信息缩放 >=0.8（中 / 英）', (tester) async {
+      final base = _base(currentHp: 150, conditions: const <int>[1, 1, 1, 1]);
+      final identity = find.byKey(const Key('land-base-identity-line-62-1'));
+      for (final locale in const <Locale>[Locale('zh'), Locale('en')]) {
+        await tester.pumpWidget(
+          _flatRow(base: base, width: 210, locale: locale),
+        );
+        expect(tester.takeException(), isNull);
+        expect(
+          find.byKey(const Key('land-base-hp-value-62-1')),
+          findsOneWidget,
+        );
+        // FittedBox 只缩放绘制：渲染宽度（含变换）÷ 布局宽度即实际缩放比。
+        final scale =
+            tester.getRect(identity).width / tester.getSize(identity).width;
+        expect(scale, greaterThanOrEqualTo(0.8), reason: '$locale');
+      }
+    });
+  });
+
+  testWidgets('flat 下基地 HP 只在已知且受损时显示', (tester) async {
+    for (final currentHp in const <int?>[200, null]) {
+      final base = _base(
+        currentHp: currentHp,
+        conditions: const <int>[1, 1, 1, 1],
+      );
+      await tester.pumpWidget(_flatRow(base: base, width: 200));
+      expect(
+        find.byKey(const Key('land-base-hp-value-62-1')),
+        findsNothing,
+        reason: '$currentHp',
+      );
+      expect(find.byKey(const Key('land-base-hp-meter-62-1')), findsNothing);
+    }
+
+    final damaged = _base(currentHp: 90, conditions: const <int>[1, 1, 1, 1]);
+    await tester.pumpWidget(
+      _flatRow(
+        base: damaged,
+        width: 200,
+        visible: const <String>{'airPower', 'range'},
+      ),
+    );
+    expect(find.byKey(const Key('land-base-hp-value-62-1')), findsOneWidget);
+    expect(find.byKey(const Key('land-base-hp-icon-62-1')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('land-base-hp-value-62-1')),
+        matching: find.text('90'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('/200'), findsNothing);
+    expect(find.byKey(const Key('land-base-hp-meter-62-1')), findsNothing);
+  });
+
+  testWidgets('flat 下受损脉冲跟随 damagePulseMode', (tester) async {
+    final base = _base(currentHp: 40, conditions: const <int>[1, 1, 1, 1]);
+    // 血条开时脉冲挂在整行血条上，关时挂在 HP 数值上。
+    for (final entry in const <String, Set<String>>{
+      'land-base-hp-meter-62-1': <String>{'bars', 'airPower', 'range'},
+      'land-base-hp-value-62-1': <String>{'airPower', 'range'},
+    }.entries) {
+      final target = find.byKey(Key(entry.key));
+      final pulse = entry.key == 'land-base-hp-meter-62-1'
+          ? find.ancestor(of: target, matching: find.byType(DamagePulseBuilder))
+          : find.descendant(
+              of: target,
+              matching: find.byType(DamagePulseBuilder),
+            );
+      final glow = find.descendant(
+        of: find.byKey(const Key('land-base-row-62-1')),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              (widget.decoration as BoxDecoration).boxShadow != null,
+        ),
+      );
+      await tester.pumpWidget(
+        _flatRow(base: base, width: 200, visible: entry.value),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DamagePulseBuilder), findsOneWidget);
+      expect(pulse, findsOneWidget, reason: entry.key);
+      expect(glow, findsOneWidget, reason: entry.key);
+
+      await tester.pumpWidget(
+        _flatRow(
+          base: base,
+          width: 200,
+          visible: entry.value,
+          damagePulseMode: DamagePulseFilter.off,
+        ),
+      );
+      expect(target, findsOneWidget);
+      expect(find.byType(DamagePulseBuilder), findsNothing, reason: entry.key);
+      expect(glow, findsNothing, reason: entry.key);
+    }
+  });
+
+  testWidgets('flat 下熟练度、疲劳下划线与未满搭载数', (tester) async {
+    final base = _base(
+      currentHp: 200,
+      conditions: const <int>[1, 2, 3, 1],
+      counts: const <int>[18, 18, 18, 12],
+    );
+    await tester.pumpWidget(
+      _flatRow(
+        base: base,
+        state: _state(base, proficiencies: const <int>[7, 0, 3, 0]),
+        width: 200,
       ),
     );
 
     expect(tester.takeException(), isNull);
-    final status = tester.getSize(
-      find.byKey(const Key('land-base-status-column-62-1')),
-    );
-    final strip = find.byKey(const Key('land-base-squadron-strip-62-1'));
-    final slotRow = tester.getSize(
-      find.ancestor(of: strip, matching: find.byType(Row)).first,
-    );
-    expect(status.height, lessThan(34));
-    expect(slotRow.height, lessThanOrEqualTo(26));
+    for (final entry in const <int, bool>{
+      1: true,
+      2: false,
+      3: true,
+      4: false,
+    }.entries) {
+      expect(
+        find.byKey(Key('land-base-slot-proficiency-62-1-${entry.key}')),
+        entry.value ? findsOneWidget : findsNothing,
+        reason: 'squadron ${entry.key}',
+      );
+    }
 
-    tester.platformDispatcher.clearAllTestValues();
+    Decoration? decorationOf(int id) => tester
+        .widget<Container>(find.byKey(Key('land-base-slot-62-1-$id')))
+        .foregroundDecoration;
+    expect(decorationOf(1), isNull);
+    expect(decorationOf(4), isNull);
+    for (var id = 1; id <= 4; id++) {
+      expect(
+        tester
+            .widget<Container>(find.byKey(Key('land-base-slot-62-1-$id')))
+            .decoration,
+        isNull,
+      );
+    }
+    final normalIconTop = tester
+        .getTopLeft(find.byKey(const Key('land-base-slot-icon-62-1-1')))
+        .dy;
+    for (var id = 2; id <= 4; id++) {
+      expect(
+        tester.getTopLeft(find.byKey(Key('land-base-slot-icon-62-1-$id'))).dy,
+        normalIconTop,
+        reason: 'squadron $id',
+      );
+    }
+    for (final entry in const <int, Color>{
+      2: Color(0xffe7ad45),
+      3: Color(0xffef5a5a),
+    }.entries) {
+      final decoration = decorationOf(entry.key) as BoxDecoration;
+      final border = decoration.border as Border;
+      expect(border.bottom.width, 2);
+      expect(border.bottom.color, entry.value);
+      expect(border.top, BorderSide.none);
+      expect(decoration.color, isNull);
+      expect(decoration.borderRadius, isNull);
+      expect(decoration.boxShadow, isNull);
+    }
+
+    Color? countColor(int id) => tester
+        .widget<Text>(find.byKey(Key('land-base-slot-count-62-1-$id')))
+        .style
+        ?.color;
+    expect(countColor(4), const Color(0xffff8b78));
+    expect(countColor(1), const Color(0xffe8f1f5));
+  });
+
+  testWidgets('flat 空态使用 FlatEmptyText', (tester) async {
+    final controller = GameStateController();
+    addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: PanelStyleScope(
             style: PanelStyle.flat,
             child: SizedBox(
-              width: 190,
-              child: LandBaseAirGroupRow(
-                state: _state(base),
-                base: base,
-                visible: const <String>{'bars', 'airPower', 'range'},
-              ),
+              width: 200,
+              child: _CardHarness(controller: controller),
             ),
           ),
         ),
       ),
     );
-    expect(
-      tester
-          .getSize(find.ancestor(of: strip, matching: find.byType(Row)).first)
-          .height,
-      lessThanOrEqualTo(22),
-    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FlatEmptyText), findsOneWidget);
   });
 }
 
+const _appFont = 'HarmonyOS_Sans_SC';
+
+/// 制空 / 航程的 key 在图标 + 数值的外层 Row 上，其余 key 直接在 Text 上。
+Text _chipText(WidgetTester tester, String key) => tester.widget<Text>(
+  find
+      .descendant(
+        of: find.byKey(Key(key)),
+        matching: find.byType(Text),
+        matchRoot: true,
+      )
+      .first,
+);
+
+Widget _flatRow({
+  required LandBaseState base,
+  GameState? state,
+  required double width,
+  Set<String> visible = const <String>{'portrait', 'bars', 'airPower', 'range'},
+  TextScaler textScaler = TextScaler.noScaling,
+  DamagePulseFilter damagePulseMode = DamagePulseFilter.all,
+  Locale? locale,
+}) => MaterialApp(
+  theme: ThemeData(fontFamily: _appFont),
+  locale: locale,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  builder: (context, child) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+    child: child!,
+  ),
+  home: Scaffold(
+    body: PanelStyleScope(
+      style: PanelStyle.flat,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: width,
+          child: LandBaseAirGroupRow(
+            state: state ?? _state(base),
+            base: base,
+            visible: visible,
+            damagePulseMode: damagePulseMode,
+          ),
+        ),
+      ),
+    ),
+  ),
+);
+
 LandBaseState _base({
-  required int currentHp,
+  required int? currentHp,
   required List<int> conditions,
   int actionKind = 1,
   List<int> states = const <int>[1, 1, 1, 1],
@@ -764,7 +1095,10 @@ Widget _row({required LandBaseState base, double width = 640}) => MaterialApp(
   ),
 );
 
-GameState _state(LandBaseState base) => GameState(
+GameState _state(
+  LandBaseState base, {
+  List<int> proficiencies = const <int>[0, 0, 0, 0],
+}) => GameState(
   serverOrigin: 'https://example.test',
   landBases: <LandBaseState>[base],
   masterSlotItems: <int, MasterSlotItem>{
@@ -778,7 +1112,11 @@ GameState _state(LandBaseState base) => GameState(
   },
   slotItems: <int, OwnedSlotItem>{
     for (var index = 0; index < 4; index++)
-      1001 + index: OwnedSlotItem(id: 1001 + index, masterId: 201 + index),
+      1001 + index: OwnedSlotItem(
+        id: 1001 + index,
+        masterId: 201 + index,
+        proficiency: proficiencies[index],
+      ),
   },
 );
 

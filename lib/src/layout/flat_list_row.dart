@@ -35,14 +35,14 @@ class FlatListRow extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) => Row(
             children: [
-              for (final tag in tags) ...[
+              for (var index = 0; index < tags.length; index++) ...[
                 ConstrainedBox(
                   constraints: BoxConstraints(
                     maxWidth: constraints.maxWidth * _tagMaxFraction,
                   ),
-                  child: tag,
+                  child: tags[index],
                 ),
-                SizedBox(width: tag == tags.last ? 6 : 4),
+                SizedBox(width: index == tags.length - 1 ? 6 : 4),
               ],
               Expanded(child: name ?? const SizedBox.shrink()),
               if (trailing != null)
@@ -66,14 +66,25 @@ class FlatListRow extends StatelessWidget {
 TextStyle flatRowTextStyle({
   Color color = Colors.white,
   FontWeight weight = FontWeight.w700,
-}) => TextStyle(fontSize: flatRowFontSize, fontWeight: weight, color: color);
+  List<Shadow>? shadows,
+}) => TextStyle(
+  fontSize: flatRowFontSize,
+  fontWeight: weight,
+  color: color,
+  shadows: shadows,
+);
 
-Widget flatRowName(String text, {Key? key, Color color = Colors.white}) => Text(
+Widget flatRowName(
+  String text, {
+  Key? key,
+  Color color = Colors.white,
+  List<Shadow>? shadows,
+}) => Text(
   text,
   key: key,
   maxLines: 1,
   overflow: TextOverflow.ellipsis,
-  style: flatRowTextStyle(color: color),
+  style: flatRowTextStyle(color: color, shadows: shadows),
 );
 
 /// 右侧状态控件：宽度不够时整体缩小而不是换行或溢出。
