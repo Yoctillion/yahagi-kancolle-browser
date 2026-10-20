@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../layout/panel_style.dart';
 import 'fleet_ui_strings.dart';
 
 class DashboardCard extends StatelessWidget {
@@ -17,6 +18,7 @@ class DashboardCard extends StatelessWidget {
     this.borderColor,
     this.collapseButtonKey,
     this.headerAction,
+    this.collapsedSummary,
   });
 
   final String title;
@@ -33,21 +35,37 @@ class DashboardCard extends StatelessWidget {
   final Key? collapseButtonKey;
   final Widget? headerAction;
 
+  /// 只在扁平样式且折叠时显示在标题行右侧。
+  final String? collapsedSummary;
+
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     return AnimatedSize(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       alignment: Alignment.topCenter,
       child: Container(
-        padding:
-            padding ??
-            EdgeInsets.fromLTRB(14, collapsed ? 8 : 10, 10, collapsed ? 8 : 10),
-        decoration: BoxDecoration(
-          color: const Color(0xff142735),
-          borderRadius: BorderRadius.circular(10),
-          border: borderColor != null ? Border.all(color: borderColor!) : null,
-        ),
+        padding: flat
+            ? EdgeInsets.fromLTRB(6, 0, 6, collapsed ? 0 : 4)
+            : padding ??
+                  EdgeInsets.fromLTRB(
+                    14,
+                    collapsed ? 8 : 10,
+                    10,
+                    collapsed ? 8 : 10,
+                  ),
+        decoration: flat
+            ? const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0xff1b3142))),
+              )
+            : BoxDecoration(
+                color: const Color(0xff142735),
+                borderRadius: BorderRadius.circular(10),
+                border: borderColor != null
+                    ? Border.all(color: borderColor!)
+                    : null,
+              ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -57,7 +75,7 @@ class DashboardCard extends StatelessWidget {
                         'en' &&
                     (constraints.maxWidth < 400 ||
                         MediaQuery.textScalerOf(context).scale(14) > 14)) {
-                  final header = _englishHeader(context);
+                  final header = _englishHeader(context, flat);
                   if (constraints.maxWidth < 220) {
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -66,7 +84,7 @@ class DashboardCard extends StatelessWidget {
                   }
                   return header;
                 }
-                return FittedBox(
+                final row = FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: SizedBox(
@@ -77,9 +95,9 @@ class DashboardCard extends StatelessWidget {
                       children: [
                         if (showLogo) ...[
                           IconTheme(
-                            data: const IconThemeData(
-                              size: 16,
-                              color: Color(0xffd4a85f),
+                            data: IconThemeData(
+                              size: flat ? 13 : 16,
+                              color: const Color(0xffd4a85f),
                             ),
                             child: icon,
                           ),
@@ -96,17 +114,17 @@ class DashboardCard extends StatelessWidget {
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       title,
-                                      style: const TextStyle(
-                                        color: Color(0xffd4a85f),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                      ),
+                                      style: _titleStyle(flat),
                                     ),
                                   ),
                                 ),
                                 if (!collapsed && titleBadge != null) ...[
                                   const SizedBox(width: 8),
                                   titleBadge!,
+                                ],
+                                if (_showSummary(flat)) ...[
+                                  const SizedBox(width: 8),
+                                  Expanded(child: _summary()),
                                 ],
                               ],
                             ),
@@ -123,11 +141,18 @@ class DashboardCard extends StatelessWidget {
                           const SizedBox(width: 3),
                         ],
                         ?headerAction,
-                        _collapseButton(context),
+                        _collapseButton(context, flat),
                       ],
                     ),
                   ),
                 );
+                return flat
+                    ? SizedBox(
+                        key: const Key('dashboard-card-header'),
+                        height: 24,
+                        child: row,
+                      )
+                    : row;
               },
             ),
             if (!collapsed) ...[const SizedBox(height: 0), child],
@@ -137,14 +162,34 @@ class DashboardCard extends StatelessWidget {
     );
   }
 
-  Widget _englishHeader(BuildContext context) => Column(
+  TextStyle _titleStyle(bool flat) => TextStyle(
+    color: const Color(0xffd4a85f),
+    fontWeight: FontWeight.w700,
+    fontSize: flat ? 11 : 14,
+  );
+
+  bool _showSummary(bool flat) =>
+      flat && collapsed && (collapsedSummary?.isNotEmpty ?? false);
+
+  Widget _summary() => Text(
+    collapsedSummary!,
+    key: const Key('dashboard-card-summary'),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: const TextStyle(color: Color(0xff8197a5), fontSize: 10.5),
+  );
+
+  Widget _englishHeader(BuildContext context, bool flat) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Row(
         children: [
           if (showLogo) ...[
             IconTheme(
-              data: const IconThemeData(size: 16, color: Color(0xffd4a85f)),
+              data: IconThemeData(
+                size: flat ? 13 : 16,
+                color: const Color(0xffd4a85f),
+              ),
               child: icon,
             ),
             if (showTitle) const SizedBox(width: 6),
@@ -155,21 +200,18 @@ class DashboardCard extends StatelessWidget {
               runSpacing: 4,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (showTitle)
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xffd4a85f),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
+                if (showTitle) Text(title, style: _titleStyle(flat)),
                 if (!collapsed && titleBadge != null) titleBadge!,
+                if (_showSummary(flat))
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: _summary(),
+                  ),
               ],
             ),
           ),
           ?headerAction,
-          _collapseButton(context),
+          _collapseButton(context, flat),
         ],
       ),
       if (!collapsed && trailing != null)
@@ -183,14 +225,16 @@ class DashboardCard extends StatelessWidget {
     ],
   );
 
-  Widget _collapseButton(BuildContext context) => Semantics(
+  Widget _collapseButton(BuildContext context, bool flat) => Semantics(
     label: collapsed
         ? fleetText(context, '展开$title')
         : fleetText(context, '折叠$title'),
     child: IconButton(
       key: collapseButtonKey,
       visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 30),
+      constraints: flat
+          ? const BoxConstraints(minWidth: 24, minHeight: 24)
+          : const BoxConstraints(minWidth: 32, minHeight: 30),
       padding: EdgeInsets.zero,
       alignment: Alignment.centerRight,
       onPressed: onToggleCollapse,
@@ -198,7 +242,7 @@ class DashboardCard extends StatelessWidget {
         collapsed
             ? Icons.keyboard_arrow_down_rounded
             : Icons.keyboard_arrow_up_rounded,
-        size: 20,
+        size: flat ? 15 : 20,
         color: const Color(0xff8fa8b6),
       ),
     ),

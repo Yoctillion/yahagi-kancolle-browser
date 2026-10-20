@@ -104,6 +104,7 @@ import 'src/layout/adaptive_layout.dart';
 import 'src/layout/display_corners.dart';
 import 'src/layout/hd_workspace_geometry.dart';
 import 'src/layout/minimal_layout.dart';
+import 'src/layout/panel_style.dart';
 import 'src/layout/hd_bottom_strip.dart';
 import 'src/layout/hd_portrait_grid.dart';
 import 'src/fleet/game_mod_portraits.dart';
@@ -3711,6 +3712,10 @@ class _InformationPanelState extends State<_InformationPanel> {
             widget.battlePredictionSettingsController!,
         ]),
         builder: (context, _) {
+          final flat = usesFlatPanel(
+            size: widget.layoutSettingsController.uiDisplaySize,
+            hd: widget.hd,
+          );
           final hasError =
               widget.browserController.loadState == GamePageLoadState.failed ||
               widget.gameCaptureController.state == GameCaptureState.error ||
@@ -3976,10 +3981,13 @@ class _InformationPanelState extends State<_InformationPanel> {
             };
 
             Widget finalChild = Padding(
-              padding: widget.singleModule == null && !widget.hdPortrait
+              padding:
+                  widget.singleModule == null && !widget.hdPortrait && !flat
                   ? const EdgeInsets.only(bottom: 6)
                   : EdgeInsets.zero,
-              child: child,
+              child: flat
+                  ? PanelStyleScope(style: PanelStyle.flat, child: child)
+                  : child,
             );
 
             return KeyedSubtree(key: ValueKey(id), child: finalChild);
@@ -4088,6 +4096,8 @@ class _InformationPanelState extends State<_InformationPanel> {
                   ? EdgeInsets.zero
                   : widget.hd
                   ? const EdgeInsets.all(8)
+                  : flat
+                  ? EdgeInsets.only(bottom: widget.bottomSafeArea)
                   : EdgeInsets.fromLTRB(8, 8, 8, widget.bottomSafeArea),
               children: [
                 for (final id in visibleOrder) buildCard(id),
