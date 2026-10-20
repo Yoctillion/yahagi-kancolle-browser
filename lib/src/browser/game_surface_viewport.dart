@@ -21,7 +21,7 @@ import '../settings/display_mode_store.dart';
 /// the game surface remains completely stable across fullscreen toggles,
 /// orientation changes, and layout resizing, guaranteeing that the platform
 /// view is never disposed or recreated during UI reflows.
-class GameSurfaceViewport extends StatelessWidget {
+class GameSurfaceViewport extends StatefulWidget {
   const GameSurfaceViewport({
     super.key,
     required this.child,
@@ -31,6 +31,7 @@ class GameSurfaceViewport extends StatelessWidget {
     this.displayMode = DisplayMode.auto,
     this.fitWithinBounds = false,
     this.centerAboveBottomInset = false,
+    this.avoidBottomInset = false,
     this.viewPadding,
     this.backgroundColor = const Color(0xff0a1823),
   });
@@ -46,6 +47,15 @@ class GameSurfaceViewport extends StatelessWidget {
   /// width priority. Left/right insets are deliberately not reserved; the
   /// caller's layout already accounts for them. No effect in fullscreen.
   final bool centerAboveBottomInset;
+
+  /// Keeps the game above the bottom system inset (home indicator) wherever
+  /// it overlaps this viewport, also while docked in the workspace, shrinking
+  /// it instead of letting width-priority layout run under the inset.
+  ///
+  /// Docked side insets are deliberately ignored: they carry no system
+  /// gesture, so avoiding them would only shrink the game. Superseded by
+  /// [centerAboveBottomInset].
+  final bool avoidBottomInset;
   final EdgeInsets? viewPadding;
   final Color backgroundColor;
 
@@ -132,31 +142,67 @@ class GameSurfaceViewport extends StatelessWidget {
   }
 
   @override
+  State<GameSurfaceViewport> createState() => _GameSurfaceViewportState();
+}
+
+class _GameSurfaceViewportState extends State<GameSurfaceViewport> {
+  double _dockedBottomInset = 0;
+
+  @override
   Widget build(BuildContext context) {
-    final padding = viewPadding ?? MediaQuery.viewPaddingOf(context);
-    final centerAbove = centerAboveBottomInset && !fullscreen;
-    final effectivePadding = fullscreen
-        ? padding
-        : centerAbove
-        ? EdgeInsets.only(bottom: padding.bottom)
-        : EdgeInsets.zero;
+    final padding = widget.viewPadding ?? MediaQuery.viewPaddingOf(context);
+    final centerAbove = widget.centerAboveBottomInset && !widget.fullscreen;
+    final dockedAvoid =
+        widget.avoidBottomInset && !widget.fullscreen && !centerAbove;
+    final EdgeInsets effectivePadding;
+    if (widget.fullscreen) {
+      effectivePadding = padding;
+    } else if (centerAbove) {
+      effectivePadding = EdgeInsets.only(bottom: padding.bottom);
+    } else if (dockedAvoid) {
+      // The docked position is only known after layout, so the overlap is
+      // measured post-frame. Every workspace reflow that moves this box goes
+      // through a rebuild of it, which re-measures.
+      final screenHeight = MediaQuery.sizeOf(context).height;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _measureDockedBottomInset(padding.bottom, screenHeight),
+      );
+      effectivePadding = EdgeInsets.only(bottom: _dockedBottomInset);
+    } else {
+      effectivePadding = EdgeInsets.zero;
+    }
 
     return ColoredBox(
-      color: backgroundColor,
+      color: widget.backgroundColor,
       child: ClipRect(
         child: CustomSingleChildLayout(
           delegate: _GameSurfaceLayoutDelegate(
-            aspectRatio: aspectRatio,
-            fullscreen: fullscreen,
-            isLandscape: isLandscape,
-            displayMode: displayMode,
-            fitWithinBounds: fitWithinBounds || centerAbove,
+            aspectRatio: widget.aspectRatio,
+            fullscreen: widget.fullscreen,
+            isLandscape: widget.isLandscape,
+            displayMode: widget.displayMode,
+            fitWithinBounds: widget.fitWithinBounds || centerAbove,
+            strictBottomInset: dockedAvoid,
             padding: effectivePadding,
           ),
-          child: child,
+          child: widget.child,
         ),
       ),
     );
+  }
+
+  void _measureDockedBottomInset(double bottomPadding, double screenHeight) {
+    if (!mounted) return;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final bottom = box.localToGlobal(Offset(0, box.size.height)).dy;
+    final inset = (bottom - (screenHeight - bottomPadding)).clamp(
+      0.0,
+      bottomPadding,
+    );
+    if (inset != _dockedBottomInset) {
+      setState(() => _dockedBottomInset = inset);
+    }
   }
 }
 
@@ -167,6 +213,7 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
     required this.isLandscape,
     required this.displayMode,
     required this.fitWithinBounds,
+    required this.strictBottomInset,
     required this.padding,
   });
 
@@ -175,7 +222,13 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
   final bool isLandscape;
   final DisplayMode displayMode;
   final bool fitWithinBounds;
+  final bool strictBottomInset;
   final EdgeInsets padding;
+
+  // Width priority falls back to centering in the whole container when the
+  // safe height is short, which would put the game under the bottom inset.
+  bool _widthPriorityFitsSafeHeight(Size size) =>
+      size.height - padding.vertical >= size.width / aspectRatio;
 
   Rect _calculateRect(Size size) {
     if (size.width <= 0 || size.height <= 0) {
@@ -190,7 +243,9 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
       fullscreen: fullscreen,
     );
 
-    if (isWidthPriority && !fitWithinBounds) {
+    if (isWidthPriority &&
+        !fitWithinBounds &&
+        (!strictBottomInset || _widthPriorityFitsSafeHeight(size))) {
       return GameSurfaceViewport.computeWidthPriorityGameRect(
         containerWidth: size.width,
         containerHeight: size.height,
@@ -226,6 +281,7 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
         oldDelegate.isLandscape != isLandscape ||
         oldDelegate.displayMode != displayMode ||
         oldDelegate.fitWithinBounds != fitWithinBounds ||
+        oldDelegate.strictBottomInset != strictBottomInset ||
         oldDelegate.padding != padding;
   }
 }

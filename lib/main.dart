@@ -2587,6 +2587,11 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                     !_gameFullscreen,
                                                 centerAboveBottomInset:
                                                     gameTouchesBottom,
+                                                // The minimal shell has its
+                                                // own bottom-inset rules.
+                                                avoidBottomInset:
+                                                    Platform.isIOS &&
+                                                    !flatPanel,
                                                 child: GameSurfaceBoundary(
                                                   child: widget.gameSurface,
                                                 ),
