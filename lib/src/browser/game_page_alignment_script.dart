@@ -23,6 +23,8 @@ const String gamePageAlignmentScript = r'''
       overflow: hidden !important;
       overscroll-behavior: none !important;
       touch-action: none !important;
+      background: #000000 !important;
+      background-color: #000000 !important;
     }
 
     #w,
@@ -42,13 +44,13 @@ const String gamePageAlignmentScript = r'''
       width: 1200px !important;
       height: 720px !important;
       position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
+      top: var(--yahagi-game-top, 0px) !important;
+      left: var(--yahagi-game-left, 0px) !important;
       z-index: 2147483641 !important;
       margin: 0 !important;
       padding: 0 !important;
       border: 0 !important;
-      transform: none !important;
+      transform: scale(var(--yahagi-game-scale, 1)) !important;
       transform-origin: 0 0 !important;
       overscroll-behavior: none !important;
       touch-action: none !important;
@@ -137,6 +139,9 @@ const String gamePageAlignmentScript = r'''
       window.removeEventListener('load', window.__yahagiMobileAlignGame);
     }
 
+    document.documentElement?.style.removeProperty('--yahagi-game-scale');
+    document.documentElement?.style.removeProperty('--yahagi-game-left');
+    document.documentElement?.style.removeProperty('--yahagi-game-top');
     document.getElementById('game_frame')?.removeAttribute('scrolling');
     delete window.__yahagiMobileScrollLock;
     delete window.__yahagiMobileAlignGame;
@@ -223,6 +228,36 @@ const String gamePageAlignmentScript = r'''
         window.scrollTo(0, 0);
         if (document.documentElement) document.documentElement.scrollTop = 0;
         if (document.body) document.body.scrollTop = 0;
+
+        // WKWebView pins page zoom at 1 (IOSFixedCanvasScaleBridge), so a
+        // viewport smaller than the canvas must be fitted in CSS instead.
+        const root = document.documentElement;
+        const viewportWidth =
+          window.visualViewport?.width || window.innerWidth;
+        const viewportHeight =
+          window.visualViewport?.height || window.innerHeight;
+        let scale = 1;
+        let left = 0;
+        let top = 0;
+        if (
+          viewportWidth > 0 &&
+          viewportHeight > 0 &&
+          (viewportWidth < 1200 || viewportHeight < 720)
+        ) {
+          scale = Math.min(1, viewportWidth / 1200, viewportHeight / 720);
+          left = Math.max(0, (viewportWidth - 1200 * scale) / 2);
+          top = Math.max(0, (viewportHeight - 720 * scale) / 2);
+        }
+        // Unchanged writes are skipped: the presentation observer watches
+        // style attributes and would otherwise re-trigger this alignment.
+        const setRootVar = (name, value) => {
+          if (root && root.style.getPropertyValue(name) !== value) {
+            root.style.setProperty(name, value);
+          }
+        };
+        setRootVar('--yahagi-game-scale', String(scale));
+        setRootVar('--yahagi-game-left', `${left}px`);
+        setRootVar('--yahagi-game-top', `${top}px`);
 
         const gameFrame = document.getElementById('game_frame');
         if (gameFrame) {
