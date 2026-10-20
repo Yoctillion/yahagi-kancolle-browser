@@ -30,6 +30,7 @@ class GameSurfaceViewport extends StatelessWidget {
     this.isLandscape = false,
     this.displayMode = DisplayMode.auto,
     this.fitWithinBounds = false,
+    this.centerAboveBottomInset = false,
     this.viewPadding,
     this.backgroundColor = const Color(0xff0a1823),
   });
@@ -40,6 +41,11 @@ class GameSurfaceViewport extends StatelessWidget {
   final bool isLandscape;
   final DisplayMode displayMode;
   final bool fitWithinBounds;
+
+  /// Centers the game inside the area above the bottom system inset, ignoring
+  /// width priority. Left/right insets are deliberately not reserved; the
+  /// caller's layout already accounts for them. No effect in fullscreen.
+  final bool centerAboveBottomInset;
   final EdgeInsets? viewPadding;
   final Color backgroundColor;
 
@@ -128,7 +134,12 @@ class GameSurfaceViewport extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final padding = viewPadding ?? MediaQuery.viewPaddingOf(context);
-    final effectivePadding = fullscreen ? padding : EdgeInsets.zero;
+    final centerAbove = centerAboveBottomInset && !fullscreen;
+    final effectivePadding = fullscreen
+        ? padding
+        : centerAbove
+        ? EdgeInsets.only(bottom: padding.bottom)
+        : EdgeInsets.zero;
 
     return ColoredBox(
       color: backgroundColor,
@@ -139,7 +150,7 @@ class GameSurfaceViewport extends StatelessWidget {
             fullscreen: fullscreen,
             isLandscape: isLandscape,
             displayMode: displayMode,
-            fitWithinBounds: fitWithinBounds,
+            fitWithinBounds: fitWithinBounds || centerAbove,
             padding: effectivePadding,
           ),
           child: child,
