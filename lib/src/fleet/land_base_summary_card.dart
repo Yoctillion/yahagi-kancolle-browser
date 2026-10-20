@@ -748,7 +748,7 @@ class _LandBaseSquadronSlot extends StatelessWidget {
     final suffix = '$areaId-$baseId-$squadronId';
     final content = Container(
       key: Key('land-base-slot-$suffix'),
-      height: 34,
+      height: flat ? 20 : 34,
       decoration: flat
           ? (missing || fatigueColor != null
                 ? BoxDecoration(
@@ -779,7 +779,9 @@ class _LandBaseSquadronSlot extends StatelessWidget {
             ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final iconSize = (constraints.maxWidth - 8).clamp(20.0, 26.0);
+          final iconSize = flat
+              ? (constraints.maxWidth - 8).clamp(14.0, 16.0)
+              : (constraints.maxWidth - 8).clamp(20.0, 26.0);
           return Stack(
             alignment: Alignment.center,
             children: <Widget>[

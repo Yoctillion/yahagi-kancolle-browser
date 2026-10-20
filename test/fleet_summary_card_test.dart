@@ -141,6 +141,35 @@ void main() {
     expect(find.byType(FleetShipStatusCapsule), findsNothing);
   });
 
+  testWidgets('flat 下空舰队的无数据是 11 号摘要灰且不居中', (tester) async {
+    final controller = await _controllerWithPortData();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_flatSummary(controller, 300));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('fleet-summary-selector-3')));
+    await tester.pump();
+
+    final text = find.text('无数据');
+    expect(text, findsOneWidget);
+    final style = tester.widget<Text>(text).style;
+    expect(style?.fontSize, 11);
+    expect(style?.color, const Color(0xff8197a5));
+    final padding =
+        tester
+                .widget<Padding>(
+                  find.ancestor(of: text, matching: find.byType(Padding)).first,
+                )
+                .padding
+            as EdgeInsets;
+    expect(padding.horizontal / 2, lessThanOrEqualTo(6));
+    expect(padding.vertical / 2, lessThanOrEqualTo(4));
+    expect(
+      find.ancestor(of: text, matching: find.byType(Center)),
+      findsNothing,
+    );
+  });
+
   testWidgets('repeating ship animations do not block finite-frame tests', (
     tester,
   ) async {

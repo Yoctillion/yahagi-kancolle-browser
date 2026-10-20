@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../fleet/dashboard_card.dart';
+import '../layout/flat_empty_text.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/module_summaries.dart';
@@ -73,20 +74,26 @@ class PinnedQuestsSummary extends StatelessWidget {
             children: [
               if (pinnedQuests.isEmpty &&
                   (!state.hasQuestData || state.activeQuestCount == 0))
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Center(
-                    child: Text(
-                      state.hasQuestData
-                          ? l10n.noPinnedQuests
-                          : l10n.questsNeedSync,
-                      style: const TextStyle(
-                        color: Color(0xff8197a5),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                )
+                flat
+                    ? FlatEmptyText(
+                        state.hasQuestData
+                            ? l10n.noPinnedQuests
+                            : l10n.questsNeedSync,
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Center(
+                          child: Text(
+                            state.hasQuestData
+                                ? l10n.noPinnedQuests
+                                : l10n.questsNeedSync,
+                            style: const TextStyle(
+                              color: Color(0xff8197a5),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      )
               else ...<Widget>[
                 if (visible.isNotEmpty)
                   HdDashboardItems(
@@ -239,17 +246,19 @@ class PinnedQuestsSummary extends StatelessWidget {
                         .toList(),
                   ),
                 for (var index = 0; index < missingQuestCount; index++)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Text(
-                      l10n.questsNeedSync,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xff8197a5),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
+                  flat
+                      ? FlatEmptyText(l10n.questsNeedSync)
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: Text(
+                            l10n.questsNeedSync,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xff8197a5),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
               ],
               const SizedBox(height: 2),
             ],

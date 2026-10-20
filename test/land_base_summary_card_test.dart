@@ -659,6 +659,39 @@ void main() {
       expect(find.byKey(Key('land-base-slot-62-1-$id')), findsOneWidget);
     }
   });
+
+  testWidgets('flat 下槽位行高随内容且槽位不再固定 34', (tester) async {
+    final base = _base(currentHp: 200, conditions: const <int>[1, 1, 1, 1]);
+    tester.view.physicalSize = const Size(190, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 190,
+              child: LandBaseAirGroupRow(state: _state(base), base: base),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    for (var id = 1; id <= 4; id++) {
+      final slot = find.byKey(Key('land-base-slot-62-1-$id'));
+      expect(tester.getSize(slot).height, lessThanOrEqualTo(22));
+    }
+  });
 }
 
 LandBaseState _base({
