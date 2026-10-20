@@ -168,7 +168,8 @@ flutter:
         - asset: assets/fonts/HarmonyOS_Sans.ttf
 flutter_icons:
   android: true
-  ios: false
+  ios: true
+  remove_alpha_ios: true
   image_path: "assets/app_icon.png"
   adaptive_icon_background: "#0471E3"
   adaptive_icon_foreground: "assets/app_icon.png"
