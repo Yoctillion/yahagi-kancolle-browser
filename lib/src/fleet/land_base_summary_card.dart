@@ -781,11 +781,20 @@ class _FlatLandBaseRow extends StatelessWidget {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
-    final portrait = visible.contains('portrait');
+    final portraitMaster = visible.contains('portrait')
+        ? _portraitMaster(state, base)
+        : null;
     // 头像铺在文字底下，深色描边保证文字在亮色卡图上仍可读。
-    final shadows = portrait
+    final shadows = portraitMaster != null
         ? const <Shadow>[Shadow(color: Colors.black, blurRadius: 3)]
         : null;
+    final maximumHp = base.maxHp ?? 200;
+    final currentHp = base.currentHp;
+    // 基地 HP 只在空袭后才有数据，平时恒为满血；只在已知且受损时占位。
+    final damagedHp = currentHp != null && currentHp < maximumHp
+        ? currentHp
+        : null;
+    final meter = damagedHp != null && visible.contains('bars');
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -808,9 +817,15 @@ class _FlatLandBaseRow extends StatelessWidget {
             key: Key('land-base-name-$keySuffix'),
             shadows: shadows,
           ),
-          trailing: flatRowTrailing(_trailing(l10n, shadows)),
+          trailing: flatRowTrailing(
+            _trailing(l10n, damagedHp, maximumHp, shadows, pulseValue: !meter),
+          ),
         ),
-        const SizedBox(height: flatRowSpacing),
+        // 血条与行间距同高、互相替换，受损前后整行高度不变。
+        if (meter)
+          _damagePulse(damagedHp, maximumHp, _hpMeter(damagedHp, maximumHp))
+        else
+          const SizedBox(height: flatRowSpacing),
         Row(
           key: Key('land-base-squadron-strip-$keySuffix'),
           children: <Widget>[
@@ -829,7 +844,7 @@ class _FlatLandBaseRow extends StatelessWidget {
         ),
       ],
     );
-    if (!portrait) return content;
+    if (portraitMaster == null) return content;
     return Stack(
       children: <Widget>[
         Positioned.fill(
@@ -847,7 +862,7 @@ class _FlatLandBaseRow extends StatelessWidget {
                       colors: <Color>[Color(0x80000000), Color(0x00000000)],
                     ).createShader(bounds),
                     child: SlotItemPortrait(
-                      item: _portraitMaster(state, base),
+                      item: portraitMaster,
                       serverOrigin: state.serverOrigin,
                       width: box.maxWidth,
                       height: box.maxHeight,
@@ -863,30 +878,62 @@ class _FlatLandBaseRow extends StatelessWidget {
     );
   }
 
-  Widget _trailing(AppLocalizations l10n, List<Shadow>? shadows) {
-    final maximumHp = base.maxHp ?? 200;
-    final currentHp = base.currentHp;
-    // 基地 HP 只在空袭后才有数据，平时恒为满血；只在已知且受损时占位。
-    final damaged = currentHp != null && currentHp < maximumHp;
+  // trailing 被 FlatListRow 封顶半行宽，文字标签会把整段缩到看不清，所以只用图标 + 数值。
+  Widget _trailing(
+    AppLocalizations l10n,
+    int? damagedHp,
+    int maximumHp,
+    List<Shadow>? shadows, {
+    required bool pulseValue,
+  }) {
     final airPower = LandBaseAirPower.calculate(state: state, base: base);
     final items = <Widget>[
-      if (damaged) _hpBlock(currentHp, maximumHp, shadows),
-      if (visible.contains('airPower'))
-        Text(
-          '${l10n.airPower} ${airPower.displayValue}',
-          key: Key('land-base-air-power-chip-$keySuffix'),
-          style: flatRowTextStyle(
-            color: const Color(0xffd4a74e),
+      if (damagedHp != null)
+        _iconValue(
+          key: Key('land-base-hp-value-$keySuffix'),
+          icon: Icon(
+            Icons.favorite_rounded,
+            key: Key('land-base-hp-icon-$keySuffix'),
+            color: const Color(0xffef5a5a),
+            size: 10,
             shadows: shadows,
+          ),
+          value: _hpValue(damagedHp, maximumHp, shadows, pulse: pulseValue),
+        ),
+      if (visible.contains('airPower'))
+        _iconValue(
+          key: Key('land-base-air-power-chip-$keySuffix'),
+          icon: Icon(
+            Icons.flight_rounded,
+            color: const Color(0xffd4a74e),
+            size: 10,
+            semanticLabel: l10n.airPower,
+            shadows: shadows,
+          ),
+          value: Text(
+            airPower.displayValue,
+            style: flatRowTextStyle(
+              color: const Color(0xffd4a74e),
+              shadows: shadows,
+            ),
           ),
         ),
       if (visible.contains('range'))
-        Text(
-          '${l10n.landBaseRange} ${base.effectiveDistance}',
+        _iconValue(
           key: Key('land-base-range-chip-$keySuffix'),
-          style: flatRowTextStyle(
+          icon: Icon(
+            Icons.radar,
             color: const Color(0xff70b8d8),
+            size: 10,
+            semanticLabel: l10n.landBaseRange,
             shadows: shadows,
+          ),
+          value: Text(
+            '${base.effectiveDistance}',
+            style: flatRowTextStyle(
+              color: const Color(0xff70b8d8),
+              shadows: shadows,
+            ),
           ),
         ),
     ];
@@ -902,75 +949,69 @@ class _FlatLandBaseRow extends StatelessWidget {
     );
   }
 
-  Widget _hpBlock(int currentHp, int maximumHp, List<Shadow>? shadows) {
-    final hpRatio = maximumHp <= 0
-        ? 0.0
-        : (currentHp / maximumHp).clamp(0.0, 1.0);
-    final zeroHp = currentHp <= 0;
-    final barColor = shipHpBarColor(hpRatio, isZeroHp: zeroHp);
-    final value = Text(
-      '$currentHp/$maximumHp',
+  Widget _iconValue({
+    required Key key,
+    required Widget icon,
+    required Widget value,
+  }) => Row(
+    key: key,
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[icon, const SizedBox(width: 2), value],
+  );
+
+  Widget _hpValue(
+    int currentHp,
+    int maximumHp,
+    List<Shadow>? shadows, {
+    required bool pulse,
+  }) {
+    final text = Text(
+      '$currentHp',
       style: TextStyle(
-        color: shipHpValueColor(hpRatio, isZeroHp: zeroHp),
+        color: shipHpValueColor(
+          _hpRatio(currentHp, maximumHp),
+          isZeroHp: currentHp <= 0,
+        ),
         fontSize: flatRowFontSize,
         fontWeight: FontWeight.w800,
         fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
         shadows: shadows,
       ),
     );
-    final meter = ClipRRect(
+    return pulse ? _damagePulse(currentHp, maximumHp, text) : text;
+  }
+
+  Widget _hpMeter(int currentHp, int maximumHp) {
+    final hpRatio = _hpRatio(currentHp, maximumHp);
+    return Container(
       key: Key('land-base-hp-meter-$keySuffix'),
-      borderRadius: BorderRadius.circular(1.5),
-      child: Container(
-        width: 20,
-        height: 3,
-        color: const Color(0xff294052),
-        alignment: Alignment.centerLeft,
-        child: FractionallySizedBox(
-          widthFactor: hpRatio,
-          heightFactor: 1,
-          child: ColoredBox(color: barColor),
+      height: flatRowSpacing,
+      color: const Color(0xff294052),
+      alignment: Alignment.centerLeft,
+      child: FractionallySizedBox(
+        widthFactor: hpRatio,
+        heightFactor: 1,
+        child: ColoredBox(
+          color: shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0),
         ),
       ),
     );
-    return Row(
-      key: Key('land-base-hp-value-$keySuffix'),
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Icon(
-          Icons.favorite_rounded,
-          key: Key('land-base-hp-icon-$keySuffix'),
-          color: const Color(0xffef5a5a),
-          size: 10,
-        ),
-        const SizedBox(width: 2),
-        // 受损脉冲挂在血条上；血条关掉时退而挂在数值上，免得极简档丢掉受损提示。
-        if (visible.contains('bars')) ...[
-          value,
-          const SizedBox(width: 3),
-          _damagePulse(currentHp, maximumHp, barColor, meter),
-        ] else
-          _damagePulse(currentHp, maximumHp, barColor, value),
-      ],
-    );
   }
 
-  Widget _damagePulse(
-    int currentHp,
-    int maximumHp,
-    Color barColor,
-    Widget child,
-  ) {
+  static double _hpRatio(int currentHp, int maximumHp) =>
+      maximumHp <= 0 ? 0.0 : (currentHp / maximumHp).clamp(0.0, 1.0);
+
+  Widget _damagePulse(int currentHp, int maximumHp, Widget child) {
     if (damagePulseMode == DamagePulseFilter.off) return child;
+    final hpRatio = _hpRatio(currentHp, maximumHp);
     return DamagePulseBuilder(
       currentHp: currentHp,
       maxHp: maximumHp,
       filter: damagePulseMode,
-      normalColor: barColor,
+      normalColor: shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0),
       builder: (context, spec, phase) => spec.pulses
           ? DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(1.5),
                 boxShadow: <BoxShadow>[
                   BoxShadow(
                     color: spec.color.withValues(alpha: 0.3 + 0.5 * phase),
@@ -1021,7 +1062,8 @@ class _FlatSquadronCell extends StatelessWidget {
     final cell = Container(
       key: Key('land-base-slot-$keySuffix'),
       height: 18,
-      decoration: fatigueColor == null
+      // 用前景装饰画下划线：border 会挤占内边距，使疲劳格内容与正常格错位。
+      foregroundDecoration: fatigueColor == null
           ? null
           : BoxDecoration(
               border: Border(bottom: BorderSide(color: fatigueColor, width: 2)),

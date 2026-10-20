@@ -8,9 +8,11 @@ import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/land_base_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_status_visuals.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/slot_item_portrait.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 
@@ -648,7 +650,33 @@ void main() {
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget, reason: key);
     }
-    expect(find.textContaining('150/200'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('land-base-hp-value-62-1')),
+        matching: find.text('150'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('/200'), findsNothing);
+    final meter = tester.getRect(
+      find.byKey(const Key('land-base-hp-meter-62-1')),
+    );
+    expect(meter.height, 2);
+    expect(meter.width, tester.getSize(row).width);
+    expect(
+      meter.top,
+      greaterThanOrEqualTo(
+        tester.getRect(find.byKey(const Key('land-base-name-62-1'))).bottom,
+      ),
+    );
+    expect(
+      meter.bottom,
+      lessThanOrEqualTo(
+        tester
+            .getRect(find.byKey(const Key('land-base-squadron-strip-62-1')))
+            .top,
+      ),
+    );
     for (final key in const <String>[
       'land-base-status-column-62-1',
       'land-base-fatigue-face-62-1',
@@ -657,10 +685,7 @@ void main() {
       expect(find.byKey(Key(key)), findsNothing, reason: key);
     }
     expect(
-      tester
-          .widget<Text>(find.byKey(const Key('land-base-air-power-chip-62-1')))
-          .style
-          ?.fontSize,
+      _chipText(tester, 'land-base-air-power-chip-62-1').style?.fontSize,
       11,
     );
     for (var id = 1; id <= 4; id++) {
@@ -702,9 +727,26 @@ void main() {
         tester.getSize(find.byKey(const Key('land-base-slot-62-1-1'))).height,
         18,
       );
+      expect(find.byKey(const Key('land-base-hp-meter-62-1')), findsOneWidget);
+      final damagedHeight = tester
+          .getSize(find.byKey(const Key('land-base-row-62-1')))
+          .height;
+      expect(damagedHeight, lessThanOrEqualTo(40));
+
+      final healthy = _base(
+        currentHp: 200,
+        conditions: const <int>[1, 1, 1, 1],
+      );
+      await tester.pumpWidget(
+        _flatRow(
+          base: healthy,
+          width: 190,
+          visible: const <String>{'bars', 'airPower', 'range'},
+        ),
+      );
       expect(
         tester.getSize(find.byKey(const Key('land-base-row-62-1'))).height,
-        lessThanOrEqualTo(40),
+        damagedHeight,
       );
 
       await tester.pumpWidget(
@@ -748,11 +790,46 @@ void main() {
         'land-base-air-power-chip-62-1',
         'land-base-slot-count-62-1-1',
       ]) {
-        expect(
-          tester.widget<Text>(find.byKey(Key(key))).style?.shadows,
-          const <Shadow>[Shadow(color: Colors.black, blurRadius: 3)],
-          reason: key,
+        expect(_chipText(tester, key).style?.shadows, const <Shadow>[
+          Shadow(color: Colors.black, blurRadius: 3),
+        ], reason: key);
+      }
+    });
+
+    testWidgets('flat 下没有可用卡图时不画头像层也不加描边', (tester) async {
+      final base = _base(currentHp: 150, conditions: const <int>[1, 1, 1, 1]);
+      await tester.pumpWidget(
+        _flatRow(
+          base: base,
+          state: GameState(
+            serverOrigin: 'https://example.test',
+            landBases: <LandBaseState>[base],
+          ),
+          width: 190,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('land-base-portrait-62-1')), findsNothing);
+      expect(find.byType(SlotItemPortrait), findsNothing);
+      expect(_chipText(tester, 'land-base-name-62-1').style?.shadows, isNull);
+    });
+
+    testWidgets('flat 下宽 210 受损时右侧信息缩放 >=0.8（中 / 英）', (tester) async {
+      final base = _base(currentHp: 150, conditions: const <int>[1, 1, 1, 1]);
+      final identity = find.byKey(const Key('land-base-identity-line-62-1'));
+      for (final locale in const <Locale>[Locale('zh'), Locale('en')]) {
+        await tester.pumpWidget(
+          _flatRow(base: base, width: 210, locale: locale),
         );
+        expect(tester.takeException(), isNull);
+        expect(
+          find.byKey(const Key('land-base-hp-value-62-1')),
+          findsOneWidget,
+        );
+        // FittedBox 只缩放绘制：渲染宽度（含变换）÷ 布局宽度即实际缩放比。
+        final scale =
+            tester.getRect(identity).width / tester.getSize(identity).width;
+        expect(scale, greaterThanOrEqualTo(0.8), reason: '$locale');
       }
     });
   });
@@ -782,48 +859,59 @@ void main() {
     );
     expect(find.byKey(const Key('land-base-hp-value-62-1')), findsOneWidget);
     expect(find.byKey(const Key('land-base-hp-icon-62-1')), findsOneWidget);
-    expect(find.text('90/200'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('land-base-hp-value-62-1')),
+        matching: find.text('90'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('/200'), findsNothing);
     expect(find.byKey(const Key('land-base-hp-meter-62-1')), findsNothing);
   });
 
   testWidgets('flat 下受损脉冲跟随 damagePulseMode', (tester) async {
     final base = _base(currentHp: 40, conditions: const <int>[1, 1, 1, 1]);
-    final hpValue = find.byKey(const Key('land-base-hp-value-62-1'));
-    final pulse = find.descendant(
-      of: hpValue,
-      matching: find.byType(DamagePulseBuilder),
-    );
-    final glow = find.descendant(
-      of: hpValue,
-      matching: find.byWidgetPredicate(
-        (widget) =>
-            widget is DecoratedBox &&
-            (widget.decoration as BoxDecoration).boxShadow != null,
-      ),
-    );
-    for (final visible in const <Set<String>>[
-      <String>{'bars', 'airPower', 'range'},
-      <String>{'airPower', 'range'},
-    ]) {
+    // 血条开时脉冲挂在整行血条上，关时挂在 HP 数值上。
+    for (final entry in const <String, Set<String>>{
+      'land-base-hp-meter-62-1': <String>{'bars', 'airPower', 'range'},
+      'land-base-hp-value-62-1': <String>{'airPower', 'range'},
+    }.entries) {
+      final target = find.byKey(Key(entry.key));
+      final pulse = entry.key == 'land-base-hp-meter-62-1'
+          ? find.ancestor(of: target, matching: find.byType(DamagePulseBuilder))
+          : find.descendant(
+              of: target,
+              matching: find.byType(DamagePulseBuilder),
+            );
+      final glow = find.descendant(
+        of: find.byKey(const Key('land-base-row-62-1')),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              (widget.decoration as BoxDecoration).boxShadow != null,
+        ),
+      );
       await tester.pumpWidget(
-        _flatRow(base: base, width: 200, visible: visible),
+        _flatRow(base: base, width: 200, visible: entry.value),
       );
       await tester.pump(const Duration(milliseconds: 300));
       expect(tester.takeException(), isNull);
-      expect(pulse, findsOneWidget, reason: '$visible');
-      expect(glow, findsOneWidget, reason: '$visible');
+      expect(find.byType(DamagePulseBuilder), findsOneWidget);
+      expect(pulse, findsOneWidget, reason: entry.key);
+      expect(glow, findsOneWidget, reason: entry.key);
 
       await tester.pumpWidget(
         _flatRow(
           base: base,
           width: 200,
-          visible: visible,
+          visible: entry.value,
           damagePulseMode: DamagePulseFilter.off,
         ),
       );
-      expect(hpValue, findsOneWidget);
-      expect(pulse, findsNothing, reason: '$visible');
-      expect(glow, findsNothing, reason: '$visible');
+      expect(target, findsOneWidget);
+      expect(find.byType(DamagePulseBuilder), findsNothing, reason: entry.key);
+      expect(glow, findsNothing, reason: entry.key);
     }
   });
 
@@ -857,9 +945,27 @@ void main() {
 
     Decoration? decorationOf(int id) => tester
         .widget<Container>(find.byKey(Key('land-base-slot-62-1-$id')))
-        .decoration;
+        .foregroundDecoration;
     expect(decorationOf(1), isNull);
     expect(decorationOf(4), isNull);
+    for (var id = 1; id <= 4; id++) {
+      expect(
+        tester
+            .widget<Container>(find.byKey(Key('land-base-slot-62-1-$id')))
+            .decoration,
+        isNull,
+      );
+    }
+    final normalIconTop = tester
+        .getTopLeft(find.byKey(const Key('land-base-slot-icon-62-1-1')))
+        .dy;
+    for (var id = 2; id <= 4; id++) {
+      expect(
+        tester.getTopLeft(find.byKey(Key('land-base-slot-icon-62-1-$id'))).dy,
+        normalIconTop,
+        reason: 'squadron $id',
+      );
+    }
     for (final entry in const <int, Color>{
       2: Color(0xffe7ad45),
       3: Color(0xffef5a5a),
@@ -906,6 +1012,17 @@ void main() {
 
 const _appFont = 'HarmonyOS_Sans_SC';
 
+/// 制空 / 航程的 key 在图标 + 数值的外层 Row 上，其余 key 直接在 Text 上。
+Text _chipText(WidgetTester tester, String key) => tester.widget<Text>(
+  find
+      .descendant(
+        of: find.byKey(Key(key)),
+        matching: find.byType(Text),
+        matchRoot: true,
+      )
+      .first,
+);
+
 Widget _flatRow({
   required LandBaseState base,
   GameState? state,
@@ -913,8 +1030,12 @@ Widget _flatRow({
   Set<String> visible = const <String>{'portrait', 'bars', 'airPower', 'range'},
   TextScaler textScaler = TextScaler.noScaling,
   DamagePulseFilter damagePulseMode = DamagePulseFilter.all,
+  Locale? locale,
 }) => MaterialApp(
   theme: ThemeData(fontFamily: _appFont),
+  locale: locale,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
   builder: (context, child) => MediaQuery(
     data: MediaQuery.of(context).copyWith(textScaler: textScaler),
     child: child!,
