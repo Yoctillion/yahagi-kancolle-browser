@@ -14,6 +14,43 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dar
 import 'fixtures/kcsapi_fixtures.dart';
 
 void main() {
+  testWidgets('flat 下区域切换为文字切换', (tester) async {
+    final controller = await _controllerWithLandBases(selectedAreaBaseCount: 2);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 600,
+              child: _CardHarness(controller: controller),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final switcher = find.byKey(const Key('land-base-area-switcher'));
+    expect(switcher, findsOneWidget);
+    for (final box in tester.widgetList<DecoratedBox>(
+      find.descendant(of: switcher, matching: find.byType(DecoratedBox)),
+    )) {
+      final d = box.decoration;
+      expect(
+        d is BoxDecoration && (d.color != null || d.border != null),
+        isFalse,
+      );
+    }
+    final selector = find.byKey(const Key('land-base-area-selector-62'));
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    final selected = tester.widget<Text>(
+      find.descendant(of: selector, matching: find.byType(Text)),
+    );
+    expect(selected.style?.color, const Color(0xffd4a85f));
+  });
+
   testWidgets('HD land bases follow bottom span and reflow live', (
     tester,
   ) async {

@@ -6,6 +6,7 @@ import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import 'dashboard_card.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_text_toggle.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
@@ -566,6 +567,25 @@ class _SortieSummaryModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return FlatTextToggle(
+        key: const Key('sortie-check-mode-selector'),
+        options: [
+          FlatTextToggleOption(
+            key: const Key('sortie-check-mode-ships'),
+            label: shipsLabel,
+            selected: mode == SortieCheckMode.ships,
+            onTap: () => onChanged(SortieCheckMode.ships),
+          ),
+          FlatTextToggleOption(
+            key: const Key('sortie-check-mode-maps'),
+            label: mapsLabel,
+            selected: mode == SortieCheckMode.maps,
+            onTap: () => onChanged(SortieCheckMode.maps),
+          ),
+        ],
+      );
+    }
     return Container(
       key: const Key('sortie-check-mode-selector'),
       height: 26,

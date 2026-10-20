@@ -6,6 +6,7 @@ import '../game_state/game_state_controller.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_text_toggle.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
@@ -154,49 +155,65 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: const Key('land-base-area-switcher'),
-    constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
-    height: 22,
-    padding: const EdgeInsets.all(2),
-    decoration: BoxDecoration(
-      color: const Color(0xff102331),
-      border: Border.all(color: const Color(0xff294052)),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        for (final areaId in areaIds)
-          Material(
-            key: Key('land-base-area-selector-$areaId'),
-            color: areaId == selectedAreaId
-                ? const Color(0xff8a6628)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            child: InkWell(
+  Widget build(BuildContext context) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return FlatTextToggle(
+        key: const Key('land-base-area-switcher'),
+        options: [
+          for (final areaId in areaIds)
+            FlatTextToggleOption(
+              key: Key('land-base-area-selector-$areaId'),
+              label: '$areaId',
+              selected: areaId == selectedAreaId,
               onTap: () => onSelected(areaId),
+            ),
+        ],
+      );
+    }
+    return Container(
+      key: const Key('land-base-area-switcher'),
+      constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
+      height: 22,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: const Color(0xff102331),
+        border: Border.all(color: const Color(0xff294052)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          for (final areaId in areaIds)
+            Material(
+              key: Key('land-base-area-selector-$areaId'),
+              color: areaId == selectedAreaId
+                  ? const Color(0xff8a6628)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                width: 32,
-                child: Center(
-                  child: Text(
-                    '$areaId',
-                    style: TextStyle(
-                      color: areaId == selectedAreaId
-                          ? const Color(0xffffdc88)
-                          : const Color(0xff9fb3bf),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+              child: InkWell(
+                onTap: () => onSelected(areaId),
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: 32,
+                  child: Center(
+                    child: Text(
+                      '$areaId',
+                      style: TextStyle(
+                        color: areaId == selectedAreaId
+                            ? const Color(0xffffdc88)
+                            : const Color(0xff9fb3bf),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class LandBaseAirGroupRow extends StatelessWidget {

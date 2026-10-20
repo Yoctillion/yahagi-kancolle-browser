@@ -1,6 +1,7 @@
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
+import 'battle_detail_strings.dart';
 import 'battle_ui_text.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import '../layout/module_summaries.dart';
@@ -14,6 +15,7 @@ import '../fleet/dashboard_card.dart';
 import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
+import '../layout/flat_text_toggle.dart';
 import '../layout/panel_style.dart';
 import '../game_state/game_state.dart';
 import '../settings/battle_prediction_settings.dart';
@@ -248,18 +250,23 @@ class _ModeSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     if (flat) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _FlatModeButton(
+      // BattleUiText 在显示时按语言本地化标签，共享组件只渲染 Text，所以这里先转换。
+      final strings = BattleDetailStrings.of(context);
+      return FlatTextToggle(
+        options: [
+          FlatTextToggleOption(
             key: const Key('battle-mode-compact'),
-            label: AppLocalizations.of(context)?.compact ?? '紧凑',
+            label: strings.localize(
+              AppLocalizations.of(context)?.compact ?? '紧凑',
+            ),
             selected: mode == BattlePanelMode.compact,
             onTap: () => onChanged(BattlePanelMode.compact),
           ),
-          _FlatModeButton(
+          FlatTextToggleOption(
             key: const Key('battle-mode-detailed'),
-            label: AppLocalizations.of(context)?.detailed ?? '完整',
+            label: strings.localize(
+              AppLocalizations.of(context)?.detailed ?? '完整',
+            ),
             selected: mode == BattlePanelMode.detailed,
             onTap: () => onChanged(BattlePanelMode.detailed),
           ),
@@ -290,37 +297,6 @@ class _ModeSwitch extends StatelessWidget {
             onTap: () => onChanged(BattlePanelMode.detailed),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FlatModeButton extends StatelessWidget {
-  const _FlatModeButton({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-        child: BattleUiText(
-          label,
-          style: TextStyle(
-            color: selected ? const Color(0xffd4a85f) : const Color(0xff8197a5),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
       ),
     );
   }
