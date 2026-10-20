@@ -6,6 +6,7 @@ import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/morale_recovery_timer_controller.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/notification/notification_timer_anchor_store.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 
@@ -150,6 +151,66 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(FleetShipStatusCapsule), findsNWidgets(2));
+  });
+
+  testWidgets('flat summary separator never dangles at a wrapped line end', (
+    tester,
+  ) async {
+    final controller = await _controllerWithPortData();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 150,
+              child: PanelStyleScope(
+                style: PanelStyle.flat,
+                child: FleetSummaryCard(
+                  controller: controller,
+                  collapsed: false,
+                  onToggleCollapse: () {},
+                  onOpenFleet: (_) {},
+                  visible: defaultFields,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    const ids = ['speed', 'total-level', 'air-power', 'line-of-sight'];
+    final rows = {
+      for (final id in ids)
+        tester.getTopLeft(find.byKey(Key('fleet-summary-metric-$id'))).dy,
+    };
+    expect(rows.length, greaterThan(1), reason: 'metrics must wrap at 150dp');
+    // Separators are painted only between neighbours on one line, so every
+    // wrapped line must start flush left with a metric.
+    final metrics = find.byKey(const Key('fleet-summary-metrics'));
+    final left = tester.getTopLeft(metrics).dx;
+    final lineStarts = <double, double>{};
+    for (final id in ids) {
+      final rect = tester.getRect(find.byKey(Key('fleet-summary-metric-$id')));
+      lineStarts.update(
+        rect.top,
+        (v) => v < rect.left ? v : rect.left,
+        ifAbsent: () => rect.left,
+      );
+      expect(
+        rect.right,
+        lessThanOrEqualTo(tester.getTopRight(metrics).dx + 0.5),
+      );
+    }
+    expect(lineStarts.values, everyElement(closeTo(left, 0.5)));
+    expect(find.text(' · '), findsNothing);
   });
 
   testWidgets('fleet selectors use names above metrics at matching width', (
