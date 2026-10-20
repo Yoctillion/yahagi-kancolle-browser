@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,6 +74,56 @@ void main() {
       ),
     );
 
+    expect(radii, CornerRadii.fallback);
+  });
+
+  Future<CornerRadii> radiiOn(
+    WidgetTester tester,
+    TargetPlatform platform,
+    EdgeInsets padding,
+  ) async {
+    debugDefaultTargetPlatformOverride = platform;
+    late CornerRadii radii;
+    try {
+      await tester.pumpWidget(
+        MediaQuery(
+          data: MediaQueryData(viewPadding: padding),
+          child: Builder(
+            builder: (context) {
+              radii = DisplayCorners.of(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+    return radii;
+  }
+
+  testWidgets('iOS with safe area uses the full-screen iPhone radius', (
+    tester,
+  ) async {
+    final radii = await radiiOn(
+      tester,
+      TargetPlatform.iOS,
+      const EdgeInsets.only(left: 59, bottom: 21),
+    );
+    expect(radii, const CornerRadii.all(55));
+  });
+
+  testWidgets('iOS without safe area keeps the fallback', (tester) async {
+    final radii = await radiiOn(tester, TargetPlatform.iOS, EdgeInsets.zero);
+    expect(radii, CornerRadii.fallback);
+  });
+
+  testWidgets('Android with safe area keeps the fallback', (tester) async {
+    final radii = await radiiOn(
+      tester,
+      TargetPlatform.android,
+      const EdgeInsets.only(left: 59, bottom: 21),
+    );
     expect(radii, CornerRadii.fallback);
   });
 

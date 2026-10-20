@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -104,8 +105,20 @@ class DisplayCorners extends InheritedNotifier<DisplayCornersController> {
 
   static CornerRadii of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<DisplayCorners>();
-    return scope?.notifier?.radii ?? CornerRadii.fallback;
+    final radii = scope?.notifier?.radii ?? CornerRadii.fallback;
+    // iOS has no way to query the radius; full-screen iPhones (non-zero safe
+    // area) all have ~55dp corners, which the 24dp fallback badly underestimates.
+    if (radii == CornerRadii.fallback &&
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      final padding = MediaQuery.maybeViewPaddingOf(context);
+      if (padding != null && padding != EdgeInsets.zero) {
+        return iosFullScreenCorners;
+      }
+    }
+    return radii;
   }
+
+  static const iosFullScreenCorners = CornerRadii.all(55);
 }
 
 /// Owns a [DisplayCornersController] and re-reads the radii whenever the
