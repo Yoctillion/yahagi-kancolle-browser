@@ -70,6 +70,20 @@ void main() {
     expect(restored.minimalResourcePosition, MinimalResourcePosition.topBar);
   });
 
+  test('minimal resource position persists the bottom bar', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final controller = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    await controller.setMinimalResourcePosition(
+      MinimalResourcePosition.bottomBar,
+    );
+    final restored = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(restored.minimalResourcePosition, MinimalResourcePosition.bottomBar);
+  });
+
   test(
     'unknown stored minimal resource position falls back to panel',
     () async {

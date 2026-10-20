@@ -354,13 +354,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get minimalResourcePositionDesc =>
-      'ミニマルでスマートフォン横向き時、ゲームページの資源を情報バー上部またはゲーム上の細いバーに表示します';
+      'ミニマルでスマートフォン横向き時、ゲームページの資源を情報バー上部、ゲーム上の細いバー、または画面下部の細いバーに表示します';
 
   @override
   String get minimalResourcePositionPanel => '情報バー';
 
   @override
   String get minimalResourcePositionTopBar => '上部バー';
+
+  @override
+  String get minimalResourcePositionBottomBar => '下部バー';
 
   @override
   String get gameAreaRatio => 'ゲーム画面の比率';

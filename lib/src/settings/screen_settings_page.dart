@@ -221,6 +221,12 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                               value: MinimalResourcePosition.topBar,
                               child: Text(l10n.minimalResourcePositionTopBar),
                             ),
+                            DropdownMenuItem(
+                              value: MinimalResourcePosition.bottomBar,
+                              child: Text(
+                                l10n.minimalResourcePositionBottomBar,
+                              ),
+                            ),
                           ],
                           onChanged: (value) {
                             if (value != null) {

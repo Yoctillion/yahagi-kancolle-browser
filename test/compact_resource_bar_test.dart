@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -880,7 +878,6 @@ void main() {
 
     final item = find.byKey(const Key('header-resource-material-1'));
     expect(item, findsOneWidget);
-    expect(tester.getSize(item).width, 74);
     final decorations = <Decoration?>[
       for (final box in tester.widgetList<Container>(
         find.descendant(of: item, matching: find.byType(Container)),
@@ -1455,14 +1452,9 @@ void main() {
     // 测试字体每字 1em，比真机宽得多；装行验收用应用实际的中文字体量。
     const appFont = 'HarmonyOS_Sans_SC';
     setUpAll(() async {
-      await (FontLoader(appFont)..addFont(
-            Future.value(
-              ByteData.sublistView(
-                await File('assets/fonts/HarmonyOS_Sans_SC.ttf').readAsBytes(),
-              ),
-            ),
-          ))
-          .load();
+      await (FontLoader(
+        appFont,
+      )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
     });
 
     const panelWidth = 205.0;
@@ -1758,5 +1750,210 @@ void main() {
         );
       }
     }
+  });
+
+  group('minimal strips size items to their content', () {
+    const stripState = GameState(
+      resources: <GameResourceType, int>{
+        GameResourceType.fuel: 146449,
+        GameResourceType.ammunition: 159378,
+        GameResourceType.steel: 157012,
+        GameResourceType.bauxite: 143589,
+        GameResourceType.instantBuild: 771,
+        GameResourceType.instantRepair: 889,
+        GameResourceType.developmentMaterial: 501,
+        GameResourceType.improvementMaterial: 11,
+      },
+      maxShipCount: 750,
+      maxEquipmentCount: 3431,
+      hasPortData: true,
+    );
+
+    Future<LayoutSettingsController> loadStrip(UiDisplaySize size) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final controller = await LayoutSettingsController.load(
+        SharedPreferencesLayoutSettingsStore(),
+      );
+      await controller.setUiDisplaySize(size);
+      await controller.toggleHeaderResourceVisible(headerFrameRefreshId);
+      return controller;
+    }
+
+    // 横条要整条排开才能逐项比对，测试窗口放宽到能容下全部项。
+    void useWideView(WidgetTester tester) {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(2400, 600);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    }
+
+    Widget stripHarness(
+      LayoutSettingsController controller, {
+      ResourceBarLayout layout = ResourceBarLayout.strip,
+      double width = 2400,
+      double height = 22,
+    }) => MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: CompactResourceBar(
+              state: stripState,
+              senka: 3128,
+              rank: 5,
+              anchorageRepairStartedAt: DateTime.now().toUtc().subtract(
+                const Duration(minutes: 10),
+              ),
+              settingsController: controller,
+              layout: layout,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    List<Rect> itemRects(
+      WidgetTester tester,
+      LayoutSettingsController controller,
+    ) => [
+      for (final id in controller.headerResourceOrder)
+        if (controller.visibleHeaderResourceIds.contains(id))
+          tester.getRect(find.byKey(Key('header-resource-$id'))),
+    ];
+
+    void expectTextsUnscaled(
+      WidgetTester tester,
+      LayoutSettingsController controller,
+    ) {
+      for (final id in controller.visibleHeaderResourceIds) {
+        final item = find.byKey(Key('header-resource-$id'));
+        final cell = tester.getRect(item);
+        for (final text
+            in find
+                .descendant(of: item, matching: find.byType(Text))
+                .evaluate()) {
+          final box = text.renderObject! as RenderBox;
+          final rect = box.localToGlobal(Offset.zero) & box.size;
+          expect(
+            tester.getRect(find.byWidget(text.widget)).width,
+            closeTo(box.size.width, 0.01),
+            reason: id,
+          );
+          expect(rect.left, greaterThanOrEqualTo(cell.left - 0.01), reason: id);
+          expect(rect.right, lessThanOrEqualTo(cell.right + 0.01), reason: id);
+        }
+      }
+    }
+
+    testWidgets('minimal strip gives each item its natural width', (
+      tester,
+    ) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.minimal);
+      await tester.pumpWidget(stripHarness(controller));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expectTextsUnscaled(tester, controller);
+      final rects = itemRects(tester, controller);
+      for (var i = 1; i < rects.length; i++) {
+        expect(rects[i].left - rects[i - 1].right, closeTo(6, 0.01));
+      }
+      // 不再套用固定宽表（普通资源 74、战果 132）。
+      expect(
+        tester
+            .getSize(find.byKey(const Key('header-resource-material-1')))
+            .width,
+        isNot(74),
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('header-resource-senka'))).width,
+        isNot(132),
+      );
+    });
+
+    testWidgets('compact strip keeps the fixed width table', (tester) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.compact);
+      await tester.pumpWidget(stripHarness(controller, height: 26));
+      await tester.pump();
+
+      expect(
+        tester
+            .getSize(find.byKey(const Key('header-resource-material-1')))
+            .width,
+        74,
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('header-resource-senka'))).width,
+        132,
+      );
+      final rects = itemRects(tester, controller);
+      expect(rects[1].left - rects[0].right, closeTo(5, 0.01));
+    });
+
+    testWidgets('static strip lays one unscrollable natural-width row', (
+      tester,
+    ) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.minimal);
+      await tester.pumpWidget(
+        stripHarness(
+          controller,
+          layout: ResourceBarLayout.staticStrip,
+          height: 21,
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(Scrollable), findsNothing);
+      expectTextsUnscaled(tester, controller);
+      final rects = itemRects(tester, controller);
+      for (var i = 1; i < rects.length; i++) {
+        expect(rects[i].top, rects[0].top);
+        expect(rects[i].left - rects[i - 1].right, closeTo(6, 0.01));
+      }
+      for (final rect in rects) {
+        expect(rect.top, greaterThanOrEqualTo(0));
+        expect(rect.bottom, lessThanOrEqualTo(21));
+      }
+    });
+
+    testWidgets('static strip scales the whole row down when too wide', (
+      tester,
+    ) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.minimal);
+      await tester.pumpWidget(
+        stripHarness(
+          controller,
+          layout: ResourceBarLayout.staticStrip,
+          width: 300,
+          height: 21,
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      final rects = itemRects(tester, controller);
+      expect(rects.first.left, greaterThanOrEqualTo(0));
+      expect(rects.last.right, lessThanOrEqualTo(300.01));
+      for (final rect in rects) {
+        expect(rect.top, rects.first.top);
+      }
+      final fitted = tester.widget<FittedBox>(
+        find.ancestor(
+          of: find.byKey(const Key('header-resource-line')),
+          matching: find.byType(FittedBox),
+        ),
+      );
+      expect(fitted.fit, BoxFit.scaleDown);
+    });
   });
 }

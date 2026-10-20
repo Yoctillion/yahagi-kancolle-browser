@@ -368,13 +368,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get minimalResourcePositionDesc =>
-      'Where Minimal shows resources on the game page in phone landscape: atop the info panel or in a thin bar above the game';
+      'Where Minimal shows resources on the game page in phone landscape: atop the info panel, in a thin bar above the game, or in a thin bar along the bottom of the screen';
 
   @override
   String get minimalResourcePositionPanel => 'Info panel';
 
   @override
   String get minimalResourcePositionTopBar => 'Top bar';
+
+  @override
+  String get minimalResourcePositionBottomBar => 'Bottom bar';
 
   @override
   String get gameAreaRatio => 'Game area ratio';
