@@ -742,7 +742,7 @@ abstract class AppLocalizations {
   /// No description provided for @minimalResourcePositionDesc.
   ///
   /// In zh, this message translates to:
-  /// **'极简档手机横屏游戏页的资源显示在信息栏顶部，或游戏上方的细横栏'**
+  /// **'极简档手机横屏游戏页的资源显示在信息栏顶部、游戏上方的细横栏，或屏幕底部的细横栏'**
   String get minimalResourcePositionDesc;
 
   /// No description provided for @minimalResourcePositionPanel.
@@ -756,6 +756,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'顶部横栏'**
   String get minimalResourcePositionTopBar;
+
+  /// No description provided for @minimalResourcePositionBottomBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'底部横栏'**
+  String get minimalResourcePositionBottomBar;
 
   /// No description provided for @gameAreaRatio.
   ///

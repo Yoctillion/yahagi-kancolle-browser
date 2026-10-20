@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations_en.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/construction_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/anchorage_repair_view.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/expedition_summary_card.dart';
@@ -1333,6 +1334,76 @@ void main() {
           .width;
       expect(nameWidth, greaterThan(rowWidth / 2));
       expect(tester.takeException(), isNull);
+    });
+
+    void expectFlatEmptyText(WidgetTester tester, Finder text) {
+      expect(text, findsOneWidget);
+      final style = tester.widget<Text>(text).style;
+      expect(style?.fontSize, 11);
+      expect(style?.color, const Color(0xff8197a5));
+      final padding =
+          tester
+                  .widget<Padding>(
+                    find
+                        .ancestor(of: text, matching: find.byType(Padding))
+                        .first,
+                  )
+                  .padding
+              as EdgeInsets;
+      expect(padding.left, 0);
+      expect(padding.right, 0);
+      expect(padding.top, lessThanOrEqualTo(4));
+      expect(padding.bottom, lessThanOrEqualTo(4));
+      expect(
+        find.ancestor(of: text, matching: find.byType(Center)),
+        findsNothing,
+      );
+    }
+
+    testWidgets('空态文案 11 号摘要灰且不居中', (tester) async {
+      final l10n = AppLocalizationsEn();
+      final empty = GameStateController(
+        gameStateStore: _StaticStore(GameState(hasPortData: true)),
+      );
+      addTearDown(empty.dispose);
+      await empty.idle;
+      Finder gridText() => find.descendant(
+        of: find.byType(ModuleSlotGrid),
+        matching: find.byType(Text),
+      );
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: empty,
+          collapsed: false,
+          visible: const {'portrait'},
+          onToggleCollapse: () {},
+          onOpenRepair: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, gridText());
+      await pumpFlat(
+        tester,
+        ConstructionSummaryCard(
+          controller: empty,
+          collapsed: false,
+          visible: const {'portrait'},
+          onToggleCollapse: () {},
+          onOpenConstruction: () {},
+        ),
+      );
+      expectFlatEmptyText(tester, gridText());
+      await pumpFlat(
+        tester,
+        PinnedQuestsSummary(
+          controller: empty,
+          collapsed: false,
+          visible: const {'number', 'name', 'progress'},
+          onToggleCollapse: () {},
+          onOpenQuest: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.questsNeedSync));
     });
 
     testWidgets('任务行仍可点击', (tester) async {

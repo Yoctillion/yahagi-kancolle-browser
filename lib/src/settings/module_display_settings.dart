@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../fleet/fleet_ui_strings.dart';
+import '../layout/flat_empty_text.dart';
+import '../layout/panel_style.dart';
 import 'fleet_display_options.dart';
 import 'layout_settings_controller.dart';
 
@@ -262,13 +264,15 @@ class ModuleSlotGrid extends StatelessWidget {
   final String emptyLabel;
   @override
   Widget build(BuildContext context) => children.isEmpty
-      ? Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Text(
-            fleetText(context, emptyLabel),
-            style: const TextStyle(color: Color(0xff8197a5)),
-          ),
-        )
+      ? PanelStyleScope.of(context) == PanelStyle.flat
+            ? FlatEmptyText(fleetText(context, emptyLabel))
+            : Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  fleetText(context, emptyLabel),
+                  style: const TextStyle(color: Color(0xff8197a5)),
+                ),
+              )
       : LayoutBuilder(
           builder: (context, constraints) => Wrap(
             spacing: 8,

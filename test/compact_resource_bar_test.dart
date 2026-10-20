@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/src/settings/header_resource_settings.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/resource_grid.dart';
+import 'package:yahagi_kancolle_browser/src/layout/display_corners.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
@@ -876,7 +878,6 @@ void main() {
 
     final item = find.byKey(const Key('header-resource-material-1'));
     expect(item, findsOneWidget);
-    expect(tester.getSize(item).width, 74);
     final decorations = <Decoration?>[
       for (final box in tester.widgetList<Container>(
         find.descendant(of: item, matching: find.byType(Container)),
@@ -904,14 +905,28 @@ void main() {
     LayoutSettingsController controller, {
     double width = 200,
     double? senka,
+    int? rank,
     GameState state = const GameState(),
     Locale locale = const Locale('zh'),
     EdgeInsets gridPadding = EdgeInsets.zero,
+    ({double left, double right}) cornerRadii = (left: 0, right: 0),
+    String? fontFamily,
+    double textScale = 1,
+    DateTime? timersStartedAt,
+    VoidCallback? onAnchorageTimerTap,
+    VoidCallback? onNosakiTimerTap,
   }) {
     return MaterialApp(
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      theme: fontFamily == null ? null : ThemeData(fontFamily: fontFamily),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: TopNoticeHost(
         child: Scaffold(
           body: Align(
@@ -921,10 +936,15 @@ void main() {
               child: CompactResourceBar(
                 state: state,
                 senka: senka,
-                rank: senka == null ? null : 123,
+                rank: rank ?? (senka == null ? null : 123),
+                anchorageRepairStartedAt: timersStartedAt,
+                nosakiSparkleStartedAt: timersStartedAt,
+                onAnchorageTimerTap: onAnchorageTimerTap,
+                onNosakiTimerTap: onNosakiTimerTap,
                 settingsController: controller,
                 layout: ResourceBarLayout.grid,
                 gridPadding: gridPadding,
+                gridCornerRadii: cornerRadii,
               ),
             ),
           ),
@@ -975,7 +995,7 @@ void main() {
     hasPortData: true,
   );
 
-  testWidgets('grid puts wide items two per row and plain items four per row', (
+  testWidgets('grid flows wide items by width and plain items four per row', (
     tester,
   ) async {
     final controller = await loadGridController();
@@ -986,23 +1006,25 @@ void main() {
 
     expect(tester.takeException(), isNull);
     Offset topLeft(String key) => tester.getTopLeft(find.byKey(Key(key)));
+    Rect rect(String key) => tester.getRect(find.byKey(Key(key)));
     final senka = topLeft('header-senka-summary');
     final anchorage = topLeft('header-anchorage-timer-summary');
     final nosaki = topLeft('header-nosaki-timer-summary');
     final ships = topLeft('header-ship-capacity');
     final equipment = topLeft('header-equipment-capacity');
+    // 测试字体每字 1em：战果 10 字、两个空闲计时器各 2 字能挤进一行。
     expect(anchorage.dy, senka.dy);
+    expect(nosaki.dy, senka.dy);
     expect(anchorage.dx, greaterThan(senka.dx));
-    expect(nosaki.dy, greaterThan(senka.dy));
-    expect(ships.dy, nosaki.dy);
-    expect(ships.dx, anchorage.dx);
-    expect(equipment.dy, greaterThan(nosaki.dy));
-    expect(equipment.dx, senka.dx);
-    // 落单的宽项只占半格，不拉满整行。
-    expect(
-      tester.getSize(find.byKey(const Key('header-equipment-capacity'))).width,
-      lessThan(125),
-    );
+    expect(nosaki.dx, greaterThan(anchorage.dx));
+    expect(ships.dy, greaterThan(senka.dy));
+    expect(equipment.dy, ships.dy);
+    expect(ships.dx, senka.dx);
+    expect(equipment.dx, greaterThan(ships.dx));
+    // 每行排完后把余量平分，行仍满宽。
+    expect(senka.dx, 0);
+    expect(rect('header-nosaki-timer-summary').right, closeTo(250, 0.01));
+    expect(rect('header-equipment-capacity').right, closeTo(250, 0.01));
 
     final m1 = topLeft('header-resource-material-1');
     expect(m1.dy, greaterThan(equipment.dy));
@@ -1046,7 +1068,8 @@ void main() {
         rect('header-resource-material-8').left,
         rect('header-resource-material-4').left,
       );
-      expect(rect('header-senka-summary').width, (250 - 8 - 8 - 4) / 2);
+      expect(rect('header-senka-summary').left, 8);
+      expect(rect('header-nosaki-timer-summary').right, closeTo(250 - 8, 0.01));
 
       final toggle = rect('information-panel-resources-toggle');
       final last = rect('header-resource-material-8');
@@ -1278,7 +1301,7 @@ void main() {
         ('header-senka-summary', '31280.5(#123)'),
         ('header-ship-capacity', '0/750'),
         ('header-equipment-capacity', '0/3431'),
-        ('header-anchorage-timer-summary', '--:--:--'),
+        ('header-anchorage-timer-summary', '--'),
         ('header-resource-material-1', '146449'),
         ('header-resource-material-2', '159378'),
         ('header-resource-material-4', '143589'),
@@ -1298,7 +1321,7 @@ void main() {
     });
   }
 
-  testWidgets('grid layout keeps senka item numbers unclipped at 200dp width', (
+  testWidgets('grid layout gives the senka item its natural width at 200dp', (
     tester,
   ) async {
     final controller = await loadGridController();
@@ -1307,11 +1330,12 @@ void main() {
 
     expect(tester.takeException(), isNull);
     final summary = find.byKey(const Key('header-senka-summary'));
-    expect(tester.getSize(summary).width, lessThan(100));
     final value = find.textContaining('1234.5');
     expect(value, findsOneWidget);
     expect(tester.widget<Text>(value).style?.fontSize, 11);
-    // 半格放不下时整体缩小而不是裁掉，数值仍完整落在格子里。
+    // 按自然宽度装行，数值不必缩放，也完整落在格子里。
+    final paragraph = tester.renderObject<RenderBox>(value);
+    expect(tester.getRect(value).width, closeTo(paragraph.size.width, 0.01));
     final cell = tester.getRect(summary);
     expect(tester.getRect(value).left, greaterThanOrEqualTo(cell.left));
     expect(tester.getRect(value).right, lessThanOrEqualTo(cell.right + 0.01));
@@ -1422,5 +1446,514 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('header-resource-edit-mode')), findsOneWidget);
+  });
+
+  group('grid packs by measured width and clears the corner per row', () {
+    // 测试字体每字 1em，比真机宽得多；装行验收用应用实际的中文字体量。
+    const appFont = 'HarmonyOS_Sans_SC';
+    setUpAll(() async {
+      await (FontLoader(
+        appFont,
+      )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
+    });
+
+    const panelWidth = 205.0;
+    const radius = 55.0;
+    const basePadding = EdgeInsets.fromLTRB(8, 6, 8, 2);
+
+    // 明石、野埼都在第一舰队旗舰位就绪，计时开始后两个计时器都在走。
+    final portState = GameState(
+      fleets: const <Fleet>[
+        Fleet(id: 1, name: '第一舰队', shipIds: <int>[1, 2]),
+      ],
+      ships: <int, OwnedShip>{
+        1: const OwnedShip(
+          id: 1,
+          masterId: 187,
+          level: 80,
+          currentHp: 45,
+          maxHp: 45,
+        ),
+        2: const OwnedShip(
+          id: 2,
+          masterId: 1002,
+          level: 80,
+          currentHp: 48,
+          maxHp: 48,
+          currentFuel: 100,
+          currentAmmo: 100,
+          condition: 49,
+        ),
+        for (var id = 3; id <= 320; id++)
+          id: OwnedShip(
+            id: id,
+            masterId: 1,
+            level: 1,
+            currentHp: 10,
+            maxHp: 10,
+          ),
+      },
+      masterShips: const <int, MasterShip>{
+        187: MasterShip(id: 187, name: '明石改', shipTypeId: 19),
+        1002: MasterShip(
+          id: 1002,
+          name: '野埼改',
+          shipTypeId: 22,
+          maxFuel: 100,
+          maxAmmo: 100,
+        ),
+      },
+      slotItems: <int, OwnedSlotItem>{
+        for (var id = 1; id <= 1500; id++)
+          id: OwnedSlotItem(id: id, masterId: 1),
+      },
+      maxShipCount: 340,
+      maxEquipmentCount: 1600,
+      hasPortData: true,
+    );
+
+    Future<LayoutSettingsController> pumpPanel(
+      WidgetTester tester, {
+      bool timersRunning = false,
+      ({double left, double right}) cornerRadii = (left: 0, right: radius),
+      Locale locale = const Locale('zh'),
+      double textScale = 1,
+      String? fontFamily = appFont,
+      LayoutSettingsController? controller,
+      VoidCallback? onAnchorageTimerTap,
+      VoidCallback? onNosakiTimerTap,
+    }) async {
+      controller ??= await loadGridController();
+      await controller.setUiDisplaySize(UiDisplaySize.minimal);
+      await tester.pumpWidget(
+        gridHarness(
+          controller,
+          width: panelWidth,
+          senka: 1234,
+          rank: 56,
+          state: portState,
+          locale: locale,
+          gridPadding: basePadding,
+          cornerRadii: cornerRadii,
+          fontFamily: fontFamily,
+          textScale: textScale,
+          timersStartedAt: timersRunning
+              ? DateTime.now().toUtc().subtract(const Duration(minutes: 10))
+              : null,
+          onAnchorageTimerTap: onAnchorageTimerTap,
+          onNosakiTimerTap: onNosakiTimerTap,
+        ),
+      );
+      await tester.pump();
+      return controller;
+    }
+
+    const wideKeys = <String>[
+      'header-resource-$headerSenkaId',
+      'header-resource-$headerAnchorageTimerId',
+      'header-resource-$headerNosakiTimerId',
+      'header-resource-$headerFrameRefreshId',
+      'header-resource-$headerShipCapacityId',
+      'header-resource-$headerEquipmentCapacityId',
+    ];
+    final plainKeys = <String>[
+      for (var id = 1; id <= 8; id++) 'header-resource-material-$id',
+    ];
+
+    // 按格子顶边把可见项分成行，行内按左边排序。
+    List<List<Rect>> rowsOf(WidgetTester tester, Iterable<String> keys) {
+      final byTop = <double, List<Rect>>{};
+      for (final key in keys) {
+        if (find.byKey(Key(key)).evaluate().isEmpty) continue;
+        final rect = tester.getRect(find.byKey(Key(key)));
+        byTop.putIfAbsent(rect.top, () => <Rect>[]).add(rect);
+      }
+      final tops = byTop.keys.toList()..sort();
+      return [
+        for (final top in tops)
+          byTop[top]!..sort((a, b) => a.left.compareTo(b.left)),
+      ];
+    }
+
+    void expectRowsClearRightCorner(WidgetTester tester) {
+      for (final row in rowsOf(tester, [...wideKeys, ...plainKeys])) {
+        final iconTop = row.first.top + (20 - 12) / 2;
+        expect(
+          row.last.right,
+          lessThanOrEqualTo(
+            panelWidth - 8 - cornerInsetAt(radius, iconTop) + 1e-6,
+          ),
+          reason: 'row at ${row.first.top}',
+        );
+      }
+    }
+
+    testWidgets('idle timers fit the wide items into two rows', (tester) async {
+      await pumpPanel(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(rowsOf(tester, wideKeys), hasLength(2));
+      expect(rowsOf(tester, [...wideKeys, ...plainKeys]), hasLength(4));
+      expectRowsClearRightCorner(tester);
+    });
+
+    testWidgets('running timers take no more rows than before', (tester) async {
+      await pumpPanel(tester, timersRunning: true);
+
+      expect(tester.takeException(), isNull);
+      expect(
+        rowsOf(tester, [...wideKeys, ...plainKeys]).length,
+        lessThanOrEqualTo(5),
+      );
+      expectRowsClearRightCorner(tester);
+    });
+
+    testWidgets('idle timers show a short dash and stay tappable', (
+      tester,
+    ) async {
+      var anchorageTaps = 0;
+      var nosakiTaps = 0;
+      await pumpPanel(
+        tester,
+        onAnchorageTimerTap: () => anchorageTaps++,
+        onNosakiTimerTap: () => nosakiTaps++,
+      );
+
+      for (final key in const [
+        'header-anchorage-timer-summary',
+        'header-nosaki-timer-summary',
+      ]) {
+        final item = find.byKey(Key(key));
+        expect(
+          find.descendant(of: item, matching: find.text('--')),
+          findsOneWidget,
+          reason: key,
+        );
+        expect(
+          find.descendant(of: item, matching: find.text('--:--:--')),
+          findsNothing,
+          reason: key,
+        );
+      }
+      await tester.tap(
+        find.byKey(const Key('header-resource-anchorage-timer')),
+      );
+      await tester.tap(find.byKey(const Key('header-resource-nosaki-timer')));
+      expect(anchorageTaps, 1);
+      expect(nosakiTaps, 1);
+    });
+
+    testWidgets('running timers show hh:mm:ss', (tester) async {
+      await pumpPanel(tester, timersRunning: true);
+
+      for (final key in const [
+        'header-anchorage-timer-summary',
+        'header-nosaki-timer-summary',
+      ]) {
+        final text = tester.widget<Text>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(Text),
+          ),
+        );
+        expect(text.data, matches(RegExp(r'^00:10:\d\d$')), reason: key);
+      }
+    });
+
+    testWidgets('wide items keep the user order', (tester) async {
+      final controller = await loadGridController();
+      await controller.setHeaderResourceOrder(<String>[
+        headerEquipmentCapacityId,
+        ...allHeaderResourceIds.where((id) => id != headerEquipmentCapacityId),
+      ]);
+      await pumpPanel(tester, controller: controller);
+
+      final first = rowsOf(tester, wideKeys).first.first;
+      expect(
+        first,
+        tester.getRect(
+          find.byKey(const Key('header-resource-$headerEquipmentCapacityId')),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('left corner pulls each row in on the left', (tester) async {
+      await pumpPanel(tester, cornerRadii: (left: radius, right: 0));
+
+      expect(tester.takeException(), isNull);
+      final rows = rowsOf(tester, [...wideKeys, ...plainKeys]);
+      for (final row in rows) {
+        final iconTop = row.first.top + (20 - 12) / 2;
+        expect(
+          row.first.left,
+          greaterThanOrEqualTo(8 + cornerInsetAt(radius, iconTop) - 1e-6),
+          reason: 'row at ${row.first.top}',
+        );
+        // 末行末格给折叠按钮让了位，其余行右侧不内缩、仍满宽。
+        if (row != rows.last) {
+          expect(row.last.right, closeTo(panelWidth - 8, 0.01));
+        }
+      }
+      expect(cornerInsetAt(radius, rows.first.first.top + 4), greaterThan(20));
+    });
+
+    testWidgets('collapsed toggle follows the first row corner inset', (
+      tester,
+    ) async {
+      await pumpPanel(tester);
+      await tester.tap(
+        find.byKey(const Key('information-panel-resources-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final rowRight = panelWidth - 8 - cornerInsetAt(radius, 6 + 4);
+      final icon = tester.getRect(
+        find.byIcon(Icons.keyboard_arrow_down_rounded),
+      );
+      expect(icon.right, closeTo(rowRight, 0.01));
+      final toggle = tester.getRect(
+        find.byKey(const Key('information-panel-resources-toggle')),
+      );
+      expect(toggle.right, lessThanOrEqualTo(panelWidth));
+      expect(
+        toggle.left,
+        greaterThanOrEqualTo(
+          tester
+              .getRect(find.byKey(const Key('header-resource-material-4')))
+              .right,
+        ),
+      );
+    });
+
+    for (final locale in const [Locale('zh'), Locale('en')]) {
+      for (final running in const [false, true]) {
+        testWidgets(
+          'large text in $locale (timers running: $running) does not overflow',
+          (tester) async {
+            final controller = await loadGridController();
+            await controller.toggleHeaderResourceVisible(headerFrameRefreshId);
+            for (final fontFamily in const <String?>[appFont, null]) {
+              await pumpPanel(
+                tester,
+                controller: controller,
+                locale: locale,
+                textScale: 1.3,
+                timersRunning: running,
+                fontFamily: fontFamily,
+              );
+              expect(tester.takeException(), isNull, reason: '$fontFamily');
+              expectRowsClearRightCorner(tester);
+            }
+          },
+        );
+      }
+    }
+  });
+
+  group('minimal strips size items to their content', () {
+    const stripState = GameState(
+      resources: <GameResourceType, int>{
+        GameResourceType.fuel: 146449,
+        GameResourceType.ammunition: 159378,
+        GameResourceType.steel: 157012,
+        GameResourceType.bauxite: 143589,
+        GameResourceType.instantBuild: 771,
+        GameResourceType.instantRepair: 889,
+        GameResourceType.developmentMaterial: 501,
+        GameResourceType.improvementMaterial: 11,
+      },
+      maxShipCount: 750,
+      maxEquipmentCount: 3431,
+      hasPortData: true,
+    );
+
+    Future<LayoutSettingsController> loadStrip(UiDisplaySize size) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final controller = await LayoutSettingsController.load(
+        SharedPreferencesLayoutSettingsStore(),
+      );
+      await controller.setUiDisplaySize(size);
+      await controller.toggleHeaderResourceVisible(headerFrameRefreshId);
+      return controller;
+    }
+
+    // 横条要整条排开才能逐项比对，测试窗口放宽到能容下全部项。
+    void useWideView(WidgetTester tester) {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(2400, 600);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    }
+
+    Widget stripHarness(
+      LayoutSettingsController controller, {
+      ResourceBarLayout layout = ResourceBarLayout.strip,
+      double width = 2400,
+      double height = 22,
+    }) => MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: CompactResourceBar(
+              state: stripState,
+              senka: 3128,
+              rank: 5,
+              anchorageRepairStartedAt: DateTime.now().toUtc().subtract(
+                const Duration(minutes: 10),
+              ),
+              settingsController: controller,
+              layout: layout,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    List<Rect> itemRects(
+      WidgetTester tester,
+      LayoutSettingsController controller,
+    ) => [
+      for (final id in controller.headerResourceOrder)
+        if (controller.visibleHeaderResourceIds.contains(id))
+          tester.getRect(find.byKey(Key('header-resource-$id'))),
+    ];
+
+    void expectTextsUnscaled(
+      WidgetTester tester,
+      LayoutSettingsController controller,
+    ) {
+      for (final id in controller.visibleHeaderResourceIds) {
+        final item = find.byKey(Key('header-resource-$id'));
+        final cell = tester.getRect(item);
+        for (final text
+            in find
+                .descendant(of: item, matching: find.byType(Text))
+                .evaluate()) {
+          final box = text.renderObject! as RenderBox;
+          final rect = box.localToGlobal(Offset.zero) & box.size;
+          expect(
+            tester.getRect(find.byWidget(text.widget)).width,
+            closeTo(box.size.width, 0.01),
+            reason: id,
+          );
+          expect(rect.left, greaterThanOrEqualTo(cell.left - 0.01), reason: id);
+          expect(rect.right, lessThanOrEqualTo(cell.right + 0.01), reason: id);
+        }
+      }
+    }
+
+    testWidgets('minimal strip gives each item its natural width', (
+      tester,
+    ) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.minimal);
+      await tester.pumpWidget(stripHarness(controller));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expectTextsUnscaled(tester, controller);
+      final rects = itemRects(tester, controller);
+      for (var i = 1; i < rects.length; i++) {
+        expect(rects[i].left - rects[i - 1].right, closeTo(6, 0.01));
+      }
+      // 不再套用固定宽表（普通资源 74、战果 132）。
+      expect(
+        tester
+            .getSize(find.byKey(const Key('header-resource-material-1')))
+            .width,
+        isNot(74),
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('header-resource-senka'))).width,
+        isNot(132),
+      );
+    });
+
+    testWidgets('compact strip keeps the fixed width table', (tester) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.compact);
+      await tester.pumpWidget(stripHarness(controller, height: 26));
+      await tester.pump();
+
+      expect(
+        tester
+            .getSize(find.byKey(const Key('header-resource-material-1')))
+            .width,
+        74,
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('header-resource-senka'))).width,
+        132,
+      );
+      final rects = itemRects(tester, controller);
+      expect(rects[1].left - rects[0].right, closeTo(5, 0.01));
+    });
+
+    testWidgets('static strip lays one unscrollable natural-width row', (
+      tester,
+    ) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.minimal);
+      await tester.pumpWidget(
+        stripHarness(
+          controller,
+          layout: ResourceBarLayout.staticStrip,
+          height: 21,
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(Scrollable), findsNothing);
+      expectTextsUnscaled(tester, controller);
+      final rects = itemRects(tester, controller);
+      for (var i = 1; i < rects.length; i++) {
+        expect(rects[i].top, rects[0].top);
+        expect(rects[i].left - rects[i - 1].right, closeTo(6, 0.01));
+      }
+      for (final rect in rects) {
+        expect(rect.top, greaterThanOrEqualTo(0));
+        expect(rect.bottom, lessThanOrEqualTo(21));
+      }
+    });
+
+    testWidgets('static strip scales the whole row down when too wide', (
+      tester,
+    ) async {
+      useWideView(tester);
+      final controller = await loadStrip(UiDisplaySize.minimal);
+      await tester.pumpWidget(
+        stripHarness(
+          controller,
+          layout: ResourceBarLayout.staticStrip,
+          width: 300,
+          height: 21,
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      final rects = itemRects(tester, controller);
+      expect(rects.first.left, greaterThanOrEqualTo(0));
+      expect(rects.last.right, lessThanOrEqualTo(300.01));
+      for (final rect in rects) {
+        expect(rect.top, rects.first.top);
+      }
+      final fitted = tester.widget<FittedBox>(
+        find.ancestor(
+          of: find.byKey(const Key('header-resource-line')),
+          matching: find.byType(FittedBox),
+        ),
+      );
+      expect(fitted.fit, BoxFit.scaleDown);
+    });
   });
 }

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../game_state/game_state.dart';
+import '../layout/panel_style.dart';
 import 'expedition_strings.dart';
 
 const _poiAreaOrder = <int>[1, 2, 3, 7, 4, 5, 6];
@@ -89,6 +90,7 @@ class ExpeditionMissionPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mission = missions[selectedMissionId];
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     final label =
         '${expeditionDisplayId(selectedMissionId, mission)} · ${mission?.name ?? ExpeditionStrings.of(context).expeditionFallbackName}';
     return Material(
@@ -98,15 +100,20 @@ class ExpeditionMissionPicker extends StatelessWidget {
         borderRadius: BorderRadius.circular(5),
         onTap: () => _showPicker(context),
         child: Container(
-          height: compact ? 34 : 40,
-          padding: EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: compact ? 5 : 8,
-          ),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xff536772)),
-            borderRadius: BorderRadius.circular(5),
-          ),
+          height: flat
+              ? null
+              : compact
+              ? 34
+              : 40,
+          padding: flat
+              ? const EdgeInsets.symmetric(vertical: 2)
+              : EdgeInsets.symmetric(horizontal: 10, vertical: compact ? 5 : 8),
+          decoration: flat
+              ? null
+              : BoxDecoration(
+                  border: Border.all(color: const Color(0xff536772)),
+                  borderRadius: BorderRadius.circular(5),
+                ),
           child: Row(
             children: [
               Expanded(
@@ -119,12 +126,14 @@ class ExpeditionMissionPicker extends StatelessWidget {
                       softWrap: false,
                       overflow: compact ? TextOverflow.ellipsis : null,
                       style: TextStyle(
-                        fontSize: compact && constraints.maxWidth < 300
+                        fontSize: flat
+                            ? 11
+                            : compact && constraints.maxWidth < 300
                             ? 11
                             : compact
                             ? 12
                             : 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: flat ? FontWeight.w700 : FontWeight.w600,
                       ),
                     );
                     return compact
@@ -138,7 +147,7 @@ class ExpeditionMissionPicker extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.unfold_more_rounded, size: 18),
+              Icon(Icons.unfold_more_rounded, size: flat ? 14 : 18),
             ],
           ),
         ),

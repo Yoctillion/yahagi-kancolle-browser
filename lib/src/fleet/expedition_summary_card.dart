@@ -9,6 +9,7 @@ import 'fleet_ui_strings.dart';
 import 'operation_progress.dart';
 import '../layout/module_summaries.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_text_toggle.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
 
@@ -368,6 +369,25 @@ class ExpeditionModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return FlatTextToggle(
+        key: const Key('expedition-summary-mode-selector'),
+        options: [
+          FlatTextToggleOption(
+            key: const Key('expedition-mode-summary'),
+            label: summaryLabel,
+            selected: mode == ExpeditionSummaryMode.summary,
+            onTap: () => onChanged(ExpeditionSummaryMode.summary),
+          ),
+          FlatTextToggleOption(
+            key: const Key('expedition-mode-check'),
+            label: checkLabel,
+            selected: mode == ExpeditionSummaryMode.check,
+            onTap: () => onChanged(ExpeditionSummaryMode.check),
+          ),
+        ],
+      );
+    }
     return Container(
       key: const Key('expedition-summary-mode-selector'),
       width: compact ? null : 260,

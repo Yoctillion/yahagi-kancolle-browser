@@ -14,6 +14,43 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dar
 import 'fixtures/kcsapi_fixtures.dart';
 
 void main() {
+  testWidgets('flat 下区域切换为文字切换', (tester) async {
+    final controller = await _controllerWithLandBases(selectedAreaBaseCount: 2);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 600,
+              child: _CardHarness(controller: controller),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final switcher = find.byKey(const Key('land-base-area-switcher'));
+    expect(switcher, findsOneWidget);
+    for (final box in tester.widgetList<DecoratedBox>(
+      find.descendant(of: switcher, matching: find.byType(DecoratedBox)),
+    )) {
+      final d = box.decoration;
+      expect(
+        d is BoxDecoration && (d.color != null || d.border != null),
+        isFalse,
+      );
+    }
+    final selector = find.byKey(const Key('land-base-area-selector-62'));
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    final selected = tester.widget<Text>(
+      find.descendant(of: selector, matching: find.byType(Text)),
+    );
+    expect(selected.style?.color, const Color(0xffd4a85f));
+  });
+
   testWidgets('HD land bases follow bottom span and reflow live', (
     tester,
   ) async {
@@ -621,6 +658,73 @@ void main() {
     for (var id = 1; id <= 4; id++) {
       expect(find.byKey(Key('land-base-slot-62-1-$id')), findsOneWidget);
     }
+  });
+
+  testWidgets('flat 下隐藏头像时槽位行整体高度随内容 <=22', (tester) async {
+    final base = _base(currentHp: 200, conditions: const <int>[1, 1, 1, 1]);
+    tester.view.physicalSize = const Size(190, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 190,
+              child: LandBaseAirGroupRow(
+                state: _state(base),
+                base: base,
+                visible: const <String>{'bars', 'airPower', 'range'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final status = tester.getSize(
+      find.byKey(const Key('land-base-status-column-62-1')),
+    );
+    final strip = find.byKey(const Key('land-base-squadron-strip-62-1'));
+    final slotRow = tester.getSize(
+      find.ancestor(of: strip, matching: find.byType(Row)).first,
+    );
+    expect(status.height, lessThan(34));
+    expect(slotRow.height, lessThanOrEqualTo(26));
+
+    tester.platformDispatcher.clearAllTestValues();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PanelStyleScope(
+            style: PanelStyle.flat,
+            child: SizedBox(
+              width: 190,
+              child: LandBaseAirGroupRow(
+                state: _state(base),
+                base: base,
+                visible: const <String>{'bars', 'airPower', 'range'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester
+          .getSize(find.ancestor(of: strip, matching: find.byType(Row)).first)
+          .height,
+      lessThanOrEqualTo(22),
+    );
   });
 }
 

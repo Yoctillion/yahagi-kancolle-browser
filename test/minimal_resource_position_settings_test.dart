@@ -59,10 +59,20 @@ void main() {
     );
     await tester.tap(dropdown);
     await tester.pumpAndSettle();
+    for (final label in const ['信息栏', '顶部横栏', '底部横栏']) {
+      expect(find.text(label), findsWidgets, reason: label);
+    }
     await tester.tap(find.text('顶部横栏').last);
     await tester.pumpAndSettle();
 
     expect(layout.minimalResourcePosition, MinimalResourcePosition.topBar);
+
+    await tester.tap(dropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('底部横栏').last);
+    await tester.pumpAndSettle();
+
+    expect(layout.minimalResourcePosition, MinimalResourcePosition.bottomBar);
     expect(tester.takeException(), isNull);
   });
 }

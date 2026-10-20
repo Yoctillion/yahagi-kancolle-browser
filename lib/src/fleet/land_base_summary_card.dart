@@ -6,6 +6,7 @@ import '../game_state/game_state_controller.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_text_toggle.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
@@ -154,49 +155,65 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: const Key('land-base-area-switcher'),
-    constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
-    height: 22,
-    padding: const EdgeInsets.all(2),
-    decoration: BoxDecoration(
-      color: const Color(0xff102331),
-      border: Border.all(color: const Color(0xff294052)),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        for (final areaId in areaIds)
-          Material(
-            key: Key('land-base-area-selector-$areaId'),
-            color: areaId == selectedAreaId
-                ? const Color(0xff8a6628)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            child: InkWell(
+  Widget build(BuildContext context) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return FlatTextToggle(
+        key: const Key('land-base-area-switcher'),
+        options: [
+          for (final areaId in areaIds)
+            FlatTextToggleOption(
+              key: Key('land-base-area-selector-$areaId'),
+              label: '$areaId',
+              selected: areaId == selectedAreaId,
               onTap: () => onSelected(areaId),
+            ),
+        ],
+      );
+    }
+    return Container(
+      key: const Key('land-base-area-switcher'),
+      constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
+      height: 22,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: const Color(0xff102331),
+        border: Border.all(color: const Color(0xff294052)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          for (final areaId in areaIds)
+            Material(
+              key: Key('land-base-area-selector-$areaId'),
+              color: areaId == selectedAreaId
+                  ? const Color(0xff8a6628)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                width: 32,
-                child: Center(
-                  child: Text(
-                    '$areaId',
-                    style: TextStyle(
-                      color: areaId == selectedAreaId
-                          ? const Color(0xffffdc88)
-                          : const Color(0xff9fb3bf),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+              child: InkWell(
+                onTap: () => onSelected(areaId),
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: 32,
+                  child: Center(
+                    child: Text(
+                      '$areaId',
+                      style: TextStyle(
+                        color: areaId == selectedAreaId
+                            ? const Color(0xffffdc88)
+                            : const Color(0xff9fb3bf),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class LandBaseAirGroupRow extends StatelessWidget {
@@ -446,8 +463,10 @@ class LandBaseAirGroupRow extends StatelessWidget {
                         currentHp: currentHp,
                         maximumHp: maximumHp,
                         hpRatio: hpRatio,
-                        height: portraitHeight > 34 ? portraitHeight : 34,
-                        trackHeight: hpTrackHeight,
+                        height: flat
+                            ? null
+                            : (portraitHeight > 34 ? portraitHeight : 34),
+                        trackHeight: flat ? 4 : hpTrackHeight,
                       ),
                     )
                   else
@@ -458,8 +477,10 @@ class LandBaseAirGroupRow extends StatelessWidget {
                         currentHp: currentHp,
                         maximumHp: maximumHp,
                         hpRatio: hpRatio,
-                        height: portraitHeight > 34 ? portraitHeight : 34,
-                        trackHeight: hpTrackHeight,
+                        height: flat
+                            ? null
+                            : (portraitHeight > 34 ? portraitHeight : 34),
+                        trackHeight: flat ? 4 : hpTrackHeight,
                       ),
                     ),
                   SizedBox(width: sectionGap),
@@ -512,7 +533,7 @@ class _LandBaseStatusColumn extends StatelessWidget {
   final int currentHp;
   final int maximumHp;
   final double hpRatio;
-  final double height;
+  final double? height;
   final double trackHeight;
 
   @override
@@ -731,7 +752,7 @@ class _LandBaseSquadronSlot extends StatelessWidget {
     final suffix = '$areaId-$baseId-$squadronId';
     final content = Container(
       key: Key('land-base-slot-$suffix'),
-      height: 34,
+      height: flat ? 20 : 34,
       decoration: flat
           ? (missing || fatigueColor != null
                 ? BoxDecoration(
@@ -762,7 +783,9 @@ class _LandBaseSquadronSlot extends StatelessWidget {
             ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final iconSize = (constraints.maxWidth - 8).clamp(20.0, 26.0);
+          final iconSize = flat
+              ? (constraints.maxWidth - 8).clamp(14.0, 16.0)
+              : (constraints.maxWidth - 8).clamp(20.0, 26.0);
           return Stack(
             alignment: Alignment.center,
             children: <Widget>[

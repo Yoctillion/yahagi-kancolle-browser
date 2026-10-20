@@ -1887,6 +1887,22 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     required bool cornerOnRight,
   }) {
     final corners = DisplayCorners.of(context);
+    return _buildGameResourceBar(
+      layout: ResourceBarLayout.grid,
+      gridPadding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+      gridCornerRadii: (
+        left: cornerOnLeft ? corners.topLeft : 0,
+        right: cornerOnRight ? corners.topRight : 0,
+      ),
+    );
+  }
+
+  /// 极简游戏页没有顶栏时的资源条，任务完成等通知临时占用它的位置。
+  Widget _buildGameResourceBar({
+    required ResourceBarLayout layout,
+    EdgeInsets gridPadding = EdgeInsets.zero,
+    ({double left, double right}) gridCornerRadii = (left: 0, right: 0),
+  }) {
     final senkaController = widget.senkaController;
     return QuestCompletionHeaderSlot(
       child: AnimatedBuilder(
@@ -1898,13 +1914,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           final gameState = widget.gameStateController;
           final playerRanking = senkaController?.state.playerRankingRow;
           return CompactResourceBar(
-            layout: ResourceBarLayout.grid,
-            gridPadding: EdgeInsets.fromLTRB(
-              8 + (cornerOnLeft ? cornerInset(corners.topLeft) : 0),
-              6,
-              8 + (cornerOnRight ? cornerInset(corners.topRight) : 0),
-              2,
-            ),
+            layout: layout,
+            gridPadding: gridPadding,
+            gridCornerRadii: gridCornerRadii,
             state: gameState.state,
             senka: playerRanking?.senka,
             rank: playerRanking?.rank,
@@ -1923,6 +1935,55 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         },
       ),
     );
+  }
+
+  static const double _minimalBottomBarHeight = 22;
+
+  Widget _buildMinimalBottomBar({
+    required bool inSafeArea,
+    required double bottomSafeArea,
+    required bool cornerOnLeft,
+    required bool cornerOnRight,
+  }) {
+    final corners = DisplayCorners.of(context);
+    const dividerExtent = 1.0;
+    final contentHeight = inSafeArea
+        ? bottomSafeArea
+        : _minimalBottomBarHeight - dividerExtent;
+    // 横条项没有胶囊，可见内容的下沿是居中的 15dp 图标；两端在这条线上让开
+    // 圆弧，距离从屏幕底边量起。
+    final contentBottom =
+        (inSafeArea ? 0.0 : bottomSafeArea) + (contentHeight - 15) / 2;
+    const sidePadding = 8.0;
+    final bar = Container(
+      key: const Key('minimal-bottom-resource-bar'),
+      padding: EdgeInsets.only(
+        left:
+            sidePadding +
+            (cornerOnLeft
+                ? cornerInsetAt(corners.bottomLeft, contentBottom)
+                : 0),
+        right:
+            sidePadding +
+            (cornerOnRight
+                ? cornerInsetAt(corners.bottomRight, contentBottom)
+                : 0),
+      ),
+      decoration: inSafeArea
+          ? null
+          : const BoxDecoration(
+              border: Border(
+                top: BorderSide(color: Color(0xff1b3142), width: dividerExtent),
+              ),
+            ),
+      child: _buildGameResourceBar(
+        layout: inSafeArea
+            ? ResourceBarLayout.staticStrip
+            : ResourceBarLayout.strip,
+      ),
+    );
+    // 安全区里是 home indicator 的手势区，横栏只展示，免得抢手势。
+    return IgnorePointer(ignoring: inSafeArea, child: bar);
   }
 
   void _setGameFullscreen(bool fullscreen) {
@@ -1978,6 +2039,18 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         widget.layoutSettingsController.minimalResourcePosition ==
             MinimalResourcePosition.topBar;
     final bottomSafeArea = MediaQuery.viewPaddingOf(context).bottom;
+    // 横向导航栏已占着屏幕底边，底部横栏退回信息栏位置。
+    final minimalBottomBar =
+        uiSize.isMinimal &&
+        !menuHorizontal &&
+        widget.layoutSettingsController.minimalResourcePosition ==
+            MinimalResourcePosition.bottomBar;
+    // iPhone 横屏底部约 21pt 的安全区在居中的游戏下方本就空着，横栏直接放进去；
+    // 安全区窄的设备只能在它上方另占一条。
+    final bottomBarInSafeArea = bottomSafeArea >= 20;
+    final minimalBottomBarReserve = minimalBottomBar && !bottomBarInSafeArea
+        ? _minimalBottomBarHeight + bottomSafeArea
+        : 0.0;
     // A horizontal bar on the bottom screen edge sits between the content and
     // the gesture area, so in the flat layout the bar clears the gesture area
     // itself and the content above it does not.
@@ -1991,7 +2064,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     // hiding it makes the workspace taller and would flip the answer back.
     // The top bar sits inside the game workspace, so only side and bottom
     // bars are subtracted. A resource top bar stays in both outcomes, so it
-    // cannot flip the answer and is subtracted.
+    // cannot flip the answer and is subtracted. The inline bottom bar is also
+    // safe: whether it exists depends only on the window size and settings, not
+    // on the layout computed here.
     final shellNavigationExtent = workspaceNavigationExtent(uiSize);
     final minimalShellWorkspace = Size(
       windowSize.width - (menuHorizontal ? 0 : shellNavigationExtent),
@@ -1999,7 +2074,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           (menuHorizontal && !menuTop
               ? shellNavigationExtent + navigationGestureInset
               : 0) -
-          (minimalTopBar ? topHeaderHeight(uiSize) : 0),
+          (minimalTopBar ? topHeaderHeight(uiSize) : 0) -
+          minimalBottomBarReserve,
     );
     final minimalGameLayout = usesMinimalGameShell(
       size: uiSize,
@@ -2011,6 +2087,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       hd: hd,
     );
     final minimalShell = minimalGameLayout && _workspaceIndex == 0;
+    // 与工作区序号无关，游戏转到后台时尺寸仍按游戏页冻结。
+    final gameBottomBar = minimalGameLayout && minimalBottomBar;
+    final gameBottomBarReserve = gameBottomBar ? minimalBottomBarReserve : 0.0;
+    final panelBottomBarInset = gameBottomBar && bottomBarInSafeArea
+        ? bottomSafeArea
+        : 0.0;
 
     Widget buildWorkspaceNavigation(
       int completedCount, {
@@ -2564,10 +2646,21 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                             _gameWorkspaceSizeFrozen = false;
                                             _normalWorkspaceSize = size;
                                           }
+                                          final workspaceSize =
+                                              _normalWorkspaceSize ??
+                                              actualConstraints.biggest;
+                                          // 内嵌的底部横栏占住内容区底边，游戏
+                                          // 列和信息栏都止于它的上沿。
                                           final constraints =
                                               BoxConstraints.tight(
-                                                _normalWorkspaceSize ??
-                                                    actualConstraints.biggest,
+                                                Size(
+                                                  workspaceSize.width,
+                                                  math.max(
+                                                    0.0,
+                                                    workspaceSize.height -
+                                                        gameBottomBarReserve,
+                                                  ),
+                                                ),
                                               );
                                           final gameAreaRatio =
                                               widget
@@ -2604,7 +2697,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                           final gameTouchesBottom =
                                               flatPanel &&
                                               isLandscape &&
-                                              !menuHorizontal;
+                                              !menuHorizontal &&
+                                              gameBottomBarReserve == 0;
                                           final portraitGamePanelExtra =
                                               portraitGamePanelExtraExtent(
                                                 displayMode: widget
@@ -2620,8 +2714,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 fullscreen: _gameFullscreen,
                                                 isLandscape: isLandscape,
                                                 displayMode: screenDisplayMode,
+                                                // 内嵌横栏让游戏列矮了一截，按宽
+                                                // 铺满会上下裁切，同样要整块放进。
                                                 fitWithinBounds:
-                                                    menuHorizontal &&
+                                                    (menuHorizontal ||
+                                                        gameBottomBarReserve >
+                                                            0) &&
                                                     !_gameFullscreen,
                                                 centerAboveBottomInset:
                                                     gameTouchesBottom,
@@ -2659,9 +2757,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 hdPortrait,
                                             hdPortrait: hdPortrait,
                                             singleModule: module,
+                                            // 有底部横栏时信息栏不贴屏幕底边：
+                                            // 安全区模式下视口止于安全区上沿。
                                             bottomSafeArea:
                                                 flatPanel &&
-                                                    contentTouchesBottom
+                                                    contentTouchesBottom &&
+                                                    !gameBottomBar
                                                 ? bottomSafeArea
                                                 : 0,
                                             excludedModules:
@@ -2769,7 +2870,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 CrossAxisAlignment.stretch,
                                             children: [
                                               if (minimalShell &&
-                                                  !minimalTopBar)
+                                                  !minimalTopBar &&
+                                                  !minimalBottomBar)
                                                 _buildPanelResources(
                                                   cornerOnLeft:
                                                       panelAtScreenEdge &&
@@ -2879,7 +2981,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                     ? dividerExtent
                                                     : constraints.maxWidth,
                                                 height: isLandscape
-                                                    ? constraints.maxHeight
+                                                    ? constraints.maxHeight -
+                                                          panelBottomBarInset
                                                     : dividerExtent,
                                                 child: Offstage(
                                                   offstage: _gameFullscreen,
@@ -2933,7 +3036,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 height: math.max(
                                                   0.0,
                                                   isLandscape
-                                                      ? constraints.maxHeight
+                                                      ? constraints.maxHeight -
+                                                            panelBottomBarInset
                                                       : constraints.maxHeight -
                                                             gamePanelExtent -
                                                             dividerExtent -
@@ -3056,6 +3160,30 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                         leftAtEdge: !infoOnLeft,
                                                         rightAtEdge: infoOnLeft,
                                                       ),
+                                                ),
+                                              // 放在最后，增删它不影响前面游戏
+                                              // 子树的位置。
+                                              if (minimalShell &&
+                                                  gameBottomBar &&
+                                                  !_gameFullscreen)
+                                                Positioned(
+                                                  left: 0,
+                                                  right: 0,
+                                                  bottom: bottomBarInSafeArea
+                                                      ? 0
+                                                      : bottomSafeArea,
+                                                  height: bottomBarInSafeArea
+                                                      ? bottomSafeArea
+                                                      : _minimalBottomBarHeight,
+                                                  child: _buildMinimalBottomBar(
+                                                    inSafeArea:
+                                                        bottomBarInSafeArea,
+                                                    bottomSafeArea:
+                                                        bottomSafeArea,
+                                                    // 导航竖栏那一侧不贴屏幕角。
+                                                    cornerOnLeft: menuOnRight,
+                                                    cornerOnRight: !menuOnRight,
+                                                  ),
                                                 ),
                                             ],
                                           );

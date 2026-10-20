@@ -6,6 +6,7 @@ import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import 'dashboard_card.dart';
 import 'separated_wrap.dart';
+import '../layout/flat_empty_text.dart';
 import '../layout/hd_dashboard_content.dart';
 import 'combat_mechanism.dart';
 import 'fleet_ship_minimal_row.dart';
@@ -177,14 +178,16 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                       )
                     : null,
                 ships: cachedShips ??= ships.isEmpty
-                    ? Container(
-                        padding: const EdgeInsets.all(16),
-                        alignment: Alignment.center,
-                        child: Text(
-                          fleetText(context, '无数据'),
-                          style: TextStyle(color: Color(0xff8197a5)),
-                        ),
-                      )
+                    ? flat
+                          ? FlatEmptyText(fleetText(context, '无数据'))
+                          : Container(
+                              padding: const EdgeInsets.all(16),
+                              alignment: Alignment.center,
+                              child: Text(
+                                fleetText(context, '无数据'),
+                                style: TextStyle(color: Color(0xff8197a5)),
+                              ),
+                            )
                     : flat
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

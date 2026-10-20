@@ -2962,8 +2962,10 @@ void main() {
         findsNothing,
         reason: reason,
       );
+      // 测试字体每字 1em，按自然宽度排时燃料被挤到横条可视区外（仍已构建）。
       final headerResource = find.byKey(
         const Key('header-resource-material-1'),
+        skipOffstage: false,
       );
       expect(headerResource, findsOneWidget, reason: reason);
       expect(
@@ -3132,6 +3134,385 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.state(card), same(state), reason: '$size');
         expect(tester.takeException(), isNull);
+      }
+    });
+
+    group('minimal bottom resource bar', () {
+      const bar = Key('minimal-bottom-resource-bar');
+      const probe = Key('minimal-bottom-bar-game-probe');
+      final panelResources = find.byKey(
+        const Key('information-panel-resources'),
+      );
+      Rect gameRect(WidgetTester tester) =>
+          tester.getRect(find.byKey(probe, skipOffstage: false));
+      Rect gameColumn(WidgetTester tester) =>
+          tester.getRect(find.byType(GameSurfaceViewport, skipOffstage: false));
+      Finder panelList() => find.descendant(
+        of: find.byKey(const Key('workspace-information-panel')),
+        matching: find.byType(ListView),
+      );
+      Finder inBar(Key key) =>
+          find.descendant(of: find.byKey(bar), matching: find.byKey(key));
+      Finder ignoringAncestors() => find.ancestor(
+        of: find.byKey(bar),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is IgnorePointer && widget.ignoring,
+        ),
+      );
+      void useBottomInset(WidgetTester tester, double bottom) {
+        tester.view.viewPadding = FakeViewPadding(bottom: bottom);
+        tester.view.padding = FakeViewPadding(bottom: bottom);
+        addTearDown(tester.view.resetViewPadding);
+        addTearDown(tester.view.resetPadding);
+      }
+
+      void mockCorners() {
+        const corners = MethodChannel(displayCornersChannelName);
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(
+          corners,
+          (_) async => <String, Object>{
+            'topLeft': 40,
+            'topRight': 40,
+            'bottomLeft': 50,
+            'bottomRight': 45,
+          },
+        );
+        addTearDown(() => messenger.setMockMethodCallHandler(corners, null));
+      }
+
+      testWidgets('safe area mode fills the bottom inset for display only', (
+        tester,
+      ) async {
+        useBottomInset(tester, 21);
+        mockCorners();
+        final layout = await _pumpMinimalShell(
+          tester,
+          gameSurface: const ColoredBox(key: probe, color: Colors.black),
+        );
+        final panelGame = gameRect(tester);
+
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        await tester.pumpAndSettle();
+
+        final screenHeight = _phoneLandscape.height;
+        final barRect = tester.getRect(find.byKey(bar));
+        expect(barRect.top, screenHeight - 21);
+        expect(barRect.bottom, screenHeight);
+        // 不含导航竖栏：横栏从侧栏右边开始，铺满游戏列、分隔线和信息栏。
+        expect(barRect.left, 34);
+        expect(barRect.right, _phoneLandscape.width);
+        expect(ignoringAncestors(), findsWidgets);
+        final resource = inBar(const Key('header-resource-material-1'));
+        expect(resource, findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(bar),
+            matching: find.byType(Scrollable),
+          ),
+          findsNothing,
+        );
+        expect(tester.getRect(resource).top, greaterThanOrEqualTo(barRect.top));
+        expect(
+          tester.getRect(resource).bottom,
+          lessThanOrEqualTo(screenHeight),
+        );
+        // 导航在左，右端贴着屏幕右下角：21 高的栏里 15 号图标下边缘离屏幕底边 3。
+        final items = tester.getRect(inBar(const Key('header-resource-line')));
+        expect(
+          items.right,
+          lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(45, 3)),
+        );
+        expect(items.left, lessThan(34 + 20));
+        expect(panelResources, findsNothing);
+        expect(_headerHeight(tester), 0);
+        expect(gameRect(tester), panelGame);
+        expect(tester.getRect(panelList()).bottom, screenHeight - 21);
+        final list = tester.widget<ListView>(panelList());
+        expect((list.padding! as EdgeInsets).bottom, 0);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('inline mode takes a 22dp strip off the bottom', (
+        tester,
+      ) async {
+        mockCorners();
+        final layout = await _pumpMinimalShell(
+          tester,
+          gameSurface: const ColoredBox(key: probe, color: Colors.black),
+        );
+        await layout.setWorkspaceMenuPosition('right');
+        await tester.pumpAndSettle();
+        final panelColumn = gameColumn(tester);
+
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        await tester.pumpAndSettle();
+
+        final screenHeight = _phoneLandscape.height;
+        final barRect = tester.getRect(find.byKey(bar));
+        expect(barRect.height, 22);
+        expect(barRect.bottom, screenHeight);
+        expect(barRect.left, 0);
+        expect(barRect.right, _phoneLandscape.width - 34);
+        expect(gameColumn(tester).height, panelColumn.height - 22);
+        expect(gameColumn(tester).bottom, barRect.top);
+        expect(tester.getRect(panelList()).bottom, barRect.top);
+        expect(gameRect(tester).bottom, lessThanOrEqualTo(barRect.top));
+        expect(panelResources, findsNothing);
+        expect(ignoringAncestors(), findsNothing);
+        // 导航在右，左端贴着屏幕左下角：22 高的栏扣掉 1px 分隔线，15 号图标下边缘离屏幕底边 3。
+        final list = tester.getRect(inBar(const Key('header-resource-list')));
+        expect(list.left, greaterThanOrEqualTo(cornerInsetAt(50, 3)));
+        expect(list.right, greaterThan(_phoneLandscape.width - 34 - 20));
+        final strip = tester.widget<Container>(find.byKey(bar));
+        expect(
+          (strip.decoration! as BoxDecoration).border!.top,
+          const BorderSide(color: Color(0xff1b3142)),
+        );
+
+        await tester.longPress(inBar(const Key('header-resource-material-1')));
+        await tester.pumpAndSettle();
+        expect(inBar(const Key('header-resource-edit-mode')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('inline mode clears a small bottom inset', (tester) async {
+        useBottomInset(tester, 16);
+        mockCorners();
+        final layout = await _pumpMinimalShell(
+          tester,
+          gameSurface: const ColoredBox(key: probe, color: Colors.black),
+        );
+        await layout.setWorkspaceMenuPosition('right');
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        await tester.pumpAndSettle();
+
+        final barRect = tester.getRect(find.byKey(bar));
+        expect(barRect.height, 22);
+        expect(barRect.bottom, _phoneLandscape.height - 16);
+        expect(gameColumn(tester).bottom, barRect.top);
+        expect(ignoringAncestors(), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('inline mode keeps a wide game inside the shorter column', (
+        tester,
+      ) async {
+        final layout = await _pumpMinimalShell(
+          tester,
+          gameSurface: const ColoredBox(key: probe, color: Colors.black),
+        );
+        // 0.75 时游戏列宽 628.5，按宽算的游戏高 377 超过横栏上方的 371。
+        await layout.setAutoZoom(false);
+        await layout.setGameAreaRatio(0.75);
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        await tester.pumpAndSettle();
+
+        final column = gameColumn(tester);
+        final game = gameRect(tester);
+        expect(column.bottom, _phoneLandscape.height - 22);
+        expect(game.top, greaterThanOrEqualTo(column.top));
+        expect(game.bottom, lessThanOrEqualTo(column.bottom));
+        expect(game.width / game.height, closeTo(1200 / 720, 0.001));
+        expect(game.center.dy, closeTo(column.center.dy, 0.01));
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('inline mode keeps the game size on other workspaces', (
+        tester,
+      ) async {
+        final layout = await _pumpMinimalShell(
+          tester,
+          gameSurface: const ColoredBox(key: probe, color: Colors.black),
+        );
+        await layout.setAutoZoom(false);
+        await layout.setGameAreaRatio(0.75);
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        await tester.pumpAndSettle();
+        final initial = gameRect(tester).size;
+
+        await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(bar), findsNothing);
+        expect(gameRect(tester).size, initial);
+
+        await tester.tap(find.byKey(const Key('workspace-nav-game')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(bar), findsOneWidget);
+        expect(gameRect(tester).size, initial);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('inline mode long-press respects the ui lock', (
+        tester,
+      ) async {
+        final layout = await _pumpMinimalShell(tester);
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        await layout.setUiLocked(true);
+        await tester.pumpAndSettle();
+
+        await tester.longPress(inBar(const Key('header-resource-material-1')));
+        await tester.pump();
+
+        expect(
+          find.byKey(const Key('header-resource-edit-mode')),
+          findsNothing,
+        );
+        expect(find.text('界面已锁定，布局自定义已禁用，功能切换不受影响'), findsOneWidget);
+        await tester.pumpAndSettle(const Duration(seconds: 5));
+      });
+
+      testWidgets('horizontal navigation treats the bottom bar as panel', (
+        tester,
+      ) async {
+        useBottomInset(tester, 21);
+        final layout = await _pumpMinimalShell(tester);
+        await layout.setMinimalResourcePosition(
+          MinimalResourcePosition.bottomBar,
+        );
+        for (final position in const ['bottom', 'top']) {
+          await layout.setWorkspaceMenuPosition(position);
+          await tester.pumpAndSettle();
+          expect(find.byKey(bar), findsNothing, reason: position);
+          expect(
+            find.descendant(
+              of: find.byKey(const Key('workspace-information-panel')),
+              matching: panelResources,
+            ),
+            findsOneWidget,
+            reason: position,
+          );
+          expect(_headerHeight(tester), 0, reason: position);
+        }
+        expect(tester.takeException(), isNull);
+      });
+
+      for (final size in const [UiDisplaySize.compact, UiDisplaySize.normal]) {
+        testWidgets('$size ignores the bottom bar setting', (tester) async {
+          useBottomInset(tester, 21);
+          final layout = await _pumpMinimalShell(
+            tester,
+            uiSize: size,
+            gameSurface: const ColoredBox(key: probe, color: Colors.black),
+          );
+          final before = gameRect(tester);
+          final header = _headerHeight(tester);
+          await layout.setMinimalResourcePosition(
+            MinimalResourcePosition.bottomBar,
+          );
+          await tester.pumpAndSettle();
+          expect(find.byKey(bar), findsNothing);
+          expect(gameRect(tester), before);
+          expect(_headerHeight(tester), header);
+          expect(panelResources, findsNothing);
+          expect(tester.takeException(), isNull);
+        });
+      }
+
+      for (final inset in const [0.0, 21.0]) {
+        testWidgets('switching all positions keeps the game alive ($inset)', (
+          tester,
+        ) async {
+          useBottomInset(tester, inset);
+          var disposeCount = 0;
+          var deactivateCount = 0;
+          final layout = await _pumpMinimalShell(
+            tester,
+            gameSurface: _LifecycleProbe(
+              key: const Key('minimal-bottom-bar-game-surface'),
+              onDispose: () => disposeCount++,
+              onDeactivate: () => deactivateCount++,
+            ),
+          );
+          final gameSurface = find.byKey(
+            const Key('minimal-bottom-bar-game-surface'),
+          );
+          final originalElement = tester.element(gameSurface);
+
+          for (final position in const [
+            MinimalResourcePosition.bottomBar,
+            MinimalResourcePosition.topBar,
+            MinimalResourcePosition.bottomBar,
+            MinimalResourcePosition.panel,
+            MinimalResourcePosition.bottomBar,
+          ]) {
+            await layout.setMinimalResourcePosition(position);
+            await tester.pumpAndSettle();
+            expect(
+              find.byKey(bar),
+              position == MinimalResourcePosition.bottomBar
+                  ? findsOneWidget
+                  : findsNothing,
+              reason: '$position',
+            );
+            expect(disposeCount, 0, reason: '$position');
+            expect(deactivateCount, 0, reason: '$position');
+            expect(
+              tester.element(gameSurface),
+              same(originalElement),
+              reason: '$position',
+            );
+            expect(tester.takeException(), isNull);
+          }
+        });
+      }
+
+      for (final inset in const [0.0, 21.0]) {
+        testWidgets('quest notice takes over the bottom bar ($inset)', (
+          tester,
+        ) async {
+          useBottomInset(tester, inset);
+          final layout = await _pumpMinimalShell(tester);
+          await layout.setMinimalResourcePosition(
+            MinimalResourcePosition.bottomBar,
+          );
+          await tester.pumpAndSettle();
+          final resource = inBar(const Key('header-resource-material-1'));
+          double resourceOpacity() => tester
+              .widget<AnimatedOpacity>(
+                find
+                    .ancestor(
+                      of: resource,
+                      matching: find.byType(AnimatedOpacity),
+                    )
+                    .first,
+              )
+              .opacity;
+          expect(resourceOpacity(), 1);
+          final panel = find.byKey(const Key('workspace-information-panel'));
+
+          QuestCompletionDrawerHost.show(
+            tester.element(panel),
+            '任务完成',
+            tone: TopNoticeTone.quest,
+          );
+          await tester.pumpAndSettle();
+
+          expect(inBar(const Key('quest-completion-drawer')), findsOneWidget);
+          expect(resourceOpacity(), 0);
+
+          QuestCompletionDrawerHost.hide(tester.element(panel));
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(const Key('quest-completion-drawer')),
+            findsNothing,
+          );
+          expect(resourceOpacity(), 1);
+          expect(tester.takeException(), isNull);
+        });
       }
     });
   });
