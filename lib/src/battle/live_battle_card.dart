@@ -14,6 +14,7 @@ import '../fleet/dashboard_card.dart';
 import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
+import '../layout/panel_style.dart';
 import '../game_state/game_state.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
@@ -245,6 +246,26 @@ class _ModeSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    if (flat) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _FlatModeButton(
+            key: const Key('battle-mode-compact'),
+            label: AppLocalizations.of(context)?.compact ?? '紧凑',
+            selected: mode == BattlePanelMode.compact,
+            onTap: () => onChanged(BattlePanelMode.compact),
+          ),
+          _FlatModeButton(
+            key: const Key('battle-mode-detailed'),
+            label: AppLocalizations.of(context)?.detailed ?? '完整',
+            selected: mode == BattlePanelMode.detailed,
+            onTap: () => onChanged(BattlePanelMode.detailed),
+          ),
+        ],
+      );
+    }
     return Container(
       height: 26,
       padding: const EdgeInsets.all(2),
@@ -269,6 +290,37 @@ class _ModeSwitch extends StatelessWidget {
             onTap: () => onChanged(BattlePanelMode.detailed),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FlatModeButton extends StatelessWidget {
+  const _FlatModeButton({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        child: BattleUiText(
+          label,
+          style: TextStyle(
+            color: selected ? const Color(0xffd4a85f) : const Color(0xff8197a5),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -334,6 +386,7 @@ class _CompactBattlePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = isPhoneDensity(context);
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     if (navigation) {
       final navigationHeader = Container(
@@ -466,8 +519,8 @@ class _CompactBattlePanel extends StatelessWidget {
               Row(
                 children: [
                   if (battle.rank != BattleRank.unknown) ...<Widget>[
-                    _RankBadge(rank: battle.rank, phone: phone),
-                    const SizedBox(width: 11),
+                    _RankBadge(rank: battle.rank, phone: phone, flat: flat),
+                    SizedBox(width: flat ? 8 : 11),
                   ],
                   Expanded(
                     child: Column(
@@ -475,17 +528,26 @@ class _CompactBattlePanel extends StatelessWidget {
                       children: [
                         AdaptiveBattleHeader(
                           nodeLabel: battle.context.forecastNodeLabel,
+                          nodeFontSize: flat ? 12 : 16,
                           enemyName: enemyName,
                           enemyNameIsFallback: battle.enemyFleetName.isEmpty,
                           enemyStyle: TextStyle(
-                            fontSize: phone ? 13 : 14,
+                            fontSize: flat ? 11 : (phone ? 13 : 14),
                             fontWeight: FontWeight.w600,
                             color: enemyCombined
                                 ? const Color(0xffff8c78)
                                 : null,
                           ),
                         ),
-                        if (statusPills.isNotEmpty) ...<Widget>[
+                        if (flat) ...<Widget>[
+                          const SizedBox(height: 2),
+                          BattleTagLine(
+                            battle: battle,
+                            nodeLabel: battle.context.forecastNodeLabel,
+                            metaChips: metaChips,
+                            dropEntries: dropEntries,
+                          ),
+                        ] else if (statusPills.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 5),
                           Wrap(
                             spacing: 4,
@@ -493,7 +555,7 @@ class _CompactBattlePanel extends StatelessWidget {
                             children: statusPills,
                           ),
                         ],
-                        if (battle.rewardItems.isNotEmpty) ...<Widget>[
+                        if (!flat && battle.rewardItems.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 4),
                           RewardItemsPill(items: battle.rewardItems),
                         ],
@@ -502,7 +564,7 @@ class _CompactBattlePanel extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: flat ? 4 : 8),
               _CompactFleetGrid(
                 battle: battle,
                 damagePulseMode: damagePulseMode,
@@ -526,6 +588,7 @@ class _CompactFleetGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     final friendCombined = battle.friendEscort.isNotEmpty;
     final enemyCombined = battle.enemyEscort.isNotEmpty;
     final mvpPositions = battle.mvpPositions;
@@ -600,11 +663,15 @@ class _CompactFleetGrid extends StatelessWidget {
         Expanded(
           flex: friendColumns.length,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-            decoration: BoxDecoration(
-              color: const Color(0xff10212e),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            padding: flat
+                ? EdgeInsets.zero
+                : const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            decoration: flat
+                ? null
+                : BoxDecoration(
+                    color: const Color(0xff10212e),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
@@ -631,15 +698,19 @@ class _CompactFleetGrid extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 7),
+        SizedBox(width: flat ? 6 : 7),
         Expanded(
           flex: enemyColumns.length,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-            decoration: BoxDecoration(
-              color: const Color(0xff10212e),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            padding: flat
+                ? EdgeInsets.zero
+                : const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            decoration: flat
+                ? null
+                : BoxDecoration(
+                    color: const Color(0xff10212e),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
@@ -758,6 +829,7 @@ class _CompactBarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     final isEscaped = ship.isEscaped;
     final ratio = ship.maxHp <= 0
         ? 0.0
@@ -808,6 +880,7 @@ class _CompactBarRow extends StatelessWidget {
           value: ratio,
           color: hpBarColor,
           backgroundColor: const Color(0xff263e4d),
+          height: flat ? 4 : 6,
         ),
       );
       final content = Column(
@@ -851,7 +924,9 @@ class _CompactBarRow extends StatelessWidget {
         ship.currentHp * 4 <= ship.maxHp * 3;
     return Padding(
       key: Key('compact-bar-$keyName-$index'),
-      padding: const EdgeInsets.fromLTRB(6, 3, 6, 3),
+      padding: flat
+          ? const EdgeInsets.symmetric(vertical: 1)
+          : const EdgeInsets.fromLTRB(6, 3, 6, 3),
       child: shouldPulse
           ? DamagePulseBuilder(
               currentHp: ship.currentHp,
@@ -983,17 +1058,22 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class _RankBadge extends StatelessWidget {
-  const _RankBadge({required this.rank, required this.phone});
+  const _RankBadge({
+    required this.rank,
+    required this.phone,
+    required this.flat,
+  });
 
   final BattleRank rank;
   final bool phone;
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
     return BattleRankBadge(
       rank: rank,
-      size: phone ? 50 : 48,
-      fontSize: phone ? 21 : 20,
+      size: flat ? 28 : (phone ? 50 : 48),
+      fontSize: flat ? 12 : (phone ? 21 : 20),
     );
   }
 }

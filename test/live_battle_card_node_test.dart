@@ -18,6 +18,7 @@ import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_portrait.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -134,6 +135,32 @@ Future<void> _pumpCard(
     await tester.tap(find.byKey(const Key('battle-mode-compact')));
     await tester.pump();
   }
+}
+
+Future<void> _pumpFlatCompactCard(
+  WidgetTester tester,
+  BattleController controller,
+) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: PanelStyleScope(
+          style: PanelStyle.flat,
+          child: LiveBattleCard(
+            key: const PageStorageKey('dashboard-live-battle'),
+            controller: controller,
+            collapsed: false,
+            onToggleCollapse: () {},
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.byKey(const Key('battle-mode-compact')));
+  await tester.pump();
 }
 
 void _expectIndependentMapSummary(String mapLabel) {
@@ -1873,5 +1900,129 @@ void main() {
       find.descendant(of: row, matching: find.byType(ProphetHpBar)),
       findsOneWidget,
     );
+  });
+
+  group('flat compact battle', () {
+    testWidgets('tag line replaces pills and keeps air state text', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(mapStartEvent)
+        ..accept(_dayBattleWithAirSuperiority(1));
+      await controller.idle;
+
+      await _pumpFlatCompactCard(tester, controller);
+
+      final tagLine = find.byKey(const Key('battle-tag-line'));
+      expect(tagLine, findsOneWidget);
+      expect(find.byType(NodeTypePill), findsNothing);
+      expect(find.byType(AirSuperiorityPill), findsNothing);
+      final text = tester
+          .widget<Text>(
+            find.descendant(of: tagLine, matching: find.byType(Text)),
+          )
+          .textSpan!
+          .toPlainText();
+      expect(text, contains('制空：确保'));
+      expect(text, contains(' · '));
+    });
+
+    testWidgets('boss node type is not repeated in the tag line', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      final bossStart =
+          kcsapiEvent('/kcsapi/api_req_map/start', <String, Object?>{
+            'api_maparea_id': 1,
+            'api_mapinfo_no': 1,
+            'api_no': 5,
+            'api_bosscell_no': 5,
+            'api_event_id': 5,
+            'api_event_kind': 0,
+          }, sequence: 20);
+      controller
+        ..accept(bossStart)
+        ..accept(dayBattleEvent);
+      await controller.idle;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Column(
+              children: [
+                BattleTagLine(
+                  key: const Key('tag-with-boss-name'),
+                  battle: controller.current!,
+                  nodeLabel: 'Boss',
+                ),
+                BattleTagLine(
+                  key: const Key('tag-with-other-name'),
+                  battle: controller.current!,
+                  nodeLabel: 'B',
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      List<String> segmentsOf(String key) => tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(Key(key)),
+              matching: find.byType(Text),
+            ),
+          )
+          .textSpan!
+          .toPlainText()
+          .split('·')
+          .map((s) => s.trim())
+          .toList();
+      expect(segmentsOf('tag-with-boss-name'), isNot(contains('Boss 战')));
+      expect(segmentsOf('tag-with-other-name'), contains('Boss 战'));
+    });
+
+    testWidgets('bars are 4 high and fleet columns have no backing block', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(mapStartEvent)
+        ..accept(dayBattleEvent);
+      await controller.idle;
+
+      await _pumpFlatCompactCard(tester, controller);
+
+      final bar = tester.widget<ProphetHpBar>(
+        find.descendant(
+          of: find.byKey(const Key('compact-bar-friend-0')),
+          matching: find.byType(ProphetHpBar),
+        ),
+      );
+      expect(bar.height, 4);
+      final blocks = tester.widgetList<Container>(
+        find.descendant(
+          of: find.byKey(const Key('compact-fleet-grid')),
+          matching: find.byType(Container),
+        ),
+      );
+      for (final block in blocks) {
+        final decoration = block.decoration;
+        if (decoration is BoxDecoration) {
+          expect(decoration.color, isNot(const Color(0xff10212e)));
+        }
+      }
+      expect(
+        tester.getSize(find.byKey(const Key('battle-rank-badge'))).width,
+        28,
+      );
+    });
   });
 }

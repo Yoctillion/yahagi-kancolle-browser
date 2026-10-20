@@ -21,18 +21,20 @@ class AdaptiveBattleHeader extends StatelessWidget {
     required this.enemyName,
     required this.enemyStyle,
     this.enemyNameIsFallback = false,
+    this.nodeFontSize = 16,
   });
 
   final String nodeLabel;
   final String enemyName;
   final TextStyle enemyStyle;
   final bool enemyNameIsFallback;
+  final double nodeFontSize;
 
   @override
   Widget build(BuildContext context) {
-    final nodeStyle = const TextStyle(
-      color: Color(0xffffd65c),
-      fontSize: 16,
+    final nodeStyle = TextStyle(
+      color: const Color(0xffffd65c),
+      fontSize: nodeFontSize,
       fontWeight: FontWeight.w800,
     );
     final enemyTitle = enemyNameIsFallback
@@ -56,6 +58,85 @@ class AdaptiveBattleHeader extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(child: enemyTitle),
       ],
+    );
+  }
+}
+
+/// Flat-style replacement for the status pill row: one ellipsized line of
+/// plain text, with only the keyword segments colored.
+class BattleTagLine extends StatelessWidget {
+  const BattleTagLine({
+    super.key = const Key('battle-tag-line'),
+    required this.battle,
+    required this.nodeLabel,
+    this.metaChips = const <(String, Color)>[],
+    this.dropEntries = const <String>[],
+  });
+
+  final LiveBattle battle;
+  final String nodeLabel;
+  final List<(String, Color)> metaChips;
+  final List<String> dropEntries;
+
+  static const Color _airColor = Color(0xff7fd6c8);
+  static const Color _engagementColor = Color(0xffdfe8ee);
+  static const Color _rewardColor = Color(0xffd4a85f);
+  static const Color _otherColor = Color(0xff8197a5);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final strings = BattleDetailStrings.of(context);
+    final engagement = battle.engagement > 0
+        ? engagementLabel(battle.engagement)
+        : null;
+    final segments = <(String, Color)>[
+      for (final label in battle.context.nodeTypeLabels)
+        // Whole-word match so a node named "B" does not hide "Boss 战".
+        if (!nodeLabel.contains(label) &&
+            !label.split(' ').contains(nodeLabel.trim()))
+          (strings.localize(label), _otherColor),
+      if (battle.airSuperiority != null)
+        (
+          l10n.airStateLabel(strings.localize(battle.airSuperiority!)),
+          _airColor,
+        ),
+      for (final chip in metaChips)
+        (
+          strings.localize(chip.$1),
+          chip.$1 == engagement ? _engagementColor : _otherColor,
+        ),
+      for (final entry in dropEntries) (entry, _rewardColor),
+      if (battle.rewardItems.isNotEmpty)
+        (
+          battle.rewardItems
+              .map((item) => '${item.name} ×${item.count}')
+              .join('、'),
+          _rewardColor,
+        ),
+    ];
+    const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
+    return Text.rich(
+      TextSpan(
+        style: style,
+        children: <InlineSpan>[
+          for (var index = 0; index < segments.length; index++) ...<InlineSpan>[
+            if (index > 0)
+              const TextSpan(
+                text: ' · ',
+                style: TextStyle(color: _otherColor),
+              ),
+            TextSpan(
+              text: segments[index].$1,
+              style: TextStyle(color: segments[index].$2),
+            ),
+          ],
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
