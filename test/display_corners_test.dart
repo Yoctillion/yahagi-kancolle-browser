@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,17 @@ void main() {
   test('cornerInset removes the part of the radius a square corner covers', () {
     expect(cornerInset(32), closeTo(9.37, 0.01));
     expect(cornerInset(0), 0);
+  });
+
+  test('cornerInsetAt follows the arc at a given distance from the edge', () {
+    expect(cornerInsetAt(55, 0), 55);
+    expect(cornerInsetAt(55, 6.5), closeTo(29.06, 0.01));
+    expect(cornerInsetAt(55, 55), 0);
+    expect(cornerInsetAt(55, 80), 0);
+    expect(cornerInsetAt(55, -3), 55);
+    expect(cornerInsetAt(0, 6.5), 0);
+    // 45° 处与 cornerInset 一致。
+    expect(cornerInsetAt(32, cornerInset(32)), closeTo(cornerInset(32), 1e-9));
   });
 
   test('refresh converts px to dp and falls back per missing corner', () async {
@@ -73,6 +85,77 @@ void main() {
       ),
     );
 
+    expect(radii, CornerRadii.fallback);
+  });
+
+  Future<CornerRadii> radiiOn(
+    WidgetTester tester,
+    TargetPlatform platform,
+    EdgeInsets padding, {
+    Size size = const Size(852, 393),
+  }) async {
+    debugDefaultTargetPlatformOverride = platform;
+    late CornerRadii radii;
+    try {
+      await tester.pumpWidget(
+        MediaQuery(
+          data: MediaQueryData(size: size, viewPadding: padding),
+          child: Builder(
+            builder: (context) {
+              radii = DisplayCorners.of(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+    return radii;
+  }
+
+  testWidgets('iOS with safe area uses the full-screen iPhone radius', (
+    tester,
+  ) async {
+    final radii = await radiiOn(
+      tester,
+      TargetPlatform.iOS,
+      const EdgeInsets.only(left: 59, bottom: 21),
+    );
+    expect(radii, const CornerRadii.all(55));
+  });
+
+  testWidgets('iPhone SE style status bar keeps the fallback', (tester) async {
+    final radii = await radiiOn(
+      tester,
+      TargetPlatform.iOS,
+      const EdgeInsets.only(top: 20),
+      size: const Size(375, 667),
+    );
+    expect(radii, CornerRadii.fallback);
+  });
+
+  testWidgets('iPad keeps the fallback', (tester) async {
+    final radii = await radiiOn(
+      tester,
+      TargetPlatform.iOS,
+      const EdgeInsets.only(top: 24),
+      size: const Size(1180, 820),
+    );
+    expect(radii, CornerRadii.fallback);
+  });
+
+  testWidgets('iOS without safe area keeps the fallback', (tester) async {
+    final radii = await radiiOn(tester, TargetPlatform.iOS, EdgeInsets.zero);
+    expect(radii, CornerRadii.fallback);
+  });
+
+  testWidgets('Android with safe area keeps the fallback', (tester) async {
+    final radii = await radiiOn(
+      tester,
+      TargetPlatform.android,
+      const EdgeInsets.only(left: 59, bottom: 21),
+    );
     expect(radii, CornerRadii.fallback);
   });
 

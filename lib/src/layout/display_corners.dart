@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -10,6 +11,16 @@ const displayCornersChannelName = 'app.yahagi.kancollebrowser/display_corners';
 /// How far a rectangle must be pulled in along each axis to clear a corner of
 /// the given radius.
 double cornerInset(double radiusDp) => radiusDp * (1 - 1 / math.sqrt2);
+
+/// How far content starting [y] dp from one screen edge must be pulled in
+/// along that edge to clear a corner of the given radius. [cornerInset] is the
+/// 45° case; a thin bar needs the arc at its own content line, which for a
+/// large radius intrudes much further than the 45° point.
+double cornerInsetAt(double radiusDp, double y) {
+  if (radiusDp <= 0 || y >= radiusDp) return 0;
+  final dy = radiusDp - math.max(0.0, y);
+  return radiusDp - math.sqrt(radiusDp * radiusDp - dy * dy);
+}
 
 @immutable
 class CornerRadii {
@@ -104,8 +115,32 @@ class DisplayCorners extends InheritedNotifier<DisplayCornersController> {
 
   static CornerRadii of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<DisplayCorners>();
-    return scope?.notifier?.radii ?? CornerRadii.fallback;
+    final radii = scope?.notifier?.radii ?? CornerRadii.fallback;
+    // iOS has no way to query the radius. Only notch/island iPhones have ~55dp
+    // corners; iPads and home-button iPhones have a status bar but near-square
+    // corners, so they keep the 24dp fallback.
+    if (radii == CornerRadii.fallback &&
+        defaultTargetPlatform == TargetPlatform.iOS &&
+        _isFullScreenIphone(context)) {
+      return iosFullScreenCorners;
+    }
+    return radii;
   }
+
+  static bool _isFullScreenIphone(BuildContext context) {
+    final padding = MediaQuery.maybeViewPaddingOf(context);
+    final size = MediaQuery.maybeSizeOf(context);
+    if (padding == null || size == null || size.shortestSide >= 600) {
+      return false;
+    }
+    final largest = math.max(
+      padding.top,
+      math.max(padding.left, padding.right),
+    );
+    return largest >= 44;
+  }
+
+  static const iosFullScreenCorners = CornerRadii.all(55);
 }
 
 /// Owns a [DisplayCornersController] and re-reads the radii whenever the

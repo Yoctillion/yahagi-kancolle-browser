@@ -5,6 +5,7 @@ import '../game_state/fleet_metrics.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import 'dashboard_card.dart';
+import 'separated_wrap.dart';
 import '../layout/hd_dashboard_content.dart';
 import 'combat_mechanism.dart';
 import 'fleet_ship_minimal_row.dart';
@@ -514,16 +515,12 @@ class _FleetSummaryMetrics extends StatelessWidget {
         ? () => showFleetLineOfSightDetails(context, current)
         : null;
     if (PanelStyleScope.of(context) == PanelStyle.flat) {
-      return Wrap(
+      return SeparatedWrap(
         key: const Key('fleet-summary-metrics'),
-        crossAxisAlignment: WrapCrossAlignment.center,
+        separator: '·',
+        style: const TextStyle(color: Color(0xff4f6676), fontSize: 10),
         children: [
-          for (var index = 0; index < values.length; index++) ...[
-            if (index > 0)
-              const Text(
-                ' · ',
-                style: TextStyle(color: Color(0xff4f6676), fontSize: 10),
-              ),
+          for (var index = 0; index < values.length; index++)
             _FlatSummaryMetric(
               id: values[index].$1,
               label: values[index].$2,
@@ -531,7 +528,6 @@ class _FleetSummaryMetrics extends StatelessWidget {
               semanticLabel: semanticLabelAt(index),
               onTap: onTapAt(index),
             ),
-          ],
         ],
       );
     }

@@ -1899,7 +1899,6 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           final playerRanking = senkaController?.state.playerRankingRow;
           return CompactResourceBar(
             layout: ResourceBarLayout.grid,
-            gridColumns: 3,
             gridPadding: EdgeInsets.fromLTRB(
               8 + (cornerOnLeft ? cornerInset(corners.topLeft) : 0),
               6,
@@ -1974,6 +1973,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       hd: hd,
     );
     final flatPanel = usesFlatPanel(size: uiSize, hd: hd);
+    final minimalTopBar =
+        uiSize.isMinimal &&
+        widget.layoutSettingsController.minimalResourcePosition ==
+            MinimalResourcePosition.topBar;
     final bottomSafeArea = MediaQuery.viewPaddingOf(context).bottom;
     // A horizontal bar on the bottom screen edge sits between the content and
     // the gesture area, so in the flat layout the bar clears the gesture area
@@ -1987,14 +1990,16 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     // the header must keep the resources. The header is left out because
     // hiding it makes the workspace taller and would flip the answer back.
     // The top bar sits inside the game workspace, so only side and bottom
-    // bars are subtracted.
+    // bars are subtracted. A resource top bar stays in both outcomes, so it
+    // cannot flip the answer and is subtracted.
     final shellNavigationExtent = workspaceNavigationExtent(uiSize);
     final minimalShellWorkspace = Size(
       windowSize.width - (menuHorizontal ? 0 : shellNavigationExtent),
       windowSize.height -
           (menuHorizontal && !menuTop
               ? shellNavigationExtent + navigationGestureInset
-              : 0),
+              : 0) -
+          (minimalTopBar ? topHeaderHeight(uiSize) : 0),
     );
     final minimalGameLayout = usesMinimalGameShell(
       size: uiSize,
@@ -2035,6 +2040,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                   onRight: menuOnRight,
                   leftAtEdge: leftAtEdge,
                   rightAtEdge: rightAtEdge,
+                  topAtEdge: !minimalTopBar,
                 )
               : EdgeInsets.zero) +
           EdgeInsets.only(bottom: atScreenBottom ? navigationGestureInset : 0),
@@ -2125,7 +2131,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                 builder: (context, completedCount) => Column(
                   children: [
                     Visibility(
-                      visible: !_gameFullscreen && !minimalShell,
+                      visible:
+                          !_gameFullscreen && (!minimalShell || minimalTopBar),
                       maintainState: true,
                       maintainFocusability: true,
                       child: AnimatedBuilder(
@@ -2137,14 +2144,38 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                           final isCompact = uiSize.isCompactOrSmaller;
                           final headerHeight = topHeaderHeight(uiSize);
                           final isGameWorkspace = _workspaceIndex == 0;
+                          // The minimal shell opens the toolbar actions from
+                          // the navigation menu button, so a toolbar left open
+                          // before switching would cover the resource bar with
+                          // no brand button to close it.
                           final isToolbarVisible =
                               isGameWorkspace &&
+                              !minimalShell &&
                               widget.toolbarController.isVisible;
+                          final corners = DisplayCorners.of(context);
+                          final sidePadding = isCompact ? 8.0 : 10.0;
+                          // Minimal strip items have no capsule, so the
+                          // visible content starts at the centered 15dp icon;
+                          // the bar's ends must clear the arc on that line.
+                          final contentTop = (headerHeight - 15) / 2;
                           return Container(
                             height: headerHeight,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isCompact ? 8 : 10,
-                            ),
+                            padding: minimalShell
+                                ? EdgeInsets.only(
+                                    left:
+                                        sidePadding +
+                                        cornerInsetAt(
+                                          corners.topLeft,
+                                          contentTop,
+                                        ),
+                                    right:
+                                        sidePadding +
+                                        cornerInsetAt(
+                                          corners.topRight,
+                                          contentTop,
+                                        ),
+                                  )
+                                : EdgeInsets.symmetric(horizontal: sidePadding),
                             decoration: const BoxDecoration(
                               color: Color(0xff122431),
                               border: Border(
@@ -2155,83 +2186,90 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               visible: false,
                               child: Row(
                                 children: [
-                                  Material(
-                                    color: isToolbarVisible
-                                        ? const Color(0xff1a3447)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: InkWell(
-                                      key: const Key('yahagi-brand-button'),
+                                  if (!minimalShell) ...[
+                                    Material(
+                                      color: isToolbarVisible
+                                          ? const Color(0xff1a3447)
+                                          : Colors.transparent,
                                       borderRadius: BorderRadius.circular(8),
-                                      onTap: isGameWorkspace
-                                          ? widget.toolbarController.toggle
-                                          : null,
-                                      child: Padding(
-                                        padding: EdgeInsetsDirectional.fromSTEB(
-                                          isCompact ? 2 : 4,
-                                          isCompact ? 2 : 6,
-                                          isCompact ? 6 : 8,
-                                          isCompact ? 2 : 6,
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              child: Image.asset(
-                                                'assets/app_icon.png',
-                                                width: isCompact ? 26 : 30,
-                                                height: isCompact ? 26 : 30,
-                                                fit: BoxFit.contain,
-                                                filterQuality:
-                                                    FilterQuality.none,
+                                      child: InkWell(
+                                        key: const Key('yahagi-brand-button'),
+                                        borderRadius: BorderRadius.circular(8),
+                                        onTap: isGameWorkspace
+                                            ? widget.toolbarController.toggle
+                                            : null,
+                                        child: Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                isCompact ? 2 : 4,
+                                                isCompact ? 2 : 6,
+                                                isCompact ? 6 : 8,
+                                                isCompact ? 2 : 6,
                                               ),
-                                            ),
-                                            SizedBox(width: isCompact ? 2 : 4),
-                                            Text(
-                                              'ヤハギ',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: isCompact ? 13 : null,
-                                              ),
-                                            ),
-                                            if (hdWindow || hdPortrait) ...[
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                'HD',
-                                                key: const Key(
-                                                  'yahagi-hd-label',
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                                child: Image.asset(
+                                                  'assets/app_icon.png',
+                                                  width: isCompact ? 26 : 30,
+                                                  height: isCompact ? 26 : 30,
+                                                  fit: BoxFit.contain,
+                                                  filterQuality:
+                                                      FilterQuality.none,
                                                 ),
+                                              ),
+                                              SizedBox(
+                                                width: isCompact ? 2 : 4,
+                                              ),
+                                              Text(
+                                                'ヤハギ',
                                                 style: TextStyle(
-                                                  color: const Color(
-                                                    0xffffd54f,
-                                                  ),
-                                                  fontWeight: FontWeight.w800,
+                                                  fontWeight: FontWeight.w700,
                                                   fontSize: isCompact
-                                                      ? 12
+                                                      ? 13
                                                       : null,
                                                 ),
                                               ),
+                                              if (hdWindow || hdPortrait) ...[
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  'HD',
+                                                  key: const Key(
+                                                    'yahagi-hd-label',
+                                                  ),
+                                                  style: TextStyle(
+                                                    color: const Color(
+                                                      0xffffd54f,
+                                                    ),
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: isCompact
+                                                        ? 12
+                                                        : null,
+                                                  ),
+                                                ),
+                                              ],
+                                              if (isGameWorkspace) ...[
+                                                const SizedBox(width: 4),
+                                                Icon(
+                                                  isToolbarVisible
+                                                      ? Icons.chevron_left
+                                                      : Icons.chevron_right,
+                                                  size: isCompact ? 14 : 16,
+                                                  color: isToolbarVisible
+                                                      ? const Color(0xffd4a85f)
+                                                      : const Color(0xff8197a5),
+                                                ),
+                                              ],
                                             ],
-                                            if (isGameWorkspace) ...[
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                isToolbarVisible
-                                                    ? Icons.chevron_left
-                                                    : Icons.chevron_right,
-                                                size: isCompact ? 14 : 16,
-                                                color: isToolbarVisible
-                                                    ? const Color(0xffd4a85f)
-                                                    : const Color(0xff8197a5),
-                                              ),
-                                            ],
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  SizedBox(width: isCompact ? 6 : 8),
+                                    SizedBox(width: isCompact ? 6 : 8),
+                                  ],
                                   Expanded(
                                     child: QuestCompletionHeaderSlot(
                                       toolbarVisible: isToolbarVisible,
@@ -2730,7 +2768,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.stretch,
                                             children: [
-                                              if (minimalShell)
+                                              if (minimalShell &&
+                                                  !minimalTopBar)
                                                 _buildPanelResources(
                                                   cornerOnLeft:
                                                       panelAtScreenEdge &&

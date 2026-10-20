@@ -332,7 +332,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get uiDisplaySizeDesc =>
-      '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでは、スマートフォンの横向き時にゲームページの上部バーを非表示にします';
+      '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでは、スマートフォンの横向き時にゲームページの上部バーを既定で非表示にします';
 
   @override
   String get uiDisplaySizeNormal => '標準';
@@ -342,6 +342,25 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get uiDisplaySizeMinimal => 'ミニマル';
+
+  @override
+  String get panelResourcesExpand => '資源を展開';
+
+  @override
+  String get panelResourcesCollapse => '資源を折りたたむ';
+
+  @override
+  String get minimalResourcePositionTitle => '資源の位置';
+
+  @override
+  String get minimalResourcePositionDesc =>
+      'ミニマルでスマートフォン横向き時、ゲームページの資源を情報バー上部またはゲーム上の細いバーに表示します';
+
+  @override
+  String get minimalResourcePositionPanel => '情報バー';
+
+  @override
+  String get minimalResourcePositionTopBar => '上部バー';
 
   @override
   String get gameAreaRatio => 'ゲーム画面の比率';

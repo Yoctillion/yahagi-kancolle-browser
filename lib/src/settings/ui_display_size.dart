@@ -1,5 +1,8 @@
 enum UiDisplaySize { normal, compact, minimal }
 
+/// 极简档横屏游戏页的资源放在信息栏顶部还是一条细顶栏里。
+enum MinimalResourcePosition { panel, topBar }
+
 extension UiDisplaySizeX on UiDisplaySize {
   bool get isCompactOrSmaller => this != UiDisplaySize.normal;
   bool get isMinimal => this == UiDisplaySize.minimal;

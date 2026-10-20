@@ -327,7 +327,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uiDisplaySizeTitle => '界面UI大小';
 
   @override
-  String get uiDisplaySizeDesc => '调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时隐藏游戏页顶栏';
+  String get uiDisplaySizeDesc => '调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时默认隐藏游戏页顶栏';
 
   @override
   String get uiDisplaySizeNormal => '普通';
@@ -337,6 +337,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get uiDisplaySizeMinimal => '极简';
+
+  @override
+  String get panelResourcesExpand => '展开资源';
+
+  @override
+  String get panelResourcesCollapse => '折叠资源';
+
+  @override
+  String get minimalResourcePositionTitle => '资源位置';
+
+  @override
+  String get minimalResourcePositionDesc => '极简档手机横屏游戏页的资源显示在信息栏顶部，或游戏上方的细横栏';
+
+  @override
+  String get minimalResourcePositionPanel => '信息栏';
+
+  @override
+  String get minimalResourcePositionTopBar => '顶部横栏';
 
   @override
   String get gameAreaRatio => '游戏区域占比';
@@ -3988,7 +4006,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get uiDisplaySizeTitle => '介面UI大小';
 
   @override
-  String get uiDisplaySizeDesc => '調整頂欄、導航欄與資訊欄的顯示密度；極簡檔在手機橫屏時隱藏遊戲頁頂欄';
+  String get uiDisplaySizeDesc => '調整頂欄、導航欄與資訊欄的顯示密度；極簡檔在手機橫屏時預設隱藏遊戲頁頂欄';
 
   @override
   String get uiDisplaySizeNormal => '標準';
@@ -3998,6 +4016,24 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get uiDisplaySizeMinimal => '極簡';
+
+  @override
+  String get panelResourcesExpand => '展開資源';
+
+  @override
+  String get panelResourcesCollapse => '摺疊資源';
+
+  @override
+  String get minimalResourcePositionTitle => '資源位置';
+
+  @override
+  String get minimalResourcePositionDesc => '極簡檔手機橫屏遊戲頁的資源顯示在資訊欄頂部，或遊戲上方的細橫欄';
+
+  @override
+  String get minimalResourcePositionPanel => '資訊欄';
+
+  @override
+  String get minimalResourcePositionTopBar => '頂部橫欄';
 
   @override
   String get gameAreaRatio => '遊戲區域佔比';

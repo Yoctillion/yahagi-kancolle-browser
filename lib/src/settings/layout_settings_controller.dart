@@ -251,6 +251,11 @@ class LayoutSettingsController extends ChangeNotifier {
           await (store as WorkspaceMenuSizeSettingsStore)
               .loadWorkspaceMenuSize();
     }
+    if (store is MinimalResourcePositionSettingsStore) {
+      controller._minimalResourcePosition =
+          await (store as MinimalResourcePositionSettingsStore)
+              .loadMinimalResourcePosition();
+    }
     if (store is UiLockSettingsStore) {
       controller._uiLocked = await (store as UiLockSettingsStore)
           .loadUiLocked();
@@ -299,6 +304,23 @@ class LayoutSettingsController extends ChangeNotifier {
           size,
         );
       }
+    }
+  }
+
+  MinimalResourcePosition _minimalResourcePosition =
+      MinimalResourcePosition.panel;
+  MinimalResourcePosition get minimalResourcePosition =>
+      _minimalResourcePosition;
+
+  Future<void> setMinimalResourcePosition(
+    MinimalResourcePosition position,
+  ) async {
+    if (_minimalResourcePosition == position) return;
+    _minimalResourcePosition = position;
+    notifyListeners();
+    if (_store is MinimalResourcePositionSettingsStore) {
+      await (_store as MinimalResourcePositionSettingsStore)
+          .saveMinimalResourcePosition(position);
     }
   }
 

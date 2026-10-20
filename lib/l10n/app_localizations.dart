@@ -700,7 +700,7 @@ abstract class AppLocalizations {
   /// No description provided for @uiDisplaySizeDesc.
   ///
   /// In zh, this message translates to:
-  /// **'调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时隐藏游戏页顶栏'**
+  /// **'调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时默认隐藏游戏页顶栏'**
   String get uiDisplaySizeDesc;
 
   /// No description provided for @uiDisplaySizeNormal.
@@ -720,6 +720,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'极简'**
   String get uiDisplaySizeMinimal;
+
+  /// No description provided for @panelResourcesExpand.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开资源'**
+  String get panelResourcesExpand;
+
+  /// No description provided for @panelResourcesCollapse.
+  ///
+  /// In zh, this message translates to:
+  /// **'折叠资源'**
+  String get panelResourcesCollapse;
+
+  /// No description provided for @minimalResourcePositionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'资源位置'**
+  String get minimalResourcePositionTitle;
+
+  /// No description provided for @minimalResourcePositionDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'极简档手机横屏游戏页的资源显示在信息栏顶部，或游戏上方的细横栏'**
+  String get minimalResourcePositionDesc;
+
+  /// No description provided for @minimalResourcePositionPanel.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息栏'**
+  String get minimalResourcePositionPanel;
+
+  /// No description provided for @minimalResourcePositionTopBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'顶部横栏'**
+  String get minimalResourcePositionTopBar;
 
   /// No description provided for @gameAreaRatio.
   ///
