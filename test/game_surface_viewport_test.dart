@@ -445,7 +445,7 @@ void main() {
     );
   });
 
-  group('GameSurfaceViewport docked system inset avoidance', () {
+  group('GameSurfaceViewport docked bottom inset avoidance', () {
     // iPhone landscape: Dynamic Island on both sides, home indicator below.
     const screenSize = Size(852, 393);
     const viewPadding = EdgeInsets.only(left: 59, right: 59, bottom: 21);
@@ -453,7 +453,7 @@ void main() {
     Future<Rect> pumpDocked(
       WidgetTester tester, {
       required Rect dock,
-      required bool avoidSystemInsets,
+      required bool avoidBottomInset,
     }) async {
       tester.view.physicalSize = screenSize;
       tester.view.devicePixelRatio = 1.0;
@@ -475,7 +475,7 @@ void main() {
                   child: GameSurfaceViewport(
                     aspectRatio: 1200 / 720,
                     isLandscape: true,
-                    avoidSystemInsets: avoidSystemInsets,
+                    avoidBottomInset: avoidBottomInset,
                     child: const SizedBox.expand(key: Key('test-game-surface')),
                   ),
                 ),
@@ -491,23 +491,39 @@ void main() {
     // Game panel below a 40pt header, taking 67% of the width on the left.
     const bottomLeftDock = Rect.fromLTWH(0, 40, 571, 353);
 
-    testWidgets('docked game clears overlapping home indicator and cutout', (
+    testWidgets('docked game stays above home indicator but not side cutout', (
       tester,
     ) async {
       final gameRect = await pumpDocked(
         tester,
         dock: bottomLeftDock,
-        avoidSystemInsets: true,
+        avoidBottomInset: true,
       );
 
-      expect(gameRect.left, greaterThanOrEqualTo(viewPadding.left));
+      final safeBottom = screenSize.height - viewPadding.bottom;
+      expect(gameRect.bottom, closeTo(safeBottom, 0.001));
+      expect(gameRect.height, closeTo(safeBottom - bottomLeftDock.top, 0.001));
+      expect(gameRect.left, lessThan(viewPadding.left));
+      expect(gameRect.right, lessThanOrEqualTo(bottomLeftDock.right));
+      expect(gameRect.width / gameRect.height, closeTo(1200 / 720, 0.001));
+    });
+
+    testWidgets('docked game keeps full width when it fits above indicator', (
+      tester,
+    ) async {
+      const narrowDock = Rect.fromLTWH(0, 40, 500, 353);
+      final gameRect = await pumpDocked(
+        tester,
+        dock: narrowDock,
+        avoidBottomInset: true,
+      );
+
+      expect(gameRect.left, 0.0);
+      expect(gameRect.width, narrowDock.width);
       expect(
         gameRect.bottom,
         lessThanOrEqualTo(screenSize.height - viewPadding.bottom),
       );
-      expect(gameRect.top, greaterThanOrEqualTo(bottomLeftDock.top));
-      expect(gameRect.right, lessThanOrEqualTo(bottomLeftDock.right));
-      expect(gameRect.width / gameRect.height, closeTo(1200 / 720, 0.001));
     });
 
     testWidgets('docked game keeps width priority when off-screen-edge', (
@@ -517,7 +533,7 @@ void main() {
       final gameRect = await pumpDocked(
         tester,
         dock: innerDock,
-        avoidSystemInsets: true,
+        avoidBottomInset: true,
       );
 
       expect(gameRect.left, innerDock.left);
@@ -530,7 +546,7 @@ void main() {
       final gameRect = await pumpDocked(
         tester,
         dock: bottomLeftDock,
-        avoidSystemInsets: false,
+        avoidBottomInset: false,
       );
 
       expect(gameRect.left, 0.0);

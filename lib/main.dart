@@ -2298,7 +2298,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 fitWithinBounds:
                                                     menuHorizontal &&
                                                     !_gameFullscreen,
-                                                avoidSystemInsets:
+                                                avoidBottomInset:
                                                     Platform.isIOS,
                                                 child: GameSurfaceBoundary(
                                                   child: widget.gameSurface,

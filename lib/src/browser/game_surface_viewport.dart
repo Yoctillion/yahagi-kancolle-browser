@@ -30,7 +30,7 @@ class GameSurfaceViewport extends StatefulWidget {
     this.isLandscape = false,
     this.displayMode = DisplayMode.auto,
     this.fitWithinBounds = false,
-    this.avoidSystemInsets = false,
+    this.avoidBottomInset = false,
     this.viewPadding,
     this.backgroundColor = const Color(0xff0a1823),
   });
@@ -42,11 +42,13 @@ class GameSurfaceViewport extends StatefulWidget {
   final DisplayMode displayMode;
   final bool fitWithinBounds;
 
-  /// Keeps the game clear of every system inset (home indicator, display
-  /// cutouts) that overlaps this viewport's on-screen bounds, also while
-  /// docked in the workspace, shrinking it instead of letting width-priority
-  /// layout run under the inset.
-  final bool avoidSystemInsets;
+  /// Keeps the game above the bottom system inset (home indicator) wherever
+  /// it overlaps this viewport, also while docked in the workspace, shrinking
+  /// it instead of letting width-priority layout run under the inset.
+  ///
+  /// Docked side insets are deliberately ignored: they carry no system
+  /// gesture, so avoiding them would only shrink the game.
+  final bool avoidBottomInset;
   final EdgeInsets? viewPadding;
   final Color backgroundColor;
 
@@ -137,7 +139,7 @@ class GameSurfaceViewport extends StatefulWidget {
 }
 
 class _GameSurfaceViewportState extends State<GameSurfaceViewport> {
-  EdgeInsets _dockedInsets = EdgeInsets.zero;
+  double _dockedBottomInset = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -145,15 +147,15 @@ class _GameSurfaceViewportState extends State<GameSurfaceViewport> {
     final EdgeInsets effectivePadding;
     if (widget.fullscreen) {
       effectivePadding = padding;
-    } else if (widget.avoidSystemInsets) {
+    } else if (widget.avoidBottomInset) {
       // The docked position is only known after layout, so the overlap is
       // measured post-frame. Every workspace reflow that moves this box goes
       // through a rebuild of it, which re-measures.
-      final screenSize = MediaQuery.sizeOf(context);
+      final screenHeight = MediaQuery.sizeOf(context).height;
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _measureDockedInsets(padding, screenSize),
+        (_) => _measureDockedBottomInset(padding.bottom, screenHeight),
       );
-      effectivePadding = _dockedInsets;
+      effectivePadding = EdgeInsets.only(bottom: _dockedBottomInset);
     } else {
       effectivePadding = EdgeInsets.zero;
     }
@@ -168,7 +170,7 @@ class _GameSurfaceViewportState extends State<GameSurfaceViewport> {
             isLandscape: widget.isLandscape,
             displayMode: widget.displayMode,
             fitWithinBounds: widget.fitWithinBounds,
-            strictInsets: widget.avoidSystemInsets,
+            strictBottomInset: widget.avoidBottomInset,
             padding: effectivePadding,
           ),
           child: widget.child,
@@ -177,25 +179,17 @@ class _GameSurfaceViewportState extends State<GameSurfaceViewport> {
     );
   }
 
-  void _measureDockedInsets(EdgeInsets viewPadding, Size screenSize) {
+  void _measureDockedBottomInset(double bottomPadding, double screenHeight) {
     if (!mounted) return;
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
-    final rect = box.localToGlobal(Offset.zero) & box.size;
-    final insets = EdgeInsets.fromLTRB(
-      (viewPadding.left - rect.left).clamp(0.0, viewPadding.left),
-      (viewPadding.top - rect.top).clamp(0.0, viewPadding.top),
-      (rect.right - (screenSize.width - viewPadding.right)).clamp(
-        0.0,
-        viewPadding.right,
-      ),
-      (rect.bottom - (screenSize.height - viewPadding.bottom)).clamp(
-        0.0,
-        viewPadding.bottom,
-      ),
+    final bottom = box.localToGlobal(Offset(0, box.size.height)).dy;
+    final inset = (bottom - (screenHeight - bottomPadding)).clamp(
+      0.0,
+      bottomPadding,
     );
-    if (insets != _dockedInsets) {
-      setState(() => _dockedInsets = insets);
+    if (inset != _dockedBottomInset) {
+      setState(() => _dockedBottomInset = inset);
     }
   }
 }
@@ -207,7 +201,7 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
     required this.isLandscape,
     required this.displayMode,
     required this.fitWithinBounds,
-    required this.strictInsets,
+    required this.strictBottomInset,
     required this.padding,
   });
 
@@ -216,15 +210,12 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
   final bool isLandscape;
   final DisplayMode displayMode;
   final bool fitWithinBounds;
-  final bool strictInsets;
+  final bool strictBottomInset;
   final EdgeInsets padding;
 
-  // Width priority always spans the full width and falls back to centering in
-  // the whole container when the safe height is short, so it can sit under
-  // insets on any edge.
-  bool _widthPriorityClearsInsets(Size size) =>
-      padding.left == 0 &&
-      padding.right == 0 &&
+  // Width priority falls back to centering in the whole container when the
+  // safe height is short, which would put the game under the bottom inset.
+  bool _widthPriorityFitsSafeHeight(Size size) =>
       size.height - padding.vertical >= size.width / aspectRatio;
 
   Rect _calculateRect(Size size) {
@@ -242,7 +233,7 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
 
     if (isWidthPriority &&
         !fitWithinBounds &&
-        (!strictInsets || _widthPriorityClearsInsets(size))) {
+        (!strictBottomInset || _widthPriorityFitsSafeHeight(size))) {
       return GameSurfaceViewport.computeWidthPriorityGameRect(
         containerWidth: size.width,
         containerHeight: size.height,
@@ -278,7 +269,7 @@ class _GameSurfaceLayoutDelegate extends SingleChildLayoutDelegate {
         oldDelegate.isLandscape != isLandscape ||
         oldDelegate.displayMode != displayMode ||
         oldDelegate.fitWithinBounds != fitWithinBounds ||
-        oldDelegate.strictInsets != strictInsets ||
+        oldDelegate.strictBottomInset != strictBottomInset ||
         oldDelegate.padding != padding;
   }
 }
