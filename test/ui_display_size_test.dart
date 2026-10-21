@@ -21,19 +21,13 @@ void main() {
     expect(UiDisplaySize.compact.isMinimal, isFalse);
   });
 
-  test('usesMinimalGameShell only for minimal game page landscape non-hd', () {
-    bool shell(UiDisplaySize size, int index, bool landscape, bool hd) =>
-        usesMinimalGameShell(
-          size: size,
-          workspaceIndex: index,
-          isLandscape: landscape,
-          hd: hd,
-        );
-    expect(shell(UiDisplaySize.minimal, 0, true, false), isTrue);
-    expect(shell(UiDisplaySize.minimal, 1, true, false), isFalse);
-    expect(shell(UiDisplaySize.minimal, 0, false, false), isFalse);
-    expect(shell(UiDisplaySize.minimal, 0, true, true), isFalse);
-    expect(shell(UiDisplaySize.compact, 0, true, false), isFalse);
+  test('usesMinimalShell only for minimal landscape non-hd', () {
+    bool shell(UiDisplaySize size, bool landscape, bool hd) =>
+        usesMinimalShell(size: size, isLandscape: landscape, hd: hd);
+    expect(shell(UiDisplaySize.minimal, true, false), isTrue);
+    expect(shell(UiDisplaySize.minimal, false, false), isFalse);
+    expect(shell(UiDisplaySize.minimal, true, true), isFalse);
+    expect(shell(UiDisplaySize.compact, true, false), isFalse);
   });
 
   test('usesFlatPanel', () {

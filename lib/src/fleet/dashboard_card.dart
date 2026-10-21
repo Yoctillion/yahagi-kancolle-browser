@@ -110,7 +110,7 @@ class DashboardCard extends StatelessWidget {
                         if (showLogo) ...[
                           IconTheme(
                             data: IconThemeData(
-                              size: flat ? 13 : 16,
+                              size: 16,
                               color: const Color(0xffd4a85f),
                             ),
                             child: icon,
@@ -128,17 +128,13 @@ class DashboardCard extends StatelessWidget {
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       title,
-                                      style: _titleStyle(flat),
+                                      style: _titleStyle(false),
                                     ),
                                   ),
                                 ),
                                 if (!collapsed && titleBadge != null) ...[
                                   const SizedBox(width: 8),
                                   titleBadge!,
-                                ],
-                                if (_showSummary(flat)) ...[
-                                  const SizedBox(width: 8),
-                                  Expanded(child: _summary()),
                                 ],
                               ],
                             ),
@@ -155,7 +151,7 @@ class DashboardCard extends StatelessWidget {
                           const SizedBox(width: 3),
                         ],
                         ?headerAction,
-                        _collapseButton(context, flat),
+                        _collapseButton(context, false),
                       ],
                     ),
                   ),

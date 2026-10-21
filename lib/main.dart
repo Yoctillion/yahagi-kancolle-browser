@@ -2066,9 +2066,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           (minimalTopBar ? topHeaderHeight(uiSize) : 0) -
           minimalBottomBarReserve,
     );
-    final minimalGameLayout = usesMinimalGameShell(
+    final minimalGameLayout = usesMinimalShell(
       size: uiSize,
-      workspaceIndex: 0,
       isLandscape: !usesVerticalWorkspace(
         minimalShellWorkspace,
         screenDisplayMode,
