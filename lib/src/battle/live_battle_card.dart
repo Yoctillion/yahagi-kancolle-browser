@@ -172,11 +172,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
         return DashboardCard(
           key: const Key('live-battle-card'),
           collapsedSummary: widget.collapsed
-              ? battleSummary(
-                  AppLocalizations.of(context) ??
-                      lookupAppLocalizations(const Locale('zh')),
-                  battle,
-                )
+              ? battleSummary(BattleDetailStrings.of(context), battle)
               : null,
           title: AppLocalizations.of(context)?.forecast ?? '未卜先知',
           icon: const Icon(Icons.remove_red_eye_outlined),

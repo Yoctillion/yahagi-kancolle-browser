@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
+import '../battle/battle_detail_strings.dart';
 import '../battle/battle_models.dart';
 import '../fleet/operation_progress.dart';
 import '../fleet/ship_damage_level.dart';
@@ -24,9 +25,9 @@ List<RepairDock> busyRepairDocks(GameState state, DateTime now) => [
 int completedConstructionCount(GameState state, DateTime now) =>
     state.constructionDocks.where((dock) => dock.isCompletedAt(now)).length;
 
-String? battleSummary(AppLocalizations l10n, LiveBattle? battle) {
+String? battleSummary(BattleDetailStrings strings, LiveBattle? battle) {
   if (battle == null || battle.friendShips.isEmpty) return null;
-  final node = battle.context.forecastNodeLabel;
+  final node = strings.localize(battle.context.forecastNodeLabel);
   if (battle.rank == BattleRank.unknown) return node;
   return '$node · ${battle.rank.label}';
 }

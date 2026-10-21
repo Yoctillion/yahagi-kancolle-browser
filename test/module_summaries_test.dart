@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import 'package:yahagi_kancolle_browser/src/battle/battle_detail_strings.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_models.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/layout/module_summaries.dart';
@@ -177,10 +178,11 @@ void main() {
       friendMain: [ship],
       rank: BattleRank.s,
     );
-    expect(battleSummary(l10n, battle), 'C · S');
+    const zh = BattleDetailStrings.forLocale(Locale('zh'));
+    expect(battleSummary(zh, battle), 'C · S');
     expect(
       battleSummary(
-        l10n,
+        zh,
         const LiveBattle(
           context: BattleContext(nodeDisplayLabel: 'C'),
           friendMain: [ship],
@@ -188,7 +190,17 @@ void main() {
       ),
       'C',
     );
-    expect(battleSummary(l10n, null), isNull);
+    expect(battleSummary(zh, null), isNull);
+    expect(
+      battleSummary(
+        const BattleDetailStrings.forLocale(Locale('en')),
+        const LiveBattle(
+          context: BattleContext(practice: true),
+          friendMain: [ship],
+        ),
+      ),
+      'Exercise',
+    );
   });
 
   test('基地航空队与出击前检查摘要', () {
