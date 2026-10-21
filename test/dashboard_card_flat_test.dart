@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 
 Widget _host({
@@ -214,5 +215,78 @@ void main() {
 
       expect(tester.takeException(), isNull);
     });
+  });
+
+  group('flat 英文标题行', () {
+    Widget englishHost({required double width, required double scale}) =>
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: width,
+                  child: PanelStyleScope(
+                    style: PanelStyle.flat,
+                    child: DashboardCard(
+                      title: 'Pre-sortie check',
+                      icon: const Icon(Icons.sailing),
+                      collapsed: false,
+                      onToggleCollapse: () {},
+                      collapseButtonKey: const Key('card-collapse'),
+                      titleBadge: const Text('Ready'),
+                      trailing: FlatTextToggle(
+                        options: [
+                          FlatTextToggleOption(
+                            key: const Key('toggle-summary'),
+                            label: 'Summary',
+                            selected: true,
+                            onTap: () {},
+                          ),
+                          FlatTextToggleOption(
+                            key: const Key('toggle-check'),
+                            label: 'Check',
+                            selected: false,
+                            onTap: () {},
+                          ),
+                        ],
+                      ),
+                      headerAction: const IconButton(
+                        onPressed: null,
+                        icon: Icon(Icons.settings),
+                      ),
+                      child: const SizedBox(height: 20),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    for (final (width, scale) in [(180.0, 1.3), (180.0, 1.0), (300.0, 1.3)]) {
+      testWidgets('折叠按钮始终完整可见 ($width, x$scale)', (tester) async {
+        await tester.pumpWidget(englishHost(width: width, scale: scale));
+        expect(tester.takeException(), isNull);
+        final header = find.byKey(const Key('dashboard-card-header'));
+        expect(tester.getSize(header).height, 24);
+        expect(
+          find.descendant(
+            of: header,
+            matching: find.byType(SingleChildScrollView),
+          ),
+          findsNothing,
+        );
+        final card = tester.getRect(find.byType(DashboardCard));
+        final chevron = tester.getRect(find.byKey(const Key('card-collapse')));
+        expect(chevron.left, greaterThanOrEqualTo(card.left));
+        expect(chevron.right, lessThanOrEqualTo(card.right));
+        expect(card.right - chevron.right, lessThanOrEqualTo(8));
+      });
+    }
   });
 }

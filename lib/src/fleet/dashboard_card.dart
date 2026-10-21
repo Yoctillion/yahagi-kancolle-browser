@@ -74,11 +74,20 @@ class DashboardCard extends StatelessWidget {
           children: [
             LayoutBuilder(
               builder: (context, constraints) {
+                // English titles are long, but the flat header ellipsizes them
+                // instead of wrapping so the collapse button never leaves view.
+                if (flat) {
+                  return SizedBox(
+                    key: const Key('dashboard-card-header'),
+                    height: flatHeaderHeight,
+                    child: _flatHeader(context),
+                  );
+                }
                 if (Localizations.maybeLocaleOf(context)?.languageCode ==
                         'en' &&
                     (constraints.maxWidth < 400 ||
                         MediaQuery.textScalerOf(context).scale(14) > 14)) {
-                  final header = _englishHeader(context, flat);
+                  final header = _englishHeader(context);
                   if (constraints.maxWidth < 220) {
                     return SingleChildScrollView(
                       // Cards keep their own state in the slot their
@@ -90,13 +99,6 @@ class DashboardCard extends StatelessWidget {
                     );
                   }
                   return header;
-                }
-                if (flat) {
-                  return SizedBox(
-                    key: const Key('dashboard-card-header'),
-                    height: flatHeaderHeight,
-                    child: _flatHeader(context),
-                  );
                 }
                 return FittedBox(
                   fit: BoxFit.scaleDown,
@@ -177,6 +179,38 @@ class DashboardCard extends StatelessWidget {
             child: w,
           ),
         );
+    return LayoutBuilder(
+      builder: (context, constraints) => _flatHeaderRow(
+        context,
+        fit,
+        _flatTrailingMaxWidth(constraints.maxWidth),
+      ),
+    );
+  }
+
+  // The switcher is rigid so the title gives way first, but narrow English
+  // labels outgrow the row; capping it lets its FittedBox shrink instead of
+  // pushing the collapse button out, while a few title letters stay visible.
+  double _flatTrailingMaxWidth(double width) {
+    const logo = 13.0 + 6;
+    const iconSlot = 24.0;
+    const minTitle = 24.0;
+    return math.max(
+      0,
+      width -
+          (showLogo ? logo : 0) -
+          (showTitle ? minTitle : 0) -
+          (headerAction != null ? iconSlot : 0) -
+          iconSlot -
+          3,
+    );
+  }
+
+  Widget _flatHeaderRow(
+    BuildContext context,
+    Widget Function(Widget, double, AlignmentGeometry) fit,
+    double trailingMaxWidth,
+  ) {
     return Row(
       children: [
         if (showLogo) ...[
@@ -234,7 +268,10 @@ class DashboardCard extends StatelessWidget {
         ] else
           const Spacer(),
         if (!collapsed && trailing != null) ...[
-          fit(trailing!, 22, Alignment.centerRight),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: trailingMaxWidth),
+            child: fit(trailing!, 22, Alignment.centerRight),
+          ),
           const SizedBox(width: 3),
         ],
         if (headerAction != null) fit(headerAction!, 24, Alignment.center),
@@ -260,17 +297,14 @@ class DashboardCard extends StatelessWidget {
     style: const TextStyle(color: flatMutedColor, fontSize: flatSmallFontSize),
   );
 
-  Widget _englishHeader(BuildContext context, bool flat) => Column(
+  Widget _englishHeader(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Row(
         children: [
           if (showLogo) ...[
             IconTheme(
-              data: IconThemeData(
-                size: flat ? 13 : 16,
-                color: const Color(0xffd4a85f),
-              ),
+              data: const IconThemeData(size: 16, color: Color(0xffd4a85f)),
               child: icon,
             ),
             if (showTitle) const SizedBox(width: 6),
@@ -281,18 +315,13 @@ class DashboardCard extends StatelessWidget {
               runSpacing: 4,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (showTitle) Text(title, style: _titleStyle(flat)),
+                if (showTitle) Text(title, style: _titleStyle(false)),
                 if (!collapsed && titleBadge != null) titleBadge!,
-                if (_showSummary(flat))
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 160),
-                    child: _summary(),
-                  ),
               ],
             ),
           ),
           ?headerAction,
-          _collapseButton(context, flat),
+          _collapseButton(context, false),
         ],
       ),
       if (!collapsed && trailing != null)
