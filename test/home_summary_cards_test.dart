@@ -12,6 +12,8 @@ import 'package:yahagi_kancolle_browser/src/fleet/repair_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_store.dart';
 import 'package:yahagi_kancolle_browser/src/quest/pinned_quests_summary.dart';
@@ -1187,6 +1189,42 @@ void main() {
       expect(find.byKey(const Key('repair-summary-dock-slot-1')), findsNothing);
       expect(find.byKey(const Key('repair-summary-dock-slot-3')), findsNothing);
       expect(tileBoxes(), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('维修模式切换是共用的文字切换，选中金色并可切换', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenRepair: (_) {},
+        ),
+      );
+      final selector = find.byKey(const Key('repair-summary-mode-selector'));
+      expect(tester.widget(selector), isA<FlatTextToggle>());
+      Color? labelColor(String mode) => tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(Key('repair-summary-mode-$mode')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color;
+      expect(labelColor('dock'), flatAccentColor);
+      expect(labelColor('anchorage'), flatMutedColor);
+
+      await tester.tap(find.byKey(const Key('repair-summary-mode-anchorage')));
+      await tester.pumpAndSettle();
+      expect(labelColor('anchorage'), flatAccentColor);
+      expect(find.byKey(const Key('repair-summary-dock-grid')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 

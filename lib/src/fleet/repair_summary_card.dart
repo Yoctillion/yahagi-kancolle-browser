@@ -7,6 +7,7 @@ import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/flat_style.dart';
+import '../layout/flat_text_toggle.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
@@ -97,14 +98,15 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     final strings =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
-    final modeSelector = _RepairSummaryModeSelector(
-      flat: _flat,
-      mode: _mode,
-      dockLabel: fleetText(context, '入渠修理'),
-      anchorageLabel: fleetText(context, '泊地修理'),
-      nosakiLabel: fleetText(context, '野埼刷闪'),
-      onChanged: (mode) => setState(() => _mode = mode),
-    );
+    final modeSelector = _flat
+        ? _flatModeSelector()
+        : _RepairSummaryModeSelector(
+            mode: _mode,
+            dockLabel: fleetText(context, '入渠修理'),
+            anchorageLabel: fleetText(context, '泊地修理'),
+            nosakiLabel: fleetText(context, '野埼刷闪'),
+            onChanged: (mode) => setState(() => _mode = mode),
+          );
     final content = switch (_mode) {
       RepairCenterMode.dock => _buildDockGrid(state, strings),
       RepairCenterMode.anchorage => _buildAnchorageSummary(state, strings),
@@ -133,6 +135,37 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
   }
 
   bool get _flat => PanelStyleScope.isFlat(context);
+
+  Widget _flatModeSelector() {
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    FlatTextToggleOption option(RepairCenterMode mode, String label) =>
+        FlatTextToggleOption(
+          key: Key('repair-summary-mode-${mode.name}'),
+          label: label,
+          selected: _mode == mode,
+          onTap: () => setState(() => _mode = mode),
+        );
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FlatTextToggle(
+        key: const Key('repair-summary-mode-selector'),
+        options: [
+          option(
+            RepairCenterMode.dock,
+            english ? 'Dock' : fleetText(context, '入渠'),
+          ),
+          option(
+            RepairCenterMode.anchorage,
+            english ? 'Anch.' : fleetText(context, '泊地'),
+          ),
+          option(
+            RepairCenterMode.nosaki,
+            fleetText(context, FleetUiKeys.nosakiShort),
+          ),
+        ],
+      ),
+    );
+  }
 
   bool _isDockActive(RepairDock? dock) =>
       dock != null &&
@@ -508,7 +541,6 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
 
 class _RepairSummaryModeSelector extends StatelessWidget {
   const _RepairSummaryModeSelector({
-    required this.flat,
     required this.mode,
     required this.dockLabel,
     required this.anchorageLabel,
@@ -516,7 +548,6 @@ class _RepairSummaryModeSelector extends StatelessWidget {
     required this.onChanged,
   });
 
-  final bool flat;
   final RepairCenterMode mode;
   final String dockLabel;
   final String anchorageLabel;
@@ -527,24 +558,19 @@ class _RepairSummaryModeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('repair-summary-mode-selector'),
-      height: flat ? 20 : 26,
-      padding: EdgeInsets.all(flat ? 0 : 2),
-      decoration: flat
-          ? null
-          : BoxDecoration(
-              color: const Color(0xff10212e),
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: const Color(0xff294052)),
-            ),
+      height: 26,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: const Color(0xff10212e),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: const Color(0xff294052)),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final english = Localizations.localeOf(context).languageCode == 'en';
           final labelWidth = constraints.maxWidth / 3 - 14;
           final style = DefaultTextStyle.of(context).style.merge(
-            TextStyle(
-              fontSize: flat ? flatSmallFontSize : 10,
-              fontWeight: FontWeight.w700,
-            ),
+            const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
           );
           final useShortLabels = [dockLabel, anchorageLabel, nosakiLabel].any((
             label,
@@ -572,7 +598,6 @@ class _RepairSummaryModeSelector extends StatelessWidget {
                       : dockLabel,
                   tooltip: dockLabel,
                   compactIcon: Icons.build_outlined,
-                  flat: flat,
                   selected: mode == RepairCenterMode.dock,
                   onTap: () => onChanged(RepairCenterMode.dock),
                 ),
@@ -587,7 +612,6 @@ class _RepairSummaryModeSelector extends StatelessWidget {
                       : anchorageLabel,
                   tooltip: anchorageLabel,
                   compactIcon: Icons.anchor,
-                  flat: flat,
                   selected: mode == RepairCenterMode.anchorage,
                   onTap: () => onChanged(RepairCenterMode.anchorage),
                 ),
@@ -600,7 +624,6 @@ class _RepairSummaryModeSelector extends StatelessWidget {
                       : nosakiLabel,
                   tooltip: nosakiLabel,
                   compactIcon: Icons.auto_awesome,
-                  flat: flat,
                   selected: mode == RepairCenterMode.nosaki,
                   onTap: () => onChanged(RepairCenterMode.nosaki),
                 ),
@@ -621,10 +644,8 @@ class _ModeButton extends StatelessWidget {
     required this.onTap,
     required this.tooltip,
     required this.compactIcon,
-    this.flat = false,
   });
 
-  final bool flat;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -634,7 +655,7 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected && !flat ? const Color(0xff5b4829) : Colors.transparent,
+      color: selected ? const Color(0xff5b4829) : Colors.transparent,
       borderRadius: BorderRadius.circular(5),
       child: InkWell(
         borderRadius: BorderRadius.circular(5),
@@ -651,7 +672,7 @@ class _ModeButton extends StatelessWidget {
                       color: selected
                           ? const Color(0xffffcf67)
                           : const Color(0xff8197a5),
-                      fontSize: flat ? flatSmallFontSize : 10,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
                     ),
                   );
