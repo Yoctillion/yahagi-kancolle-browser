@@ -1043,6 +1043,42 @@ void main() {
     );
   });
 
+  testWidgets('grid keeps the toggle whole when no row is left', (
+    tester,
+  ) async {
+    final controller = await loadGridController();
+    await controller.setUiDisplaySize(UiDisplaySize.minimal);
+    for (var id = 1; id <= 8; id++) {
+      await controller.toggleHeaderResourceVisible('material-$id');
+    }
+    const padding = EdgeInsets.fromLTRB(8, 6, 8, 2);
+    await tester.pumpWidget(
+      gridHarness(
+        controller,
+        width: 250,
+        senka: 3128,
+        state: richState,
+        gridPadding: padding,
+      ),
+    );
+    final toggle = find.byKey(const Key('information-panel-resources-toggle'));
+    final resources = find.byKey(const Key('information-panel-resources'));
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('header-senka-summary')), findsNothing);
+    final area = tester.getRect(resources);
+    final box = tester.getRect(toggle);
+    expect(box.size, const Size(24, 24));
+    expect(box.top, greaterThanOrEqualTo(area.top));
+    expect(box.bottom, lessThanOrEqualTo(area.bottom));
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('header-senka-summary')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'grid uses the full width and overlays the toggle on the last row',
     (tester) async {

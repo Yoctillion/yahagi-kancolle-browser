@@ -596,8 +596,13 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
             Padding(
               padding: padding,
               child: _HeaderGridScope(
-                child: SizedBox(
+                // 折叠后可能一行都没有（只剩宽项或全部隐藏），仍要留出完整的
+                // 按钮高度，否则按钮被 Stack 裁掉就再也展不开。
+                child: Container(
                   width: width,
+                  constraints: BoxConstraints(
+                    minHeight: rows.isEmpty ? _gridToggleExtent : 0,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
