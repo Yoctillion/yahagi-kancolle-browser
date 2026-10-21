@@ -15,6 +15,7 @@ import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_channel.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_store.dart';
 import 'package:yahagi_kancolle_browser/src/layout/display_corners.dart';
+import 'package:yahagi_kancolle_browser/src/layout/workspace_context_header.dart';
 import 'package:yahagi_kancolle_browser/src/settings/header_resource_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
@@ -2571,17 +2572,105 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal keeps header on other workspaces', (tester) async {
+    testWidgets('minimal other workspaces put the header beside the rail', (
+      tester,
+    ) async {
       await _pumpMinimalShell(tester);
+      final menuButton = find.byKey(const Key('minimal-menu-button'));
+      final gameMenuTop = tester.getTopLeft(menuButton).dy;
 
       await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
       expect(_headerHeight(tester), 28);
       expect(_sidebarWidth(tester), 34);
-      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      final rail = tester.getRect(
+        find.byKey(const Key('workspace-navigation-sidebar')),
+      );
+      expect(rail.top, 0);
+      expect(rail.height, _phoneLandscape.height);
+      expect(tester.getTopLeft(menuButton).dy, gameMenuTop);
+      expect(
+        tester.getTopLeft(find.byType(WorkspaceContextHeader)).dx,
+        greaterThanOrEqualTo(34),
+      );
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal menu button returns other workspaces to the game', (
+      tester,
+    ) async {
+      await _pumpMinimalShell(tester);
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('minimal-menu-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('game-browser-menu-reload')), findsNothing);
+      expect(find.byType(FleetInformationCenter), findsNothing);
+      expect(_headerHeight(tester), 0);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal header on other workspaces clears the far corner', (
+      tester,
+    ) async {
+      const corners = MethodChannel(displayCornersChannelName);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        corners,
+        (_) async => <String, Object>{
+          'topLeft': 55,
+          'topRight': 40,
+          'bottomLeft': 24,
+          'bottomRight': 24,
+        },
+      );
+      addTearDown(() => messenger.setMockMethodCallHandler(corners, null));
+      final layout = await _pumpMinimalShell(tester);
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      await tester.pumpAndSettle();
+      Rect header() => tester.getRect(find.byType(WorkspaceContextHeader));
+
+      // 竖栏占着左上角，页头只在右端让圆弧。
+      expect(header().left, lessThan(34 + cornerInsetAt(55, 6.5)));
+      expect(
+        header().right,
+        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
+      );
+
+      await layout.setWorkspaceMenuPosition('bottom');
+      await tester.pumpAndSettle();
+      expect(header().left, greaterThanOrEqualTo(cornerInsetAt(55, 6.5)));
+      expect(
+        header().right,
+        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('minimal horizontal navigation shows the menu everywhere', (
+      tester,
+    ) async {
+      final layout = await _pumpMinimalShell(tester);
+      for (final position in const ['bottom', 'top']) {
+        await layout.setWorkspaceMenuPosition(position);
+        await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('yahagi-brand-button')),
+          findsNothing,
+          reason: position,
+        );
+        await tester.tap(find.byKey(const Key('minimal-menu-button')));
+        await tester.pumpAndSettle();
+        expect(find.byType(FleetInformationCenter), findsNothing);
+        expect(tester.takeException(), isNull, reason: position);
+      }
     });
 
     testWidgets('minimal portrait keeps 28dp header with resources', (
@@ -2747,6 +2836,8 @@ void main() {
       );
       addTearDown(() => messenger.setMockMethodCallHandler(corners, null));
       final layout = await _pumpMinimalShell(tester);
+      final menuButton = find.byKey(const Key('minimal-menu-button'));
+      final menuTop = tester.getTopLeft(menuButton).dy;
       await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
       await tester.pumpAndSettle();
 
@@ -2760,17 +2851,15 @@ void main() {
         find.byKey(const Key('information-panel-resources')),
         findsNothing,
       );
-      expect(find.byKey(const Key('minimal-menu-button')), findsOneWidget);
-      // 横栏在导航栏上方占住了顶角，导航栏顶端不必再让圆角。
-      expect(
-        tester.getTopLeft(find.byKey(const Key('minimal-menu-button'))).dy,
-        28,
-      );
-      // 横栏两端在图标顶边（28 高的栏里 15 号图标居中，y=6.5）处让开圆弧。
+      expect(menuButton, findsOneWidget);
+      // 导航栏仍占满整高，横栏排在它旁边。
+      expect(tester.getTopLeft(menuButton).dy, menuTop);
+      // 横栏远端在图标顶边（28 高的栏里 15 号图标居中，y=6.5）处让开圆弧。
       final list = tester.getRect(
         find.byKey(const Key('header-resource-list')),
       );
-      expect(list.left, greaterThanOrEqualTo(cornerInsetAt(55, 6.5)));
+      expect(list.left, greaterThanOrEqualTo(34));
+      expect(list.left, lessThan(34 + cornerInsetAt(55, 6.5)));
       expect(
         list.right,
         lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
@@ -2852,18 +2941,21 @@ void main() {
       }
     });
 
-    testWidgets('minimal top bar leaves other workspaces unchanged', (
+    testWidgets('minimal top bar keeps the rail still across workspaces', (
       tester,
     ) async {
       final layout = await _pumpMinimalShell(tester);
       await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      final navItem = find.byKey(const Key('workspace-nav-fleet'));
+      final gameNavTop = tester.getTopLeft(navItem).dy;
+      await tester.tap(navItem);
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
       expect(_headerHeight(tester), 28);
-      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      expect(find.byKey(const Key('minimal-menu-button')), findsOneWidget);
+      expect(tester.getTopLeft(navItem).dy, gameNavTop);
       expect(tester.takeException(), isNull);
     });
 
