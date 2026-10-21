@@ -1734,6 +1734,83 @@ void main() {
       expect(cornerInsetAt(radius, rows.first.first.top + 4), greaterThan(20));
     });
 
+    testWidgets('running timers keep each timer and capacity pair together', (
+      tester,
+    ) async {
+      await pumpPanel(tester, timersRunning: true);
+
+      expect(tester.takeException(), isNull);
+      Rect rect(String id) =>
+          tester.getRect(find.byKey(Key('header-resource-$id')));
+      final rows = rowsOf(tester, wideKeys);
+      expect(rows, hasLength(3));
+      expect(rows[0], [rect(headerSenkaId)]);
+      expect(rows[1], [
+        rect(headerAnchorageTimerId),
+        rect(headerNosakiTimerId),
+      ]);
+      expect(rows[2], [
+        rect(headerShipCapacityId),
+        rect(headerEquipmentCapacityId),
+      ]);
+      expectRowsClearRightCorner(tester);
+    });
+
+    testWidgets('a timer whose partner is hidden packs like any wide item', (
+      tester,
+    ) async {
+      final controller = await loadGridController();
+      await controller.toggleHeaderResourceVisible(headerNosakiTimerId);
+      await controller.toggleHeaderResourceVisible(headerFrameRefreshId);
+      await pumpPanel(tester, controller: controller, timersRunning: true);
+
+      expect(tester.takeException(), isNull);
+      Rect rect(String id) =>
+          tester.getRect(find.byKey(Key('header-resource-$id')));
+      final rows = rowsOf(tester, wideKeys);
+      expect(rows.expand((row) => row), hasLength(5));
+      final capacityRow = rows.firstWhere(
+        (row) => row.contains(rect(headerShipCapacityId)),
+      );
+      expect(capacityRow, contains(rect(headerEquipmentCapacityId)));
+      expect(capacityRow, hasLength(2));
+      expectRowsClearRightCorner(tester);
+    });
+
+    testWidgets('timers ordered apart are not pulled together', (tester) async {
+      const apart = <String>[
+        headerAnchorageTimerId,
+        headerShipCapacityId,
+        headerNosakiTimerId,
+        headerEquipmentCapacityId,
+      ];
+      final controller = await loadGridController();
+      await controller.setHeaderResourceOrder(<String>[
+        headerSenkaId,
+        ...apart,
+        ...allHeaderResourceIds.where(
+          (id) => id != headerSenkaId && !apart.contains(id),
+        ),
+      ]);
+      await pumpPanel(tester, controller: controller, timersRunning: true);
+
+      expect(tester.takeException(), isNull);
+      final rects = [
+        for (final id in apart)
+          tester.getRect(find.byKey(Key('header-resource-$id'))),
+      ];
+      for (var i = 1; i < rects.length; i++) {
+        final previous = rects[i - 1];
+        expect(
+          rects[i].top > previous.top ||
+              (rects[i].top == previous.top && rects[i].left > previous.left),
+          isTrue,
+          reason: apart[i],
+        );
+      }
+      expectRowsClearRightCorner(tester);
+    });
+
     testWidgets('collapsed toggle follows the first row corner inset', (
       tester,
     ) async {

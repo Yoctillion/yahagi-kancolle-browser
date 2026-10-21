@@ -446,9 +446,18 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     }
   }
 
+  static String? _gridPartner(String id) => switch (id) {
+    headerAnchorageTimerId => headerNosakiTimerId,
+    headerNosakiTimerId => headerAnchorageTimerId,
+    headerShipCapacityId => headerEquipmentCapacityId,
+    headerEquipmentCapacityId => headerShipCapacityId,
+    _ => null,
+  };
+
   // 宽项和普通资源分组成行，换类时另起一行，两类项都保持用户排的顺序。宽项按
-  // 自然宽度贪心装行（各行可用宽度因圆角内缩而不同）；普通资源按列数分行，列能
-  // 上下对齐。
+  // 自然宽度贪心装行（各行可用宽度因圆角内缩而不同），相邻的泊地与野埼、舰娘与
+  // 装备容量作为一个整体装行，免得被行尾截成两半；一整行都放不下这一对时才拆开。
+  // 普通资源按列数分行，列能上下对齐。
   static List<List<String>> _gridRows(
     List<String> ids,
     int columns, {
@@ -458,23 +467,46 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     final rows = <List<String>>[];
     var row = <String>[];
     var used = 0.0;
-    for (final id in ids) {
-      final wide = _isWideGridItem(id);
+    void flush() {
+      if (row.isEmpty) return;
+      rows.add(row);
+      row = <String>[];
+      used = 0;
+    }
+
+    void addWide(List<String> unit) {
+      final width =
+          unit.fold(0.0, (sum, id) => sum + naturalWidth(id)) +
+          _gridSpacing * (unit.length - 1);
       if (row.isNotEmpty &&
-          (_isWideGridItem(row.first) != wide ||
-              (wide
-                  ? used + _gridSpacing + naturalWidth(id) >
-                        rowWidth(rows.length)
-                  : row.length == columns))) {
-        rows.add(row);
-        row = <String>[];
+          (!_isWideGridItem(row.first) ||
+              used + _gridSpacing + width > rowWidth(rows.length))) {
+        flush();
       }
-      if (wide) {
-        used = (row.isEmpty ? 0 : used + _gridSpacing) + naturalWidth(id);
+      if (unit.length > 1 && width > rowWidth(rows.length)) {
+        for (final id in unit) {
+          addWide([id]);
+        }
+        return;
+      }
+      used = (row.isEmpty ? 0 : used + _gridSpacing) + width;
+      row.addAll(unit);
+    }
+
+    for (var i = 0; i < ids.length; i++) {
+      final id = ids[i];
+      if (_isWideGridItem(id)) {
+        final paired = i + 1 < ids.length && ids[i + 1] == _gridPartner(id);
+        addWide(paired ? [id, ids[++i]] : [id]);
+        continue;
+      }
+      if (row.isNotEmpty &&
+          (_isWideGridItem(row.first) || row.length == columns)) {
+        flush();
       }
       row.add(id);
     }
-    if (row.isNotEmpty) rows.add(row);
+    flush();
     return rows;
   }
 
