@@ -93,6 +93,7 @@ void main() {
                   icon: const Icon(Icons.sailing),
                   collapsed: collapsed,
                   onToggleCollapse: () {},
+                  collapseButtonKey: const Key('card-collapse'),
                   titleBadge: const Chip(label: Text('待机')),
                   trailing: const SizedBox(width: 60, height: 30),
                   headerAction: const IconButton(
@@ -125,7 +126,7 @@ void main() {
         );
       }
       final card = tester.getRect(find.byType(DashboardCard));
-      final chevron = tester.getRect(find.byType(IconButton).last);
+      final chevron = tester.getRect(find.byKey(const Key('card-collapse')));
       expect(card.right - chevron.right, lessThanOrEqualTo(8));
     });
   }
@@ -134,7 +135,7 @@ void main() {
     await tester.pumpWidget(tallChildren(collapsed: true, width: 190));
     expect(tester.takeException(), isNull);
     final card = tester.getRect(find.byType(DashboardCard));
-    final chevron = tester.getRect(find.byType(IconButton).last);
+    final chevron = tester.getRect(find.byKey(const Key('card-collapse')));
     expect(card.right - chevron.right, lessThanOrEqualTo(8));
   });
 

@@ -7,6 +7,7 @@ import 'fleet_ui_strings.dart';
 import '../../l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
 import '../layout/display_corners.dart';
+import '../layout/flat_collapse_chevron.dart';
 import '../settings/header_resource_settings.dart';
 import '../settings/layout_settings_controller.dart';
 import '../performance/second_tick_scope.dart';
@@ -639,34 +640,18 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     required AppLocalizations l10n,
     required double iconInset,
   }) {
-    return Semantics(
-      button: true,
+    // 图标右缘与各行右缘对齐，伸进内边距的只是点击框。
+    return FlatCollapseChevron(
+      key: const Key('information-panel-resources-toggle'),
+      collapsed: collapsed,
       label: collapsed
           ? l10n.panelResourcesExpand
           : l10n.panelResourcesCollapse,
-      child: SizedBox.square(
-        key: const Key('information-panel-resources-toggle'),
-        dimension: _gridToggleExtent,
-        child: InkResponse(
-          radius: _gridToggleExtent / 2,
-          onTap: () => _toggleGridCollapsed(controller),
-          // 图标右缘与各行右缘对齐，伸进内边距的只是点击框。
-          child: Padding(
-            padding: EdgeInsets.only(right: iconInset),
-            child: Align(
-              // 点击框贴着末行底边，比 20dp 的行高出 4dp；图标对齐末行的中线。
-              alignment: const Alignment(1, 4 / 9),
-              child: Icon(
-                collapsed
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_up_rounded,
-                size: 15,
-                color: const Color(0xff8fa8b6),
-              ),
-            ),
-          ),
-        ),
-      ),
+      onTap: () => _toggleGridCollapsed(controller),
+      width: _gridToggleExtent,
+      // 点击框贴着末行底边，比 20dp 的行高出 4dp；图标对齐末行的中线。
+      iconAlignment: const Alignment(1, 4 / 9),
+      iconInset: iconInset,
     );
   }
 

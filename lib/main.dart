@@ -1878,7 +1878,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     final corners = DisplayCorners.of(context);
     return _buildGameResourceBar(
       layout: ResourceBarLayout.grid,
-      gridPadding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+      gridPadding: const EdgeInsets.fromLTRB(6, 6, 6, 2),
       gridCornerRadii: (
         left: cornerOnLeft ? corners.topLeft : 0,
         right: cornerOnRight ? corners.topRight : 0,

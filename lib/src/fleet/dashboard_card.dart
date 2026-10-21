@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../layout/flat_collapse_chevron.dart';
 import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import 'fleet_ui_strings.dart';
@@ -153,7 +154,7 @@ class DashboardCard extends StatelessWidget {
                           const SizedBox(width: 3),
                         ],
                         ?headerAction,
-                        _collapseButton(context, false),
+                        _collapseButton(context),
                       ],
                     ),
                   ),
@@ -193,15 +194,14 @@ class DashboardCard extends StatelessWidget {
   // pushing the collapse button out, while a few title letters stay visible.
   double _flatTrailingMaxWidth(double width) {
     const logo = 13.0 + 6;
-    const iconSlot = 24.0;
     const minTitle = 24.0;
     return math.max(
       0,
       width -
           (showLogo ? logo : 0) -
           (showTitle ? minTitle : 0) -
-          (headerAction != null ? iconSlot : 0) -
-          iconSlot -
+          (headerAction != null ? flatHeaderHeight : 0) -
+          _flatChevronWidth -
           3,
     );
   }
@@ -275,10 +275,20 @@ class DashboardCard extends StatelessWidget {
           const SizedBox(width: 3),
         ],
         if (headerAction != null) fit(headerAction!, 24, Alignment.center),
-        _collapseButton(context, true),
+        FlatCollapseChevron(
+          key: collapseButtonKey,
+          collapsed: collapsed,
+          label: _collapseLabel(context),
+          onTap: onToggleCollapse,
+          width: _flatChevronWidth,
+        ),
       ],
     );
   }
+
+  // The resource grid's 24dp toggle overhangs into the 6dp panel padding; the
+  // card has no room to overhang, so it widens leftwards to the same 30dp.
+  static const double _flatChevronWidth = 30;
 
   TextStyle _titleStyle(bool flat) => TextStyle(
     color: const Color(0xffd4a85f),
@@ -321,7 +331,7 @@ class DashboardCard extends StatelessWidget {
             ),
           ),
           ?headerAction,
-          _collapseButton(context, false),
+          _collapseButton(context),
         ],
       ),
       if (!collapsed && trailing != null)
@@ -336,16 +346,16 @@ class DashboardCard extends StatelessWidget {
     ],
   );
 
-  Widget _collapseButton(BuildContext context, bool flat) => Semantics(
-    label: collapsed
-        ? fleetText(context, '展开$title')
-        : fleetText(context, '折叠$title'),
+  String _collapseLabel(BuildContext context) => collapsed
+      ? fleetText(context, '展开$title')
+      : fleetText(context, '折叠$title');
+
+  Widget _collapseButton(BuildContext context) => Semantics(
+    label: _collapseLabel(context),
     child: IconButton(
       key: collapseButtonKey,
       visualDensity: VisualDensity.compact,
-      constraints: flat
-          ? const BoxConstraints(minWidth: 24, minHeight: 24)
-          : const BoxConstraints(minWidth: 32, minHeight: 30),
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 30),
       padding: EdgeInsets.zero,
       alignment: Alignment.centerRight,
       onPressed: onToggleCollapse,
@@ -353,7 +363,7 @@ class DashboardCard extends StatelessWidget {
         collapsed
             ? Icons.keyboard_arrow_down_rounded
             : Icons.keyboard_arrow_up_rounded,
-        size: flat ? 15 : 20,
+        size: 20,
         color: const Color(0xff8fa8b6),
       ),
     ),
