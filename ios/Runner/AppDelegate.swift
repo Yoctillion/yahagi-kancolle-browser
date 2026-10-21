@@ -34,10 +34,28 @@ import WebKit
   private var originCookieBridge: IOSOriginCookieBridge?
   private var isChannelsConfigured = false
 
+  // 引擎把 SystemChrome.setPreferredOrientations 广播成这个通知；名字来自引擎的
+  // FlutterPlatformPlugin.mm，升级 Flutter 后若改名，「竖屏」设置会重新失效。
+  private static let flutterOrientationNotification = Notification.Name(
+    "io.flutter.plugin.platform.SystemChromeOrientationNotificationName")
+  private static let flutterOrientationKey =
+    "io.flutter.plugin.platform.SystemChromeOrientationNotificationKey"
+  private var flutterOrientationMask: UIInterfaceOrientationMask?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // 同步更新：引擎自己的观察者是异步派发到主线程再请求旋转，届时这里已经放行。
+    NotificationCenter.default.addObserver(
+      forName: Self.flutterOrientationNotification, object: nil, queue: nil
+    ) { [weak self] notification in
+      guard let raw = notification.userInfo?[Self.flutterOrientationKey] as? NSNumber else {
+        return
+      }
+      self?.flutterOrientationMask = UIInterfaceOrientationMask(rawValue: raw.uintValue)
+    }
+
     GeneratedPluginRegistrant.register(with: self)
 
     // Configure default AVAudioSession category
@@ -55,6 +73,35 @@ import WebKit
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
+
+  // iOS 只允许「App 声明 ∩ 页面请求」的方向。Info.plist 让 iPhone 只声明横屏，
+  // 竖握着从主屏幕启动时启动图也直接是横的；运行时改由 Dart 的方向请求决定，
+  // 否则「竖屏」设置切了布局，屏幕却转不过去。Dart 首次请求之前引擎默认允许全部方向，
+  // 这段时间沿用 plist，免得启动瞬间先转成竖屏再转回来。
+  // FlutterAppDelegate 没实现这个可选方法，显式写 selector，避免子类推断出错的导出名。
+  @objc(application:supportedInterfaceOrientationsForWindow:)
+  func application(
+    _ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?
+  ) -> UIInterfaceOrientationMask {
+    return flutterOrientationMask ?? Self.declaredOrientationMask
+  }
+
+  private static let declaredOrientationMask: UIInterfaceOrientationMask = {
+    let key = "UISupportedInterfaceOrientations"
+    let info = Bundle.main.infoDictionary ?? [:]
+    let deviceValue = UIDevice.current.userInterfaceIdiom == .pad ? info[key + "~ipad"] : nil
+    let names = (deviceValue ?? info[key]) as? [String] ?? []
+    let mask = names.reduce(into: UIInterfaceOrientationMask()) { mask, name in
+      switch name {
+      case "UIInterfaceOrientationPortrait": mask.insert(.portrait)
+      case "UIInterfaceOrientationPortraitUpsideDown": mask.insert(.portraitUpsideDown)
+      case "UIInterfaceOrientationLandscapeLeft": mask.insert(.landscapeLeft)
+      case "UIInterfaceOrientationLandscapeRight": mask.insert(.landscapeRight)
+      default: break
+      }
+    }
+    return mask.isEmpty ? .all : mask
+  }()
 
   private func findWKWebView(in view: UIView) -> WKWebView? {
     if let wkWebView = view as? WKWebView {
