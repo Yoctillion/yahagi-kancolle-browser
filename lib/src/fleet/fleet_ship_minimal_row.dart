@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../battle/prophet_hp_bar.dart';
 import '../game_state/game_state.dart';
+import '../layout/game_edge_tap_guard.dart';
 import '../localization/game_name_localizations.dart';
 import '../settings/battle_status_effect_settings.dart';
 import '../settings/fleet_display_options.dart';
@@ -195,31 +196,33 @@ class FleetShipMinimalRow extends StatelessWidget {
     final shadows = portrait
         ? const [Shadow(color: Colors.black, blurRadius: 3)]
         : null;
-    return Material(
-      key: Key('minimal-ship-row-${ship.id}'),
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        child: Stack(
-          children: [
-            if (portrait)
-              Positioned.fill(child: IgnorePointer(child: _portrait(master))),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    height: 14,
-                    child: _identityLine(context, master, shadows),
-                  ),
-                  const SizedBox(height: 1),
-                  SizedBox(height: 12, child: _statusLine(master, shadows)),
-                ],
+    return GameEdgeTapGuard(
+      child: Material(
+        key: Key('minimal-ship-row-${ship.id}'),
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            children: [
+              if (portrait)
+                Positioned.fill(child: IgnorePointer(child: _portrait(master))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 14,
+                      child: _identityLine(context, master, shadows),
+                    ),
+                    const SizedBox(height: 1),
+                    SizedBox(height: 12, child: _statusLine(master, shadows)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

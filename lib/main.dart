@@ -2862,7 +2862,16 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                       panelAtScreenEdge &&
                                                       !infoOnLeft,
                                                 ),
-                                              Expanded(child: buildInfo()),
+                                              Expanded(
+                                                child: PanelGameEdgeScope(
+                                                  edge: !isLandscape
+                                                      ? PanelGameEdge.none
+                                                      : infoOnLeft
+                                                      ? PanelGameEdge.right
+                                                      : PanelGameEdge.left,
+                                                  child: buildInfo(),
+                                                ),
+                                              ),
                                             ],
                                           );
                                           final menuNavigationExtent =
