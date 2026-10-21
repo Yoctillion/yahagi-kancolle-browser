@@ -105,6 +105,7 @@ import 'src/layout/display_corners.dart';
 import 'src/layout/hd_workspace_geometry.dart';
 import 'src/layout/minimal_layout.dart';
 import 'src/layout/module_summaries.dart';
+import 'src/layout/game_edge_tap_guard.dart';
 import 'src/layout/panel_style.dart';
 import 'src/layout/hd_bottom_strip.dart';
 import 'src/layout/hd_portrait_grid.dart';
@@ -2864,11 +2865,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 ),
                                               Expanded(
                                                 child: PanelGameEdgeScope(
-                                                  edge: !isLandscape
-                                                      ? PanelGameEdge.none
-                                                      : infoOnLeft
-                                                      ? PanelGameEdge.right
-                                                      : PanelGameEdge.left,
+                                                  edge: panelGameEdgeFor(
+                                                    isLandscape: isLandscape,
+                                                    infoOnLeft: infoOnLeft,
+                                                  ),
                                                   child: buildInfo(),
                                                 ),
                                               ),
