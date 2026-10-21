@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../layout/panel_style.dart';
 import 'fleet_ui_strings.dart';
@@ -189,26 +191,36 @@ class DashboardCard extends StatelessWidget {
         ],
         if (showTitle)
           Expanded(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _titleStyle(true),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _titleStyle(true),
+                    ),
                   ),
-                ),
-                if (!collapsed && titleBadge != null) ...[
-                  const SizedBox(width: 8),
-                  Flexible(child: fit(titleBadge!, 22, Alignment.centerLeft)),
+                  if (!collapsed && titleBadge != null) ...[
+                    const SizedBox(width: 8),
+                    // Rigid so the title shrinks first (a Flexible badge would
+                    // cap the title at half too); the cap stops it overflowing
+                    // once the title is gone.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: math.max(0, (constraints.maxWidth - 8) / 2),
+                      ),
+                      child: fit(titleBadge!, 22, Alignment.centerLeft),
+                    ),
+                  ],
+                  if (_showSummary(true)) ...[
+                    const SizedBox(width: 8),
+                    Expanded(child: _summary()),
+                  ],
                 ],
-                if (_showSummary(true)) ...[
-                  const SizedBox(width: 8),
-                  Expanded(child: _summary()),
-                ],
-              ],
+              ),
             ),
           )
         else if (!collapsed && titleBadge != null) ...[

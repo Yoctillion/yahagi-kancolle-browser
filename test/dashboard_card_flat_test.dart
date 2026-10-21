@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
@@ -141,5 +143,76 @@ void main() {
     );
     expect(find.byKey(const Key('dashboard-card-summary')), findsNothing);
     expect(find.byKey(const Key('card-trailing')), findsOneWidget);
+  });
+
+  group('flat 标题徽标', () {
+    const appFont = 'HarmonyOS_Sans_SC';
+    setUpAll(() async {
+      await (FontLoader(
+        appFont,
+      )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
+    });
+
+    Widget badgeHost({required double width, required String badge}) =>
+        MaterialApp(
+          locale: const Locale('zh'),
+          theme: ThemeData(fontFamily: appFont),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: width,
+                child: PanelStyleScope(
+                  style: PanelStyle.flat,
+                  child: DashboardCard(
+                    title: 'Battle prediction results',
+                    icon: const Icon(Icons.sailing),
+                    collapsed: false,
+                    onToggleCollapse: () {},
+                    titleBadge: Text(
+                      badge,
+                      key: const Key('card-badge'),
+                      style: const TextStyle(fontSize: 10.5),
+                    ),
+                    trailing: const Text('切换器'),
+                    child: const SizedBox(height: 20),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    RenderParagraph titleParagraph(WidgetTester tester) =>
+        tester.renderObject<RenderParagraph>(
+          find.descendant(
+            of: find.text('Battle prediction results'),
+            matching: find.byType(RichText),
+          ),
+        );
+
+    testWidgets('放得下时标题不因徽标被截断', (tester) async {
+      await tester.pumpWidget(badgeHost(width: 320, badge: 'Confirmed'));
+
+      expect(tester.takeException(), isNull);
+      expect(titleParagraph(tester).didExceedMaxLines, isFalse);
+      final badge = find.byKey(const Key('card-badge'));
+      expect(
+        tester.getRect(badge).width,
+        moreOrLessEquals(
+          tester.renderObject<RenderParagraph>(badge).getMaxIntrinsicWidth(24),
+        ),
+      );
+    });
+
+    testWidgets('放不下时徽标缩放而不溢出', (tester) async {
+      await tester.pumpWidget(
+        badgeHost(width: 170, badge: 'A very long confirmed badge'),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }

@@ -829,8 +829,8 @@ class _FlatFormationLine extends StatelessWidget {
         final friendWidth = widthOf(friend);
         final enemyWidth = widthOf(enemy);
         if (engagement != null) {
-          // Equal side slots keep the engagement centered over the gap
-          // between the fleets.
+          // Equal side slots keep the engagement centered on the line even
+          // when one formation is missing or the two differ in width.
           final side = (maxWidth - widthOf(engagement)) / 2 - _gap;
           if (friendWidth <= side && enemyWidth <= side) {
             return Row(

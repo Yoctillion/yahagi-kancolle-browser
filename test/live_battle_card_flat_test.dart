@@ -25,19 +25,17 @@ const _dropLine = Key('battle-drop-line');
 const _battleTagLine = Key('battle-tag-line');
 const _appFont = 'HarmonyOS_Sans_SC';
 
-final _battleWithoutFormation = kcsapiEvent(
-  '/kcsapi/api_req_sortie/battle',
-  <String, Object?>{
-    'api_deck_id': 1,
-    'api_f_nowhps': <int>[30, 15],
-    'api_f_maxhps': <int>[30, 15],
-    'api_e_nowhps': <int>[20, 10],
-    'api_e_maxhps': <int>[20, 10],
-    'api_ship_ke': <int>[501, 502],
-    'api_ship_lv': <int>[1, 1],
-  },
-  sequence: 21,
-);
+CapturedApiEvent _battleWithFormation(List<int>? formation) =>
+    kcsapiEvent('/kcsapi/api_req_sortie/battle', <String, Object?>{
+      'api_deck_id': 1,
+      'api_formation': ?formation,
+      'api_f_nowhps': <int>[30, 15],
+      'api_f_maxhps': <int>[30, 15],
+      'api_e_nowhps': <int>[20, 10],
+      'api_e_maxhps': <int>[20, 10],
+      'api_ship_ke': <int>[501, 502],
+      'api_ship_lv': <int>[1, 1],
+    }, sequence: 21);
 
 const _pillKeys = <Key>[
   Key('node-type-pill'),
@@ -604,12 +602,57 @@ void main() {
       expect(dropText.style!.fontWeight, FontWeight.w600);
     });
 
+    testWidgets('without engagement the formations keep the fleet edges', (
+      tester,
+    ) async {
+      final controller = createController();
+      await send(controller, mapStartEvent);
+      await send(controller, _battleWithFormation(<int>[1, 2, 0]));
+
+      await pumpCard(tester, controller, width: 360, fontFamily: _appFont);
+
+      final line = find.byKey(_formationLine);
+      final grid = find.byKey(const Key('compact-fleet-grid'));
+      expect(_plainTextUnder(tester, line), isNot(contains('同航战')));
+      final friend = find.descendant(of: line, matching: find.text('单纵阵'));
+      final enemy = find.descendant(of: line, matching: find.text('复纵阵'));
+      expect(tester.getTopLeft(friend).dx, tester.getTopLeft(grid).dx);
+      expect(
+        tester.getTopRight(enemy).dx,
+        moreOrLessEquals(tester.getTopRight(grid).dx),
+      );
+    });
+
+    testWidgets('a missing formation leaves the other slots in place', (
+      tester,
+    ) async {
+      final controller = createController();
+      await send(controller, mapStartEvent);
+      await send(controller, _battleWithFormation(<int>[0, 1, 1]));
+
+      await pumpCard(tester, controller, width: 360, fontFamily: _appFont);
+
+      final line = find.byKey(_formationLine);
+      final grid = find.byKey(const Key('compact-fleet-grid'));
+      final enemy = find.descendant(of: line, matching: find.text('单纵阵'));
+      expect(enemy, findsOneWidget);
+      final engagement = find.descendant(of: line, matching: find.text('同航战'));
+      expect(
+        tester.getCenter(engagement).dx,
+        moreOrLessEquals(tester.getCenter(grid).dx),
+      );
+      expect(
+        tester.getTopRight(enemy).dx,
+        moreOrLessEquals(tester.getTopRight(grid).dx),
+      );
+    });
+
     testWidgets('line is omitted when formations and engagement are unknown', (
       tester,
     ) async {
       final controller = createController();
       await send(controller, mapStartEvent);
-      await send(controller, _battleWithoutFormation);
+      await send(controller, _battleWithFormation(null));
 
       await pumpCard(tester, controller);
 
