@@ -345,6 +345,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get panelResourcesCollapse => '折叠资源';
 
   @override
+  String get panelResourcesCollapsedItems => '折叠时显示';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => '恢复默认';
+
+  @override
   String get minimalResourcePositionTitle => '资源位置';
 
   @override
@@ -4026,6 +4032,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get panelResourcesCollapse => '摺疊資源';
+
+  @override
+  String get panelResourcesCollapsedItems => '摺疊時顯示';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => '恢復預設';
 
   @override
   String get minimalResourcePositionTitle => '資源位置';

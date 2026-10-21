@@ -1473,19 +1473,182 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('header-resource-edit-mode')), findsNothing);
+    expect(
+      find.byKey(const Key('panel-resource-collapsed-dialog')),
+      findsNothing,
+    );
     expect(find.text('界面已锁定，布局自定义已禁用，功能切换不受影响'), findsOneWidget);
   });
 
-  testWidgets('grid layout long-press enters edit mode when unlocked', (
-    tester,
-  ) async {
-    final controller = await loadGridController();
-    await tester.pumpWidget(gridHarness(controller));
+  group('grid long-press picks the items shown when collapsed', () {
+    final dialog = find.byKey(const Key('panel-resource-collapsed-dialog'));
 
-    await tester.longPress(find.byKey(const Key('header-resource-material-1')));
-    await tester.pump();
+    Future<LayoutSettingsController> openDialog(
+      WidgetTester tester, {
+      LayoutSettingsController? controller,
+    }) async {
+      controller ??= await loadGridController();
+      await controller.setUiDisplaySize(UiDisplaySize.minimal);
+      await tester.pumpWidget(gridHarness(controller, width: 250, senka: 3128));
+      await tester.longPress(
+        find.byKey(const Key('header-resource-material-1')),
+      );
+      await tester.pumpAndSettle();
+      return controller;
+    }
 
-    expect(find.byKey(const Key('header-resource-edit-mode')), findsOneWidget);
+    bool? checked(WidgetTester tester, String id) => tester
+        .widget<Checkbox>(
+          find.descendant(
+            of: dialog,
+            matching: find.byKey(Key('header-resource-visible-$id')),
+          ),
+        )
+        .value;
+
+    Future<void> tapRow(WidgetTester tester, String id) async {
+      final row = find.descendant(
+        of: dialog,
+        matching: find.byKey(Key('header-resource-filter-row-$id')),
+      );
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('lists only visible items with the default four checked', (
+      tester,
+    ) async {
+      await openDialog(tester);
+
+      expect(dialog, findsOneWidget);
+      expect(find.text('折叠时显示'), findsOneWidget);
+      expect(find.byKey(const Key('header-resource-edit-mode')), findsNothing);
+      for (final id in [headerFrameRefreshId, 'useitem-10']) {
+        expect(
+          find.byKey(Key('header-resource-filter-row-$id')),
+          findsNothing,
+          reason: id,
+        );
+      }
+      for (final id in [
+        'material-1',
+        'material-2',
+        'material-3',
+        'material-4',
+      ]) {
+        expect(checked(tester, id), isTrue, reason: id);
+      }
+      for (final id in [headerSenkaId, headerShipCapacityId]) {
+        expect(checked(tester, id), isFalse, reason: id);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('toggles persist and drive the collapsed row', (tester) async {
+      final controller = await openDialog(tester);
+      await tapRow(tester, headerShipCapacityId);
+      await tapRow(tester, headerEquipmentCapacityId);
+      await tapRow(tester, 'material-1');
+
+      expect(controller.collapsedPanelResourceIds?.toSet(), {
+        headerShipCapacityId,
+        headerEquipmentCapacityId,
+        'material-2',
+        'material-3',
+        'material-4',
+      });
+      await tester.tap(find.byKey(const Key('header-resource-filter-done')));
+      await tester.pumpAndSettle();
+      expect(dialog, findsNothing);
+
+      await tester.tap(
+        find.byKey(const Key('information-panel-resources-toggle')),
+      );
+      await tester.pumpAndSettle();
+      final ships = tester.getRect(
+        find.byKey(const Key('header-resource-$headerShipCapacityId')),
+      );
+      final equipment = tester.getRect(
+        find.byKey(const Key('header-resource-$headerEquipmentCapacityId')),
+      );
+      expect(equipment.top, ships.top);
+      for (final id in [2, 3, 4]) {
+        expect(
+          find.byKey(Key('header-resource-material-$id')),
+          findsOneWidget,
+          reason: 'material-$id',
+        );
+      }
+      for (final key in [
+        'header-resource-material-1',
+        'header-resource-$headerSenkaId',
+      ]) {
+        expect(find.byKey(Key(key)), findsNothing, reason: key);
+      }
+      expect(tester.takeException(), isNull);
+
+      final restored = await LayoutSettingsController.load(
+        SharedPreferencesLayoutSettingsStore(),
+      );
+      expect(
+        restored.collapsedPanelResourceIds?.toSet(),
+        controller.collapsedPanelResourceIds?.toSet(),
+      );
+    });
+
+    testWidgets('restore default clears the choice', (tester) async {
+      final controller = await loadGridController();
+      await controller.setCollapsedPanelResourceIds([headerSenkaId]);
+      await openDialog(tester, controller: controller);
+      expect(checked(tester, 'material-1'), isFalse);
+
+      await tester.tap(find.byKey(const Key('panel-resource-collapsed-reset')));
+      await tester.pumpAndSettle();
+
+      expect(controller.collapsedPanelResourceIds, isNull);
+      expect(checked(tester, 'material-1'), isTrue);
+      expect(checked(tester, headerSenkaId), isFalse);
+    });
+
+    testWidgets('closes when the UI gets locked', (tester) async {
+      final controller = await openDialog(tester);
+      expect(dialog, findsOneWidget);
+      await controller.setUiLocked(true);
+      await tester.pumpAndSettle();
+      expect(dialog, findsNothing);
+    });
+
+    testWidgets('a hidden choice comes back once visible again', (
+      tester,
+    ) async {
+      final controller = await loadGridController();
+      await controller.setUiDisplaySize(UiDisplaySize.minimal);
+      await controller.setCollapsedPanelResourceIds([
+        headerSenkaId,
+        'material-5',
+      ]);
+      await controller.toggleDashboardCardCollapsed(panelResourcesCollapseId);
+      await tester.pumpWidget(gridHarness(controller, width: 250, senka: 3128));
+      await tester.pumpAndSettle();
+      final senka = find.byKey(const Key('header-resource-$headerSenkaId'));
+      expect(senka, findsOneWidget);
+      expect(
+        find.byKey(const Key('header-resource-material-5')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('header-resource-material-1')), findsNothing);
+
+      await controller.toggleHeaderResourceVisible(headerSenkaId);
+      await tester.pumpAndSettle();
+      expect(senka, findsNothing);
+      expect(controller.collapsedPanelResourceIds, contains(headerSenkaId));
+
+      await controller.toggleHeaderResourceVisible(headerSenkaId);
+      await tester.pumpAndSettle();
+      expect(senka, findsOneWidget);
+    });
   });
 
   group('grid packs by measured width and clears the corner per row', () {
@@ -1854,6 +2017,42 @@ void main() {
               .right,
         ),
       );
+    });
+
+    testWidgets('chosen capacities pair up above a 2x2 of resources', (
+      tester,
+    ) async {
+      final controller = await loadGridController();
+      await controller.setCollapsedPanelResourceIds([
+        headerShipCapacityId,
+        headerEquipmentCapacityId,
+        'material-1',
+        'material-2',
+        'material-3',
+        'material-4',
+      ]);
+      await controller.toggleDashboardCardCollapsed(panelResourcesCollapseId);
+      await pumpPanel(tester, controller: controller);
+
+      expect(tester.takeException(), isNull);
+      Rect rect(String id) =>
+          tester.getRect(find.byKey(Key('header-resource-$id')));
+      expect(
+        rect(headerEquipmentCapacityId).top,
+        rect(headerShipCapacityId).top,
+      );
+      expect(
+        rect('material-1').top,
+        greaterThan(rect(headerShipCapacityId).top),
+      );
+      expect(rect('material-2').top, rect('material-1').top);
+      expect(rect('material-3').top, greaterThan(rect('material-1').top));
+      expect(rect('material-3').left, rect('material-1').left);
+      expect(
+        find.byKey(const Key('header-resource-$headerSenkaId')),
+        findsNothing,
+      );
+      expectRowsClearRightCorner(tester);
     });
 
     for (final locale in const [Locale('zh'), Locale('en')]) {

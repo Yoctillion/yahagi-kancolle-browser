@@ -115,6 +115,8 @@
   "uiDisplaySizeMinimal": "ミニマル",
   "panelResourcesExpand": "資源を展開",
   "panelResourcesCollapse": "資源を折りたたむ",
+  "panelResourcesCollapsedItems": "折りたたみ時に表示",
+  "panelResourcesCollapsedItemsReset": "デフォルトに戻す",
   "minimalResourcePositionTitle": "資源の位置",
   "minimalResourcePositionDesc": "ミニマルでスマートフォン横向き時、ゲームページの資源を情報バー上部、ゲーム上の細いバー、または画面下部の細いバーに表示します",
   "minimalResourcePositionPanel": "情報バー",
