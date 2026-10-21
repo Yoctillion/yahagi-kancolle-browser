@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import 'dashboard_editing_scope.dart';
 import 'flat_style.dart';
 import 'panel_style.dart';
 
@@ -34,7 +35,7 @@ class DashboardEditItem extends StatelessWidget {
               side: const BorderSide(color: Color(0xff8fa8b6), width: 2),
               onChanged: (_) => onToggle(),
             ),
-          Expanded(child: child),
+          Expanded(child: DashboardEditingScope(child: child)),
         ],
       );
       return Column(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_collapse_chevron.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/hd_home_editor.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
@@ -143,5 +144,16 @@ void main() {
       findsOneWidget,
     );
     expect(tester.getTopLeft(find.byType(Checkbox).first).dx, 12);
+  });
+
+  testWidgets('flat 编辑态卡片不显示折叠箭头', (tester) async {
+    await tester.pumpWidget(_host(style: PanelStyle.flat, calls: _Calls()));
+    expect(find.byKey(const Key('card-fleet')), findsOneWidget);
+    expect(find.byType(FlatCollapseChevron), findsNothing);
+  });
+
+  testWidgets('card 样式编辑态保留折叠按钮', (tester) async {
+    await tester.pumpWidget(_host(style: PanelStyle.card, calls: _Calls()));
+    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNWidgets(2));
   });
 }
