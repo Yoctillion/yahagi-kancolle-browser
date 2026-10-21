@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'game_edge_tap_guard.dart';
+
 const flatRowSpacing = 2.0;
 const flatRowFontSize = 11.0;
 const flatTimeColor = Color(0xffd4a85f);
@@ -28,7 +30,7 @@ class FlatListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    final row = InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: flatRowSpacing / 2),
@@ -60,6 +62,7 @@ class FlatListRow extends StatelessWidget {
         ),
       ),
     );
+    return onTap == null ? row : GameEdgeTapGuard(child: row);
   }
 }
 

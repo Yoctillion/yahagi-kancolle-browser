@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../layout/panel_style.dart';
 import 'fleet_ui_strings.dart';
@@ -78,6 +80,10 @@ class DashboardCard extends StatelessWidget {
                   final header = _englishHeader(context, flat);
                   if (constraints.maxWidth < 220) {
                     return SingleChildScrollView(
+                      // Cards keep their own state in the slot their
+                      // PageStorageKey derives; an unkeyed scroll view would
+                      // restore that value as its offset and throw.
+                      key: const PageStorageKey('dashboard-card-header-scroll'),
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(width: 220, child: header),
                     );
@@ -185,35 +191,51 @@ class DashboardCard extends StatelessWidget {
         ],
         if (showTitle)
           Expanded(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _titleStyle(true),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _titleStyle(true),
+                    ),
                   ),
-                ),
-                if (!collapsed && titleBadge != null) ...[
-                  const SizedBox(width: 8),
-                  fit(titleBadge!, 22, Alignment.centerLeft),
+                  if (!collapsed && titleBadge != null) ...[
+                    const SizedBox(width: 8),
+                    // Rigid so the title shrinks first (a Flexible badge would
+                    // cap the title at half too); the cap stops it overflowing
+                    // once the title is gone.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: math.max(0, (constraints.maxWidth - 8) / 2),
+                      ),
+                      child: fit(titleBadge!, 22, Alignment.centerLeft),
+                    ),
+                  ],
+                  if (_showSummary(true)) ...[
+                    const SizedBox(width: 8),
+                    Expanded(child: _summary()),
+                  ],
                 ],
-                if (_showSummary(true)) ...[
-                  const SizedBox(width: 8),
-                  Expanded(child: _summary()),
-                ],
-              ],
+              ),
             ),
           )
-        else ...[
+        else if (!collapsed && titleBadge != null) ...[
+          // A Flexible badge next to a Spacer would split the free space and
+          // leave a gap after the trailing controls; Align keeps it flush.
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              heightFactor: 1,
+              child: fit(titleBadge!, 22, Alignment.centerRight),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ] else
           const Spacer(),
-          if (!collapsed && titleBadge != null) ...[
-            fit(titleBadge!, 22, Alignment.centerRight),
-            const SizedBox(width: 8),
-          ],
-        ],
         if (!collapsed && trailing != null) ...[
           fit(trailing!, 22, Alignment.centerRight),
           const SizedBox(width: 3),
@@ -280,6 +302,7 @@ class DashboardCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: SingleChildScrollView(
+            key: const PageStorageKey('dashboard-card-trailing-scroll'),
             scrollDirection: Axis.horizontal,
             child: trailing!,
           ),

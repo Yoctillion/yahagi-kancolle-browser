@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 
 /// Keeps each available feature together while honoring the shared display order.
@@ -36,11 +37,12 @@ class BattlePredictionSections extends StatelessWidget {
                   BattlePredictionSection.enemyPreview,
                 ]),
     );
+    final gap = PanelStyleScope.of(context) == PanelStyle.flat ? 4.0 : 9.0;
     final children = <Widget>[];
     for (final section in effectiveOrder) {
       final content = sections[section];
       if (content == null) continue;
-      if (children.isNotEmpty) children.add(const SizedBox(height: 9));
+      if (children.isNotEmpty) children.add(SizedBox(height: gap));
       children.add(
         KeyedSubtree(
           key: ValueKey('battle-prediction-section-${section.name}'),
