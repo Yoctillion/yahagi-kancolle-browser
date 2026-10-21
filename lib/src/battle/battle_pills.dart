@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../layout/flat_list_row.dart';
 import '../layout/flat_style.dart';
 import 'battle_ui_text.dart';
 import 'battle_detail_strings.dart';
@@ -309,38 +310,34 @@ class FlatNavigationHeader extends StatelessWidget {
         ),
       ],
     };
-    return Row(
-      children: [
-        const Icon(Icons.explore_outlined, size: 13, color: Color(0xff70c7bc)),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text.rich(
-            key: const Key('battle-navigation-tag-line'),
-            TextSpan(
-              style: const TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-              ),
-              children: <InlineSpan>[
-                TextSpan(
-                  text: strings.localize(battle.context.forecastNodeLabel),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: flatRowFontSize,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                for (final segment in navigationHeaderSegments(
-                  battle,
-                  showLastFormationHint: showLastFormationHint,
-                )) ...[flatSegmentSeparator, ...spansOf(segment)],
-              ],
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+    return FlatIconLine(
+      icon: Icons.explore_outlined,
+      color: const Color(0xff70c7bc),
+      child: Text.rich(
+        key: const Key('battle-navigation-tag-line'),
+        TextSpan(
+          style: const TextStyle(
+            fontSize: flatSmallFontSize,
+            fontWeight: FontWeight.w600,
           ),
+          children: <InlineSpan>[
+            TextSpan(
+              text: strings.localize(battle.context.forecastNodeLabel),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: flatRowFontSize,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            for (final segment in navigationHeaderSegments(
+              battle,
+              showLastFormationHint: showLastFormationHint,
+            )) ...[flatSegmentSeparator, ...spansOf(segment)],
+          ],
         ),
-      ],
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }

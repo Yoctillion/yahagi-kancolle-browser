@@ -158,17 +158,14 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
           'pre-sortie-warning-${warning.fleetId}-${warning.kind.keyName}',
         ),
         onTap: () => widget.onOpenFleet(warning.fleetId),
-        child: Row(
-          children: [
-            Icon(warning.kind.icon, color: warning.kind.foreground, size: 12),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                warning.message,
-                style: flatRowTextStyle(color: warning.kind.foreground),
-              ),
-            ),
-          ],
+        child: FlatIconLine(
+          icon: warning.kind.icon,
+          color: warning.kind.foreground,
+          size: 12,
+          child: Text(
+            warning.message,
+            style: flatRowTextStyle(color: warning.kind.foreground),
+          ),
         ),
       ),
     );

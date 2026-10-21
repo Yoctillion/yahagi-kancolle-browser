@@ -61,6 +61,31 @@ class FlatListRow extends StatelessWidget {
   }
 }
 
+/// 极简档的提示行：左侧小图标，文字占满其余宽度。
+class FlatIconLine extends StatelessWidget {
+  const FlatIconLine({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 13,
+    required this.child,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: <Widget>[
+      Icon(icon, size: size, color: color),
+      const SizedBox(width: 4),
+      Expanded(child: child),
+    ],
+  );
+}
+
 TextStyle flatRowTextStyle({
   Color color = Colors.white,
   FontWeight weight = FontWeight.w700,

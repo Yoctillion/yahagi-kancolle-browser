@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'battle_detail_strings.dart';
 import 'battle_ui_text.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import '../layout/flat_list_row.dart';
 import '../layout/flat_style.dart';
 import '../layout/module_summaries.dart';
 
@@ -1053,30 +1054,50 @@ List<(String, Color)> _compactMetaChips(
   ];
 }
 
-class _IdleBadge extends StatelessWidget {
-  const _IdleBadge();
+/// 标题行右侧的状态徽章：卡片档是胶囊，扁平档只留文字。
+class _HeaderBadge extends StatelessWidget {
+  const _HeaderBadge({
+    required this.color,
+    required this.background,
+    required this.label,
+  });
+
+  final Color color;
+  final Color background;
+  final Widget Function(TextStyle style) label;
 
   @override
   Widget build(BuildContext context) {
     final flat = PanelStyleScope.isFlat(context);
-    final label = Text(
-      AppLocalizations.of(context)?.standby ?? '待机',
-      style: TextStyle(
-        color: const Color(0xff9db2bf),
+    final text = label(
+      TextStyle(
+        color: color,
         fontSize: flat ? flatSmallFontSize : 11,
         fontWeight: FontWeight.w700,
       ),
     );
-    if (flat) return label;
+    if (flat) return text;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xff203443),
+        color: background,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: label,
+      child: text,
     );
   }
+}
+
+class _IdleBadge extends StatelessWidget {
+  const _IdleBadge();
+
+  @override
+  Widget build(BuildContext context) => _HeaderBadge(
+    color: const Color(0xff9db2bf),
+    background: const Color(0xff203443),
+    label: (style) =>
+        Text(AppLocalizations.of(context)?.standby ?? '待机', style: style),
+  );
 }
 
 class _IdleBattleContent extends StatelessWidget {
@@ -1090,24 +1111,16 @@ class _IdleBattleContent extends StatelessWidget {
       return Padding(
         key: const Key('battle-idle-content'),
         padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.explore_outlined,
-              size: 13,
-              color: Color(0xff70c7bc),
+        child: FlatIconLine(
+          icon: Icons.explore_outlined,
+          color: const Color(0xff70c7bc),
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: flatMutedColor,
+              fontSize: flatRowFontSize,
             ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  color: flatMutedColor,
-                  fontSize: flatRowFontSize,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -1165,23 +1178,10 @@ class _StatusBadge extends StatelessWidget {
         : forecast
         ? const Color(0xff4a3b21)
         : const Color(0xff183e38);
-    final flat = PanelStyleScope.isFlat(context);
-    final text = BattleUiText(
-      label,
-      style: TextStyle(
-        color: foreground,
-        fontSize: flat ? flatSmallFontSize : 11,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-    if (flat) return text;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: text,
+    return _HeaderBadge(
+      color: foreground,
+      background: background,
+      label: (style) => BattleUiText(label, style: style),
     );
   }
 }
