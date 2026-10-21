@@ -9,6 +9,48 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dar
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
 
 void main() {
+  testWidgets('narrow English header survives a saved maps mode', (
+    tester,
+  ) async {
+    final controller = GameStateController(
+      gameStateStore: _StaticStore(GameState.empty),
+    );
+    addTearDown(controller.dispose);
+    await controller.idle;
+    Future<void> pumpAt(double width) => tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              child: SingleChildScrollView(
+                child: PreSortieCheckSummary(
+                  key: const PageStorageKey('dashboard-pre-sortie'),
+                  controller: controller,
+                  collapsed: false,
+                  onToggleCollapse: () {},
+                  onOpenFleet: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await pumpAt(500);
+    await tester.tap(find.byKey(const Key('sortie-check-mode-maps')));
+    await tester.pump();
+    await pumpAt(200);
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ErrorWidget), findsNothing);
+  });
+
   testWidgets('extra slot warning only includes unlocked empty slots', (
     tester,
   ) async {

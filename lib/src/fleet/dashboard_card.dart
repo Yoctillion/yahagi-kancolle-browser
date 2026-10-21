@@ -78,6 +78,10 @@ class DashboardCard extends StatelessWidget {
                   final header = _englishHeader(context, flat);
                   if (constraints.maxWidth < 220) {
                     return SingleChildScrollView(
+                      // Cards keep their own state in the slot their
+                      // PageStorageKey derives; an unkeyed scroll view would
+                      // restore that value as its offset and throw.
+                      key: const PageStorageKey('dashboard-card-header-scroll'),
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(width: 220, child: header),
                     );
@@ -280,6 +284,7 @@ class DashboardCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: SingleChildScrollView(
+            key: const PageStorageKey('dashboard-card-trailing-scroll'),
             scrollDirection: Axis.horizontal,
             child: trailing!,
           ),

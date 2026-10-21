@@ -176,6 +176,54 @@ void _expectIndependentMapSummary(String mapLabel) {
 }
 
 void main() {
+  for (final flat in [false, true]) {
+    testWidgets(
+      'narrow English header survives a saved compact mode (flat: $flat)',
+      (tester) async {
+        final controller = _createController();
+        addTearDown(controller.dispose);
+        controller.accept(mapStartEvent);
+        await controller.idle;
+        Future<void> pumpAt(double width) => tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: width,
+                  child: SingleChildScrollView(
+                    child: PanelStyleScope(
+                      style: flat ? PanelStyle.flat : PanelStyle.card,
+                      child: LiveBattleCard(
+                        key: const PageStorageKey('dashboard-live-battle'),
+                        controller: controller,
+                        collapsed: false,
+                        onToggleCollapse: () {},
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await pumpAt(500);
+        await tester.tap(find.byKey(const Key('battle-mode-compact')));
+        await tester.pump();
+        // The narrow English header mounts fresh horizontal scroll views,
+        // which restore their offsets from PageStorage.
+        await pumpAt(200);
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(ErrorWidget), findsNothing);
+        expect(find.byKey(const Key('compact-battle-panel')), findsOneWidget);
+      },
+    );
+  }
   for (final compact in [false, true]) {
     testWidgets(
       'extra-map medal after mode switch keeps reward layout valid ($compact)',
