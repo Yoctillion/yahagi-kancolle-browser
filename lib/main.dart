@@ -2075,6 +2075,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       hd: hd,
     );
     final minimalShell = minimalGameLayout && _workspaceIndex == 0;
+    // 竖向导航栏在所有页面都占满整高，切页时导航项不跳；顶栏只排在内容一侧。
+    final minimalSideRail = minimalGameLayout && !menuHorizontal;
     // 与工作区序号无关，游戏转到后台时尺寸仍按游戏页冻结。
     final gameBottomBar = minimalGameLayout && minimalBottomBar;
     final gameBottomBarReserve = gameBottomBar ? minimalBottomBarReserve : 0.0;
@@ -2095,14 +2097,17 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       completedQuestCount: completedCount,
       gameStateController: widget.gameStateController,
       hd: hd,
-      leading: minimalShell
+      leading: minimalGameLayout
           ? _MinimalMenuButton(
               horizontal: menuHorizontal,
-              onTap: _openBrowserMenu,
+              onTap: _workspaceIndex == 0
+                  ? _openBrowserMenu
+                  : () => _selectWorkspace(0),
             )
           : null,
       endInsets:
-          (minimalShell
+          // 顶部横向导航栏在非游戏页排在顶栏下面，碰不到屏幕角。
+          (minimalGameLayout && atScreenBottom
               ? minimalNavigationInsets(
                   corners: DisplayCorners.of(context),
                   bottomSafeArea: bottomSafeArea,
@@ -2110,10 +2115,17 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                   onRight: menuOnRight,
                   leftAtEdge: leftAtEdge,
                   rightAtEdge: rightAtEdge,
-                  topAtEdge: !minimalTopBar,
                 )
               : EdgeInsets.zero) +
           EdgeInsets.only(bottom: atScreenBottom ? navigationGestureInset : 0),
+    );
+
+    Widget buildNavigationSidebar(int completedCount) => Visibility(
+      key: const Key('workspace-navigation-sidebar'),
+      visible: !_gameFullscreen,
+      maintainState: true,
+      maintainFocusability: true,
+      child: buildWorkspaceNavigation(completedCount, atScreenBottom: !menuTop),
     );
 
     Widget buildHeaderToolbar() => AnimatedBuilder(
@@ -2198,7 +2210,11 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
               child: QuestCompletionFeedback(
                 controller: widget.gameStateController,
                 layoutSettingsController: widget.layoutSettingsController,
-                builder: (context, completedCount) => Column(
+                builder: (context, completedCount) => _SideRailColumn(
+                  rail: minimalSideRail
+                      ? buildNavigationSidebar(completedCount)
+                      : null,
+                  railOnRight: menuOnRight,
                   children: [
                     Visibility(
                       visible:
@@ -2228,22 +2244,30 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                           // visible content starts at the centered 15dp icon;
                           // the bar's ends must clear the arc on that line.
                           final contentTop = (headerHeight - 15) / 2;
+                          // 竖向导航栏那一侧的顶角已被导航栏占住。
+                          final leftAtCorner = !minimalSideRail || menuOnRight;
+                          final rightAtCorner =
+                              !minimalSideRail || !menuOnRight;
                           return Container(
                             height: headerHeight,
-                            padding: minimalShell
+                            padding: minimalGameLayout
                                 ? EdgeInsets.only(
                                     left:
                                         sidePadding +
-                                        cornerInsetAt(
-                                          corners.topLeft,
-                                          contentTop,
-                                        ),
+                                        (leftAtCorner
+                                            ? cornerInsetAt(
+                                                corners.topLeft,
+                                                contentTop,
+                                              )
+                                            : 0),
                                     right:
                                         sidePadding +
-                                        cornerInsetAt(
-                                          corners.topRight,
-                                          contentTop,
-                                        ),
+                                        (rightAtCorner
+                                            ? cornerInsetAt(
+                                                corners.topRight,
+                                                contentTop,
+                                              )
+                                            : 0),
                                   )
                                 : EdgeInsets.symmetric(horizontal: sidePadding),
                             decoration: const BoxDecoration(
@@ -2256,7 +2280,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               visible: false,
                               child: Row(
                                 children: [
-                                  if (!minimalShell) ...[
+                                  if (!minimalGameLayout) ...[
                                     Material(
                                       color: isToolbarVisible
                                           ? const Color(0xff1a3447)
@@ -2590,17 +2614,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               .workspaceMenuOnRight,
                         ),
                         children: [
-                          if (!panelAlignedNavigation)
-                            Visibility(
-                              key: const Key('workspace-navigation-sidebar'),
-                              visible: !_gameFullscreen,
-                              maintainState: true,
-                              maintainFocusability: true,
-                              child: buildWorkspaceNavigation(
-                                completedCount,
-                                atScreenBottom: !menuTop,
-                              ),
-                            ),
+                          if (!panelAlignedNavigation && !minimalSideRail)
+                            buildNavigationSidebar(completedCount),
                           Expanded(
                             key: const Key('workspace-content-expanded'),
                             child: Stack(
@@ -3632,6 +3647,34 @@ class WorkspaceNavigation extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 外层始终是同一个 Flex，导航栏挂上或摘下时 Column 连同游戏子树不会被
+/// 重新挂载，否则旋转或切档会重建游戏的平台视图。
+class _SideRailColumn extends StatelessWidget {
+  const _SideRailColumn({
+    required this.rail,
+    required this.railOnRight,
+    required this.children,
+  });
+
+  final Widget? rail;
+  final bool railOnRight;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Flex(
+    direction: Axis.horizontal,
+    textDirection: workspaceNavigationTextDirection(menuOnRight: railOnRight),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      ?rail,
+      Expanded(
+        key: const Key('workspace-side-rail-body'),
+        child: Column(children: children),
+      ),
+    ],
+  );
 }
 
 class _MinimalMenuButton extends StatelessWidget {
