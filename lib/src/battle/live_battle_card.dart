@@ -112,7 +112,10 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
     )?.writeState(context, _mapExpanded, identifier: _mapExpansionStorageId);
   }
 
-  SortieMapSection? _buildMapSection(LiveBattle? battle) {
+  SortieMapSection? _buildMapSection(
+    LiveBattle? battle, {
+    required bool showCurrentNode,
+  }) {
     // DashboardCard does not mount its child while collapsed. Avoid even the
     // first lazy geometry parse until the map can be shown.
     if (widget.collapsed || battle?.context.practice == true) {
@@ -137,6 +140,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
         identical(cached.progress, progress) &&
         identical(cached.geometry, geometry) &&
         cached.currentNodeLabel == currentNodeLabel &&
+        cached.showCurrentNode == showCurrentNode &&
         cached.expanded == _mapExpanded) {
       return cached;
     }
@@ -148,6 +152,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
       expanded: _mapExpanded,
       onToggleExpanded: _toggleMapExpanded,
       currentNodeLabel: currentNodeLabel,
+      showCurrentNode: showCurrentNode,
     );
   }
 
@@ -159,7 +164,11 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
       builder: (context, _) {
         final battle = widget.controller.current;
         final idle = battle == null || battle.friendShips.isEmpty;
-        final mapSection = _buildMapSection(battle);
+        // Flat battle and navigation headers already name the current node.
+        final mapSection = _buildMapSection(
+          battle,
+          showCurrentNode: !flat || idle,
+        );
         return DashboardCard(
           key: const Key('live-battle-card'),
           collapsedSummary: widget.collapsed
@@ -378,54 +387,57 @@ class _CompactBattlePanel extends StatelessWidget {
                 color: const Color(0xff10212e),
                 borderRadius: BorderRadius.circular(7),
               ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.explore_outlined,
-              size: flat ? 13 : 18,
-              color: const Color(0xff70c7bc),
-            ),
-            SizedBox(width: flat ? 4 : 8),
-            Expanded(
-              child: BattleUiText(
-                battle.context.forecastNodeLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: flat ? flatRowFontSize : null,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: Wrap(
-                spacing: 5,
-                runSpacing: 4,
-                alignment: WrapAlignment.end,
-                children: <Widget>[
-                  if (showLastFormationHint && battle.lastFormation != null)
-                    LastFormationPill(formation: battle.lastFormation!),
-                  if (battle.context.combinedFleetType !=
-                      CombinedFleetType.none)
-                    MetaChip(
-                      label: battle.context.combinedFleetType.label,
-                      color: const Color(0xff70c7bc),
+        child: flat
+            ? FlatNavigationHeader(
+                battle: battle,
+                showLastFormationHint: showLastFormationHint,
+              )
+            : Row(
+                children: [
+                  const Icon(
+                    Icons.explore_outlined,
+                    size: 18,
+                    color: Color(0xff70c7bc),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: BattleUiText(
+                      battle.context.forecastNodeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  if (battle.resourceChanges.isNotEmpty)
-                    ResourceChangesPill(changes: battle.resourceChanges),
-                  if (battle.rewardItems.isNotEmpty)
-                    RewardItemsPill(items: battle.rewardItems),
-                  if (battle.resourceChanges.isEmpty &&
-                      battle.rewardItems.isEmpty)
-                    for (final label in battle.context.nodeTypeLabels)
-                      NodeTypePill(label: label),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: Wrap(
+                      spacing: 5,
+                      runSpacing: 4,
+                      alignment: WrapAlignment.end,
+                      children: <Widget>[
+                        if (showLastFormationHint &&
+                            battle.lastFormation != null)
+                          LastFormationPill(formation: battle.lastFormation!),
+                        if (battle.context.combinedFleetType !=
+                            CombinedFleetType.none)
+                          MetaChip(
+                            label: battle.context.combinedFleetType.label,
+                            color: const Color(0xff70c7bc),
+                          ),
+                        if (battle.resourceChanges.isNotEmpty)
+                          ResourceChangesPill(changes: battle.resourceChanges),
+                        if (battle.rewardItems.isNotEmpty)
+                          RewardItemsPill(items: battle.rewardItems),
+                        if (battle.resourceChanges.isEmpty &&
+                            battle.rewardItems.isEmpty)
+                          for (final label in battle.context.nodeTypeLabels)
+                            NodeTypePill(label: label),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
       );
       final raid = battle.landBaseRaid;
       final previewShips =

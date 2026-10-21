@@ -8,6 +8,7 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
+import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'battle_models.dart';
@@ -44,6 +45,7 @@ class DetailedBattlePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     final enemyPreviewShips =
         battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
@@ -76,7 +78,7 @@ class DetailedBattlePanel extends StatelessWidget {
               battle: battle,
               showLastFormationHint: showLastFormationHint,
             ),
-            const SizedBox(height: 7),
+            SizedBox(height: flat ? 4 : 7),
           ],
           BattlePredictionSections(
             order: sectionOrder,
@@ -188,6 +190,15 @@ class _NavigationOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: FlatNavigationHeader(
+          battle: battle,
+          showLastFormationHint: showLastFormationHint,
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
@@ -402,16 +413,21 @@ class _FleetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xff10212e),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: flat
+          ? null
+          : BoxDecoration(
+              color: const Color(0xff10212e),
+              borderRadius: BorderRadius.circular(8),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(9, 7, 9, 5),
+            padding: flat
+                ? const EdgeInsets.fromLTRB(0, 2, 0, 2)
+                : const EdgeInsets.fromLTRB(9, 7, 9, 5),
             child: BattleUiText(
               title,
               style: TextStyle(
@@ -424,7 +440,11 @@ class _FleetGroup extends StatelessWidget {
             ),
           ),
           for (var index = 0; index < ships.length; index++) ...[
-            if (index > 0) const Divider(height: 1, color: Color(0xff203746)),
+            if (index > 0)
+              Divider(
+                height: 1,
+                color: flat ? const Color(0xff1b3142) : const Color(0xff203746),
+              ),
             BattleShipDetailsTap(
               ship: ships[index],
               child: _BattleShipRow(
@@ -456,6 +476,7 @@ class _BattleShipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
     final isEscaped = ship.isEscaped;
     final side = ship.side == BattleSide.friend ? 'friend' : 'enemy';
     final ratio = ship.maxHp <= 0
@@ -525,7 +546,9 @@ class _BattleShipRow extends StatelessWidget {
         if (background != null) Positioned.fill(child: background),
         Padding(
           key: Key('battle-ship-$side-$absolutePosition'),
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          padding: flat
+              ? const EdgeInsets.symmetric(vertical: 2)
+              : const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [

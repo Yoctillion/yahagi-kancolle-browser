@@ -4,6 +4,8 @@ import 'battle_ui_text.dart';
 import 'battle_detail_strings.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../game_state/game_state.dart';
+import '../layout/flat_list_row.dart';
 import 'battle_models.dart';
 
 const double _battlePillHeight = 20;
@@ -110,12 +112,7 @@ class BattleTagLine extends StatelessWidget {
         ),
       for (final entry in dropEntries) (entry, _rewardColor),
       if (battle.rewardItems.isNotEmpty)
-        (
-          battle.rewardItems
-              .map((item) => '${item.name} ×${item.count}')
-              .join('、'),
-          _rewardColor,
-        ),
+        (_rewardItemsText(battle.rewardItems), _rewardColor),
     ];
     const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
     return Text.rich(
@@ -137,6 +134,127 @@ class BattleTagLine extends StatelessWidget {
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+String _rewardItemsText(List<BattleRewardItem> items) =>
+    items.map((item) => '${item.name} ×${item.count}').join('、');
+
+/// Flat-style navigation header: the node name and the navigation pill
+/// contents as one run of text, with the pills' visibility rules and order.
+class FlatNavigationHeader extends StatelessWidget {
+  const FlatNavigationHeader({
+    super.key,
+    required this.battle,
+    required this.showLastFormationHint,
+  });
+
+  final LiveBattle battle;
+  final bool showLastFormationHint;
+
+  static const Color _otherColor = Color(0xff8197a5);
+  static const Color _rewardColor = Color(0xffd4a85f);
+  static const Color _gainColor = Color(0xff83d5c8);
+  static const Color _lossColor = Color(0xffff8c78);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final strings = BattleDetailStrings.of(context);
+    final resources = battle.resourceChanges;
+    final segments = <List<InlineSpan>>[
+      if (showLastFormationHint && battle.lastFormation != null)
+        [
+          TextSpan(
+            text: l10n.battleLastFormation(
+              strings.localize(formationLabel(battle.lastFormation!)),
+            ),
+            style: const TextStyle(color: _otherColor),
+          ),
+        ],
+      if (battle.context.combinedFleetType != CombinedFleetType.none)
+        [
+          TextSpan(
+            text: strings.localize(battle.context.combinedFleetType.label),
+            style: const TextStyle(color: _otherColor),
+          ),
+        ],
+      if (resources.isNotEmpty)
+        [
+          for (var index = 0; index < resources.length; index++) ...[
+            if (index > 0) const TextSpan(text: ' '),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Image.asset(
+                'assets/images/material/${resources[index].type.apiId.toString().padLeft(2, '0')}.png',
+                key: Key('battle-resource-icon-${resources[index].type.apiId}'),
+                width: 11,
+                height: 11,
+                fit: BoxFit.contain,
+              ),
+            ),
+            TextSpan(
+              text: _signed(resources[index].amount),
+              style: TextStyle(
+                color: resources[index].amount < 0 ? _lossColor : _gainColor,
+              ),
+            ),
+          ],
+        ],
+      if (battle.rewardItems.isNotEmpty)
+        [
+          TextSpan(
+            text: _rewardItemsText(battle.rewardItems),
+            style: const TextStyle(color: _rewardColor),
+          ),
+        ],
+      if (resources.isEmpty && battle.rewardItems.isEmpty)
+        for (final label in battle.context.nodeTypeLabels)
+          [
+            TextSpan(
+              text: strings.localize(label),
+              style: TextStyle(color: nodeTypePillColors(label).foreground),
+            ),
+          ],
+    ];
+    return Row(
+      children: [
+        const Icon(Icons.explore_outlined, size: 13, color: Color(0xff70c7bc)),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text.rich(
+            key: const Key('battle-navigation-tag-line'),
+            TextSpan(
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+              children: <InlineSpan>[
+                TextSpan(
+                  text: strings.localize(battle.context.forecastNodeLabel),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: flatRowFontSize,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                for (final segment in segments) ...[
+                  const TextSpan(
+                    text: ' · ',
+                    style: TextStyle(color: _otherColor),
+                  ),
+                  ...segment,
+                ],
+              ],
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
