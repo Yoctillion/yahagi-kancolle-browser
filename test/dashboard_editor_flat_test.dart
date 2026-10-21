@@ -6,6 +6,7 @@ import 'package:yahagi_kancolle_browser/src/layout/flat_collapse_chevron.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/hd_home_editor.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
+import 'package:yahagi_kancolle_browser/src/settings/module_display_settings.dart';
 
 class _Calls {
   final toggled = <String>[];
@@ -38,13 +39,16 @@ Widget _host({
             child: DashboardEditor(
               modules: const ['fleet', 'repair'],
               hidden: hidden,
-              cardBuilder: (id) => DashboardCard(
-                key: Key('card-$id'),
-                title: id,
-                icon: const Icon(Icons.sailing),
-                collapsed: true,
-                onToggleCollapse: () {},
-                child: const SizedBox(height: 20),
+              cardBuilder: (id) => Builder(
+                builder: (context) => DashboardCard(
+                  key: Key('card-$id'),
+                  title: id,
+                  icon: const Icon(Icons.sailing),
+                  collapsed: true,
+                  onToggleCollapse: () {},
+                  headerAction: moduleDisplayGear(context, id, () {}),
+                  child: const SizedBox(height: 20),
+                ),
               ),
               onToggle: calls.toggled.add,
               onMove: (_, _, _) {},
@@ -155,5 +159,26 @@ void main() {
   testWidgets('card 样式编辑态保留折叠按钮', (tester) async {
     await tester.pumpWidget(_host(style: PanelStyle.card, calls: _Calls()));
     expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNWidgets(2));
+  });
+
+  final gear = find.byKey(const Key('repair-display-settings-button'));
+  final gearIcon = find.descendant(
+    of: gear,
+    matching: find.byIcon(Icons.settings_outlined),
+  );
+
+  testWidgets('flat 齿轮不被标题行缩小', (tester) async {
+    await tester.pumpWidget(_host(style: PanelStyle.flat, calls: _Calls()));
+    expect(tester.getSize(gear), const Size.square(flatHeaderHeight));
+    expect(
+      tester.getRect(gearIcon).size,
+      const Size.square(flatActionIconSize),
+    );
+  });
+
+  testWidgets('card 样式齿轮尺寸不变', (tester) async {
+    await tester.pumpWidget(_host(style: PanelStyle.card, calls: _Calls()));
+    expect(tester.getSize(gearIcon), const Size.square(19));
+    expect(tester.getSize(gear), const Size.square(48));
   });
 }
