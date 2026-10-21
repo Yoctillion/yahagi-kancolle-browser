@@ -8,10 +8,13 @@ import 'package:yahagi_kancolle_browser/src/fleet/construction_summary_card.dart
 import 'package:yahagi_kancolle_browser/src/fleet/anchorage_repair_view.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/expedition_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/operation_progress.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/pre_sortie_check_summary.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/repair_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_store.dart';
 import 'package:yahagi_kancolle_browser/src/quest/pinned_quests_summary.dart';
@@ -1190,6 +1193,42 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('维修模式切换是共用的文字切换，选中金色并可切换', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenRepair: (_) {},
+        ),
+      );
+      final selector = find.byKey(const Key('repair-summary-mode-selector'));
+      expect(tester.widget(selector), isA<FlatTextToggle>());
+      Color? labelColor(String mode) => tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(Key('repair-summary-mode-$mode')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color;
+      expect(labelColor('dock'), flatAccentColor);
+      expect(labelColor('anchorage'), flatMutedColor);
+
+      await tester.tap(find.byKey(const Key('repair-summary-mode-anchorage')));
+      await tester.pumpAndSettle();
+      expect(labelColor('anchorage'), flatAccentColor);
+      expect(find.byKey(const Key('repair-summary-dock-grid')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('入渠 empty 开启时空闲船位也列出并排成两列', (tester) async {
       final controller = GameStateController(
         gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
@@ -1404,6 +1443,27 @@ void main() {
         ),
       );
       expectFlatEmptyText(tester, find.text(l10n.questsNeedSync));
+      await pumpFlat(
+        tester,
+        ExpeditionSummaryCard(
+          controller: empty,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenExpedition: () {},
+          onOpenExpeditionCheck: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.noActiveExpedition));
+      await pumpFlat(
+        tester,
+        PreSortieCheckSummary(
+          controller: empty,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenFleet: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.noSortieWarnings));
     });
 
     testWidgets('任务行仍可点击', (tester) async {

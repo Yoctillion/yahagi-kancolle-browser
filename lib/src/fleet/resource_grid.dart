@@ -121,7 +121,6 @@ class CompactResourceBar extends StatefulWidget {
     this.onNosakiTimerTap,
     this.onFrameRefreshTap,
     this.layout = ResourceBarLayout.strip,
-    this.gridColumns = 4,
     this.gridPadding = EdgeInsets.zero,
     this.gridCornerRadii = (left: 0, right: 0),
     this.uiSize,
@@ -141,7 +140,6 @@ class CompactResourceBar extends StatefulWidget {
   /// grid 用于游戏页没有顶栏时把资源放进信息栏；strip 是顶栏里的横向滚动条；
   /// staticStrip 是只展示的单行，放不下时整行缩小而不滚动。
   final ResourceBarLayout layout;
-  final int gridColumns;
   final EdgeInsets gridPadding;
 
   /// 网格贴着屏幕顶角那侧要避让的圆角半径，不贴角的一侧为 0。
@@ -420,6 +418,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   }
 
   static const double _gridSpacing = 4;
+  static const int _gridColumns = 4;
   static const double _gridRunSpacing = 2;
   static const double _gridToggleExtent = 24;
   static const double _gridToggleMaxOverhang = 8;
@@ -498,7 +497,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     required AppLocalizations l10n,
     required HeaderUiSize uiSize,
   }) {
-    final columns = widget.gridColumns < 1 ? 1 : widget.gridColumns;
+    const columns = _gridColumns;
     final collapsed = _gridCollapsed(controller);
     final padding = widget.gridPadding;
     final radii = widget.gridCornerRadii;
@@ -597,8 +596,13 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
             Padding(
               padding: padding,
               child: _HeaderGridScope(
-                child: SizedBox(
+                // 折叠后可能一行都没有（只剩宽项或全部隐藏），仍要留出完整的
+                // 按钮高度，否则按钮被 Stack 裁掉就再也展不开。
+                child: Container(
                   width: width,
+                  constraints: BoxConstraints(
+                    minHeight: rows.isEmpty ? _gridToggleExtent : 0,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,

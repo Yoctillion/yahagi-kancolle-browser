@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../account/account_session.dart';
 
+import '../layout/flat_style.dart';
+import '../layout/flat_text_toggle.dart';
 import '../localization/ui_text.dart';
 import '../localization/game_name_localizations.dart';
 
@@ -106,7 +108,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     super.dispose();
   }
 
-  bool get _flat => PanelStyleScope.of(context) == PanelStyle.flat;
+  bool get _flat => PanelStyleScope.isFlat(context);
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +130,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _controls(strings),
-          SizedBox(height: _flat ? 4 : 10),
+          SizedBox(height: _flat ? flatSectionGap : 10),
           _statusBox(
             strings.waiting,
             false,
@@ -175,11 +177,11 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _controls(strings),
-        SizedBox(height: flat ? 4 : 8),
+        SizedBox(height: flat ? flatSectionGap : 8),
         _fleetSelector(fleets),
-        SizedBox(height: flat ? 2 : 7),
+        SizedBox(height: flat ? flatRowSpacing : 7),
         _missionSelector(state, missionId),
-        SizedBox(height: flat ? 4 : 8),
+        SizedBox(height: flat ? flatSectionGap : 8),
         if (_greatSuccess && flat) ...[
           _statusBox(
             '${strings.normalCheck}：${evaluation.normalPassed ? strings.passed : strings.failed}',
@@ -224,11 +226,11 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         if (_detailed) ...[
           SizedBox(height: flat ? 6 : 10),
           _sectionTitle(strings.expectedIncome, flat),
-          SizedBox(height: flat ? 2 : 5),
+          SizedBox(height: flat ? flatRowSpacing : 5),
           _resourceGrid(income, flat),
           SizedBox(height: flat ? 6 : 10),
           _sectionTitle(strings.conditions, flat),
-          SizedBox(height: flat ? 2 : 5),
+          SizedBox(height: flat ? flatRowSpacing : 5),
           for (final condition in [
             ...evaluation.normalConditions,
             if (_greatSuccess) ...evaluation.greatSuccessConditions,
@@ -243,16 +245,16 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
   Widget _controls(ExpeditionStrings strings) => LayoutBuilder(
     builder: (context, constraints) {
       final controlGroups = <Widget>[
-        _segmentGroup(
+        _segments(
           key: const Key('expedition-mode-segments'),
-          children: [
-            _segmentButton(
+          options: [
+            FlatTextToggleOption(
               key: const Key('expedition-mode-compact'),
               label: strings.compact,
               selected: !_detailed,
               onTap: () => setState(() => _detailed = false),
             ),
-            _segmentButton(
+            FlatTextToggleOption(
               key: const Key('expedition-mode-detailed'),
               label: strings.detailed,
               selected: _detailed,
@@ -260,16 +262,16 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             ),
           ],
         ),
-        _segmentGroup(
+        _segments(
           key: const Key('expedition-success-segments'),
-          children: [
-            _segmentButton(
+          options: [
+            FlatTextToggleOption(
               key: const Key('expedition-success-normal'),
               label: strings.success,
               selected: !_greatSuccess,
               onTap: () => setState(() => _greatSuccess = false),
             ),
-            _segmentButton(
+            FlatTextToggleOption(
               key: const Key('expedition-success-great'),
               label: strings.greatSuccess,
               selected: _greatSuccess,
@@ -299,24 +301,24 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     },
   );
 
-  Widget _segmentGroup({
+  Widget _segments({
     Key? key,
-    required List<Widget> children,
+    required List<FlatTextToggleOption> options,
     bool expandChildren = false,
   }) {
-    if (_flat) {
-      return Wrap(
-        key: key,
-        spacing: 8,
-        runSpacing: 2,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: children,
-      );
-    }
+    if (_flat) return FlatTextToggle(key: key, options: options);
     return _cardSegmentGroup(
       key: key,
-      children: children,
       expandChildren: expandChildren,
+      children: [
+        for (final option in options)
+          _cardSegmentButton(
+            key: option.key,
+            label: option.label,
+            selected: option.selected,
+            onTap: option.onTap,
+          ),
+      ],
     );
   }
 
@@ -342,48 +344,12 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     ),
   );
 
-  Widget _segmentButton({
-    Key? key,
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    bool command = false,
-  }) {
-    if (_flat) {
-      return InkWell(
-        key: key,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Text(
-            label,
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: selected ? flatTimeColor : flatIdleColor,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      );
-    }
-    return _cardSegmentButton(
-      key: key,
-      label: label,
-      selected: selected,
-      onTap: onTap,
-      command: command,
-    );
-  }
-
   Widget _cardSegmentButton({
     Key? key,
     required String label,
     required bool selected,
     required VoidCallback onTap,
-    required bool command,
+    bool command = false,
   }) => Material(
     key: key,
     color: selected ? const Color(0xff8a6628) : Colors.transparent,
@@ -428,30 +394,28 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
       side: const BorderSide(color: Color(0xff415a77)),
       borderRadius: BorderRadius.circular(4),
     ),
-    child: _segmentGroup(
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: _flat ? 0 : 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$_target%',
-                style: TextStyle(
-                  fontSize: _flat ? 10.5 : 10,
-                  color: _flat ? flatTimeColor : const Color(0xffdce6eb),
-                  fontWeight: FontWeight.w700,
-                ),
+    child: _targetMenuFrame(
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: _flat ? 0 : 7),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$_target%',
+              style: TextStyle(
+                fontSize: _flat ? flatSmallFontSize : 10,
+                color: _flat ? flatAccentColor : const Color(0xffdce6eb),
+                fontWeight: FontWeight.w700,
               ),
-              Icon(
-                Icons.arrow_drop_down,
-                size: 14,
-                color: _flat ? flatTimeColor : const Color(0xffdce6eb),
-              ),
-            ],
-          ),
+            ),
+            Icon(
+              Icons.arrow_drop_down,
+              size: 14,
+              color: _flat ? flatAccentColor : const Color(0xffdce6eb),
+            ),
+          ],
         ),
-      ],
+      ),
     ),
     itemBuilder: (context) => [
       for (final value in const [80, 85, 90, 95, 100])
@@ -466,12 +430,16 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     ],
   );
 
-  Widget _fleetSelector(List<Fleet> fleets) => _segmentGroup(
+  Widget _targetMenuFrame(Widget child) => _flat
+      ? child
+      : _cardSegmentGroup(children: [child], expandChildren: false);
+
+  Widget _fleetSelector(List<Fleet> fleets) => _segments(
     key: const Key('expedition-fleet-segments'),
     expandChildren: true,
-    children: [
+    options: [
       for (final fleet in fleets.take(4))
-        _segmentButton(
+        FlatTextToggleOption(
           key: Key('expedition-fleet-${fleet.id}'),
           label: fleet.name,
           selected: _fleetId == fleet.id,
@@ -509,7 +477,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             overflow: TextOverflow.ellipsis,
             style: flatRowTextStyle(
               color: neutral
-                  ? flatIdleColor
+                  ? flatMutedColor
                   : passed
                   ? flatDoneColor
                   : _flatFailColor,
@@ -705,7 +673,10 @@ Widget _itemTile(ExpeditionRewardItem item, bool flat) {
               label ?? '道具',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: flatIdleColor, fontSize: 11),
+              style: const TextStyle(
+                color: flatMutedColor,
+                fontSize: flatRowFontSize,
+              ),
             ),
           ),
         const SizedBox(width: 4),
@@ -714,7 +685,10 @@ Widget _itemTile(ExpeditionRewardItem item, bool flat) {
             kindText,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: flatIdleColor, fontSize: 11),
+            style: const TextStyle(
+              color: flatMutedColor,
+              fontSize: flatRowFontSize,
+            ),
           ),
         ),
         const Spacer(),

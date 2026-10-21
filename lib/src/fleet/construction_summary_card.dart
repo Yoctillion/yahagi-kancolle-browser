@@ -3,6 +3,7 @@ import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_style.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
@@ -45,7 +46,7 @@ class ConstructionSummaryCard extends StatelessWidget {
         final docks = state.constructionDocks;
         // 倒计时只在扁平折叠摘要里需要逐秒刷新。
         return SecondTickBuilder(
-          enabled: collapsed && PanelStyleScope.of(context) == PanelStyle.flat,
+          enabled: collapsed && PanelStyleScope.isFlat(context),
           builder: (context, now, _) => DashboardCard(
             collapsedSummary: collapsed
                 ? constructionSummary(
@@ -67,9 +68,7 @@ class ConstructionSummaryCard extends StatelessWidget {
             showLogo: showLogo,
             showTitle: showTitle,
             child: ModuleSlotGrid(
-              runSpacing: PanelStyleScope.of(context) == PanelStyle.flat
-                  ? 0
-                  : 8,
+              runSpacing: PanelStyleScope.isFlat(context) ? 0 : 8,
               emptyLabel: '暂无建造',
               children: [
                 for (var i = 0; i < 4; i++)
@@ -138,12 +137,12 @@ class ConstructionSummaryCard extends StatelessWidget {
       }
     }
 
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       final completed = active && dock != null && dock.isCompletedAt(now);
       return FlatListRow(
         key: Key('construction-summary-slot-$position'),
         onTap: onOpenConstruction,
-        name: flatRowName(
+        name: flatRowText(
           active ? '$position · $name' : '$position',
           color: disabled ? const Color(0xff4a5c68) : Colors.white,
         ),
@@ -158,7 +157,7 @@ class ConstructionSummaryCard extends StatelessWidget {
                         completionTime: dock.completionTime,
                         completedText: fleetText(context, '已完成'),
                         completedColor: flatDoneColor,
-                        countingColor: flatTimeColor,
+                        countingColor: flatAccentColor,
                         style: flatRowTextStyle(),
                       ),
               )
@@ -166,7 +165,7 @@ class ConstructionSummaryCard extends StatelessWidget {
                 fleetText(context, disabled ? '锁' : '闲置'),
                 maxLines: 1,
                 style: flatRowTextStyle(
-                  color: disabled ? const Color(0xff4a5c68) : flatIdleColor,
+                  color: disabled ? const Color(0xff4a5c68) : flatMutedColor,
                 ),
               ),
       );

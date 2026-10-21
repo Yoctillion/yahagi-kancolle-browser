@@ -264,7 +264,7 @@ class ModuleSlotGrid extends StatelessWidget {
   final String emptyLabel;
   @override
   Widget build(BuildContext context) => children.isEmpty
-      ? PanelStyleScope.of(context) == PanelStyle.flat
+      ? PanelStyleScope.isFlat(context)
             ? FlatEmptyText(fleetText(context, emptyLabel))
             : Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),

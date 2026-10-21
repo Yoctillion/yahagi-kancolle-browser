@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../battle/prophet_hp_bar.dart';
 import '../game_state/game_state.dart';
+import '../layout/flat_portrait_backdrop.dart';
+import '../layout/flat_style.dart';
 import '../layout/game_edge_tap_guard.dart';
 import '../localization/game_name_localizations.dart';
 import '../settings/battle_status_effect_settings.dart';
@@ -181,7 +183,6 @@ class FleetShipMinimalRow extends StatelessWidget {
   final VoidCallback? onTap;
 
   static const _textColor = Color(0xffdce6eb);
-  static const _mutedColor = Color(0xff8197a5);
 
   bool _show(String key) => visible.contains(key);
 
@@ -192,70 +193,47 @@ class FleetShipMinimalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final master = state.masterForShip(ship);
     final portrait = _show('portrait');
-    // 头像铺在文字底下，深色描边保证文字在亮色立绘上仍可读。
-    final shadows = portrait
-        ? const [Shadow(color: Colors.black, blurRadius: 3)]
-        : null;
+    final shadows = portrait ? flatOnImageShadows : null;
+    final lines = Padding(
+      padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: 14, child: _identityLine(context, master, shadows)),
+          const SizedBox(height: 1),
+          SizedBox(height: 12, child: _statusLine(master, shadows)),
+        ],
+      ),
+    );
     return GameEdgeTapGuard(
       child: Material(
         key: Key('minimal-ship-row-${ship.id}'),
         type: MaterialType.transparency,
         child: InkWell(
           onTap: onTap,
-          child: Stack(
-            children: [
-              if (portrait)
-                Positioned.fill(child: IgnorePointer(child: _portrait(master))),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: 14,
-                      child: _identityLine(context, master, shadows),
-                    ),
-                    const SizedBox(height: 1),
-                    SizedBox(height: 12, child: _statusLine(master, shadows)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          child: portrait
+              ? FlatPortraitBackdrop(
+                  image: (width, height) => _portrait(master, width, height),
+                  child: lines,
+                )
+              : lines,
         ),
       ),
     );
   }
 
-  Widget _portrait(MasterShip? master) => FractionallySizedBox(
-    alignment: Alignment.centerLeft,
-    widthFactor: 0.6,
-    child: LayoutBuilder(
-      builder: (context, box) {
-        Widget image = ShipPortrait(
-          ship: master,
-          serverOrigin: state.serverOrigin,
-          width: box.maxWidth,
-          height: box.maxHeight,
-        );
-        if (repairStatus == ShipRepairStatus.retreat) {
-          image = ColorFiltered(
-            colorFilter: shipRetreatGrayscale,
-            child: image,
-          );
-        }
-        // 渐变起点 alpha 0.5，同一层里完成半透明与左→右渐隐。
-        return ShaderMask(
-          blendMode: BlendMode.dstIn,
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0x80000000), Color(0x00000000)],
-          ).createShader(bounds),
-          child: image,
-        );
-      },
-    ),
-  );
+  Widget _portrait(MasterShip? master, double width, double height) {
+    final image = ShipPortrait(
+      ship: master,
+      serverOrigin: state.serverOrigin,
+      width: width,
+      height: height,
+    );
+    return repairStatus == ShipRepairStatus.retreat
+        ? ColorFiltered(colorFilter: shipRetreatGrayscale, child: image)
+        : image;
+  }
 
   Widget _identityLine(
     BuildContext context,
@@ -283,7 +261,7 @@ class FleetShipMinimalRow extends StatelessWidget {
         Text(
           'Lv${ship.level}',
           style: TextStyle(
-            color: _mutedColor,
+            color: flatMutedColor,
             fontSize: 9,
             fontWeight: FontWeight.w700,
             shadows: shadows,
@@ -427,31 +405,15 @@ class FleetShipMinimalRow extends StatelessWidget {
         ],
         if (_show('hp')) ...[
           Expanded(
-            child:
-                damagePulseFilter == DamagePulseFilter.off ||
-                    repairStatus == ShipRepairStatus.retreat
+            child: repairStatus == ShipRepairStatus.retreat
                 ? hpBar
-                : DamagePulseBuilder(
+                : DamagePulseGlow(
                     currentHp: currentHp,
                     maxHp: ship.maxHp,
                     filter: damagePulseFilter,
                     normalColor: barColor,
-                    builder: (context, spec, phase) => spec.pulses
-                        ? DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: spec.color.withValues(
-                                    alpha: 0.3 + 0.5 * phase,
-                                  ),
-                                  blurRadius: 2 + 3 * phase,
-                                ),
-                              ],
-                            ),
-                            child: hpBar,
-                          )
-                        : hpBar,
+                    borderRadius: BorderRadius.circular(2),
+                    child: hpBar,
                   ),
           ),
           const SizedBox(width: 4),

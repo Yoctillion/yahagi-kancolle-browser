@@ -102,6 +102,7 @@ import 'src/game_state/game_api_event_pipeline.dart';
 import 'src/game_state/game_state_store.dart';
 import 'src/layout/adaptive_layout.dart';
 import 'src/layout/display_corners.dart';
+import 'src/layout/flat_style.dart';
 import 'src/layout/hd_workspace_geometry.dart';
 import 'src/layout/minimal_layout.dart';
 import 'src/layout/module_summaries.dart';
@@ -1974,7 +1975,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           ? null
           : const BoxDecoration(
               border: Border(
-                top: BorderSide(color: Color(0xff1b3142), width: dividerExtent),
+                top: BorderSide(color: flatDividerColor, width: dividerExtent),
               ),
             ),
       child: _buildGameResourceBar(
@@ -2046,9 +2047,11 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         !menuHorizontal &&
         widget.layoutSettingsController.minimalResourcePosition ==
             MinimalResourcePosition.bottomBar;
-    // iPhone 横屏底部约 21pt 的安全区在居中的游戏下方本就空着，横栏直接放进去；
-    // 安全区窄的设备只能在它上方另占一条。
-    final bottomBarInSafeArea = bottomSafeArea >= 20;
+    // iPhone 横屏底部约 21pt 的安全区在居中的游戏下方本就空着，横栏直接放进去，
+    // 但那里是 home indicator 的手势区，横栏只能展示。安卓的手势区同样可能这么宽，
+    // 放进去就点不到战果和计时器，所以其他平台和安全区窄的 iPhone 都在它上方另占一条。
+    final bottomBarInSafeArea =
+        defaultTargetPlatform == TargetPlatform.iOS && bottomSafeArea >= 20;
     final minimalBottomBarReserve = minimalBottomBar && !bottomBarInSafeArea
         ? _minimalBottomBarHeight + bottomSafeArea
         : 0.0;
@@ -2078,9 +2081,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           (minimalTopBar ? topHeaderHeight(uiSize) : 0) -
           minimalBottomBarReserve,
     );
-    final minimalGameLayout = usesMinimalGameShell(
+    final minimalGameLayout = usesMinimalShell(
       size: uiSize,
-      workspaceIndex: 0,
       isLandscape: !usesVerticalWorkspace(
         minimalShellWorkspace,
         screenDisplayMode,

@@ -30,29 +30,33 @@ void main() {
     expect(cornerInsetAt(32, cornerInset(32)), closeTo(cornerInset(32), 1e-9));
   });
 
-  test('refresh converts px to dp and falls back per missing corner', () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(_channel, (call) async {
-          expect(call.method, 'getRoundedCorners');
-          return <String, Object?>{
-            'topLeft': 96,
-            'topRight': 96,
-            'bottomLeft': null,
-            'bottomRight': 96,
-          };
-        });
-    final controller = DisplayCornersController();
-    addTearDown(controller.dispose);
+  test(
+    'refresh converts px to dp and treats a null corner as square',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_channel, (call) async {
+            expect(call.method, 'getRoundedCorners');
+            return <String, Object?>{
+              'topLeft': 96,
+              'topRight': 96,
+              'bottomLeft': null,
+              'bottomRight': 96,
+            };
+          });
+      final controller = DisplayCornersController();
+      addTearDown(controller.dispose);
 
-    await controller.refresh(3.0);
+      await controller.refresh(3.0);
 
-    expect(controller.radii.topLeft, 32);
-    expect(controller.radii.topRight, 32);
-    expect(controller.radii.bottomLeft, 24);
-    expect(controller.radii.bottomRight, 32);
-  });
+      final radii = controller.radii!;
+      expect(radii.topLeft, 32);
+      expect(radii.topRight, 32);
+      expect(radii.bottomLeft, 0);
+      expect(radii.bottomRight, 32);
+    },
+  );
 
-  test('null channel result uses the fallback radii', () async {
+  test('null channel result leaves the radii unknown', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_channel, (call) async => null);
     final controller = DisplayCornersController();
@@ -60,19 +64,19 @@ void main() {
 
     await controller.refresh(2.0);
 
-    expect(controller.radii, CornerRadii.fallback);
+    expect(controller.radii, isNull);
   });
 
-  test('missing plugin uses the fallback radii', () async {
+  test('missing plugin leaves the radii unknown', () async {
     final controller = DisplayCornersController();
     addTearDown(controller.dispose);
 
     await controller.refresh(2.0);
 
-    expect(controller.radii, CornerRadii.fallback);
+    expect(controller.radii, isNull);
   });
 
-  testWidgets('DisplayCorners.of returns fallback without an ancestor', (
+  testWidgets('DisplayCorners.of treats Android as square without radii', (
     tester,
   ) async {
     late CornerRadii radii;
@@ -85,7 +89,7 @@ void main() {
       ),
     );
 
-    expect(radii, CornerRadii.fallback);
+    expect(radii, const CornerRadii.all(0));
   });
 
   Future<CornerRadii> radiiOn(
@@ -150,11 +154,22 @@ void main() {
     expect(radii, CornerRadii.fallback);
   });
 
-  testWidgets('Android with safe area keeps the fallback', (tester) async {
+  testWidgets('Android without a reported radius stays square', (tester) async {
     final radii = await radiiOn(
       tester,
       TargetPlatform.android,
       const EdgeInsets.only(left: 59, bottom: 21),
+    );
+    expect(radii, const CornerRadii.all(0));
+  });
+
+  testWidgets('desktop without a reported radius keeps the fallback', (
+    tester,
+  ) async {
+    final radii = await radiiOn(
+      tester,
+      TargetPlatform.windows,
+      EdgeInsets.zero,
     );
     expect(radii, CornerRadii.fallback);
   });

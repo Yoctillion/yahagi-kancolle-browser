@@ -8,6 +8,7 @@ class PanelStyleScope extends InheritedWidget {
   static PanelStyle of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PanelStyleScope>()?.style ??
       PanelStyle.card;
+  static bool isFlat(BuildContext context) => of(context) == PanelStyle.flat;
   @override
   bool updateShouldNotify(PanelStyleScope oldWidget) =>
       style != oldWidget.style;

@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'flat_style.dart';
 import 'game_edge_tap_guard.dart';
-
-const flatRowSpacing = 2.0;
-const flatRowFontSize = 11.0;
-const flatTimeColor = Color(0xffd4a85f);
-const flatDoneColor = Color(0xff4cc06a);
-const flatIdleColor = Color(0xff8197a5);
 
 /// 极简档的模块行：无底色，左侧标签和名称，右侧右对齐的时间或状态。
 /// 标签按自身宽度排布且各自封顶，trailing 封顶一半宽度，名称独占其余空间。
@@ -66,6 +61,31 @@ class FlatListRow extends StatelessWidget {
   }
 }
 
+/// 极简档的提示行：左侧小图标，文字占满其余宽度。
+class FlatIconLine extends StatelessWidget {
+  const FlatIconLine({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 13,
+    required this.child,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: <Widget>[
+      Icon(icon, size: size, color: color),
+      const SizedBox(width: 4),
+      Expanded(child: child),
+    ],
+  );
+}
+
 TextStyle flatRowTextStyle({
   Color color = Colors.white,
   FontWeight weight = FontWeight.w700,
@@ -77,7 +97,7 @@ TextStyle flatRowTextStyle({
   shadows: shadows,
 );
 
-Widget flatRowName(
+Widget flatRowText(
   String text, {
   Key? key,
   Color color = Colors.white,

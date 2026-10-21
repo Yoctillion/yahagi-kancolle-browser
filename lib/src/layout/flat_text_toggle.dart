@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'flat_style.dart';
+
 class FlatTextToggleOption {
   const FlatTextToggleOption({
     required this.key,
@@ -14,7 +16,8 @@ class FlatTextToggleOption {
   final VoidCallback onTap;
 }
 
-/// 极简档（扁平面板）下模块头部的模式切换：纯文字，选中金色，无底色无边框。
+/// 极简档（扁平面板）下的模式切换：纯文字，选中金色，无底色无边框。
+/// 放不下时换行；放在标题行的 FittedBox 里则始终一行、整体缩小。
 class FlatTextToggle extends StatelessWidget {
   const FlatTextToggle({super.key, required this.options});
 
@@ -22,8 +25,8 @@ class FlatTextToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final option in options)
           InkWell(
@@ -33,11 +36,12 @@ class FlatTextToggle extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
               child: Text(
                 option.label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: option.selected
-                      ? const Color(0xffd4a85f)
-                      : const Color(0xff8197a5),
-                  fontSize: 10.5,
+                  color: option.selected ? flatAccentColor : flatMutedColor,
+                  fontSize: flatSmallFontSize,
                   fontWeight: FontWeight.w700,
                 ),
               ),

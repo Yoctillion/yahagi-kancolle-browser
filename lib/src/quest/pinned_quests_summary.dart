@@ -4,6 +4,7 @@ import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../fleet/dashboard_card.dart';
 import '../layout/flat_empty_text.dart';
+import '../layout/flat_style.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/module_summaries.dart';
@@ -54,7 +55,7 @@ class PinnedQuestsSummary extends StatelessWidget {
         final l10n =
             AppLocalizations.of(context) ??
             lookupAppLocalizations(const Locale('zh'));
-        final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+        final flat = PanelStyleScope.isFlat(context);
 
         return DashboardCard(
           collapsedSummary: collapsed ? questSummary(l10n, state) : null,
@@ -281,13 +282,8 @@ class PinnedQuestsSummary extends StatelessWidget {
       };
 
   Widget _flatRow(BuildContext context, AppLocalizations l10n, GameQuest q) {
-    Widget tag(Key? key, String text) => Text(
-      text,
-      key: key,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: flatRowTextStyle(color: q.categoryColor),
-    );
+    Widget tag(Key? key, String text) =>
+        flatRowText(text, key: key, color: q.categoryColor);
     final showType = visible.contains('type');
     final showNumber = visible.contains('number');
     final progress = visible.contains('progress')
@@ -306,20 +302,16 @@ class PinnedQuestsSummary extends StatelessWidget {
             ),
         ],
         name: visible.contains('name')
-            ? flatRowName(
+            ? flatRowText(
                 gameNames(context).entityText(q.title),
                 color: const Color(0xffecf3f5),
               )
             : null,
         trailing: progress.isEmpty
             ? null
-            : Text(
+            : flatRowText(
                 progress,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: flatRowTextStyle(
-                  color: q.isCompleted ? flatDoneColor : _getProgressColor(q),
-                ),
+                color: q.isCompleted ? flatDoneColor : _getProgressColor(q),
               ),
       ),
     );

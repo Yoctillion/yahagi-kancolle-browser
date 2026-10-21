@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
+import '../layout/flat_style.dart';
 import 'dashboard_card.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../settings/module_display_settings.dart';
@@ -8,6 +9,7 @@ import '../expedition/expedition_mission_picker.dart' show expeditionDisplayId;
 import 'fleet_ui_strings.dart';
 import 'operation_progress.dart';
 import '../layout/module_summaries.dart';
+import '../layout/flat_empty_text.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/flat_text_toggle.dart';
 import '../layout/panel_style.dart';
@@ -66,9 +68,7 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
 
         // 倒计时只在扁平折叠摘要里需要逐秒刷新。
         return SecondTickBuilder(
-          enabled:
-              widget.collapsed &&
-              PanelStyleScope.of(context) == PanelStyle.flat,
+          enabled: widget.collapsed && PanelStyleScope.isFlat(context),
           builder: (context, now, _) => DashboardCard(
             collapsedSummary: widget.collapsed
                 ? expeditionSummary(strings, state, now)
@@ -111,7 +111,9 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (activeFleets.isEmpty)
+        if (activeFleets.isEmpty && PanelStyleScope.isFlat(context))
+          FlatEmptyText(strings.noActiveExpedition)
+        else if (activeFleets.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Center(
@@ -129,9 +131,7 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
               final missionName = mission?.name ?? fleetText(context, '未知远征');
               return Padding(
                 padding: EdgeInsets.only(
-                  bottom: PanelStyleScope.of(context) == PanelStyle.flat
-                      ? 0
-                      : 6.0,
+                  bottom: PanelStyleScope.isFlat(context) ? 0 : 6.0,
                 ),
                 child: _buildExpeditionItem(
                   fleet.id,
@@ -146,8 +146,7 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
                       fontWeight: FontWeight.bold,
                     ),
                     countingColor: const Color(0xffd4a85f),
-                    completedColor:
-                        PanelStyleScope.of(context) == PanelStyle.flat
+                    completedColor: PanelStyleScope.isFlat(context)
                         ? flatDoneColor
                         : null,
                   ),
@@ -167,7 +166,7 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
     String mission,
     Widget time,
   ) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return _buildFlatExpeditionItem(fleetId, fleet, number, mission, time);
     }
     return Material(
@@ -298,12 +297,10 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
     String mission,
     Widget time,
   ) {
-    Widget label(String kind, String text, Color color) => Text(
+    Widget label(String kind, String text, Color color) => flatRowText(
       text,
       key: Key('expedition-summary-$kind-$fleetId'),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: flatRowTextStyle(color: color),
+      color: color,
     );
     final showFleet = widget.visible.contains('fleet');
     final showNumber = widget.visible.contains('number');
@@ -313,10 +310,10 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
         onTap: widget.onOpenExpedition,
         tags: [
           if (showFleet) label('fleet', fleet, const Color(0xff03a9f4)),
-          if (showNumber) label('number', number, flatTimeColor),
+          if (showNumber) label('number', number, flatAccentColor),
         ],
         name: widget.visible.contains('name')
-            ? flatRowName(mission, key: Key('expedition-summary-name-$fleetId'))
+            ? flatRowText(mission, key: Key('expedition-summary-name-$fleetId'))
             : null,
         trailing: widget.visible.contains('time')
             ? flatRowTrailing(
@@ -369,7 +366,7 @@ class ExpeditionModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return FlatTextToggle(
         key: const Key('expedition-summary-mode-selector'),
         options: [

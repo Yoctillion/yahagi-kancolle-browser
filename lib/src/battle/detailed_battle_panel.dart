@@ -8,9 +8,11 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
+import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
+import 'battle_fleet_block.dart';
 import 'battle_models.dart';
 import 'battle_pills.dart';
 import 'battle_prediction_sections.dart';
@@ -45,7 +47,7 @@ class DetailedBattlePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     final enemyPreviewShips =
         battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
@@ -78,7 +80,7 @@ class DetailedBattlePanel extends StatelessWidget {
               battle: battle,
               showLastFormationHint: showLastFormationHint,
             ),
-            SizedBox(height: flat ? 4 : 7),
+            SizedBox(height: flat ? flatSectionGap : 7),
           ],
           BattlePredictionSections(
             order: sectionOrder,
@@ -190,7 +192,7 @@ class _NavigationOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: FlatNavigationHeader(
@@ -400,50 +402,27 @@ class _FleetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
-    return Container(
-      decoration: flat
-          ? null
-          : BoxDecoration(
-              color: const Color(0xff10212e),
-              borderRadius: BorderRadius.circular(8),
-            ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: flat
-                ? const EdgeInsets.fromLTRB(0, 2, 0, 2)
-                : const EdgeInsets.fromLTRB(9, 7, 9, 5),
-            child: BattleUiText(
-              title,
-              style: TextStyle(
-                color: title.startsWith('敌')
-                    ? const Color(0xffff8c78)
-                    : const Color(0xff70c7bc),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
+    return BattleFleetBlock(
+      title: BattleUiText(
+        title,
+        style: battleFleetTitleStyle.copyWith(
+          color: title.startsWith('敌')
+              ? const Color(0xffff8c78)
+              : const Color(0xff70c7bc),
+        ),
+      ),
+      rows: [
+        for (var index = 0; index < ships.length; index++)
+          BattleShipDetailsTap(
+            ship: ships[index],
+            child: _BattleShipRow(
+              ship: ships[index],
+              absolutePosition: index + positionOffset,
+              isMvp: mvpPositions.contains(index + positionOffset),
+              damagePulseMode: damagePulseMode,
             ),
           ),
-          for (var index = 0; index < ships.length; index++) ...[
-            if (index > 0)
-              Divider(
-                height: 1,
-                color: flat ? const Color(0xff1b3142) : const Color(0xff203746),
-              ),
-            BattleShipDetailsTap(
-              ship: ships[index],
-              child: _BattleShipRow(
-                ship: ships[index],
-                absolutePosition: index + positionOffset,
-                isMvp: mvpPositions.contains(index + positionOffset),
-                damagePulseMode: damagePulseMode,
-              ),
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }
@@ -463,7 +442,7 @@ class _BattleShipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final isEscaped = ship.isEscaped;
     final side = ship.side == BattleSide.friend ? 'friend' : 'enemy';
     final ratio = ship.maxHp <= 0
