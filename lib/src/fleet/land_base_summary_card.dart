@@ -3,6 +3,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
+import '../layout/flat_portrait_backdrop.dart';
 import '../layout/flat_style.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
@@ -784,10 +785,7 @@ class _FlatLandBaseRow extends StatelessWidget {
     final portraitMaster = visible.contains('portrait')
         ? _portraitMaster(state, base)
         : null;
-    // 头像铺在文字底下，深色描边保证文字在亮色卡图上仍可读。
-    final shadows = portraitMaster != null
-        ? const <Shadow>[Shadow(color: Colors.black, blurRadius: 3)]
-        : null;
+    final shadows = portraitMaster != null ? flatOnImageShadows : null;
     final maximumHp = base.maxHp ?? 200;
     final currentHp = base.currentHp;
     // 基地 HP 只在空袭后才有数据，平时恒为满血；只在已知且受损时占位。
@@ -801,18 +799,14 @@ class _FlatLandBaseRow extends StatelessWidget {
       children: <Widget>[
         FlatListRow(
           tags: <Widget>[
-            Text(
+            flatRowText(
               _actionLabel(base.actionKind, l10n),
               key: Key('land-base-action-chip-$keySuffix'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: flatRowTextStyle(
-                color: _actionColor(base.actionKind),
-                shadows: shadows,
-              ),
+              color: _actionColor(base.actionKind),
+              shadows: shadows,
             ),
           ],
-          name: flatRowName(
+          name: flatRowText(
             base.name,
             key: Key('land-base-name-$keySuffix'),
             shadows: shadows,
@@ -845,36 +839,15 @@ class _FlatLandBaseRow extends StatelessWidget {
       ],
     );
     if (portraitMaster == null) return content;
-    return Stack(
-      children: <Widget>[
-        Positioned.fill(
-          child: IgnorePointer(
-            key: Key('land-base-portrait-$keySuffix'),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: 0.6,
-              child: LayoutBuilder(
-                builder: (context, box) {
-                  // 渐变起点 alpha 0.5，同一层里完成半透明与左→右渐隐。
-                  return ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: <Color>[Color(0x80000000), Color(0x00000000)],
-                    ).createShader(bounds),
-                    child: SlotItemPortrait(
-                      item: portraitMaster,
-                      serverOrigin: state.serverOrigin,
-                      width: box.maxWidth,
-                      height: box.maxHeight,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        content,
-      ],
+    return FlatPortraitBackdrop(
+      imageKey: Key('land-base-portrait-$keySuffix'),
+      image: (width, height) => SlotItemPortrait(
+        item: portraitMaster,
+        serverOrigin: state.serverOrigin,
+        width: width,
+        height: height,
+      ),
+      child: content,
     );
   }
 
@@ -1001,29 +974,17 @@ class _FlatLandBaseRow extends StatelessWidget {
   static double _hpRatio(int currentHp, int maximumHp) =>
       maximumHp <= 0 ? 0.0 : (currentHp / maximumHp).clamp(0.0, 1.0);
 
-  Widget _damagePulse(int currentHp, int maximumHp, Widget child) {
-    if (damagePulseMode == DamagePulseFilter.off) return child;
-    final hpRatio = _hpRatio(currentHp, maximumHp);
-    return DamagePulseBuilder(
-      currentHp: currentHp,
-      maxHp: maximumHp,
-      filter: damagePulseMode,
-      normalColor: shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0),
-      builder: (context, spec, phase) => spec.pulses
-          ? DecoratedBox(
-              decoration: BoxDecoration(
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: spec.color.withValues(alpha: 0.3 + 0.5 * phase),
-                    blurRadius: 2 + 3 * phase,
-                  ),
-                ],
-              ),
-              child: child,
-            )
-          : child,
-    );
-  }
+  Widget _damagePulse(int currentHp, int maximumHp, Widget child) =>
+      DamagePulseGlow(
+        currentHp: currentHp,
+        maxHp: maximumHp,
+        filter: damagePulseMode,
+        normalColor: shipHpBarColor(
+          _hpRatio(currentHp, maximumHp),
+          isZeroHp: currentHp <= 0,
+        ),
+        child: child,
+      );
 }
 
 class _FlatSquadronCell extends StatelessWidget {

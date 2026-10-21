@@ -98,6 +98,50 @@ class _DamagePulseBuilderState extends State<DamagePulseBuilder>
   }
 }
 
+class DamagePulseGlow extends StatelessWidget {
+  const DamagePulseGlow({
+    super.key,
+    required this.currentHp,
+    required this.maxHp,
+    required this.filter,
+    required this.normalColor,
+    this.borderRadius,
+    required this.child,
+  });
+
+  final int currentHp;
+  final int maxHp;
+  final DamagePulseFilter filter;
+  final Color normalColor;
+  final BorderRadius? borderRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (filter == DamagePulseFilter.off) return child;
+    return DamagePulseBuilder(
+      currentHp: currentHp,
+      maxHp: maxHp,
+      filter: filter,
+      normalColor: normalColor,
+      builder: (context, spec, phase) => spec.pulses
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: spec.color.withValues(alpha: 0.3 + 0.5 * phase),
+                    blurRadius: 2 + 3 * phase,
+                  ),
+                ],
+              ),
+              child: child,
+            )
+          : child,
+    );
+  }
+}
+
 class ShipHpFrame extends StatefulWidget {
   const ShipHpFrame({
     super.key,

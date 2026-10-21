@@ -705,14 +705,12 @@ class _MapGaugeRow extends StatelessWidget {
           children: [
             FlatListRow(
               tags: [
-                Text(
+                flatRowText(
                   fleetText(context, gauge.categoryTag),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: flatRowTextStyle(color: flatTagColor),
+                  color: flatTagColor,
                 ),
               ],
-              name: flatRowName(
+              name: flatRowText(
                 '${gauge.code} $displayName$rankText$gaugeNumText',
                 color: nameColor,
               ),

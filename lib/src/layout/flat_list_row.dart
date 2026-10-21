@@ -72,7 +72,7 @@ TextStyle flatRowTextStyle({
   shadows: shadows,
 );
 
-Widget flatRowName(
+Widget flatRowText(
   String text, {
   Key? key,
   Color color = Colors.white,

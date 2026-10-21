@@ -294,12 +294,10 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
     String mission,
     Widget time,
   ) {
-    Widget label(String kind, String text, Color color) => Text(
+    Widget label(String kind, String text, Color color) => flatRowText(
       text,
       key: Key('expedition-summary-$kind-$fleetId'),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: flatRowTextStyle(color: color),
+      color: color,
     );
     final showFleet = widget.visible.contains('fleet');
     final showNumber = widget.visible.contains('number');
@@ -312,7 +310,7 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
           if (showNumber) label('number', number, flatAccentColor),
         ],
         name: widget.visible.contains('name')
-            ? flatRowName(mission, key: Key('expedition-summary-name-$fleetId'))
+            ? flatRowText(mission, key: Key('expedition-summary-name-$fleetId'))
             : null,
         trailing: widget.visible.contains('time')
             ? flatRowTrailing(

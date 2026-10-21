@@ -142,7 +142,7 @@ class ConstructionSummaryCard extends StatelessWidget {
       return FlatListRow(
         key: Key('construction-summary-slot-$position'),
         onTap: onOpenConstruction,
-        name: flatRowName(
+        name: flatRowText(
           active ? '$position · $name' : '$position',
           color: disabled ? const Color(0xff4a5c68) : Colors.white,
         ),

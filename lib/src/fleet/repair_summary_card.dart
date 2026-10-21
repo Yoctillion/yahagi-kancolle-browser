@@ -809,7 +809,7 @@ class _RepairCapsule extends StatelessWidget {
       return FlatListRow(
         key: contentKey,
         onTap: onTap,
-        name: flatRowName(
+        name: flatRowText(
           name,
           color: disabled ? const Color(0xff4a5c68) : Colors.white,
         ),
