@@ -9,6 +9,7 @@ import '../expedition/expedition_mission_picker.dart' show expeditionDisplayId;
 import 'fleet_ui_strings.dart';
 import 'operation_progress.dart';
 import '../layout/module_summaries.dart';
+import '../layout/flat_empty_text.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/flat_text_toggle.dart';
 import '../layout/panel_style.dart';
@@ -110,7 +111,9 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (activeFleets.isEmpty)
+        if (activeFleets.isEmpty && PanelStyleScope.isFlat(context))
+          FlatEmptyText(strings.noActiveExpedition)
+        else if (activeFleets.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Center(

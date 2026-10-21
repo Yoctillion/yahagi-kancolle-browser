@@ -8,6 +8,7 @@ import 'package:yahagi_kancolle_browser/src/fleet/construction_summary_card.dart
 import 'package:yahagi_kancolle_browser/src/fleet/anchorage_repair_view.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/expedition_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/operation_progress.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/pre_sortie_check_summary.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/repair_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
@@ -1442,6 +1443,27 @@ void main() {
         ),
       );
       expectFlatEmptyText(tester, find.text(l10n.questsNeedSync));
+      await pumpFlat(
+        tester,
+        ExpeditionSummaryCard(
+          controller: empty,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenExpedition: () {},
+          onOpenExpeditionCheck: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.noActiveExpedition));
+      await pumpFlat(
+        tester,
+        PreSortieCheckSummary(
+          controller: empty,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenFleet: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.noSortieWarnings));
     });
 
     testWidgets('任务行仍可点击', (tester) async {

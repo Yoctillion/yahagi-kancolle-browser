@@ -5,6 +5,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import 'dashboard_card.dart';
+import '../layout/flat_empty_text.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/flat_style.dart';
 import '../layout/flat_text_toggle.dart';
@@ -136,12 +137,13 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
     final warnings = _generateWarnings(state, l10n);
     final flat = PanelStyleScope.isFlat(context);
     if (warnings.isEmpty) {
+      if (flat) return FlatEmptyText(l10n.noSortieWarnings);
       return Center(
         child: Text(
           l10n.noSortieWarnings,
-          style: TextStyle(
-            color: const Color(0xff8197a5),
-            fontSize: flat ? flatRowFontSize : 13,
+          style: const TextStyle(
+            color: Color(0xff8197a5),
+            fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -270,11 +272,25 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
 
   Widget _buildMapsGaugeView(GameState state, AppLocalizations l10n) {
     final flat = PanelStyleScope.isFlat(context);
-    final emptyFontSize = flat ? flatRowFontSize : 13.0;
     final allGauges = state.memberMapInfos.values
         .where((m) => m.hasGauge)
         .toList();
 
+    if (allGauges.isEmpty && flat) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FlatEmptyText(l10n.noMapGaugeData),
+          Text(
+            l10n.noMapGaugeDataHint,
+            style: const TextStyle(
+              color: Color(0xff4a5c68),
+              fontSize: flatRowFontSize,
+            ),
+          ),
+        ],
+      );
+    }
     if (allGauges.isEmpty) {
       return Center(
         child: Padding(
@@ -284,9 +300,9 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
             children: [
               Text(
                 l10n.noMapGaugeData,
-                style: TextStyle(
-                  color: const Color(0xff8197a5),
-                  fontSize: emptyFontSize,
+                style: const TextStyle(
+                  color: Color(0xff8197a5),
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
