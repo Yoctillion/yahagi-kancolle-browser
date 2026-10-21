@@ -493,7 +493,8 @@ class _CompactBattlePanel extends StatelessWidget {
     final enemyName = rawEnemyName;
     final enemyCombined =
         battle.enemyEscort.isNotEmpty || rawEnemyName.contains('联合舰队');
-    final metaChips = _compactMetaChips(battle);
+    // Flat shows the engagement on the formation line above the fleets.
+    final metaChips = _compactMetaChips(battle, includeEngagement: !flat);
     final statusPills = <Widget>[
       for (final label in battle.context.nodeTypeLabels)
         NodeTypePill(label: label),
@@ -543,8 +544,17 @@ class _CompactBattlePanel extends StatelessWidget {
                             battle: battle,
                             nodeLabel: battle.context.forecastNodeLabel,
                             metaChips: metaChips,
-                            dropEntries: dropEntries,
+                            showRewards: false,
+                            maxLines: 2,
                           ),
+                          if (dropEntries.isNotEmpty ||
+                              battle.rewardItems.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 2),
+                            BattleDropLine(
+                              dropEntries: dropEntries,
+                              rewardItems: battle.rewardItems,
+                            ),
+                          ],
                         ] else if (statusPills.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 5),
                           Wrap(
@@ -654,7 +664,7 @@ class _CompactFleetGrid extends StatelessWidget {
         ),
       );
     }
-    return Row(
+    final grid = Row(
       key: const Key('compact-fleet-grid'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -673,12 +683,14 @@ class _CompactFleetGrid extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _CompactFleetSideTitle(
-                  keyName: 'friend',
-                  title: '我方舰队$friendFormation',
-                  color: const Color(0xff70c7bc),
-                ),
-                const SizedBox(height: 4),
+                if (!flat) ...<Widget>[
+                  _CompactFleetSideTitle(
+                    keyName: 'friend',
+                    title: '我方舰队$friendFormation',
+                    color: const Color(0xff70c7bc),
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -712,12 +724,14 @@ class _CompactFleetGrid extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _CompactFleetSideTitle(
-                  keyName: 'enemy',
-                  title: '敌方舰队$enemyFormation',
-                  color: const Color(0xffff8c78),
-                ),
-                const SizedBox(height: 4),
+                if (!flat) ...<Widget>[
+                  _CompactFleetSideTitle(
+                    keyName: 'enemy',
+                    title: '敌方舰队$enemyFormation',
+                    color: const Color(0xffff8c78),
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -736,6 +750,140 @@ class _CompactFleetGrid extends StatelessWidget {
           ),
         ),
       ],
+    );
+    if (!flat) return grid;
+    final strings = BattleDetailStrings.of(context);
+    final formationLine = _FlatFormationLine(
+      key: const Key('compact-formation-line'),
+      friend: battle.friendFormation > 0
+          ? strings.localize(formationLabel(battle.friendFormation))
+          : null,
+      engagement: battle.engagement > 0
+          ? strings.localize(engagementLabel(battle.engagement))
+          : null,
+      enemy: battle.enemyFormation > 0
+          ? strings.localize(formationLabel(battle.enemyFormation))
+          : null,
+    );
+    if (formationLine.isEmpty) return grid;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[formationLine, const SizedBox(height: 2), grid],
+    );
+  }
+}
+
+/// Replaces the two flat side titles: friend formation, engagement and enemy
+/// formation in one line, falling back to centered wrapping text rather than
+/// truncating any of them.
+class _FlatFormationLine extends StatelessWidget {
+  const _FlatFormationLine({
+    super.key,
+    required this.friend,
+    required this.engagement,
+    required this.enemy,
+  });
+
+  final String? friend;
+  final String? engagement;
+  final String? enemy;
+
+  bool get isEmpty => friend == null && engagement == null && enemy == null;
+
+  static const double _gap = 8;
+  static const TextStyle _baseStyle = TextStyle(
+    fontSize: 10.5,
+    fontWeight: FontWeight.w700,
+  );
+  static const TextStyle _friendStyle = TextStyle(color: Color(0xff70c7bc));
+  static const TextStyle _engagementStyle = TextStyle(color: Color(0xffdfe8ee));
+  static const TextStyle _enemyStyle = TextStyle(color: Color(0xffff8c78));
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final locale = Localizations.maybeLocaleOf(context);
+    final textDirection = Directionality.of(context);
+    final measureStyle = DefaultTextStyle.of(context).style.merge(_baseStyle);
+    double widthOf(String? text) {
+      if (text == null) return 0;
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: measureStyle),
+        textDirection: textDirection,
+        textScaler: textScaler,
+        locale: locale,
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    Widget label(String? text, TextStyle style) => text == null
+        ? const SizedBox.shrink()
+        : Text(text, maxLines: 1, style: _baseStyle.merge(style));
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final friendWidth = widthOf(friend);
+        final enemyWidth = widthOf(enemy);
+        if (engagement != null) {
+          // Equal side slots keep the engagement centered over the gap
+          // between the fleets.
+          final side = (maxWidth - widthOf(engagement)) / 2 - _gap;
+          if (friendWidth <= side && enemyWidth <= side) {
+            return Row(
+              children: <Widget>[
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: label(friend, _friendStyle),
+                  ),
+                ),
+                const SizedBox(width: _gap),
+                label(engagement, _engagementStyle),
+                const SizedBox(width: _gap),
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: label(enemy, _enemyStyle),
+                  ),
+                ),
+              ],
+            );
+          }
+        } else if (friendWidth + _gap + enemyWidth <= maxWidth) {
+          return Row(
+            children: <Widget>[
+              label(friend, _friendStyle),
+              const Spacer(),
+              label(enemy, _enemyStyle),
+            ],
+          );
+        }
+        final segments = <(String, TextStyle)>[
+          if (friend != null) (friend!, _friendStyle),
+          if (engagement != null) (engagement!, _engagementStyle),
+          if (enemy != null) (enemy!, _enemyStyle),
+        ];
+        return Text.rich(
+          TextSpan(
+            style: _baseStyle,
+            children: <InlineSpan>[
+              for (var index = 0; index < segments.length; index++) ...[
+                if (index > 0)
+                  const TextSpan(
+                    text: ' · ',
+                    style: TextStyle(color: Color(0xff8197a5)),
+                  ),
+                TextSpan(text: segments[index].$1, style: segments[index].$2),
+              ],
+            ],
+          ),
+          textAlign: TextAlign.center,
+        );
+      },
     );
   }
 }
@@ -942,13 +1090,16 @@ class _CompactBarRow extends StatelessWidget {
   }
 }
 
-List<(String, Color)> _compactMetaChips(LiveBattle battle) {
+List<(String, Color)> _compactMetaChips(
+  LiveBattle battle, {
+  required bool includeEngagement,
+}) {
   return <(String, Color)>[
     if (battle.context.combinedFleetType != CombinedFleetType.none)
       (battle.context.combinedFleetType.label, const Color(0xff70c7bc)),
     if (!battle.context.nodeTypeLabels.contains(battle.phaseLabel))
       (battle.phaseLabel, battlePhaseChipColor(battle.phaseLabel)),
-    if (battle.engagement > 0)
+    if (includeEngagement && battle.engagement > 0)
       (
         engagementLabel(battle.engagement),
         engagementChipColor(battle.engagement),

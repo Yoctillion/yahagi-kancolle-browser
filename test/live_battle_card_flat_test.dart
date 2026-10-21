@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
+import 'package:yahagi_kancolle_browser/src/battle/battle_detail_strings.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_node_label_resolver.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_pills.dart';
 import 'package:yahagi_kancolle_browser/src/battle/fcd_map_dataset.dart';
@@ -18,6 +20,24 @@ import 'fixtures/kcsapi_fixtures.dart';
 
 const _mapSection = Key('sortie-map-section');
 const _tagLine = Key('battle-navigation-tag-line');
+const _formationLine = Key('compact-formation-line');
+const _dropLine = Key('battle-drop-line');
+const _battleTagLine = Key('battle-tag-line');
+const _appFont = 'HarmonyOS_Sans_SC';
+
+final _battleWithoutFormation = kcsapiEvent(
+  '/kcsapi/api_req_sortie/battle',
+  <String, Object?>{
+    'api_deck_id': 1,
+    'api_f_nowhps': <int>[30, 15],
+    'api_f_maxhps': <int>[30, 15],
+    'api_e_nowhps': <int>[20, 10],
+    'api_e_maxhps': <int>[20, 10],
+    'api_ship_ke': <int>[501, 502],
+    'api_ship_lv': <int>[1, 1],
+  },
+  sequence: 21,
+);
 
 const _pillKeys = <Key>[
   Key('node-type-pill'),
@@ -79,6 +99,18 @@ final _resourceNavigation = kcsapiEvent(
   },
   sequence: 8801,
 );
+
+List<RenderParagraph> _paragraphsUnder(WidgetTester tester, Finder root) =>
+    tester
+        .renderObjectList<RenderParagraph>(
+          find.descendant(of: root, matching: find.byType(RichText)),
+        )
+        .toList();
+
+String _plainTextUnder(WidgetTester tester, Finder root) => _paragraphsUnder(
+  tester,
+  root,
+).map((paragraph) => paragraph.text.toPlainText()).join('\n');
 
 TextSpan? _spanWithText(InlineSpan root, String text) {
   TextSpan? found;
@@ -146,10 +178,12 @@ void main() {
     bool compact = true,
     double width = 320,
     Locale locale = const Locale('zh'),
+    String? fontFamily,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: locale,
+        theme: fontFamily == null ? null : ThemeData(fontFamily: fontFamily),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -426,5 +460,175 @@ void main() {
         );
       });
     }
+  });
+
+  group('flat battle result', () {
+    setUpAll(() async {
+      await (FontLoader(
+        _appFont,
+      )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
+    });
+
+    Future<BattleController> resultController() async {
+      final controller = createController();
+      await send(controller, mapStartEvent);
+      await send(controller, dayBattleEvent);
+      await send(controller, battleResultEvent);
+      return controller;
+    }
+
+    for (final locale in const [Locale('zh'), Locale('en')]) {
+      final strings = BattleDetailStrings.forLocale(locale);
+      final engagement = strings.localize('同航战');
+      final formation = strings.localize('单纵阵');
+      for (final width in const <double>[170, 210]) {
+        testWidgets('engagement, drop and tags stay whole at $width dp '
+            '(${locale.languageCode})', (tester) async {
+          final controller = await resultController();
+
+          await pumpCard(
+            tester,
+            controller,
+            width: width,
+            locale: locale,
+            fontFamily: _appFont,
+          );
+
+          expect(tester.takeException(), isNull);
+          expect(
+            find.byKey(const Key('compact-fleet-side-title-friend')),
+            findsNothing,
+          );
+          expect(
+            find.byKey(const Key('compact-fleet-side-title-enemy')),
+            findsNothing,
+          );
+          final line = find.byKey(_formationLine);
+          expect(line, findsOneWidget);
+          final lineText = _plainTextUnder(tester, line);
+          expect(lineText, contains(engagement));
+          expect(lineText, contains(formation));
+          for (final paragraph in _paragraphsUnder(tester, line)) {
+            expect(paragraph.didExceedMaxLines, isFalse);
+          }
+
+          final drop = find.byKey(_dropLine);
+          expect(drop, findsOneWidget);
+          final dropText = tester.widget<Text>(
+            find.descendant(of: drop, matching: find.byType(Text)),
+          );
+          expect(dropText.maxLines, isNull);
+          expect(dropText.overflow, isNot(TextOverflow.ellipsis));
+          final dropPlain = _plainTextUnder(tester, drop);
+          if (locale.languageCode == 'zh') {
+            expect(dropPlain, contains('掉落：吹雪'));
+          } else {
+            expect(dropPlain, contains('Drop: '));
+          }
+          expect(dropPlain, contains(' ×1'));
+          for (final paragraph in _paragraphsUnder(tester, drop)) {
+            expect(paragraph.didExceedMaxLines, isFalse);
+          }
+
+          final tags = find.byKey(_battleTagLine);
+          final tagText = _plainTextUnder(tester, tags);
+          expect(tagText, isNot(contains(engagement)));
+          expect(tagText, isNot(contains(dropPlain)));
+          // The tag line may still ellipsize its tail (the phase at 170 dp in
+          // English), but never the air state.
+          final tagParagraph = _paragraphsUnder(tester, tags).single;
+          final air = lookupAppLocalizations(
+            locale,
+          ).airStateLabel(strings.localize('未知'));
+          final airStart = tagText.indexOf(air);
+          expect(airStart, isNonNegative);
+          final visibleEnd = tagParagraph
+              .getPositionForOffset(
+                Offset(tagParagraph.size.width, tagParagraph.size.height - 1),
+              )
+              .offset;
+          expect(visibleEnd, greaterThanOrEqualTo(airStart + air.length));
+          expect(
+            find.descendant(
+              of: find.byKey(const Key('battle-rank-badge')),
+              matching: find.text('S'),
+            ),
+            findsOneWidget,
+          );
+        });
+      }
+    }
+
+    testWidgets('wide line aligns formations to the fleet edges', (
+      tester,
+    ) async {
+      final controller = await resultController();
+
+      await pumpCard(tester, controller, width: 360, fontFamily: _appFont);
+
+      final line = find.byKey(_formationLine);
+      final grid = find.byKey(const Key('compact-fleet-grid'));
+      final formations = find.descendant(of: line, matching: find.text('单纵阵'));
+      expect(formations, findsNWidgets(2));
+      final engagement = find.descendant(of: line, matching: find.text('同航战'));
+      expect(engagement, findsOneWidget);
+      expect(
+        tester.getTopLeft(formations.first).dx,
+        tester.getTopLeft(grid).dx,
+      );
+      expect(
+        tester.getTopRight(formations.last).dx,
+        moreOrLessEquals(tester.getTopRight(grid).dx),
+      );
+      expect(
+        tester.getCenter(engagement).dx,
+        moreOrLessEquals(tester.getCenter(grid).dx),
+      );
+      final engagementStyle = tester.widget<Text>(engagement).style!;
+      expect(engagementStyle.color, const Color(0xffdfe8ee));
+      expect(engagementStyle.fontSize, 10.5);
+      expect(engagementStyle.fontWeight, FontWeight.w700);
+      expect(
+        tester.widget<Text>(formations.first).style!.color,
+        const Color(0xff70c7bc),
+      );
+      expect(
+        tester.widget<Text>(formations.last).style!.color,
+        const Color(0xffff8c78),
+      );
+      final dropText = tester.widget<Text>(
+        find.descendant(of: find.byKey(_dropLine), matching: find.byType(Text)),
+      );
+      expect(dropText.style!.color, const Color(0xffd4a85f));
+      expect(dropText.style!.fontSize, 10.5);
+      expect(dropText.style!.fontWeight, FontWeight.w600);
+    });
+
+    testWidgets('line is omitted when formations and engagement are unknown', (
+      tester,
+    ) async {
+      final controller = createController();
+      await send(controller, mapStartEvent);
+      await send(controller, _battleWithoutFormation);
+
+      await pumpCard(tester, controller);
+
+      expect(find.byKey(const Key('compact-fleet-grid')), findsOneWidget);
+      expect(find.byKey(_formationLine), findsNothing);
+      expect(find.byKey(_dropLine), findsNothing);
+    });
+
+    testWidgets('non-flat compact keeps the side titles', (tester) async {
+      final controller = await resultController();
+
+      await pumpCard(tester, controller, flat: false);
+
+      expect(
+        find.byKey(const Key('compact-fleet-side-title-friend')),
+        findsOneWidget,
+      );
+      expect(find.byKey(_formationLine), findsNothing);
+      expect(find.byKey(_dropLine), findsNothing);
+    });
   });
 }

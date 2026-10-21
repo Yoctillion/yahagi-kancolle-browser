@@ -64,8 +64,8 @@ class AdaptiveBattleHeader extends StatelessWidget {
   }
 }
 
-/// Flat-style replacement for the status pill row: one ellipsized line of
-/// plain text, with only the keyword segments colored.
+/// Flat-style replacement for the status pill row: ellipsized plain text,
+/// with only the keyword segments colored.
 class BattleTagLine extends StatelessWidget {
   const BattleTagLine({
     super.key = const Key('battle-tag-line'),
@@ -73,12 +73,16 @@ class BattleTagLine extends StatelessWidget {
     required this.nodeLabel,
     this.metaChips = const <(String, Color)>[],
     this.dropEntries = const <String>[],
+    this.showRewards = true,
+    this.maxLines = 1,
   });
 
   final LiveBattle battle;
   final String nodeLabel;
   final List<(String, Color)> metaChips;
   final List<String> dropEntries;
+  final bool showRewards;
+  final int maxLines;
 
   static const Color _airColor = Color(0xff7fd6c8);
   static const Color _engagementColor = Color(0xffdfe8ee);
@@ -111,7 +115,7 @@ class BattleTagLine extends StatelessWidget {
           chip.$1 == engagement ? _engagementColor : _otherColor,
         ),
       for (final entry in dropEntries) (entry, _rewardColor),
-      if (battle.rewardItems.isNotEmpty)
+      if (showRewards && battle.rewardItems.isNotEmpty)
         (_rewardItemsText(battle.rewardItems), _rewardColor),
     ];
     const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
@@ -132,8 +136,36 @@ class BattleTagLine extends StatelessWidget {
           ],
         ],
       ),
-      maxLines: 1,
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+/// Drops and rewards split out of [BattleTagLine] so they wrap instead of
+/// being the first thing its ellipsis cuts off.
+class BattleDropLine extends StatelessWidget {
+  const BattleDropLine({
+    super.key = const Key('battle-drop-line'),
+    required this.dropEntries,
+    required this.rewardItems,
+  });
+
+  final List<String> dropEntries;
+  final List<BattleRewardItem> rewardItems;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      <String>[
+        ...dropEntries,
+        if (rewardItems.isNotEmpty) _rewardItemsText(rewardItems),
+      ].join(' · '),
+      style: const TextStyle(
+        color: Color(0xffd4a85f),
+        fontSize: 10.5,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }

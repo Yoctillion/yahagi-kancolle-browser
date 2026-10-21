@@ -202,7 +202,7 @@ class DashboardCard extends StatelessWidget {
                 ),
                 if (!collapsed && titleBadge != null) ...[
                   const SizedBox(width: 8),
-                  fit(titleBadge!, 22, Alignment.centerLeft),
+                  Flexible(child: fit(titleBadge!, 22, Alignment.centerLeft)),
                 ],
                 if (_showSummary(true)) ...[
                   const SizedBox(width: 8),
@@ -211,13 +211,19 @@ class DashboardCard extends StatelessWidget {
               ],
             ),
           )
-        else ...[
+        else if (!collapsed && titleBadge != null) ...[
+          // A Flexible badge next to a Spacer would split the free space and
+          // leave a gap after the trailing controls; Align keeps it flush.
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              heightFactor: 1,
+              child: fit(titleBadge!, 22, Alignment.centerRight),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ] else
           const Spacer(),
-          if (!collapsed && titleBadge != null) ...[
-            fit(titleBadge!, 22, Alignment.centerRight),
-            const SizedBox(width: 8),
-          ],
-        ],
         if (!collapsed && trailing != null) ...[
           fit(trailing!, 22, Alignment.centerRight),
           const SizedBox(width: 3),
