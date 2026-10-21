@@ -215,14 +215,15 @@ void main() {
 
   String mapSummary(WidgetTester tester) {
     final toggle = find.byKey(const Key('sortie-map-toggle'));
-    final texts = tester
+    // The summary is the single-line end-aligned Text; the "map needs an
+    // update" notice is end-aligned too but allows two lines.
+    final summary = tester
         .widgetList<Text>(
           find.descendant(of: toggle, matching: find.byType(Text)),
         )
-        .map((text) => text.data ?? '')
-        .toList();
-    // The first Text is the section title; the summary follows it.
-    return texts[1];
+        .where((text) => text.textAlign == TextAlign.end && text.maxLines == 1)
+        .single;
+    return summary.data ?? '';
   }
 
   group('flat navigation header', () {
@@ -432,17 +433,25 @@ void main() {
         final preview = find.byKey(const Key('official-enemy-preview'));
         expect(tester.widget<Container>(preview).decoration, isNull);
         final fleets = find.byKey(const Key('navigation-friendly-fleets'));
-        for (final container in tester.widgetList<Container>(
-          find.descendant(of: fleets, matching: find.byType(Container)),
-        )) {
+        final containers = tester
+            .widgetList<Container>(
+              find.descendant(of: fleets, matching: find.byType(Container)),
+            )
+            .toList();
+        expect(containers, isNotEmpty);
+        for (final container in containers) {
           final decoration = container.decoration;
           if (decoration is BoxDecoration) {
             expect(decoration.color, isNot(const Color(0xff10212e)));
           }
         }
-        for (final divider in tester.widgetList<Divider>(
-          find.descendant(of: fleets, matching: find.byType(Divider)),
-        )) {
+        final dividers = tester
+            .widgetList<Divider>(
+              find.descendant(of: fleets, matching: find.byType(Divider)),
+            )
+            .toList();
+        expect(dividers, isNotEmpty);
+        for (final divider in dividers) {
           expect(divider.color, const Color(0xff1b3142));
         }
         // Sections stack at the flat 4 dp rhythm.
@@ -600,6 +609,18 @@ void main() {
       expect(dropText.style!.color, const Color(0xffd4a85f));
       expect(dropText.style!.fontSize, 10.5);
       expect(dropText.style!.fontWeight, FontWeight.w600);
+      expect(
+        tester
+                .getTopLeft(
+                  find.descendant(
+                    of: find.byKey(_dropLine),
+                    matching: find.byType(Text),
+                  ),
+                )
+                .dy -
+            tester.getBottomLeft(find.byKey(_battleTagLine)).dy,
+        2,
+      );
     });
 
     testWidgets('without engagement the formations keep the fleet edges', (
@@ -658,7 +679,11 @@ void main() {
 
       expect(find.byKey(const Key('compact-fleet-grid')), findsOneWidget);
       expect(find.byKey(_formationLine), findsNothing);
-      expect(find.byKey(_dropLine), findsNothing);
+      expect(
+        find.descendant(of: find.byKey(_dropLine), matching: find.byType(Text)),
+        findsNothing,
+      );
+      expect(tester.getSize(find.byKey(_dropLine)).height, 0);
     });
 
     testWidgets('non-flat compact keeps the side titles', (tester) async {

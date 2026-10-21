@@ -233,23 +233,10 @@ class _NavigationOverview extends StatelessWidget {
               spacing: 6,
               runSpacing: 4,
               alignment: WrapAlignment.end,
-              children: [
-                if (showLastFormationHint && battle.lastFormation != null)
-                  LastFormationPill(formation: battle.lastFormation!),
-                if (battle.context.combinedFleetType != CombinedFleetType.none)
-                  MetaChip(
-                    label: battle.context.combinedFleetType.label,
-                    color: const Color(0xff70c7bc),
-                  ),
-                if (battle.resourceChanges.isNotEmpty)
-                  ResourceChangesPill(changes: battle.resourceChanges),
-                if (battle.rewardItems.isNotEmpty)
-                  RewardItemsPill(items: battle.rewardItems),
-                if (battle.resourceChanges.isEmpty &&
-                    battle.rewardItems.isEmpty)
-                  for (final label in battle.context.nodeTypeLabels)
-                    NodeTypePill(label: label),
-              ],
+              children: navigationHeaderPills(
+                battle,
+                showLastFormationHint: showLastFormationHint,
+              ),
             ),
           ),
         ],

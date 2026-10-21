@@ -415,25 +415,10 @@ class _CompactBattlePanel extends StatelessWidget {
                       spacing: 5,
                       runSpacing: 4,
                       alignment: WrapAlignment.end,
-                      children: <Widget>[
-                        if (showLastFormationHint &&
-                            battle.lastFormation != null)
-                          LastFormationPill(formation: battle.lastFormation!),
-                        if (battle.context.combinedFleetType !=
-                            CombinedFleetType.none)
-                          MetaChip(
-                            label: battle.context.combinedFleetType.label,
-                            color: const Color(0xff70c7bc),
-                          ),
-                        if (battle.resourceChanges.isNotEmpty)
-                          ResourceChangesPill(changes: battle.resourceChanges),
-                        if (battle.rewardItems.isNotEmpty)
-                          RewardItemsPill(items: battle.rewardItems),
-                        if (battle.resourceChanges.isEmpty &&
-                            battle.rewardItems.isEmpty)
-                          for (final label in battle.context.nodeTypeLabels)
-                            NodeTypePill(label: label),
-                      ],
+                      children: navigationHeaderPills(
+                        battle,
+                        showLastFormationHint: showLastFormationHint,
+                      ),
                     ),
                   ),
                 ],
@@ -543,18 +528,12 @@ class _CompactBattlePanel extends StatelessWidget {
                           BattleTagLine(
                             battle: battle,
                             nodeLabel: battle.context.forecastNodeLabel,
-                            metaChips: metaChips,
-                            showRewards: false,
-                            maxLines: 2,
+                            metaLabels: [for (final chip in metaChips) chip.$1],
                           ),
-                          if (dropEntries.isNotEmpty ||
-                              battle.rewardItems.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 2),
-                            BattleDropLine(
-                              dropEntries: dropEntries,
-                              rewardItems: battle.rewardItems,
-                            ),
-                          ],
+                          BattleDropLine(
+                            dropEntries: dropEntries,
+                            rewardItems: battle.rewardItems,
+                          ),
                         ] else if (statusPills.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 5),
                           Wrap(
@@ -872,11 +851,7 @@ class _FlatFormationLine extends StatelessWidget {
             style: _baseStyle,
             children: <InlineSpan>[
               for (var index = 0; index < segments.length; index++) ...[
-                if (index > 0)
-                  const TextSpan(
-                    text: ' · ',
-                    style: TextStyle(color: Color(0xff8197a5)),
-                  ),
+                if (index > 0) flatSegmentSeparator,
                 TextSpan(text: segments[index].$1, style: segments[index].$2),
               ],
             ],
