@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../layout/dashboard_editing_scope.dart';
 import '../layout/flat_collapse_chevron.dart';
 import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
@@ -275,13 +276,14 @@ class DashboardCard extends StatelessWidget {
           const SizedBox(width: 3),
         ],
         if (headerAction != null) fit(headerAction!, 24, Alignment.center),
-        FlatCollapseChevron(
-          key: collapseButtonKey,
-          collapsed: collapsed,
-          label: _collapseLabel(context),
-          onTap: onToggleCollapse,
-          width: _flatChevronWidth,
-        ),
+        if (!DashboardEditingScope.isEditing(context))
+          FlatCollapseChevron(
+            key: collapseButtonKey,
+            collapsed: collapsed,
+            label: _collapseLabel(context),
+            onTap: onToggleCollapse,
+            width: _flatChevronWidth,
+          ),
       ],
     );
   }

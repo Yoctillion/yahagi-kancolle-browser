@@ -22,6 +22,7 @@ import '../performance/second_tick_scope.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
 import '../settings/battle_status_effect_settings.dart';
+import '../settings/module_display_settings.dart';
 import 'fleet_air_power_details.dart';
 import 'morale_recovery_display.dart';
 import 'morale_recovery_timer_controller.dart';
@@ -147,20 +148,14 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
               showTitle: widget.showTitle,
               headerAction: widget.onOpenDisplaySettings == null
                   ? null
-                  : IconButton(
+                  : displaySettingsGear(
+                      context,
                       key: const Key('fleet-display-settings-button'),
-                      tooltip: fleetText(context, '编队简报显示内容'),
-                      constraints: const BoxConstraints(
-                        minWidth: 36,
-                        minHeight: 36,
+                      tooltip: fleetText(
+                        context,
+                        FleetUiKeys.fleetSummaryDisplay,
                       ),
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.settings_outlined,
-                        size: 19,
-                        color: Color(0xffd4a85f),
-                      ),
-                      onPressed: widget.onOpenDisplaySettings,
+                      onPressed: widget.onOpenDisplaySettings!,
                     ),
               trailing: twoColumns
                   ? SizedBox(width: 108, child: fleetSwitcher)

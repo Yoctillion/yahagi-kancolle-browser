@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../fleet/fleet_ui_strings.dart';
 import '../layout/flat_empty_text.dart';
+import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import 'fleet_display_options.dart';
 import 'layout_settings_controller.dart';
@@ -38,21 +39,45 @@ Widget? moduleDisplayGear(
   VoidCallback? onPressed,
 ) => onPressed == null
     ? null
-    : IconButton(
+    : displaySettingsGear(
+        context,
         key: Key('$module-display-settings-button'),
         tooltip: fleetText(
           context,
           moduleDisplayTitles[module] ?? FleetUiKeys.displayContent,
         ),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        padding: EdgeInsets.zero,
-        icon: const Icon(
-          Icons.settings_outlined,
-          size: 19,
-          color: Color(0xffd4a85f),
-        ),
         onPressed: onPressed,
       );
+
+// 扁平标题行只有 24 高，M3 默认把点击区撑到 48，会被标题行连图标一起缩成一半。
+Widget displaySettingsGear(
+  BuildContext context, {
+  required Key key,
+  required String tooltip,
+  required VoidCallback onPressed,
+}) {
+  final flat = PanelStyleScope.isFlat(context);
+  return IconButton(
+    key: key,
+    tooltip: tooltip,
+    constraints: flat
+        ? const BoxConstraints.tightFor(
+            width: flatHeaderHeight,
+            height: flatHeaderHeight,
+          )
+        : const BoxConstraints(minWidth: 36, minHeight: 36),
+    style: flat
+        ? const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap)
+        : null,
+    padding: EdgeInsets.zero,
+    icon: Icon(
+      Icons.settings_outlined,
+      size: flat ? flatActionIconSize : 19,
+      color: const Color(0xffd4a85f),
+    ),
+    onPressed: onPressed,
+  );
+}
 
 Future<void> showModuleDisplaySettings(
   BuildContext context,

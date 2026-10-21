@@ -4310,36 +4310,39 @@ class _InformationPanelState extends State<_InformationPanel> {
             final modules = validCards
                 .where((id) => !widget.excludedModules.contains(id))
                 .toList();
-            return DashboardEditor(
-              modules: modules,
-              hidden: hiddenIds,
-              cardBuilder: buildCard,
-              onToggle: (id) => widget.hd
-                  ? controller.toggleHdModuleHidden(id)
-                  : controller.toggleDashboardCardHidden(id),
-              onReset: () => widget.hd
-                  ? controller.resetHdLayout()
-                  : controller.resetDashboardCardOrder(),
-              onDone: () => widget.hd
-                  ? widget.onHdEditingChanged?.call(false)
-                  : setState(() => _isEditing = false),
-              onMove: (id, target, after) {
-                if (widget.hd) {
-                  controller.moveHdModuleToSidebar(
-                    id,
-                    target: target,
-                    after: after,
-                  );
-                } else {
-                  final order = [...validCards]..remove(id);
-                  final index = target == null ? -1 : order.indexOf(target);
-                  order.insert(
-                    index < 0 ? order.length : index + (after ? 1 : 0),
-                    id,
-                  );
-                  controller.setDashboardCardOrder(order);
-                }
-              },
+            return PanelStyleScope(
+              style: flat ? PanelStyle.flat : PanelStyle.card,
+              child: DashboardEditor(
+                modules: modules,
+                hidden: hiddenIds,
+                cardBuilder: buildCard,
+                onToggle: (id) => widget.hd
+                    ? controller.toggleHdModuleHidden(id)
+                    : controller.toggleDashboardCardHidden(id),
+                onReset: () => widget.hd
+                    ? controller.resetHdLayout()
+                    : controller.resetDashboardCardOrder(),
+                onDone: () => widget.hd
+                    ? widget.onHdEditingChanged?.call(false)
+                    : setState(() => _isEditing = false),
+                onMove: (id, target, after) {
+                  if (widget.hd) {
+                    controller.moveHdModuleToSidebar(
+                      id,
+                      target: target,
+                      after: after,
+                    );
+                  } else {
+                    final order = [...validCards]..remove(id);
+                    final index = target == null ? -1 : order.indexOf(target);
+                    order.insert(
+                      index < 0 ? order.length : index + (after ? 1 : 0),
+                      id,
+                    );
+                    controller.setDashboardCardOrder(order);
+                  }
+                },
+              ),
             );
           }
 

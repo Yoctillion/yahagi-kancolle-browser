@@ -59,6 +59,7 @@ import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_completion_feedback.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_completion_drawer.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
 const _phoneLandscape = Size(873, 393);
@@ -2570,6 +2571,29 @@ void main() {
         }
       });
     }
+    testWidgets('极简档模块编辑列表用扁平开关和顶栏', (tester) async {
+      await _pumpMinimalShell(tester);
+      await tester.longPress(find.byKey(const ValueKey('fleet')));
+      await tester.pumpAndSettle();
+      expect(find.byType(Checkbox), findsNothing);
+      expect(
+        find.byKey(const Key('dashboard-visibility-fleet')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('dashboard-edit-bar')), findsOneWidget);
+      expect(
+        tester
+            .getRect(
+              find.descendant(
+                of: find.byKey(const Key('fleet-display-settings-button')),
+                matching: find.byIcon(Icons.settings_outlined),
+              ),
+            )
+            .size,
+        const Size.square(flatActionIconSize),
+      );
+      expect(tester.takeException(), isNull);
+    });
     testWidgets(
       'minimal landscape game page hides header and shows menu button',
       (tester) async {
