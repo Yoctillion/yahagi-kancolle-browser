@@ -1,4 +1,3 @@
-import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -9,9 +8,11 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
+import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
+import 'battle_fleet_block.dart';
 import 'battle_models.dart';
 import 'battle_pills.dart';
 import 'battle_prediction_sections.dart';
@@ -401,50 +402,27 @@ class _FleetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.isFlat(context);
-    return Container(
-      decoration: flat
-          ? null
-          : BoxDecoration(
-              color: const Color(0xff10212e),
-              borderRadius: BorderRadius.circular(8),
-            ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: flat
-                ? const EdgeInsets.fromLTRB(0, 2, 0, 2)
-                : const EdgeInsets.fromLTRB(9, 7, 9, 5),
-            child: BattleUiText(
-              title,
-              style: TextStyle(
-                color: title.startsWith('敌')
-                    ? const Color(0xffff8c78)
-                    : const Color(0xff70c7bc),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
+    return BattleFleetBlock(
+      title: BattleUiText(
+        title,
+        style: battleFleetTitleStyle.copyWith(
+          color: title.startsWith('敌')
+              ? const Color(0xffff8c78)
+              : const Color(0xff70c7bc),
+        ),
+      ),
+      rows: [
+        for (var index = 0; index < ships.length; index++)
+          BattleShipDetailsTap(
+            ship: ships[index],
+            child: _BattleShipRow(
+              ship: ships[index],
+              absolutePosition: index + positionOffset,
+              isMvp: mvpPositions.contains(index + positionOffset),
+              damagePulseMode: damagePulseMode,
             ),
           ),
-          for (var index = 0; index < ships.length; index++) ...[
-            if (index > 0)
-              Divider(
-                height: 1,
-                color: flat ? flatDividerColor : const Color(0xff203746),
-              ),
-            BattleShipDetailsTap(
-              ship: ships[index],
-              child: _BattleShipRow(
-                ship: ships[index],
-                absolutePosition: index + positionOffset,
-                isMvp: mvpPositions.contains(index + positionOffset),
-                damagePulseMode: damagePulseMode,
-              ),
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }

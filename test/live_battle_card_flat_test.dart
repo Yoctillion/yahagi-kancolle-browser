@@ -431,7 +431,16 @@ void main() {
         await pumpCard(tester, controller, compact: compact);
 
         final preview = find.byKey(const Key('official-enemy-preview'));
-        expect(tester.widget<Container>(preview).decoration, isNull);
+        expect(
+          tester
+              .widget<Container>(
+                find
+                    .descendant(of: preview, matching: find.byType(Container))
+                    .first,
+              )
+              .decoration,
+          isNull,
+        );
         final fleets = find.byKey(const Key('navigation-friendly-fleets'));
         final containers = tester
             .widgetList<Container>(

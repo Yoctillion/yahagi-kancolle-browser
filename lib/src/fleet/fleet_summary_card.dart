@@ -1,4 +1,3 @@
-import '../layout/flat_style.dart';
 import '../settings/fleet_display_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +7,7 @@ import '../game_state/game_state.dart';
 import 'dashboard_card.dart';
 import 'separated_wrap.dart';
 import '../layout/flat_empty_text.dart';
+import '../layout/flat_style.dart';
 import '../layout/hd_dashboard_content.dart';
 import 'combat_mechanism.dart';
 import 'fleet_ship_minimal_row.dart';

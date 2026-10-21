@@ -1,10 +1,10 @@
-import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
 import 'battle_detail_strings.dart';
 import 'battle_ui_text.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import '../layout/flat_style.dart';
 import '../layout/module_summaries.dart';
 
 import 'battle_controller.dart';
@@ -639,90 +639,65 @@ class _CompactFleetGrid extends StatelessWidget {
         ),
       );
     }
+    Widget side(
+      String keyName,
+      String title,
+      Color color,
+      List<Widget> columns,
+    ) => Expanded(
+      flex: columns.length,
+      child: Container(
+        padding: flat ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        decoration: flat
+            ? null
+            : BoxDecoration(
+                color: const Color(0xff10212e),
+                borderRadius: BorderRadius.circular(8),
+              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (!flat) ...<Widget>[
+              _CompactFleetSideTitle(
+                keyName: keyName,
+                title: title,
+                color: color,
+              ),
+              const SizedBox(height: 4),
+            ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                for (
+                  var index = 0;
+                  index < columns.length;
+                  index++
+                ) ...<Widget>[
+                  if (index > 0) const SizedBox(width: 7),
+                  Expanded(child: columns[index]),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
     final grid = Row(
       key: const Key('compact-fleet-grid'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Expanded(
-          flex: friendColumns.length,
-          child: Container(
-            padding: flat
-                ? EdgeInsets.zero
-                : const EdgeInsets.fromLTRB(8, 6, 8, 6),
-            decoration: flat
-                ? null
-                : BoxDecoration(
-                    color: const Color(0xff10212e),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                if (!flat) ...<Widget>[
-                  _CompactFleetSideTitle(
-                    keyName: 'friend',
-                    title: '我方舰队$friendFormation',
-                    color: const Color(0xff70c7bc),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    for (
-                      var index = 0;
-                      index < friendColumns.length;
-                      index++
-                    ) ...<Widget>[
-                      if (index > 0) const SizedBox(width: 7),
-                      Expanded(child: friendColumns[index]),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
+        side(
+          'friend',
+          '我方舰队$friendFormation',
+          const Color(0xff70c7bc),
+          friendColumns,
         ),
         SizedBox(width: flat ? 6 : 7),
-        Expanded(
-          flex: enemyColumns.length,
-          child: Container(
-            padding: flat
-                ? EdgeInsets.zero
-                : const EdgeInsets.fromLTRB(8, 6, 8, 6),
-            decoration: flat
-                ? null
-                : BoxDecoration(
-                    color: const Color(0xff10212e),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                if (!flat) ...<Widget>[
-                  _CompactFleetSideTitle(
-                    keyName: 'enemy',
-                    title: '敌方舰队$enemyFormation',
-                    color: const Color(0xffff8c78),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    for (
-                      var index = 0;
-                      index < enemyColumns.length;
-                      index++
-                    ) ...<Widget>[
-                      if (index > 0) const SizedBox(width: 7),
-                      Expanded(child: enemyColumns[index]),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
+        side(
+          'enemy',
+          '敌方舰队$enemyFormation',
+          const Color(0xffff8c78),
+          enemyColumns,
         ),
       ],
     );

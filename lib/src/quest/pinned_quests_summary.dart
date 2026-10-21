@@ -1,10 +1,10 @@
-import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../fleet/dashboard_card.dart';
 import '../layout/flat_empty_text.dart';
+import '../layout/flat_style.dart';
 import '../layout/hd_dashboard_content.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/module_summaries.dart';
