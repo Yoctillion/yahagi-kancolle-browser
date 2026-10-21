@@ -78,9 +78,7 @@ import WebKit
   // 竖握着从主屏幕启动时启动图也直接是横的；运行时改由 Dart 的方向请求决定，
   // 否则「竖屏」设置切了布局，屏幕却转不过去。Dart 首次请求之前引擎默认允许全部方向，
   // 这段时间沿用 plist，免得启动瞬间先转成竖屏再转回来。
-  // FlutterAppDelegate 没实现这个可选方法，显式写 selector，避免子类推断出错的导出名。
-  @objc(application:supportedInterfaceOrientationsForWindow:)
-  func application(
+  override func application(
     _ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?
   ) -> UIInterfaceOrientationMask {
     return flutterOrientationMask ?? Self.declaredOrientationMask
