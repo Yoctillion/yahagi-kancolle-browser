@@ -40,6 +40,22 @@ class BackupArchiveOwnerTest {
         assertNull(owner(archive("""{"memberId":7,"memberId":null}""")))
     }
 
+    @Test fun readsVersionTwoOwnerWithSenkaPayload() {
+        val payload = """{"memberId":7,"tables":{},"compositions":[],"senka":{"memberId":7,"monthKey":"2026-10"}}"""
+        assertEquals(7, owner(archive(payload, version = 2)))
+    }
+
+    @Test fun keepsVersionOneOwnerContract() {
+        assertEquals(7, owner(archive("""{"memberId":7,"tables":{},"compositions":[]}""", version = 1)))
+    }
+
+    @Test fun rejectsUnsupportedOrNonNumericEnvelopeVersions() {
+        val payload = compressed("""{"memberId":7}""".toByteArray())
+        for (version in listOf<Any>(0, 3, "1", "2", 1.5, 2.5)) {
+            assertNull("Unsupported version $version", owner(envelope(payload, version)))
+        }
+    }
+
     @Test fun rejectsMalformedJsonAfterAnOtherwiseValidOwner() {
         assertNull(owner(archive("""{"memberId":7,"tables":[}""")))
         assertNull(owner(archive("""{"memberId":7} {"memberId":9}""")))
@@ -106,7 +122,8 @@ class BackupArchiveOwnerTest {
 
     private fun owner(bytes: ByteArray) = ownerMethod.invoke(handler, bytes) as Int?
 
-    private fun archive(json: String) = envelope(compressed(json.toByteArray()))
+    private fun archive(json: String, version: Int = 1) =
+        envelope(compressed(json.toByteArray()), version)
 
     private fun compressed(bytes: ByteArray): ByteArray {
         val output = ByteArrayOutputStream()
@@ -114,9 +131,9 @@ class BackupArchiveOwnerTest {
         return output.toByteArray()
     }
 
-    private fun envelope(compressed: ByteArray): ByteArray = JSONObject().apply {
+    private fun envelope(compressed: ByteArray, version: Any = 1): ByteArray = JSONObject().apply {
         put("format", "yahagi-record-backup")
-        put("version", 1)
+        put("version", version)
         put("sha256", MessageDigest.getInstance("SHA-256").digest(compressed)
             .joinToString("") { "%02x".format(it.toInt() and 0xff) })
         put("payload", Base64.encodeToString(compressed, Base64.NO_WRAP))

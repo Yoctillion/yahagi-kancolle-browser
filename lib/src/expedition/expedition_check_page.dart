@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../account/account_session.dart';
@@ -116,36 +117,45 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
     final english = s.languageCode == 'en';
     final title = Text(
       s.title,
-      maxLines: english ? 1 : null,
-      overflow: english ? TextOverflow.ellipsis : null,
-      style: const TextStyle(
-        color: Color(0xffd4a85f),
-        fontSize: 18,
-        fontWeight: FontWeight.w800,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xffd4a85f)),
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
     return Material(
-      color: const Color(0xff081521),
+      color: appColor(context, Color(0xff081521)),
       child: Column(
         children: [
           if (widget.showHeader)
             Container(
               height: 58,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: const BoxDecoration(
-                color: Color(0xff0d1a26),
-                border: Border(bottom: BorderSide(color: Color(0xff294052))),
+              decoration: BoxDecoration(
+                color: appColor(context, Color(0xff0d1a26)),
+                border: Border(
+                  bottom: BorderSide(
+                    color: appColor(context, Color(0xff294052)),
+                  ),
+                ),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) => Row(
                   children: [
                     IconButton(
+                      tooltip: s.back,
                       onPressed: widget.onBack,
                       icon: const Icon(Icons.arrow_back),
                     ),
-                    if (english) Expanded(child: title) else title,
-                    if (!english) const Spacer(),
-                    if (!english || constraints.maxWidth >= 600)
+                    Expanded(child: title),
+                    if (constraints.maxWidth /
+                            (MediaQuery.textScalerOf(context).scale(18) / 18) >=
+                        (english ? 600 : 360))
                       TextButton.icon(
                         onPressed: widget.onBack,
                         icon: const Icon(Icons.sports_esports_outlined),
@@ -196,9 +206,11 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: const BoxDecoration(
-            color: Color(0xff0a1823),
-            border: Border(bottom: BorderSide(color: Color(0xff294052))),
+          decoration: BoxDecoration(
+            color: appColor(context, Color(0xff0a1823)),
+            border: Border(
+              bottom: BorderSide(color: appColor(context, Color(0xff294052))),
+            ),
           ),
           child: FleetSwitcherBar(
             fleets: fleets,
@@ -451,8 +463,8 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
   Widget _panel(String title, Widget child) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: const Color(0xff142735),
-      border: Border.all(color: const Color(0xff294052)),
+      color: appColor(context, Color(0xff142735)),
+      border: Border.all(color: appColor(context, Color(0xff294052))),
       borderRadius: BorderRadius.circular(10),
     ),
     child: Column(
@@ -461,27 +473,56 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
     ),
   );
   Widget _infoRow(String label, String value, {Widget? icon}) {
-    final english = Localizations.localeOf(context).languageCode == 'en';
     final labelText = Text(
       label,
-      style: const TextStyle(
-        color: Color(0xff8fa8b6),
-        fontWeight: FontWeight.w700,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xff8fa8b6)),
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xff0b1d29),
+        color: appColor(context, Color(0xff0b1d29)),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        children: [
-          if (icon != null) ...[icon, const SizedBox(width: 6)],
-          if (english) Expanded(child: labelText) else labelText,
-          if (english) const SizedBox(width: 8) else const Spacer(),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final valueText = Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          );
+          final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+          if (constraints.maxWidth / textScale < 120) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    if (icon != null) ...[icon, const SizedBox(width: 6)],
+                    Expanded(child: labelText),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: valueText,
+                ),
+              ],
+            );
+          }
+          return Row(
+            children: [
+              if (icon != null) ...[icon, const SizedBox(width: 6)],
+              Expanded(child: labelText),
+              const SizedBox(width: 8),
+              valueText,
+            ],
+          );
+        },
       ),
     );
   }
@@ -496,7 +537,7 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
       key: const Key('expedition-estimated-completion'),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xff0b1d29),
+        color: appColor(context, const Color(0xff0b1d29)),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -504,9 +545,12 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
           Expanded(
             child: Text(
               strings.estimatedCompletionTime,
-              style: const TextStyle(
-                color: Color(0xff8fa8b6),
-                fontWeight: FontWeight.w700,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff8fa8b6)),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -527,10 +571,13 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
 
   Widget _sectionTitle(String text) => Text(
     text,
-    style: const TextStyle(
-      color: Color(0xffd4a85f),
-      fontSize: 13,
-      fontWeight: FontWeight.w800,
+    style: appTextStyle(
+      context,
+      TextStyle(
+        color: appColor(context, Color(0xffd4a85f)),
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+      ),
     ),
   );
 
@@ -544,7 +591,7 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xff0b1d29),
+              color: appColor(context, const Color(0xff0b1d29)),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -621,8 +668,8 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
                 )
               : UiText(
                   label ?? '道具',
-                  style: const TextStyle(
-                    color: Color(0xffa8bbc5),
+                  style: TextStyle(
+                    color: appColor(context, Color(0xffa8bbc5)),
                     fontSize: 12,
                   ),
                 );
@@ -638,8 +685,8 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
                 const SizedBox(width: 4),
                 UiText(
                   kindText,
-                  style: const TextStyle(
-                    color: Color(0xff7792a3),
+                  style: TextStyle(
+                    color: appColor(context, Color(0xff7792a3)),
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -678,34 +725,49 @@ class _ExpeditionCheckPageState extends State<ExpeditionCheckPage> {
       margin: const EdgeInsets.only(bottom: 5),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
       decoration: BoxDecoration(
-        color: condition.auxiliary && !condition.passed
-            ? const Color(0xff5a451b)
-            : const Color(0xff0b1f2b),
+        color: appColor(
+          context,
+          condition.auxiliary && !condition.passed
+              ? const Color(0xff5a451b)
+              : const Color(0xff0b1f2b),
+        ),
         borderRadius: BorderRadius.circular(5),
       ),
-      child: Row(
-        children: [
-          Text(
-            condition.passed
-                ? '✓'
-                : condition.auxiliary
-                ? '!'
-                : '×',
-            style: TextStyle(color: color, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              gameNames(context).entityText(s.conditionLabel(condition)),
-              style: const TextStyle(fontWeight: FontWeight.w600),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            Text(
+              condition.passed
+                  ? '✓'
+                  : condition.auxiliary
+                  ? '!'
+                  : '×',
+              style: appTextStyle(
+                context,
+                TextStyle(color: color, fontWeight: FontWeight.w900),
+              ),
             ),
-          ),
-          Text(
-            s.conditionActual(condition),
-            textAlign: TextAlign.right,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                gameNames(context).entityText(s.conditionLabel(condition)),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * .45),
+              child: Text(
+                s.conditionActual(condition),
+                textAlign: TextAlign.right,
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: color, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -722,8 +784,8 @@ class _SegmentGroup extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff315064)),
+        color: appColor(context, const Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, const Color(0xff315064))),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(children: children.map((c) => Expanded(child: c)).toList()),
@@ -743,7 +805,10 @@ class _SegmentButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xff8a6628) : Colors.transparent,
+      color: appColor(
+        context,
+        selected ? const Color(0xff8a6628) : Colors.transparent,
+      ),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -753,12 +818,15 @@ class _SegmentButton extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               label,
-              style: TextStyle(
-                color: selected
-                    ? const Color(0xffffdc88)
-                    : const Color(0xff9fb3bf),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: selected
+                      ? const Color(0xffffdc88)
+                      : const Color(0xff9fb3bf),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -778,9 +846,9 @@ class _TargetMenu extends StatelessWidget {
     return PopupMenuButton<int>(
       initialValue: target,
       onSelected: onSelected,
-      color: const Color(0xff1b263b),
+      color: appColor(context, Color(0xff1b263b)),
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Color(0xff415a77)),
+        side: BorderSide(color: appColor(context, Color(0xff415a77))),
         borderRadius: BorderRadius.circular(9),
       ),
       itemBuilder: (context) => [
@@ -790,10 +858,13 @@ class _TargetMenu extends StatelessWidget {
             height: 32,
             child: Text(
               '$v%',
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xffdce6eb),
-                fontWeight: FontWeight.w600,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  fontSize: 13,
+                  color: appColor(context, Color(0xffdce6eb)),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -804,8 +875,8 @@ class _TargetMenu extends StatelessWidget {
         height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
-          color: const Color(0xff0b202d),
-          border: Border.all(color: const Color(0xff315064)),
+          color: appColor(context, Color(0xff0b202d)),
+          border: Border.all(color: appColor(context, Color(0xff315064))),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -817,18 +888,21 @@ class _TargetMenu extends StatelessWidget {
                 child: Text(
                   '$target%',
                   maxLines: 1,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xffdce6eb),
-                    fontWeight: FontWeight.w700,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      fontSize: 13,
+                      color: appColor(context, Color(0xffdce6eb)),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_drop_down,
               size: 16,
-              color: Color(0xffdce6eb),
+              color: appColor(context, Color(0xffdce6eb)),
             ),
           ],
         ),
@@ -855,9 +929,15 @@ class _StatusCapsule extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: passed ? const Color(0xff182c25) : const Color(0xff2d1720),
+        color: appColor(
+          context,
+          passed ? const Color(0xff182c25) : const Color(0xff2d1720),
+        ),
         border: Border.all(
-          color: passed ? const Color(0xff294d35) : const Color(0xff4c202d),
+          color: appColor(
+            context,
+            passed ? const Color(0xff294d35) : const Color(0xff4c202d),
+          ),
         ),
         borderRadius: BorderRadius.circular(9),
       ),
@@ -867,10 +947,13 @@ class _StatusCapsule extends StatelessWidget {
           text,
           maxLines: 1,
           softWrap: false,
-          style: TextStyle(
-            fontSize: 13,
-            color: passed ? const Color(0xff67b579) : const Color(0xffc5525c),
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              fontSize: 13,
+              color: passed ? const Color(0xff67b579) : const Color(0xffc5525c),
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),

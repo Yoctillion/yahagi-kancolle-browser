@@ -117,12 +117,16 @@ final class FcdMapStore {
       errors.add('cache: ${error.runtimeType}');
     }
     try {
-      bundled = FcdMapDataset.parse(
-        await storage.readBundled(),
-        minimumMapCount: minimumMapCount,
-      );
+      bundled = await loadBundled();
     } catch (error) {
       errors.add('bundled: ${error.runtimeType}');
+    }
+
+    if (cached != null &&
+        bundled != null &&
+        !cached.preservesDrawableMapsFrom(bundled)) {
+      errors.add('cache: drawable map geometry is missing');
+      cached = null;
     }
 
     if (cached != null &&
@@ -146,6 +150,11 @@ final class FcdMapStore {
       diagnosticError: errors.join(', '),
     );
   }
+
+  Future<FcdMapDataset> loadBundled() async => FcdMapDataset.parse(
+    await storage.readBundled(),
+    minimumMapCount: minimumMapCount,
+  );
 
   Future<FcdMapState?> loadState() async {
     if (storage is! FcdMapStateStorage) return null;

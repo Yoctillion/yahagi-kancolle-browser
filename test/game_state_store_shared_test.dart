@@ -138,6 +138,47 @@ void main() {
     );
   }
 
+  for (final entry in <String, MasterShip>{
+    'portraitFileName': _base.masterShips[1]!.copyWith(
+      portraitFileName: 'ship1',
+    ),
+    'portraitVersion': _base.masterShips[1]!.copyWith(portraitVersion: '7'),
+  }.entries) {
+    test('a later ${entry.key} update persists in the shared cache', () async {
+      final writes = <String>[];
+      final store = GameStateStore(
+        saveDelay: const Duration(hours: 1),
+        writeString: (prefs, key, value) async {
+          writes.add(key);
+          return prefs.setString(key, value);
+        },
+      );
+      store.save(_base);
+      await store.flush();
+      writes.clear();
+
+      final updated = _base.copyWith(masterShips: {1: entry.value});
+      store.save(updated);
+      await store.flush();
+
+      expect(writes, contains('game_state.shared.v1'));
+      final restored = await GameStateStore().load();
+      expect(
+        restored.masterShips[1]?.portraitFileName,
+        entry.value.portraitFileName,
+      );
+      expect(
+        restored.masterShips[1]?.portraitVersion,
+        entry.value.portraitVersion,
+      );
+
+      writes.clear();
+      store.save(updated.copyWith(resources: {GameResourceType.fuel: 300}));
+      await store.flush();
+      expect(writes, ['account.1001.game_state.v1']);
+    });
+  }
+
   test(
     'in-place map and nested list changes cannot bypass dirty detection',
     () async {
@@ -236,6 +277,8 @@ void main() {
     });
     final loaded = await GameStateStore().loadForAccount(1001);
     expect(loaded.masterShips[1]?.name, 'old');
+    expect(loaded.masterShips[1]?.portraitFileName, isNull);
+    expect(loaded.masterShips[1]?.portraitVersion, isNull);
     expect(loaded.masterMapInfos, isEmpty);
     expect(loaded.hasMasterData, isFalse);
     expect(loaded.canExportFleet, isFalse);

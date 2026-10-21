@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -191,15 +192,15 @@ class _NavigationOverview extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xff10212e),
+        color: appColor(context, const Color(0xff10212e)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.explore_outlined,
             size: 21,
-            color: Color(0xff70c7bc),
+            color: appColor(context, Color(0xff70c7bc)),
           ),
           const SizedBox(width: 9),
           Expanded(
@@ -314,7 +315,10 @@ class _BattleOverview extends StatelessWidget {
                 enemyName: enemyName,
                 enemyNameIsFallback: battle.enemyFleetName.isEmpty,
                 enemyStyle: TextStyle(
-                  color: enemyCombined ? const Color(0xffff8c78) : null,
+                  color: appColor(
+                    context,
+                    enemyCombined ? const Color(0xffff8c78) : null,
+                  ),
                   fontSize: phone ? 13 : null,
                   fontWeight: phone ? FontWeight.w600 : FontWeight.w800,
                 ),
@@ -404,7 +408,7 @@ class _FleetGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xff10212e),
+        color: appColor(context, const Color(0xff10212e)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -414,17 +418,21 @@ class _FleetGroup extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(9, 7, 9, 5),
             child: BattleUiText(
               title,
-              style: TextStyle(
-                color: title.startsWith('敌')
-                    ? const Color(0xffff8c78)
-                    : const Color(0xff70c7bc),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: title.startsWith('敌')
+                      ? const Color(0xffff8c78)
+                      : const Color(0xff70c7bc),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
           for (var index = 0; index < ships.length; index++) ...[
-            if (index > 0) const Divider(height: 1, color: Color(0xff203746)),
+            if (index > 0)
+              Divider(height: 1, color: appColor(context, Color(0xff203746))),
             BattleShipDetailsTap(
               ship: ships[index],
               child: _BattleShipRow(
@@ -476,14 +484,17 @@ class _BattleShipRow extends StatelessWidget {
 
     Widget hpContent({double opacity = 1, bool pulsing = false}) {
       if (isEscaped) {
-        return const Align(
+        return Align(
           alignment: Alignment.centerLeft,
           child: BattleUiText(
             '退避',
-            style: TextStyle(
-              color: Color(0xff8197a5),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: Color(0xff8197a5),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         );
@@ -502,18 +513,21 @@ class _BattleShipRow extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 hpText,
-                style: TextStyle(
-                  color: hpValueColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: hpValueColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 2),
             ProphetHpBar(
               value: ratio,
-              color: hpBarColor,
-              backgroundColor: const Color(0xff263e4d),
+              color: appColor(context, hpBarColor),
+              backgroundColor: appColor(context, const Color(0xff263e4d)),
             ),
           ],
         ),
@@ -544,10 +558,13 @@ class _BattleShipRow extends StatelessWidget {
                           ).shipName(ship.name, shipId: ship.masterId),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isEscaped ? const Color(0xff8197a5) : null,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isEscaped ? const Color(0xff8197a5) : null,
+                            ),
                           ),
                         ),
                       ),
@@ -558,7 +575,7 @@ class _BattleShipRow extends StatelessWidget {
                         Icons.emoji_events_rounded,
                         key: Key('battle-mvp-$side-$absolutePosition'),
                         size: 13,
-                        color: const Color(0xffffd65c),
+                        color: appColor(context, const Color(0xffffd65c)),
                       ),
                     ],
                   ],
@@ -601,7 +618,7 @@ class _BattleShipRow extends StatelessWidget {
           background: Opacity(
             key: Key('battle-damage-row-pulse-$side-$absolutePosition'),
             opacity: rowOpacity,
-            child: ColoredBox(color: spec.color),
+            child: ColoredBox(color: appColor(context, spec.color)),
           ),
         );
       },

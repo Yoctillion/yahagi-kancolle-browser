@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
@@ -82,8 +83,13 @@ class GameBrowserToolbar extends StatelessWidget {
     final toolbar = Container(
       height: toolbarHeight,
       decoration: BoxDecoration(
-        color: const Color(0xff0a1622).withValues(alpha: 0.9),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        color: appColor(
+          context,
+          const Color(0xff0a1622).withValues(alpha: 0.9),
+        ),
+        border: Border.all(
+          color: appColor(context, Colors.white.withValues(alpha: 0.08)),
+        ),
         borderRadius: BorderRadius.circular(persistent ? 12 : 8),
       ),
       child: SingleChildScrollView(
@@ -119,7 +125,7 @@ class GameBrowserToolbar extends StatelessWidget {
                 icon: Icon(
                   Icons.camera_alt_outlined,
                   size: persistent ? 19 : 16,
-                  color: const Color(0xffd4a85f),
+                  color: appColor(context, const Color(0xffd4a85f)),
                 ),
               ),
             ),
@@ -279,15 +285,25 @@ class _ToolbarButton extends StatelessWidget {
         visualDensity: VisualDensity.compact,
         tooltip: tooltip,
         onPressed: onPressed,
-        hoverColor: const Color(0xffd4a85f).withValues(alpha: 0.15),
-        splashColor: const Color(0xffd4a85f).withValues(alpha: 0.2),
-        icon: Icon(icon, size: iconSize ?? 18, color: iconColor),
+        hoverColor: appColor(
+          context,
+          const Color(0xffd4a85f).withValues(alpha: 0.15),
+        ),
+        splashColor: appColor(
+          context,
+          const Color(0xffd4a85f).withValues(alpha: 0.2),
+        ),
+        icon: Icon(
+          icon,
+          size: iconSize ?? 18,
+          color: appColor(context, iconColor),
+        ),
       ),
     );
     if (backgroundColor != null) {
       button = DecoratedBox(
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: appColor(context, backgroundColor),
           borderRadius: BorderRadius.circular(6),
         ),
         child: button,

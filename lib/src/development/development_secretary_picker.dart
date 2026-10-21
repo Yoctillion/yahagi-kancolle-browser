@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -69,7 +70,7 @@ class DevelopmentSecretaryPicker extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        side: const BorderSide(color: Color(0xff78919c)),
+        side: BorderSide(color: appColor(context, Color(0xff78919c))),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       onPressed: pools.isEmpty
@@ -99,9 +100,12 @@ class DevelopmentSecretaryPicker extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Color(0xff91aab5),
-                    fontSize: 11,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xff91aab5)),
+                      fontSize: 11,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -114,16 +118,22 @@ class DevelopmentSecretaryPicker extends StatelessWidget {
                         ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xffedf4f6),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xffedf4f6)),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.arrow_drop_down, color: Color(0xffa9bac1)),
+          Icon(
+            Icons.arrow_drop_down,
+            color: appColor(context, Color(0xffa9bac1)),
+          ),
         ],
       ),
     );
@@ -174,17 +184,21 @@ class _DevelopmentSecretaryPickerDialogState
     final group = widget.groups[groupIndex];
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
-      backgroundColor: Colors.transparent,
+      backgroundColor: appColor(context, Colors.transparent),
       child: Container(
         key: const Key('development-secretary-picker-dialog'),
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xff101d27),
-          border: Border.all(color: const Color(0xff385064)),
+          color: appColor(context, const Color(0xff101d27)),
+          border: Border.all(color: appColor(context, const Color(0xff385064))),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 22, spreadRadius: 2),
+          boxShadow: [
+            BoxShadow(
+              color: appColor(context, Colors.black54),
+              blurRadius: 22,
+              spreadRadius: 2,
+            ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
@@ -195,10 +209,10 @@ class _DevelopmentSecretaryPickerDialogState
               child: Row(
                 children: [
                   const SizedBox(width: 16),
-                  const Icon(
+                  Icon(
                     Icons.flag_outlined,
                     size: 20,
-                    color: Color(0xffd4a85f),
+                    color: appColor(context, Color(0xffd4a85f)),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -217,7 +231,7 @@ class _DevelopmentSecretaryPickerDialogState
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xff385064)),
+            Divider(height: 1, color: appColor(context, Color(0xff385064))),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -225,16 +239,19 @@ class _DevelopmentSecretaryPickerDialogState
                   SizedBox(
                     width: leftWidth,
                     child: ColoredBox(
-                      color: const Color(0xff0b1720),
+                      color: appColor(context, const Color(0xff0b1720)),
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: widget.groups.length,
                         itemBuilder: (context, index) {
                           final selected = index == groupIndex;
                           return Material(
-                            color: selected
-                                ? const Color(0xff244b69)
-                                : Colors.transparent,
+                            color: appColor(
+                              context,
+                              selected
+                                  ? const Color(0xff244b69)
+                                  : Colors.transparent,
+                            ),
                             child: InkWell(
                               key: Key('development-secretary-group-$index'),
                               onTap: () => setState(() => groupIndex = index),
@@ -248,10 +265,13 @@ class _DevelopmentSecretaryPickerDialogState
                                     context,
                                     widget.groups[index].label,
                                   ),
-                                  style: TextStyle(
-                                    fontWeight: selected
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      fontWeight: selected
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -261,7 +281,10 @@ class _DevelopmentSecretaryPickerDialogState
                       ),
                     ),
                   ),
-                  const VerticalDivider(width: 1, color: Color(0xff385064)),
+                  VerticalDivider(
+                    width: 1,
+                    color: appColor(context, Color(0xff385064)),
+                  ),
                   Expanded(
                     child: ListView.separated(
                       padding: const EdgeInsets.all(10),
@@ -271,9 +294,12 @@ class _DevelopmentSecretaryPickerDialogState
                         final pool = group.pools[index];
                         final selected = pool.key == widget.selectedPoolKey;
                         return Material(
-                          color: selected
-                              ? const Color(0xff1d5f91)
-                              : const Color(0xff172a38),
+                          color: appColor(
+                            context,
+                            selected
+                                ? const Color(0xff1d5f91)
+                                : const Color(0xff172a38),
+                          ),
                           borderRadius: BorderRadius.circular(7),
                           child: InkWell(
                             key: Key(
@@ -300,18 +326,24 @@ class _DevelopmentSecretaryPickerDialogState
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontWeight: selected
-                                            ? FontWeight.w800
-                                            : FontWeight.w600,
+                                      style: appTextStyle(
+                                        context,
+                                        TextStyle(
+                                          fontWeight: selected
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ),
                                   if (selected)
-                                    const Icon(
+                                    Icon(
                                       Icons.check_circle_rounded,
                                       size: 19,
-                                      color: Color(0xff68b7ef),
+                                      color: appColor(
+                                        context,
+                                        Color(0xff68b7ef),
+                                      ),
                                     ),
                                 ],
                               ),

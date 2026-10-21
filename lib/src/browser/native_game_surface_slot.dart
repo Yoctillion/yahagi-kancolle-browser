@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:ui' show FlutterView;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../layout/camera_avoidance.dart';
 import 'game_workspace_visibility.dart';
 import 'native_game_surface_visibility.dart';
 import 'native_game_webview_contract.dart';
@@ -77,6 +79,11 @@ final class _NativeGameSurfaceSlotState extends State<NativeGameSurfaceSlot>
     with WidgetsBindingObserver, RouteAware {
   late final NativeGameSurfaceVisibility _visibility;
   RouteObserver<ModalRoute<dynamic>>? _subscribedObserver;
+  EdgeInsets _cameraInsets = EdgeInsets.zero;
+  Set<CameraAvoidanceEdge> _cameraEdges = const <CameraAvoidanceEdge>{};
+  bool _cameraEnabled = false;
+  bool _cameraGeometryKnown = false;
+  bool _forceBoundsSyncForCamera = false;
   ModalRoute<dynamic>? _subscribedRoute;
   NativeGameWebViewBounds? _lastBounds;
   NativeGameWebViewBounds? _currentBounds;
@@ -122,6 +129,28 @@ final class _NativeGameSurfaceSlotState extends State<NativeGameSurfaceSlot>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _view = View.of(context);
+    final camera = CameraAvoidanceScope.maybeOf(context);
+    final insets =
+        camera?.synchronizationInsets ?? camera?.insets ?? EdgeInsets.zero;
+    final edges = camera?.cutoutEdges ?? const <CameraAvoidanceEdge>{};
+    final enabled = camera?.enabled ?? false;
+    final cameraGeometryChanged =
+        _cameraGeometryKnown &&
+        (insets != _cameraInsets ||
+            ((_cameraEnabled || enabled) &&
+                (_cameraEdges.isNotEmpty || edges.isNotEmpty) &&
+                (!setEquals(_cameraEdges, edges) ||
+                    _cameraEnabled != enabled)));
+    _cameraInsets = insets;
+    _cameraEdges = edges;
+    _cameraEnabled = enabled;
+    _cameraGeometryKnown = true;
+    if (cameraGeometryChanged) {
+      // A deliberate camera viewport change must reach the native WebView
+      // even while the IME is visible. Pure keyboard changes remain deferred.
+      _forceBoundsSyncForCamera = true;
+      _scheduleMeasurement();
+    }
     final workspaceActive = GameWorkspaceActive.of(context);
     if (workspaceActive != _workspaceActive) {
       _workspaceActive = workspaceActive;
@@ -158,7 +187,7 @@ final class _NativeGameSurfaceSlotState extends State<NativeGameSurfaceSlot>
 
   @override
   void didChangeMetrics() {
-    if (_isImeVisible) {
+    if (_isImeVisible && !_forceBoundsSyncForCamera) {
       _boundsSyncDeferredForIme = true;
       return;
     }
@@ -303,7 +332,7 @@ final class _NativeGameSurfaceSlotState extends State<NativeGameSurfaceSlot>
   }
 
   void _scheduleMeasurement() {
-    if (_isImeVisible) {
+    if (_isImeVisible && !_forceBoundsSyncForCamera) {
       _boundsSyncDeferredForIme = true;
       return;
     }
@@ -320,11 +349,12 @@ final class _NativeGameSurfaceSlotState extends State<NativeGameSurfaceSlot>
   }
 
   void _measureAndReport() {
-    if (_isImeVisible) {
+    if (_isImeVisible && !_forceBoundsSyncForCamera) {
       _boundsSyncDeferredForIme = true;
       return;
     }
     _boundsSyncDeferredForIme = false;
+    _forceBoundsSyncForCamera = false;
     final bounds = readNativeGameSurfaceBounds(
       context.findRenderObject(),
       devicePixelRatio: View.of(context).devicePixelRatio,

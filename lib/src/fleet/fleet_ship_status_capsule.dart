@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../settings/fleet_display_options.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
@@ -149,22 +150,25 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
           children: [
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xff1c3547), // Brighter background
+                color: appColor(
+                  context,
+                  Color(0xff1c3547),
+                ), // Brighter background
                 border: Border.all(
-                  color: const Color(0xff4c6b84),
+                  color: appColor(context, Color(0xff4c6b84)),
                   width: 1.2,
                 ), // Brighter & slightly thicker border
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Colors.black45, // Stronger shadow
+                    color: appColor(context, Colors.black45), // Stronger shadow
                     blurRadius: 6,
                     offset: Offset(0, 3),
                   ),
                 ],
               ),
               child: Material(
-                color: Colors.transparent,
+                color: appColor(context, Colors.transparent),
                 borderRadius: BorderRadius.circular(8),
                 child: InkWell(
                   onTap: onTap,
@@ -354,15 +358,17 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                                 ? 0
                                                 : ship.currentHp,
                                             maxHp: ship.maxHp,
-                                            color:
-                                                widget.repairStatus ==
-                                                    ShipRepairStatus.retreat
-                                                ? yahagiStatusZeroHp
-                                                : shipHpBarColor(
-                                                    hpRatio,
-                                                    isZeroHp:
-                                                        ship.currentHp <= 0,
-                                                  ),
+                                            color: appColor(
+                                              context,
+                                              widget.repairStatus ==
+                                                      ShipRepairStatus.retreat
+                                                  ? yahagiStatusZeroHp
+                                                  : shipHpBarColor(
+                                                      hpRatio,
+                                                      isZeroHp:
+                                                          ship.currentHp <= 0,
+                                                    ),
+                                            ),
                                             filter: effectiveDamagePulseFilter,
                                             strokeWidth: 2.0,
                                           ),
@@ -422,11 +428,14 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                                     fleetText(context, '未知舰娘'),
                                                 maxLines: 1,
                                                 softWrap: false,
-                                                style: TextStyle(
-                                                  fontSize: narrow
-                                                      ? 11
-                                                      : (compact ? 14 : 17),
-                                                  fontWeight: FontWeight.w800,
+                                                style: appTextStyle(
+                                                  context,
+                                                  TextStyle(
+                                                    fontSize: narrow
+                                                        ? 11
+                                                        : (compact ? 14 : 17),
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -477,8 +486,9 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                                                       key: Key(
                                                         'fleet-focus-hp-icon-${ship.id}',
                                                       ),
-                                                      color: const Color(
-                                                        0xffef5a5a,
+                                                      color: appColor(
+                                                        context,
+                                                        Color(0xffef5a5a),
                                                       ),
                                                       size: 10,
                                                     ),
@@ -562,9 +572,9 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
                     shipId: ship.id,
                     currentHp: ship.currentHp,
                     maxHp: ship.maxHp,
-                    color: shipHpBarColor(
-                      hpRatio,
-                      isZeroHp: ship.currentHp <= 0,
+                    color: appColor(
+                      context,
+                      shipHpBarColor(hpRatio, isZeroHp: ship.currentHp <= 0),
                     ),
                     filter: effectiveDamagePulseFilter,
                     strokeWidth: 1.2,
@@ -625,7 +635,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
           MiniBadge(
             key: Key('text-status-${ship.id}'),
             text: fleetText(context, widget.repairStatus!.label),
-            color: const Color(0xffffc861),
+            color: appColor(context, Color(0xffffc861)),
           ),
         ],
       ],
@@ -638,10 +648,10 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
         showTrack: show('bars'),
         alignRight: !show('bars') && key != 'fuel',
         icon: hp
-            ? const Icon(
+            ? Icon(
                 Icons.favorite_rounded,
                 size: 10,
-                color: Color(0xffef5a5a),
+                color: appColor(context, Color(0xffef5a5a)),
               )
             : Image.asset(
                 'assets/images/material/${key == 'fuel' ? '01' : '02'}.png',
@@ -744,7 +754,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
       text: key.startsWith('mechanism')
           ? gameNames(context).entityText(fleetText(context, text))
           : fleetText(context, text),
-      color: color,
+      color: appColor(context, color),
     );
     return [
       if (show('level'))
@@ -792,16 +802,17 @@ class MiniBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        border: Border.all(color: color.withValues(alpha: 0.42)),
+        color: appColor(context, color.withValues(alpha: 0.16)),
+        border: Border.all(
+          color: appColor(context, color.withValues(alpha: 0.42)),
+        ),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         text,
-        style: TextStyle(
-          color: color,
-          fontSize: 8,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -853,11 +864,14 @@ class CompactStatusMeter extends StatelessWidget {
               child: Text(
                 value,
                 key: valueKey,
-                style: TextStyle(
-                  color: valueColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 9,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: valueColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 9,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             );
@@ -887,11 +901,14 @@ class CompactStatusMeter extends StatelessWidget {
                   child: Text(
                     value,
                     key: valueKey,
-                    style: TextStyle(
-                      color: valueColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 9,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: valueColor,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 9,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ),
@@ -904,15 +921,18 @@ class CompactStatusMeter extends StatelessWidget {
                     child: Container(
                       key: trackKey,
                       decoration: BoxDecoration(
-                        color: const Color(0xff294052),
+                        color: appColor(context, Color(0xff294052)),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       alignment: Alignment.centerLeft,
                       child: showHpThresholds
                           ? ProphetHpBar(
                               value: ratio,
-                              color: barColor,
-                              backgroundColor: const Color(0xff294052),
+                              color: appColor(context, barColor),
+                              backgroundColor: appColor(
+                                context,
+                                Color(0xff294052),
+                              ),
                               height: height * 0.45,
                             )
                           : FractionallySizedBox(
@@ -920,7 +940,7 @@ class CompactStatusMeter extends StatelessWidget {
                               heightFactor: 1.0,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: barColor,
+                                  color: appColor(context, barColor),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                               ),

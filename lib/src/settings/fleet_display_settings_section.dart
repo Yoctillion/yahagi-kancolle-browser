@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../fleet/fleet_ui_strings.dart';
 import 'fleet_display_options.dart';
@@ -59,9 +60,9 @@ class FleetDisplaySettingsSection extends StatelessWidget {
                 IconButton(
                   key: const Key('fleet-display-default'),
                   tooltip: text(FleetUiKeys.reset),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.settings_backup_restore_rounded,
-                    color: Color(0xff8fa8b6),
+                    color: appColor(context, Color(0xff8fa8b6)),
                   ),
                   onPressed: () {
                     controller.setModuleShowLogo('fleet', true);
@@ -78,13 +79,13 @@ class FleetDisplaySettingsSection extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xff294052)),
+          Divider(height: 1, color: appColor(context, Color(0xff294052))),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
               text(FleetUiKeys.capsuleAppearance),
-              style: const TextStyle(
-                color: Color(0xffd8ad60),
+              style: TextStyle(
+                color: appColor(context, Color(0xffd8ad60)),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -116,13 +117,13 @@ class FleetDisplaySettingsSection extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xff294052)),
+          Divider(height: 1, color: appColor(context, Color(0xff294052))),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
               text(FleetUiKeys.fleetSelectorName),
-              style: const TextStyle(
-                color: Color(0xffd8ad60),
+              style: TextStyle(
+                color: appColor(context, Color(0xffd8ad60)),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -159,13 +160,13 @@ class FleetDisplaySettingsSection extends StatelessWidget {
             ),
           ),
           for (final group in displayGroups.entries) ...[
-            const Divider(height: 1, color: Color(0xff294052)),
+            Divider(height: 1, color: appColor(context, Color(0xff294052))),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
                 '${text(group.key)}${group.key == FleetUiKeys.summaryGroup ? ' · $count / $limit' : ''}',
-                style: const TextStyle(
-                  color: Color(0xffd8ad60),
+                style: TextStyle(
+                  color: appColor(context, Color(0xffd8ad60)),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -204,13 +205,13 @@ class FleetDisplaySettingsSection extends StatelessWidget {
               ),
             ),
             if (group.key == FleetUiKeys.singleShipGroup) ...[
-              const Divider(height: 1, color: Color(0xff294052)),
+              Divider(height: 1, color: appColor(context, Color(0xff294052))),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(
                   text(FleetUiKeys.shipTypeName),
-                  style: const TextStyle(
-                    color: Color(0xffd8ad60),
+                  style: TextStyle(
+                    color: appColor(context, Color(0xffd8ad60)),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -261,7 +262,7 @@ Future<void> showFleetDisplaySettings(
 }) => showDialog<void>(
   context: context,
   builder: (context) => Dialog(
-    backgroundColor: const Color(0xff142735),
+    backgroundColor: appColor(context, const Color(0xff142735)),
     insetPadding: const EdgeInsets.all(16),
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 720),

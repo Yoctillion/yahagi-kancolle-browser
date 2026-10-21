@@ -36,7 +36,8 @@ class GameFrameRateBridge(
     private var scriptHandler: ScriptHandler? = null
     private var listenerInstalled = false
     private var target = GameFrameRateTarget.FPS_60
-    private val replyProxies = mutableMapOf<String, JavaScriptReplyProxy>()
+    private var foreground = false
+    private val replyProxies = GameFrameRateReplyRegistry<JavaScriptReplyProxy>()
     private var latestFps: Double? = null
     private var latestFpsAtMillis = 0L
     private var latestPerformanceSample: GameFramePerformanceSample? = null
@@ -102,7 +103,15 @@ class GameFrameRateBridge(
         postTargetToAllFrames()
     }
 
+    fun setForeground(foreground: Boolean) {
+        if (this.foreground == foreground) return
+        this.foreground = foreground
+        clearSample()
+        postTargetToAllFrames()
+    }
+
     fun measuredFps(): Double? {
+        if (!foreground) return null
         val fps = latestFps ?: return null
         if (SystemClock.elapsedRealtime() - latestFpsAtMillis > SAMPLE_MAX_AGE_MILLIS) {
             return null
@@ -114,7 +123,7 @@ class GameFrameRateBridge(
     fun performanceSnapshot(): Map<String, Any?> {
         val age = if (latestFpsAtMillis == 0L) null else
             SystemClock.elapsedRealtime() - latestFpsAtMillis
-        val fresh = age != null && age <= SAMPLE_MAX_AGE_MILLIS
+        val fresh = foreground && age != null && age <= SAMPLE_MAX_AGE_MILLIS
         return mapOf(
             "target" to target.wireName,
             "sampleAgeMs" to age,
@@ -163,26 +172,32 @@ class GameFrameRateBridge(
         isMainFrame: Boolean,
         replyProxy: JavaScriptReplyProxy,
     ) {
+        if (webView !== attachedWebView) return
         val origin = sourceOrigin.toString()
-        if (!originPolicy.isAllowed(origin)) return
+        if (origin.length > 2_048 || !originPolicy.isAllowed(origin)) return
         val payload = try {
-            JSONObject(message.data ?: return)
+            val data = message.data ?: return
+            if (data.length > 8_192) return
+            JSONObject(data)
         } catch (_: Exception) {
             return
         }
 
-        replyProxies[origin] = replyProxy
-        when (payload.optString("kind")) {
+        when (payload.opt("kind")) {
             "ready" -> {
+                if (!replyProxies.registerReady(origin, replyProxy)) return
                 try {
                     postTarget(replyProxy)
                 } catch (_: RuntimeException) {
-                    replyProxies.remove(origin)
+                    replyProxies.remove(origin, replyProxy)
                 }
             }
             "sample" -> {
+                if (!replyProxies.contains(origin, replyProxy)) return
                 val sample = GameFramePerformanceSample.fromJson(payload) ?: return
                 if (sample.target != target.wireName) return
+                replyProxies.recordSample(origin, replyProxy)
+                if (!foreground) return
                 latestPerformanceSample = sample
                 latestFps = if (sample.isUsableForAuto(target.wireName)) sample.fps else null
                 latestFpsAtMillis = SystemClock.elapsedRealtime()
@@ -191,19 +206,16 @@ class GameFrameRateBridge(
     }
 
     private fun postTargetToAllFrames() {
-        val iterator = replyProxies.iterator()
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            try {
-                postTarget(entry.value)
-            } catch (_: RuntimeException) {
-                iterator.remove()
-            }
-        }
+        replyProxies.broadcast(::postTarget)
     }
 
     private fun postTarget(replyProxy: JavaScriptReplyProxy) {
-        replyProxy.postMessage(JSONObject().put("target", target.wireName).toString())
+        replyProxy.postMessage(
+            JSONObject()
+                .put("target", target.wireName)
+                .put("foreground", foreground)
+                .toString(),
+        )
     }
 
     private fun disable() {

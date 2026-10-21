@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../account/account_session.dart';
@@ -205,11 +206,11 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
           ),
         if (_detailed) ...[
           const SizedBox(height: 10),
-          _sectionTitle(strings.expectedIncome),
+          _sectionTitle(context, strings.expectedIncome),
           const SizedBox(height: 5),
-          _resourceGrid(income),
+          _resourceGrid(context, income),
           const SizedBox(height: 10),
-          _sectionTitle(strings.conditions),
+          _sectionTitle(context, strings.conditions),
           const SizedBox(height: 5),
           for (final condition in [
             ...evaluation.normalConditions,
@@ -286,9 +287,9 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     height: 26,
     padding: const EdgeInsets.all(2),
     decoration: BoxDecoration(
-      color: const Color(0xff10212e),
+      color: appColor(context, Color(0xff10212e)),
       borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: const Color(0xff294052)),
+      border: Border.all(color: appColor(context, Color(0xff294052))),
     ),
     child: Row(
       mainAxisSize: expandChildren ? MainAxisSize.max : MainAxisSize.min,
@@ -307,7 +308,10 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     bool command = false,
   }) => Material(
     key: key,
-    color: selected ? const Color(0xff8a6628) : Colors.transparent,
+    color: appColor(
+      context,
+      selected ? const Color(0xff8a6628) : Colors.transparent,
+    ),
     borderRadius: BorderRadius.circular(5),
     child: InkWell(
       borderRadius: BorderRadius.circular(5),
@@ -323,14 +327,17 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
                   label,
                   maxLines: 1,
                   softWrap: false,
-                  style: TextStyle(
-                    color: selected
-                        ? const Color(0xffffdc88)
-                        : command
-                        ? const Color(0xffd4a85f)
-                        : const Color(0xff8197a5),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: selected
+                          ? const Color(0xffffdc88)
+                          : command
+                          ? const Color(0xffd4a85f)
+                          : const Color(0xff8197a5),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -344,9 +351,9 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
   Widget _targetMenu() => PopupMenuButton<int>(
     initialValue: _target,
     onSelected: (value) => setState(() => _target = value),
-    color: const Color(0xff1b263b),
+    color: appColor(context, const Color(0xff1b263b)),
     shape: RoundedRectangleBorder(
-      side: const BorderSide(color: Color(0xff415a77)),
+      side: BorderSide(color: appColor(context, Color(0xff415a77))),
       borderRadius: BorderRadius.circular(4),
     ),
     child: _segmentGroup(
@@ -358,16 +365,19 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             children: [
               Text(
                 '$_target%',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xffdce6eb),
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    fontSize: 10,
+                    color: appColor(context, Color(0xffdce6eb)),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.arrow_drop_down,
                 size: 14,
-                color: Color(0xffdce6eb),
+                color: appColor(context, Color(0xffdce6eb)),
               ),
             ],
           ),
@@ -381,7 +391,13 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
           height: 32,
           child: Text(
             '$value%',
-            style: const TextStyle(fontSize: 13, color: Color(0xffdce6eb)),
+            style: appTextStyle(
+              context,
+              TextStyle(
+                fontSize: 13,
+                color: appColor(context, Color(0xffdce6eb)),
+              ),
+            ),
           ),
         ),
     ],
@@ -424,7 +440,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         : const Color(0xffc43f4b);
     return LayoutBuilder(
       builder: (context, constraints) => Material(
-        color: color,
+        color: appColor(context, color),
         borderRadius: BorderRadius.circular(5),
         child: InkWell(
           onTap: onTap,
@@ -437,10 +453,15 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
               maxLines: 1,
               softWrap: false,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: _expeditionSummaryTextSize(constraints.maxWidth),
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  fontSize: _expeditionSummaryTextSize(constraints.maxWidth),
+                  fontWeight: FontWeight.w700,
+                  color: neutral
+                      ? appColor(context, Colors.white)
+                      : appOnAccentColor(context, Colors.white),
+                ),
               ),
             ),
           ),
@@ -453,43 +474,49 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
 double _expeditionSummaryTextSize(double availableWidth) =>
     availableWidth < 340 ? 11 : 12;
 
-Widget _sectionTitle(String text) => Text(
+Widget _sectionTitle(BuildContext context, String text) => Text(
   text,
-  style: const TextStyle(
-    color: Color(0xffd4a85f),
+  style: TextStyle(
+    color: appColor(context, Color(0xffd4a85f)),
     fontSize: 13,
     fontWeight: FontWeight.w800,
   ),
 );
 
-Widget _resourceGrid(ExpeditionIncome income) {
+Widget _resourceGrid(BuildContext context, ExpeditionIncome income) {
   final values = income.values;
   return Column(
     children: [
-      _resourceRow(1, values[0], 2, values[1]),
+      _resourceRow(context, 1, values[0], 2, values[1]),
       const SizedBox(height: 6),
-      _resourceRow(3, values[2], 4, values[3]),
+      _resourceRow(context, 3, values[2], 4, values[3]),
       if (income.items.isNotEmpty) ...[
         const SizedBox(height: 6),
-        _itemsRow(income.items),
+        _itemsRow(context, income.items),
       ],
     ],
   );
 }
 
-Widget _resourceRow(int id1, int val1, int id2, int val2) => Row(
+Widget _resourceRow(
+  BuildContext context,
+  int id1,
+  int val1,
+  int id2,
+  int val2,
+) => Row(
   children: [
-    Expanded(child: _resourceTile(id1, val1)),
+    Expanded(child: _resourceTile(context, id1, val1)),
     const SizedBox(width: 6),
-    Expanded(child: _resourceTile(id2, val2)),
+    Expanded(child: _resourceTile(context, id2, val2)),
   ],
 );
 
-Widget _itemsRow(List<ExpeditionRewardItem> items) {
+Widget _itemsRow(BuildContext context, List<ExpeditionRewardItem> items) {
   if (items.length == 1) {
     return Row(
       children: [
-        Expanded(child: _itemTile(items[0])),
+        Expanded(child: _itemTile(context, items[0])),
         const SizedBox(width: 6),
         const Expanded(child: SizedBox()),
       ],
@@ -497,19 +524,19 @@ Widget _itemsRow(List<ExpeditionRewardItem> items) {
   }
   return Row(
     children: [
-      Expanded(child: _itemTile(items[0])),
+      Expanded(child: _itemTile(context, items[0])),
       const SizedBox(width: 6),
-      Expanded(child: _itemTile(items[1])),
+      Expanded(child: _itemTile(context, items[1])),
     ],
   );
 }
 
-Widget _resourceTile(int apiId, int value) {
+Widget _resourceTile(BuildContext context, int apiId, int value) {
   final assetId = apiId.toString().padLeft(2, '0');
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
-      color: const Color(0xff0b1d29),
+      color: appColor(context, Color(0xff0b1d29)),
       borderRadius: BorderRadius.circular(6),
     ),
     child: Row(
@@ -527,7 +554,7 @@ Widget _resourceTile(int apiId, int value) {
   );
 }
 
-Widget _itemTile(ExpeditionRewardItem item) {
+Widget _itemTile(BuildContext context, ExpeditionRewardItem item) {
   // Map useitem ID to material asset ID for common items
   String assetId;
   String? label;
@@ -572,7 +599,7 @@ Widget _itemTile(ExpeditionRewardItem item) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
-      color: const Color(0xff0b1d29),
+      color: appColor(context, Color(0xff0b1d29)),
       borderRadius: BorderRadius.circular(6),
     ),
     child: Row(
@@ -587,12 +614,18 @@ Widget _itemTile(ExpeditionRewardItem item) {
         else
           UiText(
             label ?? '道具',
-            style: const TextStyle(color: Color(0xffa8bbc5), fontSize: 12),
+            style: TextStyle(
+              color: appColor(context, Color(0xffa8bbc5)),
+              fontSize: 12,
+            ),
           ),
         const SizedBox(width: 4),
         UiText(
           kindText,
-          style: const TextStyle(color: Color(0xff7792a3), fontSize: 11),
+          style: TextStyle(
+            color: appColor(context, Color(0xff7792a3)),
+            fontSize: 11,
+          ),
         ),
         const Spacer(),
         Text(
@@ -618,9 +651,12 @@ Widget _conditionRow(
     margin: const EdgeInsets.only(bottom: 5),
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
     decoration: BoxDecoration(
-      color: condition.auxiliary && !condition.passed
-          ? const Color(0xff5a451b)
-          : const Color(0xff0b1f2b),
+      color: appColor(
+        context,
+        condition.auxiliary && !condition.passed
+            ? const Color(0xff5a451b)
+            : const Color(0xff0b1f2b),
+      ),
       borderRadius: BorderRadius.circular(5),
     ),
     child: Row(
@@ -631,10 +667,9 @@ Widget _conditionRow(
               : condition.auxiliary
               ? '!'
               : '×',
-          style: TextStyle(
-            color: color,
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
+          style: appTextStyle(
+            context,
+            TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w900),
           ),
         ),
         const SizedBox(width: 8),
@@ -646,10 +681,9 @@ Widget _conditionRow(
         ),
         Text(
           strings.conditionActual(condition),
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
           ),
         ),
       ],

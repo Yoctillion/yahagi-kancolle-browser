@@ -103,6 +103,24 @@ abstract class AppLocalizations {
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
 
+  /// No description provided for @cameraAvoidanceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'摄像头避让'**
+  String get cameraAvoidanceTitle;
+
+  /// No description provided for @cameraAvoidanceDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整摄像头一侧的界面留白，翻转屏幕时自动换边。'**
+  String get cameraAvoidanceDesc;
+
+  /// No description provided for @cameraAvoidanceDistance.
+  ///
+  /// In zh, this message translates to:
+  /// **'避让距离'**
+  String get cameraAvoidanceDistance;
+
   /// No description provided for @operationProtectionTitle.
   ///
   /// In zh, this message translates to:
@@ -690,6 +708,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'界面与布局'**
   String get layoutSettings;
+
+  /// No description provided for @themeColorTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'主题色'**
+  String get themeColorTitle;
+
+  /// No description provided for @themeClassicDark.
+  ///
+  /// In zh, this message translates to:
+  /// **'原版暗色'**
+  String get themeClassicDark;
+
+  /// No description provided for @themeSeaSaltTeal.
+  ///
+  /// In zh, this message translates to:
+  /// **'海盐青'**
+  String get themeSeaSaltTeal;
+
+  /// No description provided for @themeClearSkyBlue.
+  ///
+  /// In zh, this message translates to:
+  /// **'晴空蓝'**
+  String get themeClearSkyBlue;
 
   /// No description provided for @uiDisplaySizeTitle.
   ///
@@ -1332,6 +1374,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'去 GitHub 看看'**
   String get viewOnGitHub;
+
+  /// No description provided for @officialWebsite.
+  ///
+  /// In zh, this message translates to:
+  /// **'官网'**
+  String get officialWebsite;
 
   /// No description provided for @checkForUpdates.
   ///
@@ -6751,6 +6799,78 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重新预览'**
   String get customFontPreviewRetry;
+
+  /// No description provided for @questQueryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索与筛选任务'**
+  String get questQueryTitle;
+
+  /// No description provided for @questQueryScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询范围：{scope}'**
+  String questQueryScope(String scope);
+
+  /// No description provided for @questApplyQuery.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示 {count} 个任务'**
+  String questApplyQuery(int count);
+
+  /// No description provided for @questAccepted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接取'**
+  String get questAccepted;
+
+  /// No description provided for @questConditionsAndProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'条件与进度'**
+  String get questConditionsAndProgress;
+
+  /// No description provided for @questSelectTask.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择任务，查看完成条件'**
+  String get questSelectTask;
+
+  /// No description provided for @questBackToList.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回任务列表'**
+  String get questBackToList;
+
+  /// No description provided for @questReturnToTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'回到目标任务'**
+  String get questReturnToTarget;
+
+  /// No description provided for @questNoPrerequisites.
+  ///
+  /// In zh, this message translates to:
+  /// **'资料未列出直接前置任务'**
+  String get questNoPrerequisites;
+
+  /// No description provided for @questNoSuccessors.
+  ///
+  /// In zh, this message translates to:
+  /// **'资料未列出后续任务'**
+  String get questNoSuccessors;
+
+  /// No description provided for @japaneseOriginal.
+  ///
+  /// In zh, this message translates to:
+  /// **'日文原文'**
+  String get japaneseOriginal;
+
+  /// No description provided for @questQueryActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 项查询条件已生效'**
+  String questQueryActive(int count);
 }
 
 class _AppLocalizationsDelegate

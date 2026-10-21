@@ -1,5 +1,8 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
+
 enum WindowMetricsChange { unchanged, imeOnly, geometry }
 
 final class WindowMetricsSnapshot {
@@ -7,6 +10,8 @@ final class WindowMetricsSnapshot {
     required this.physicalSize,
     required this.devicePixelRatio,
     required this.imeBottom,
+    this.viewPadding = EdgeInsets.zero,
+    this.displayFeatures = const <DisplayFeature>[],
   });
 
   factory WindowMetricsSnapshot.fromView(FlutterView view) {
@@ -14,12 +19,16 @@ final class WindowMetricsSnapshot {
       physicalSize: view.physicalSize,
       devicePixelRatio: view.devicePixelRatio,
       imeBottom: view.viewInsets.bottom,
+      viewPadding: EdgeInsets.fromViewPadding(view.viewPadding, 1),
+      displayFeatures: List<DisplayFeature>.unmodifiable(view.displayFeatures),
     );
   }
 
   final Size physicalSize;
   final double devicePixelRatio;
   final double imeBottom;
+  final EdgeInsets viewPadding;
+  final List<DisplayFeature> displayFeatures;
 }
 
 /// Classifies a sequence of window metric updates without treating temporary
@@ -74,8 +83,7 @@ WindowMetricsChange classifyWindowMetricsChange(
   if (previous.imeBottom != current.imeBottom) {
     return WindowMetricsChange.imeOnly;
   }
-  if (previous.physicalSize != current.physicalSize ||
-      previous.devicePixelRatio != current.devicePixelRatio) {
+  if (_hasGeometryChanged(previous, current)) {
     return WindowMetricsChange.geometry;
   }
   return WindowMetricsChange.unchanged;
@@ -86,5 +94,12 @@ bool _hasGeometryChanged(
   WindowMetricsSnapshot current,
 ) {
   return previous.physicalSize != current.physicalSize ||
-      previous.devicePixelRatio != current.devicePixelRatio;
+      previous.devicePixelRatio != current.devicePixelRatio ||
+      previous.viewPadding != current.viewPadding ||
+      !setEquals(
+        previous.displayFeatures
+            .map((f) => (f.bounds, f.type, f.state))
+            .toSet(),
+        current.displayFeatures.map((f) => (f.bounds, f.type, f.state)).toSet(),
+      );
 }

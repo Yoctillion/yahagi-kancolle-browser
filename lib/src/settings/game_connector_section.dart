@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -39,7 +40,7 @@ class GameConnectorSection extends StatelessWidget {
             title: l10n.gameConnectorYahagi,
             subtitle: l10n.gameConnectorYahagiDesc,
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           _connectorTile(
             context,
             key: const Key('game-connector-ooi'),
@@ -73,9 +74,18 @@ class GameConnectorSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(title, style: SettingsTileTypography.title),
+                  Text(
+                    title,
+                    style: appTextStyle(context, SettingsTileTypography.title),
+                  ),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: SettingsTileTypography.description),
+                  Text(
+                    subtitle,
+                    style: appTextStyle(
+                      context,
+                      SettingsTileTypography.description,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -84,9 +94,10 @@ class GameConnectorSection extends StatelessWidget {
               selected
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
-              color: selected
-                  ? const Color(0xff70c7bc)
-                  : const Color(0xff8197a5),
+              color: appColor(
+                context,
+                selected ? const Color(0xff70c7bc) : const Color(0xff8197a5),
+              ),
             ),
           ],
         ),
@@ -118,8 +129,8 @@ class GameConnectorSection extends StatelessWidget {
               if (gameWasActive)
                 Text(
                   l10n.gameConnectorActiveWarning,
-                  style: const TextStyle(
-                    color: Colors.orangeAccent,
+                  style: TextStyle(
+                    color: appColor(context, Colors.orangeAccent),
                     fontWeight: FontWeight.w700,
                   ),
                 ),

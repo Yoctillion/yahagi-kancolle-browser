@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -20,7 +21,7 @@ Future<void> showFleetAirPowerDetails(
   return showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      backgroundColor: const Color(0xff142735),
+      backgroundColor: appColor(context, Color(0xff142735)),
       title: Text(
         l10n.airPowerDetails,
         style: const TextStyle(fontWeight: FontWeight.w800),
@@ -34,7 +35,7 @@ Future<void> showFleetAirPowerDetails(
               value: rows[index].$2?.toString() ?? '—',
             ),
             if (index != rows.length - 1)
-              const Divider(color: Color(0xff294052)),
+              Divider(color: appColor(context, Color(0xff294052))),
           ],
         ],
       ),
@@ -60,14 +61,23 @@ class _AirPowerDetailRow extends StatelessWidget {
     child: Row(
       children: [
         Expanded(
-          child: Text(label, style: const TextStyle(color: Color(0xff9fb4bf))),
+          child: Text(
+            label,
+            style: appTextStyle(
+              context,
+              TextStyle(color: appColor(context, Color(0xff9fb4bf))),
+            ),
+          ),
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: Color(0xffe1e9ed),
-            fontWeight: FontWeight.w800,
-            fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Color(0xffe1e9ed)),
+              fontWeight: FontWeight.w800,
+              fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+            ),
           ),
         ),
       ],

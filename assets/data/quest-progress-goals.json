@@ -616,6 +616,7 @@
   },
   "318": {
     "type": 3,
+    "fuzzy": true,
     "practice_win": {
       "description": "演習勝利",
       "escortshiptype": [
@@ -973,6 +974,7 @@
   },
   "372": {
     "type": 106,
+    "revision": 1,
     "practice_win_a": {
       "description": "演習勝利 A",
       "flagshipclass": [
@@ -983,13 +985,15 @@
           [
             10
           ],
-          2
+          2,
+          true
         ],
         [
           [
             2
           ],
-          2
+          2,
+          true
         ]
       ],
       "required": 4,
@@ -998,6 +1002,7 @@
   },
   "373": {
     "type": 107,
+    "revision": 1,
     "practice_win_a": {
       "description": "演習勝利 A",
       "flagship": [
@@ -1022,7 +1027,8 @@
             "Vautour",
             "Béarn"
           ],
-          2
+          2,
+          true
         ]
       ],
       "required": 4,

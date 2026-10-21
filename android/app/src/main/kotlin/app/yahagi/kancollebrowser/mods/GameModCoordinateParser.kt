@@ -7,15 +7,34 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
+import java.io.File
 import java.io.StringReader
 
 internal data class GameModCoordinateData(val graph: Map<String, List<Int>>, val metadataIgnored: Boolean = false, val unknownFields: Boolean = false)
 
 internal object GameModCoordinateParser {
+    private const val MAX_BYTES = 128 * 1024
     val fields = listOf("boko_n", "boko_d", "kaisyu_n", "kaisyu_d", "kaizo_n", "kaizo_d", "map_n", "map_d",
         "ensyuf_n", "ensyuf_d", "ensyue_n", "ensyue_d", "battle_n", "battle_d", "weda", "wedb", "wedc", "wedd")
+    fun parse(file: File, format: String): GameModCoordinateData {
+        if (file.length() > MAX_BYTES) invalid()
+        val bytes = file.inputStream().use { input ->
+            // The extracted file can grow after the length check. Read at most one
+            // byte beyond the parser limit, without allocating from its new size.
+            val buffer = ByteArray(MAX_BYTES + 1)
+            var size = 0
+            while (size < buffer.size) {
+                val read = input.read(buffer, size, buffer.size - size)
+                if (read < 0) break
+                size += read
+            }
+            if (size > MAX_BYTES) invalid()
+            buffer.copyOf(size)
+        }
+        return parse(bytes, format)
+    }
     fun parse(bytes: ByteArray, format: String): GameModCoordinateData {
-        if (bytes.size > 131072) invalid()
+        if (bytes.size > MAX_BYTES) invalid()
         try {
             val text = bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF")
             val parsed = when (format.lowercase()) { "ini" -> ini(text); "json" -> json(text); else -> invalid() }

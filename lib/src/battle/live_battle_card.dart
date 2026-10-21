@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -175,7 +176,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                 : const Key('live-battle-expanded'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!idle && !widget.controller.isPredictionConfirmed)
+              if (!widget.controller.isPredictionConfirmed)
                 Padding(
                   key: const Key('battle-unconfirmed-warning'),
                   padding: const EdgeInsets.only(bottom: 8),
@@ -183,9 +184,12 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                     (AppLocalizations.of(context) ??
                             lookupAppLocalizations(const Locale('zh')))
                         .battlePredictionUnconfirmed,
-                    style: const TextStyle(
-                      color: Color(0xffffc95c),
-                      fontSize: 12,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffffc95c)),
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -241,9 +245,9 @@ class _ModeSwitch extends StatelessWidget {
       height: 26,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xff10212e),
+        color: appColor(context, Color(0xff10212e)),
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xff294052)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -281,7 +285,10 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xff5b4829) : Colors.transparent,
+      color: appColor(
+        context,
+        selected ? const Color(0xff5b4829) : Colors.transparent,
+      ),
       borderRadius: BorderRadius.circular(5),
       child: InkWell(
         borderRadius: BorderRadius.circular(5),
@@ -290,12 +297,15 @@ class _ModeButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           child: BattleUiText(
             label,
-            style: TextStyle(
-              color: selected
-                  ? const Color(0xffffcf67)
-                  : const Color(0xff8197a5),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: selected
+                    ? const Color(0xffffcf67)
+                    : const Color(0xff8197a5),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -331,15 +341,15 @@ class _CompactBattlePanel extends StatelessWidget {
       final navigationHeader = Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xff10212e),
+          color: appColor(context, Color(0xff10212e)),
           borderRadius: BorderRadius.circular(7),
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.explore_outlined,
               size: 18,
-              color: Color(0xff70c7bc),
+              color: appColor(context, Color(0xff70c7bc)),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -472,9 +482,10 @@ class _CompactBattlePanel extends StatelessWidget {
                           enemyStyle: TextStyle(
                             fontSize: phone ? 13 : 14,
                             fontWeight: FontWeight.w600,
-                            color: enemyCombined
-                                ? const Color(0xffff8c78)
-                                : null,
+                            color: appColor(
+                              context,
+                              enemyCombined ? const Color(0xffff8c78) : null,
+                            ),
                           ),
                         ),
                         if (statusPills.isNotEmpty) ...<Widget>[
@@ -594,7 +605,7 @@ class _CompactFleetGrid extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
             decoration: BoxDecoration(
-              color: const Color(0xff10212e),
+              color: appColor(context, Color(0xff10212e)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -603,7 +614,7 @@ class _CompactFleetGrid extends StatelessWidget {
                 _CompactFleetSideTitle(
                   keyName: 'friend',
                   title: '我方舰队$friendFormation',
-                  color: const Color(0xff70c7bc),
+                  color: appColor(context, const Color(0xff70c7bc)),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -629,7 +640,7 @@ class _CompactFleetGrid extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
             decoration: BoxDecoration(
-              color: const Color(0xff10212e),
+              color: appColor(context, const Color(0xff10212e)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -638,7 +649,7 @@ class _CompactFleetGrid extends StatelessWidget {
                 _CompactFleetSideTitle(
                   keyName: 'enemy',
                   title: '敌方舰队$enemyFormation',
-                  color: const Color(0xffff8c78),
+                  color: appColor(context, const Color(0xffff8c78)),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -685,10 +696,9 @@ class _CompactFleetSideTitle extends StatelessWidget {
           title,
           maxLines: 1,
           softWrap: false,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800),
           ),
         ),
       ),
@@ -769,14 +779,17 @@ class _CompactBarRow extends StatelessWidget {
 
     Widget hpContent({double opacity = 1, bool pulsing = false}) {
       if (isEscaped) {
-        return const Align(
+        return Align(
           alignment: Alignment.centerLeft,
           child: BattleUiText(
             '退避',
-            style: TextStyle(
-              color: Color(0xff8197a5),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: Color(0xff8197a5),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         );
@@ -786,10 +799,13 @@ class _CompactBarRow extends StatelessWidget {
         opacity: opacity,
         child: Text(
           hpText,
-          style: TextStyle(
-            color: hpValueColor,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: hpValueColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       );
@@ -798,8 +814,8 @@ class _CompactBarRow extends StatelessWidget {
         opacity: opacity,
         child: ProphetHpBar(
           value: ratio,
-          color: hpBarColor,
-          backgroundColor: const Color(0xff263e4d),
+          color: appColor(context, hpBarColor),
+          backgroundColor: appColor(context, const Color(0xff263e4d)),
         ),
       );
       final content = Column(
@@ -818,7 +834,7 @@ class _CompactBarRow extends StatelessWidget {
                     Icons.emoji_events_rounded,
                     key: Key('compact-mvp-$keyName-$index'),
                     size: 9,
-                    color: const Color(0xffffd65c),
+                    color: appColor(context, Color(0xffffd65c)),
                   ),
                 ],
               ],
@@ -883,15 +899,18 @@ class _IdleBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xff203443),
+        color: appColor(context, Color(0xff203443)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         AppLocalizations.of(context)?.standby ?? '待机',
-        style: TextStyle(
-          color: Color(0xff9db2bf),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: Color(0xff9db2bf),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -906,23 +925,26 @@ class _IdleBattleContent extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xff10212e),
+        color: appColor(context, Color(0xff10212e)),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.explore_outlined,
             size: 18,
-            color: Color(0xff70c7bc),
+            color: appColor(context, Color(0xff70c7bc)),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               AppLocalizations.of(context)?.waitingForSortieData ?? '等待出击数据',
-              style: const TextStyle(
-                color: Color(0xff9db2bf),
-                fontWeight: FontWeight.w600,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff9db2bf)),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -959,15 +981,18 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: background,
+        color: appColor(context, background),
         borderRadius: BorderRadius.circular(8),
       ),
       child: BattleUiText(
         label,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: foreground,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

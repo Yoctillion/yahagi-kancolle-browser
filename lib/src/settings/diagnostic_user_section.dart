@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -26,7 +27,7 @@ class DiagnosticUserSection extends StatelessWidget {
               children: <Widget>[
                 Icon(
                   controller.enabled ? Icons.shield_outlined : Icons.shield,
-                  color: const Color(0xffd4a85f),
+                  color: appColor(context, const Color(0xffd4a85f)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -34,7 +35,7 @@ class DiagnosticUserSection extends StatelessWidget {
                     controller.enabled
                         ? l10n.diagnosticStatusEnabled
                         : l10n.diagnosticStatusDisabled,
-                    style: SettingsTileTypography.title,
+                    style: appTextStyle(context, SettingsTileTypography.title),
                   ),
                 ),
               ],
@@ -42,9 +43,12 @@ class DiagnosticUserSection extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               l10n.diagnosticPrivacyDesc,
-              style: SettingsTileTypography.description.copyWith(
-                color: const Color(0xff9bb0bd),
-                height: 1.45,
+              style: appTextStyle(
+                context,
+                SettingsTileTypography.description.copyWith(
+                  color: const Color(0xff9bb0bd),
+                  height: 1.45,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -52,7 +56,7 @@ class DiagnosticUserSection extends StatelessWidget {
               l10n.diagnosticStorageUsage(
                 _formatBytes(controller.storageBytes),
               ),
-              style: SettingsTileTypography.description,
+              style: appTextStyle(context, SettingsTileTypography.description),
             ),
             const SizedBox(height: 14),
             FilledButton.icon(

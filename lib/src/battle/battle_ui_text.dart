@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/widgets.dart';
 
 import 'battle_detail_strings.dart';
@@ -23,7 +24,7 @@ class BattleUiText extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     BattleDetailStrings.of(context).localize(data),
-    style: style,
+    style: appTextStyle(context, style),
     maxLines: maxLines,
     overflow: overflow,
     textAlign: textAlign,

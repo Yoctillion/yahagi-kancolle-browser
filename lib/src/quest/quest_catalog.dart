@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/quest_text_normalizer.dart';
+import 'quest_catalog_relation_aliases.dart';
 import 'quest_reward_corrections.dart';
 import 'quest_translation_fallbacks.dart';
 
@@ -135,8 +136,15 @@ class QuestCatalog {
       byGameId.putIfAbsent(entry.gameId, () => entry);
       byCode.putIfAbsent(entry.code, () => entry);
     }
+    for (final alias in questCatalogRelationAliases.entries) {
+      final entry = byGameId[alias.value.gameId];
+      if (entry != null && entry.code == alias.value.code) {
+        byCode.putIfAbsent(alias.key, () => entry);
+      }
+    }
 
     final prerequisitesByGameId = <int, List<QuestCatalogEntry>>{};
+    final unresolvedByGameId = <int, List<String>>{};
     for (final entry in byGameId.values) {
       prerequisitesByGameId[entry.gameId] =
           List<QuestCatalogEntry>.unmodifiable(
@@ -144,12 +152,20 @@ class QuestCatalog {
                 .map((code) => byCode[code])
                 .whereType<QuestCatalogEntry>(),
           );
+      unresolvedByGameId[entry.gameId] = List<String>.unmodifiable(
+        entry.prerequisites.where((code) => !byCode.containsKey(code)),
+      );
     }
 
     final successorsByCode = <String, List<QuestCatalogEntry>>{};
     for (final entry in this.entries) {
       for (final prerequisite in entry.prerequisites.toSet()) {
-        (successorsByCode[prerequisite] ??= <QuestCatalogEntry>[]).add(entry);
+        final parentCode = byCode[prerequisite]?.code;
+        if (parentCode != null) {
+          final successors = successorsByCode[parentCode] ??=
+              <QuestCatalogEntry>[];
+          if (!successors.contains(entry)) successors.add(entry);
+        }
       }
     }
 
@@ -157,6 +173,9 @@ class QuestCatalog {
     _byCode = Map<String, QuestCatalogEntry>.unmodifiable(byCode);
     _prerequisitesByGameId = Map<int, List<QuestCatalogEntry>>.unmodifiable(
       prerequisitesByGameId,
+    );
+    _unresolvedByGameId = Map<int, List<String>>.unmodifiable(
+      unresolvedByGameId,
     );
     _successorsByCode = Map<String, List<QuestCatalogEntry>>.unmodifiable({
       for (final relation in successorsByCode.entries)
@@ -168,6 +187,7 @@ class QuestCatalog {
   late final Map<int, QuestCatalogEntry> _byGameId;
   late final Map<String, QuestCatalogEntry> _byCode;
   late final Map<int, List<QuestCatalogEntry>> _prerequisitesByGameId;
+  late final Map<int, List<String>> _unresolvedByGameId;
   late final Map<String, List<QuestCatalogEntry>> _successorsByCode;
 
   static Future<QuestCatalog> loadAsset({AssetBundle? bundle}) async {
@@ -216,6 +236,10 @@ class QuestCatalog {
   List<QuestCatalogEntry> prerequisitesOf(int gameId) =>
       _prerequisitesByGameId[gameId] ?? const <QuestCatalogEntry>[];
 
+  /// Original references whose parent cannot be identified from these sources.
+  List<String> unresolvedPrerequisitesOf(int gameId) =>
+      _unresolvedByGameId[gameId] ?? const <String>[];
+
   List<QuestCatalogEntry> successorsOf(int gameId) {
     final code = _byGameId[gameId]?.code;
     if (code == null) return const <QuestCatalogEntry>[];
@@ -261,12 +285,18 @@ class QuestCatalog {
       }
       final ancestors = <int>{};
       final pending = <int>[gameId];
+      var hasUnresolvedAncestor = false;
       while (pending.isNotEmpty) {
-        for (final entry in prerequisitesOf(pending.removeLast())) {
+        final current = pending.removeLast();
+        if (unresolvedPrerequisitesOf(current).isNotEmpty) {
+          hasUnresolvedAncestor = true;
+        }
+        for (final entry in prerequisitesOf(current)) {
           if (ancestors.add(entry.gameId)) pending.add(entry.gameId);
         }
       }
-      if (ancestors.any(liveQuests.containsKey) ||
+      if (hasUnresolvedAncestor ||
+          ancestors.any(liveQuests.containsKey) ||
           !ancestors.any(completed.contains)) {
         continue;
       }

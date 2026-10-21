@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -32,27 +33,31 @@ class OfficialEnemyPreview extends StatelessWidget {
     return Container(
       key: const Key('official-enemy-preview'),
       decoration: BoxDecoration(
-        color: const Color(0xff10212e),
+        color: appColor(context, const Color(0xff10212e)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(9, 7, 9, 5),
             child: Text(
               '敌方部队（战前预测）',
               key: Key('official-enemy-preview-title'),
-              style: TextStyle(
-                color: Color(0xffff8c78),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: Color(0xffff8c78),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
           if (!combined)
             for (var index = 0; index < ships.length; index++) ...<Widget>[
-              if (index > 0) const Divider(height: 1, color: Color(0xff203746)),
+              if (index > 0)
+                Divider(height: 1, color: appColor(context, Color(0xff203746))),
               _nameCell(
                 context,
                 ships[index],
@@ -64,15 +69,18 @@ class OfficialEnemyPreview extends StatelessWidget {
             ]
           else
             for (var index = 0; index < 3; index++) ...<Widget>[
-              if (index > 0) const Divider(height: 1, color: Color(0xff203746)),
+              if (index > 0)
+                Divider(height: 1, color: appColor(context, Color(0xff203746))),
               Row(
                 key: Key('official-enemy-preview-row-$index'),
                 children: <Widget>[
                   Expanded(
                     child: DecoratedBox(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(
-                          right: BorderSide(color: Color(0xff203746)),
+                          right: BorderSide(
+                            color: appColor(context, Color(0xff203746)),
+                          ),
                         ),
                       ),
                       child: _nameCell(

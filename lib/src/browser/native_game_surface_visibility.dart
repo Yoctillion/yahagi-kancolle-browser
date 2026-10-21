@@ -1,7 +1,7 @@
 import 'dart:async';
 
-/// Serializes native visibility changes and permits explicit retries of a
-/// failed state without treating it as delivered.
+/// Serializes native visibility changes and coalesces queued lifecycle changes.
+/// Waiters for superseded states settle with the newest queued state.
 final class NativeGameSurfaceVisibility {
   NativeGameSurfaceVisibility(this._onVisibilityChanged);
 
@@ -16,7 +16,7 @@ final class NativeGameSurfaceVisibility {
   int _desiredVersion = 0;
   int? _failedVersion;
   _VisibilityRequest? _inFlight;
-  final List<_VisibilityRequest> _queue = <_VisibilityRequest>[];
+  _VisibilityRequest? _queued;
   final Map<int, List<Completer<void>>> _waiters =
       <int, List<Completer<void>>>{};
 
@@ -61,7 +61,7 @@ final class NativeGameSurfaceVisibility {
     }
     if (!enqueue &&
         _inFlight == null &&
-        _queue.isEmpty &&
+        _queued == null &&
         _desiredVisible == _lastDeliveredVisible) {
       return Future<void>.value();
     }
@@ -69,17 +69,18 @@ final class NativeGameSurfaceVisibility {
     final waiter = Completer<void>();
     (_waiters[_desiredVersion] ??= <Completer<void>>[]).add(waiter);
     if (enqueue) {
-      _queue.add(_VisibilityRequest(_desiredVisible, _desiredVersion));
+      _queued = _VisibilityRequest(_desiredVisible, _desiredVersion);
     }
     _drain();
     return waiter.future;
   }
 
   void _drain() {
-    if (_inFlight != null || _queue.isEmpty) {
+    final request = _queued;
+    if (_inFlight != null || request == null) {
       return;
     }
-    final request = _queue.removeAt(0);
+    _queued = null;
     _inFlight = request;
     unawaited(_deliver(request));
   }
@@ -99,10 +100,10 @@ final class NativeGameSurfaceVisibility {
   }
 
   void _completeWaiters(int version) {
-    for (final waiter
-        in _waiters.remove(version) ?? const <Completer<void>>[]) {
-      if (!waiter.isCompleted) {
-        waiter.complete();
+    final completed = _waiters.keys.where((key) => key <= version).toList();
+    for (final key in completed) {
+      for (final waiter in _waiters.remove(key)!) {
+        if (!waiter.isCompleted) waiter.complete();
       }
     }
   }
@@ -112,10 +113,10 @@ final class NativeGameSurfaceVisibility {
     Object error,
     StackTrace stackTrace,
   ) {
-    for (final waiter
-        in _waiters.remove(version) ?? const <Completer<void>>[]) {
-      if (!waiter.isCompleted) {
-        waiter.completeError(error, stackTrace);
+    final completed = _waiters.keys.where((key) => key <= version).toList();
+    for (final key in completed) {
+      for (final waiter in _waiters.remove(key)!) {
+        if (!waiter.isCompleted) waiter.completeError(error, stackTrace);
       }
     }
   }

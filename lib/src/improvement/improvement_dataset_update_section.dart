@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../settings/data_update_metadata.dart';
@@ -52,7 +53,10 @@ class ImprovementDatasetUpdateSection extends StatelessWidget {
                       dimension: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.sync, color: Color(0xffd4a85f)),
+                  : Icon(
+                      Icons.sync,
+                      color: appColor(context, Color(0xffd4a85f)),
+                    ),
             ),
           ],
         ),

@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -24,9 +25,12 @@ class DashboardEditItem extends StatelessWidget {
         children: [
           Checkbox(
             value: !hidden,
-            activeColor: const Color(0xffd4a85f),
-            checkColor: Colors.black,
-            side: const BorderSide(color: Color(0xff8fa8b6), width: 2),
+            activeColor: appColor(context, const Color(0xffd4a85f)),
+            checkColor: appOnAccentColor(context, Colors.black),
+            side: BorderSide(
+              color: appColor(context, Color(0xff8fa8b6)),
+              width: 2,
+            ),
             onChanged: (_) => onToggle(),
           ),
           Expanded(child: child),
@@ -41,7 +45,7 @@ class DashboardEditItem extends StatelessWidget {
               data: id,
               maxSimultaneousDrags: 1,
               feedback: Material(
-                color: Colors.transparent,
+                color: appColor(context, Colors.transparent),
                 elevation: 6,
                 child: SizedBox(
                   width: constraints.maxWidth,
@@ -128,7 +132,7 @@ class _DashboardDropTargetState extends State<DashboardDropTarget> {
             bottom: !widget.horizontal && !after ? null : 0,
             width: widget.horizontal ? 3 : null,
             height: widget.horizontal ? null : 3,
-            child: const ColoredBox(color: Color(0xffd4a85f)),
+            child: ColoredBox(color: appColor(context, Color(0xffd4a85f))),
           ),
       ],
     ),
@@ -163,14 +167,14 @@ class DashboardEditor extends StatelessWidget {
             tooltip: AppLocalizations.of(context)!.restoreDefaultOrder,
             onPressed: onReset,
             icon: const Icon(Icons.settings_backup_restore_rounded),
-            color: const Color(0xff8197a5),
+            color: appColor(context, const Color(0xff8197a5)),
           ),
           IconButton(
             key: const Key('dashboard-edit-done'),
             tooltip: AppLocalizations.of(context)!.editDone,
             onPressed: onDone,
             icon: const Icon(Icons.check_rounded),
-            color: const Color(0xffd4a85f),
+            color: appColor(context, const Color(0xffd4a85f)),
           ),
         ],
       ),

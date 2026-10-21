@@ -6,6 +6,58 @@ import 'package:yahagi_kancolle_browser/src/diagnostics/diagnostic_event.dart';
 import 'package:yahagi_kancolle_browser/src/diagnostics/diagnostic_privacy_policy.dart';
 
 void main() {
+  test(
+    'game loop diagnostics keep fresh counters and discard unknown fields',
+    () {
+      final event = DiagnosticEvent.gameLoopSample(
+        occurredAt: DateTime.utc(2026, 10, 21),
+        snapshot: <Object?, Object?>{
+          'fresh': true,
+          'sampleAgeMs': 50,
+          'sample': <Object?, Object?>{
+            'fps': null,
+            'renderFps': 0,
+            'rafFps': 60,
+            'target': 'fps60',
+            'visible': true,
+            'configuredFps': 60,
+            'unexpected': 'https://example.invalid/?api_token=secret',
+          },
+          'unexpected': 'account-private',
+        },
+      );
+      expect(event.type, 'gameLoopSample');
+      expect(event.fields['gameFps'], isNull);
+      expect(event.fields['gameRenderFps'], 0);
+      expect(event.fields['rafFps'], 60);
+      expect(event.fields['visible'], isTrue);
+      expect(jsonEncode(event.toJson()), isNot(contains('private')));
+      expect(jsonEncode(event.toJson()), isNot(contains('https://')));
+    },
+  );
+
+  test('stale or malformed game counters cannot masquerade as live frames', () {
+    final stale = DiagnosticEvent.gameLoopSample(
+      occurredAt: DateTime.utc(2026, 10, 21),
+      snapshot: <Object?, Object?>{
+        'fresh': false,
+        'sample': <Object?, Object?>{'fps': 60, 'renderFps': 60},
+      },
+    );
+    expect(stale.fields['fresh'], isFalse);
+    expect(stale.fields['gameFps'], isNull);
+    for (final invalid in [-1, double.nan, double.infinity, '60']) {
+      final event = DiagnosticEvent.gameLoopSample(
+        occurredAt: DateTime.utc(2026, 10, 21),
+        snapshot: <Object?, Object?>{
+          'fresh': true,
+          'sample': <Object?, Object?>{'fps': invalid},
+        },
+      );
+      expect(event.fields['gameFps'], isNull);
+    }
+  });
+
   test('game loading diagnostics keep phases and safe runtime context', () {
     final event = DiagnosticEvent.gameLoad(
       occurredAt: DateTime.utc(2026, 10, 7),

@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 
@@ -40,7 +41,7 @@ class ShipRemodelCapsule extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 38),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xff102331),
+        color: appColor(context, Color(0xff102331)),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Text.rich(
@@ -48,13 +49,16 @@ class ShipRemodelCapsule extends StatelessWidget {
           children: [
             TextSpan(
               text: '${fleetText(context, FleetUiKeys.remodel)}：',
-              style: const TextStyle(color: Color(0xffa9bac4)),
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, Color(0xffa9bac4))),
+              ),
             ),
             TextSpan(text: value),
           ],
         ),
-        style: const TextStyle(
-          color: Color(0xffe1e9ed),
+        style: TextStyle(
+          color: appColor(context, Color(0xffe1e9ed)),
           fontSize: 13,
           fontWeight: FontWeight.w700,
         ),

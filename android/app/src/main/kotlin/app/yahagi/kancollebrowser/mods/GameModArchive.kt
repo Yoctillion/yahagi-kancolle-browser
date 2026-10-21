@@ -286,10 +286,10 @@ internal class GameModArchive(private val progress: GameModProgress? = null) {
         val logical = resources.filterNot { it.kind == "coordinates" }.toMutableList()
         val bound = linkedMapOf<String, MutableList<Pair<ArchiveResource, GameModCoordinateData>>>()
         resources.filter { it.kind == "coordinates" }.groupBy { coordinate ->
-            coordinate.path.substringAfterLast('/').removeSuffix(".ini").removeSuffix(".json").removeSuffix(".config")
+            coordinate.path.substringAfterLast('/').replace(COORDINATE_SUFFIX, "")
         }.forEach { (stem, formats) ->
             val parsed = formats.map { coordinate -> coordinate to GameModCoordinateParser.parse(
-                File(directory, coordinate.relativeFile).readBytes(), coordinate.path.substringAfterLast('.')) }
+                File(directory, coordinate.relativeFile), coordinate.path.substringAfterLast('.')) }
             val merged = GameModCoordinateParser.merge(parsed.map { it.second })
             if (merged.metadataIgnored) warnings.add("coordinate_metadata_ignored")
             if (merged.unknownFields) warnings.add("coordinate_unknown_fields_ignored")
@@ -357,6 +357,7 @@ internal class GameModArchive(private val progress: GameModProgress? = null) {
         val AUDIO_PATH = Regex("kcs/sound/kc[a-z0-9]+/[0-9]+\\.mp3")
         val WAV_PATH = Regex("kcs/sound/kc[a-z0-9]+/[0-9]+\\.(?i:wav)")
         val BAT_PATH = Regex("(?:ship(?:_[^/]+)?/)?[0-9]{4}(?:_[^/]+)?/[^/]+\\.(?:png|ini|json)")
+        val COORDINATE_SUFFIX = Regex("(?:^config|\\.config)?\\.(?:ini|json)$", RegexOption.IGNORE_CASE)
         val SHIP_TYPES = setOf(
             "full", "full_dmg", "full_x2", "full_x2_dmg", "card", "card_dmg", "card_round", "banner", "banner_dmg", "banner_g_dmg",
             "banner2", "banner2_dmg", "banner2_g_dmg", "banner3", "banner3_g_dmg", "supply_character", "supply_character_dmg",

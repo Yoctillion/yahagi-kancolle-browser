@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -30,15 +31,24 @@ class QuestCompletionBadge extends StatelessWidget {
         child: ExcludeSemantics(
           child: Text(
             circledCount(count),
-            style: const TextStyle(
-              color: Color(0xff69c7ff),
-              fontSize: 14,
-              height: 1,
-              fontWeight: FontWeight.w800,
-              shadows: [
-                Shadow(color: Color(0x9953b9ff), blurRadius: 5),
-                Shadow(color: Color(0x5553b9ff), blurRadius: 9),
-              ],
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xff69c7ff)),
+                fontSize: 14,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                shadows: [
+                  Shadow(
+                    color: appColor(context, Color(0x9953b9ff)),
+                    blurRadius: 5,
+                  ),
+                  Shadow(
+                    color: appColor(context, Color(0x5553b9ff)),
+                    blurRadius: 9,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

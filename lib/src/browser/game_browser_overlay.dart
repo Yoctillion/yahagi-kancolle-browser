@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import 'game_toolbar_controller.dart';
@@ -20,7 +21,7 @@ class GameBrowserOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       key: const Key('game-browser-overlay'),
-      color: const Color(0xff102431),
+      color: appColor(context, const Color(0xff102431)),
       child: gameSurface,
     );
   }

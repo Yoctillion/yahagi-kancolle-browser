@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -130,10 +131,13 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
       return Center(
         child: Text(
           l10n.noSortieWarnings,
-          style: const TextStyle(
-            color: Color(0xff8197a5),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Color(0xff8197a5)),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       );
@@ -145,10 +149,16 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
         key: Key(
           'pre-sortie-warning-surface-${warning.fleetId}-${warning.kind.keyName}',
         ),
-        color: warning.kind.foreground.withValues(alpha: 0.2),
+        color: appColor(
+          context,
+          warning.kind.foreground.withValues(alpha: 0.2),
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
-          side: BorderSide(color: warning.kind.foreground, width: 1),
+          side: BorderSide(
+            color: appColor(context, warning.kind.foreground),
+            width: 1,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -162,17 +172,20 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
               children: [
                 Icon(
                   warning.kind.icon,
-                  color: warning.kind.foreground,
+                  color: appColor(context, warning.kind.foreground),
                   size: 16,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     warning.message,
-                    style: TextStyle(
-                      color: warning.kind.foreground,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: warning.kind.foreground,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -204,10 +217,13 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
                   final painter = TextPainter(
                     text: TextSpan(
                       text: warning.message,
-                      style: DefaultTextStyle.of(context).style.merge(
-                        const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        DefaultTextStyle.of(context).style.merge(
+                          const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -245,19 +261,25 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
             children: [
               Text(
                 l10n.noMapGaugeData,
-                style: const TextStyle(
-                  color: Color(0xff8197a5),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xff8197a5)),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 l10n.noMapGaugeDataHint,
-                style: const TextStyle(
-                  color: Color(0xff4a5c68),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xff4a5c68)),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -302,10 +324,13 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 l10n.allMapsCleared,
-                style: const TextStyle(
-                  color: Color(0xff8197a5),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xff8197a5)),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -342,15 +367,18 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
                 ? Icons.check_box_outlined
                 : Icons.check_box_outline_blank_outlined,
             size: 14,
-            color: Colors.white,
+            color: appColor(context, Colors.white),
           ),
           const SizedBox(width: 4),
           Text(
             l10n.showClearedMaps,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                fontSize: 11,
+                color: appColor(context, Colors.white),
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -531,9 +559,9 @@ class _SortieSummaryModeSelector extends StatelessWidget {
       height: 26,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xff10212e),
+        color: appColor(context, Color(0xff10212e)),
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xff294052)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -571,7 +599,10 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xff5b4829) : Colors.transparent,
+      color: appColor(
+        context,
+        selected ? const Color(0xff5b4829) : Colors.transparent,
+      ),
       borderRadius: BorderRadius.circular(5),
       child: InkWell(
         borderRadius: BorderRadius.circular(5),
@@ -580,12 +611,15 @@ class _ModeButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: selected
-                  ? const Color(0xfff7e7c4)
-                  : const Color(0xff8197a5),
+            style: appTextStyle(
+              context,
+              TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: selected
+                    ? const Color(0xfff7e7c4)
+                    : const Color(0xff8197a5),
+              ),
             ),
           ),
         ),
@@ -628,12 +662,13 @@ class _MapGaugeRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xff0d1a26),
+          color: appColor(context, Color(0xff0d1a26)),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isCleared
-                ? const Color(0xff1e303d)
-                : const Color(0xff294052),
+            color: appColor(
+              context,
+              isCleared ? const Color(0xff1e303d) : const Color(0xff294052),
+            ),
           ),
         ),
         child: Column(
@@ -647,15 +682,23 @@ class _MapGaugeRow extends StatelessWidget {
                     vertical: 1.5,
                   ),
                   decoration: BoxDecoration(
-                    color: tagBg,
+                    color: appColor(context, tagBg),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
                     fleetText(context, gauge.categoryTag),
-                    style: const TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            AppPalette.of(context).isDark ||
+                                appColor(context, tagBg).computeLuminance() <
+                                    .179
+                            ? appOnAccentColor(context, Colors.white)
+                            : appColor(context, Colors.white),
+                      ),
                     ),
                   ),
                 ),
@@ -665,25 +708,31 @@ class _MapGaugeRow extends StatelessWidget {
                     '${gauge.code} $displayName$rankText$gaugeNumText',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isCleared
-                          ? const Color(0xff607786)
-                          : const Color(0xffdce6eb),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isCleared
+                            ? const Color(0xff607786)
+                            : const Color(0xffdce6eb),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   '${gauge.currentGaugeValue} / ${gauge.maxGaugeValue}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isCleared
-                        ? const Color(0xff607786)
-                        : const Color(0xff70c7bc),
-                    fontFeatures: const [FontFeature.tabularFigures()],
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isCleared
+                          ? const Color(0xff607786)
+                          : const Color(0xff70c7bc),
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
               ],
@@ -693,7 +742,7 @@ class _MapGaugeRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               child: Container(
                 height: 5,
-                color: const Color(0xff142735),
+                color: appColor(context, Color(0xff142735)),
                 alignment: Alignment.centerLeft,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -701,17 +750,20 @@ class _MapGaugeRow extends StatelessWidget {
                       width: constraints.maxWidth * percentage,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: percentage > 0
-                              ? (gauge.isEvent
-                                    ? const [
-                                        Color(0xff7e57c2),
-                                        Color(0xffab47bc),
-                                      ]
-                                    : const [
-                                        Color(0xff26a69a),
-                                        Color(0xff4db6ac),
-                                      ])
-                              : const [Color(0xff37474f), Color(0xff455a64)],
+                          colors: appColors(
+                            context,
+                            percentage > 0
+                                ? (gauge.isEvent
+                                      ? const [
+                                          Color(0xff7e57c2),
+                                          Color(0xffab47bc),
+                                        ]
+                                      : const [
+                                          Color(0xff26a69a),
+                                          Color(0xff4db6ac),
+                                        ])
+                                : const [Color(0xff37474f), Color(0xff455a64)],
+                          ),
                         ),
                       ),
                     );

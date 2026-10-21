@@ -1,21 +1,28 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../settings/settings_ui_helpers.dart';
 import 'ship_subtitle_language.dart';
+import 'ship_subtitle_runtime_controller.dart';
 import 'ship_subtitle_settings.dart';
 import 'ship_subtitle_strings.dart';
 
 class ShipSubtitleSettingsSection extends StatelessWidget
     with SettingsUIHelpers {
-  const ShipSubtitleSettingsSection({super.key, required this.controller});
+  const ShipSubtitleSettingsSection({
+    super.key,
+    required this.controller,
+    this.runtimeController,
+  });
 
   final ShipSubtitleSettingsController controller;
+  final ShipSubtitleRuntimeController? runtimeController;
 
   @override
   Widget build(BuildContext context) {
     final strings = ShipSubtitleStrings.of(context);
     return AnimatedBuilder(
-      animation: controller,
+      animation: Listenable.merge([controller, runtimeController]),
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -27,7 +34,10 @@ class ShipSubtitleSettingsSection extends StatelessWidget
             onChanged: controller.saving ? null : controller.setEnabled,
           ),
           if (controller.enabled) ...[
-            const Divider(color: Color(0xff294052), height: 1),
+            if (runtimeController case final runtime?)
+              if (runtime.status != ShipSubtitleRuntimeStatus.ready)
+                _runtimeStatus(context, strings, runtime),
+            Divider(color: appColor(context, Color(0xff294052)), height: 1),
             _choiceRow(
               strings.fontSize,
               DropdownButton<ShipSubtitleFontSize>(
@@ -49,7 +59,7 @@ class ShipSubtitleSettingsSection extends StatelessWidget
                       },
               ),
             ),
-            const Divider(color: Color(0xff294052), height: 1),
+            Divider(color: appColor(context, Color(0xff294052)), height: 1),
             _choiceRow(
               strings.language,
               DropdownButton<ShipSubtitleLanguage>(
@@ -77,10 +87,60 @@ class ShipSubtitleSettingsSection extends StatelessWidget
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Text(
                 strings.saveFailed,
-                style: SettingsTileTypography.description.copyWith(
-                  color: Theme.of(context).colorScheme.error,
+                style: appTextStyle(
+                  context,
+                  SettingsTileTypography.description.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _runtimeStatus(
+    BuildContext context,
+    ShipSubtitleStrings strings,
+    ShipSubtitleRuntimeController runtime,
+  ) {
+    final status = runtime.status;
+    final message = switch (status) {
+      ShipSubtitleRuntimeStatus.checking => strings.runtimeChecking,
+      ShipSubtitleRuntimeStatus.unsupported => strings.runtimeUnsupported,
+      ShipSubtitleRuntimeStatus.failed => strings.runtimeFailed,
+      ShipSubtitleRuntimeStatus.waitingForGameData =>
+        strings.runtimeWaitingForGameData,
+      ShipSubtitleRuntimeStatus.ready => '',
+    };
+    final needsRetry =
+        status == ShipSubtitleRuntimeStatus.unsupported ||
+        status == ShipSubtitleRuntimeStatus.failed;
+    return Padding(
+      key: const Key('settings-ship-subtitle-runtime-status'),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: appTextStyle(
+              context,
+              SettingsTileTypography.description.copyWith(
+                color: needsRetry
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          if (needsRetry || status == ShipSubtitleRuntimeStatus.checking)
+            TextButton(
+              key: const Key('settings-ship-subtitle-retry'),
+              onPressed: status == ShipSubtitleRuntimeStatus.checking
+                  ? null
+                  : runtime.retry,
+              child: Text(strings.retry),
             ),
         ],
       ),

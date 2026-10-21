@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
@@ -103,7 +104,13 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
             child: Center(
               child: Text(
                 strings.noActiveExpedition,
-                style: const TextStyle(color: Color(0xff8197a5), fontSize: 13),
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xff8197a5)),
+                    fontSize: 13,
+                  ),
+                ),
               ),
             ),
           )
@@ -146,14 +153,14 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
     Widget time,
   ) {
     return Material(
-      color: Colors.transparent,
+      color: appColor(context, Colors.transparent),
       child: InkWell(
         onTap: widget.onOpenExpedition,
         borderRadius: BorderRadius.circular(6),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xff0d1a26),
+            color: appColor(context, Color(0xff0d1a26)),
             borderRadius: BorderRadius.circular(6),
           ),
           child: LayoutBuilder(
@@ -271,17 +278,16 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
         key: Key('expedition-summary-$kind-$fleetId'),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
+          color: appColor(context, color.withValues(alpha: 0.2)),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
           ),
         ),
       );
@@ -311,10 +317,16 @@ class ExpeditionModeSelector extends StatelessWidget {
       height: compact ? 26 : 38,
       padding: EdgeInsets.all(compact ? 2 : 3),
       decoration: BoxDecoration(
-        color: compact ? const Color(0xff10212e) : const Color(0xff0b202d),
+        color: appColor(
+          context,
+          compact ? const Color(0xff10212e) : const Color(0xff0b202d),
+        ),
         borderRadius: BorderRadius.circular(compact ? 7 : 20),
         border: Border.all(
-          color: compact ? const Color(0xff294052) : const Color(0xff315064),
+          color: appColor(
+            context,
+            compact ? const Color(0xff294052) : const Color(0xff315064),
+          ),
         ),
       ),
       child: Row(
@@ -377,9 +389,12 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? (compact ? const Color(0xff5b4829) : const Color(0xff8a6628))
-          : Colors.transparent,
+      color: appColor(
+        context,
+        selected
+            ? (compact ? const Color(0xff5b4829) : const Color(0xff8a6628))
+            : Colors.transparent,
+      ),
       borderRadius: BorderRadius.circular(compact ? 5 : 16),
       child: InkWell(
         borderRadius: BorderRadius.circular(compact ? 5 : 16),
@@ -389,12 +404,15 @@ class _ModeButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 child: Text(
                   label,
-                  style: TextStyle(
-                    color: selected
-                        ? const Color(0xffffcf67)
-                        : const Color(0xff8197a5),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: selected
+                          ? const Color(0xffffcf67)
+                          : const Color(0xff8197a5),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               )
@@ -403,12 +421,15 @@ class _ModeButton extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     label,
-                    style: TextStyle(
-                      color: selected
-                          ? const Color(0xffffdc88)
-                          : const Color(0xff9fb3bf),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: selected
+                            ? const Color(0xffffdc88)
+                            : const Color(0xff9fb3bf),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),

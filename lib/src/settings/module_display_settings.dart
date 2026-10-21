@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../fleet/fleet_ui_strings.dart';
 import 'fleet_display_options.dart';
@@ -44,10 +45,10 @@ Widget? moduleDisplayGear(
         ),
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
         padding: EdgeInsets.zero,
-        icon: const Icon(
+        icon: Icon(
           Icons.settings_outlined,
           size: 19,
-          color: Color(0xffd4a85f),
+          color: appColor(context, Color(0xffd4a85f)),
         ),
         onPressed: onPressed,
       );
@@ -59,7 +60,7 @@ Future<void> showModuleDisplaySettings(
 ) => showDialog<void>(
   context: context,
   builder: (context) => Dialog(
-    backgroundColor: const Color(0xff142735),
+    backgroundColor: appColor(context, const Color(0xff142735)),
     insetPadding: const EdgeInsets.all(16),
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 720),
@@ -126,8 +127,8 @@ Future<void> showModuleDisplaySettings(
                   const SizedBox(height: 8),
                   Text(
                     fleetText(context, FleetUiKeys.capsuleAppearance),
-                    style: const TextStyle(
-                      color: Color(0xffd8ad60),
+                    style: TextStyle(
+                      color: appColor(context, Color(0xffd8ad60)),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -158,12 +159,15 @@ Future<void> showModuleDisplaySettings(
                   ),
                   if (hasOptions) ...[
                     const SizedBox(height: 12),
-                    const Divider(height: 1, color: Color(0xff294052)),
+                    Divider(
+                      height: 1,
+                      color: appColor(context, Color(0xff294052)),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       fleetText(context, FleetUiKeys.displayContent),
-                      style: const TextStyle(
-                        color: Color(0xffd8ad60),
+                      style: TextStyle(
+                        color: appColor(context, Color(0xffd8ad60)),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -191,12 +195,15 @@ Future<void> showModuleDisplaySettings(
                   ],
                   if (module == 'repair') ...[
                     const SizedBox(height: 12),
-                    const Divider(height: 1, color: Color(0xff294052)),
+                    Divider(
+                      height: 1,
+                      color: appColor(context, Color(0xff294052)),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       fleetText(context, FleetUiKeys.fleetSelectorName),
-                      style: const TextStyle(
-                        color: Color(0xffd8ad60),
+                      style: TextStyle(
+                        color: appColor(context, Color(0xffd8ad60)),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -264,7 +271,7 @@ class ModuleSlotGrid extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Text(
             fleetText(context, emptyLabel),
-            style: const TextStyle(color: Color(0xff8197a5)),
+            style: TextStyle(color: appColor(context, Color(0xff8197a5))),
           ),
         )
       : LayoutBuilder(

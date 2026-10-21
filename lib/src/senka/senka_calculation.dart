@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'senka_catalog.dart';
+import 'senka_ledger.dart';
 import 'senka_state.dart';
 
 class SenkaCalculationResult {
@@ -19,7 +20,7 @@ class SenkaCalculationResult {
 
   factory SenkaCalculationResult.fromState(SenkaState state, {DateTime? now}) {
     final instant = now ?? DateTime.now().toUtc();
-    final currentDate = senkaBusinessDate(instant);
+    final currentDate = senkaCurrentDate(instant);
     final plannedEo = _plannedSenka(state.eoStatuses, senkaEoCatalog);
     final plannedQuest = _plannedSenka(state.questStatuses, senkaQuestCatalog);
     final baseSenka = state.unsettledSenka;
@@ -27,7 +28,9 @@ class SenkaCalculationResult {
     final difference = state.targetSenka - projected;
     final gap = math.max(difference, 0).toDouble();
     final over = math.max(-difference, 0).toDouble();
-    final remainingDays = senkaAvailableDays(instant);
+    final remainingDays = state.monthKey == currentSenkaMonthKey(instant)
+        ? senkaAvailableDays(instant)
+        : 0;
     final today = state.day(currentDate);
     final currentDateKey = dateKey(currentDate);
     final projectedAtDayStart = state.dailyTargetDateKey == currentDateKey
@@ -50,7 +53,7 @@ class SenkaCalculationResult {
       gap: gap,
       over: over,
       percentage: state.targetSenka > 0
-          ? projected / state.targetSenka * 100
+          ? boundedSenkaValue(projected / state.targetSenka * 100)
           : 0,
       remainingDays: remainingDays,
       unsettledSenka: baseSenka,
@@ -73,16 +76,20 @@ class SenkaCalculationResult {
   final double todayRemaining;
 }
 
-double senkaProjected(SenkaState state) =>
-    state.calculatorCurrentSenka +
-    state.unsettledSenka +
-    _plannedSenka(state.eoStatuses, senkaEoCatalog) +
-    _plannedSenka(state.questStatuses, senkaQuestCatalog);
+double senkaProjected(SenkaState state) => finiteSenkaSum([
+  state.calculatorCurrentSenka,
+  state.unsettledSenka,
+  _plannedSenka(state.eoStatuses, senkaEoCatalog),
+  _plannedSenka(state.questStatuses, senkaQuestCatalog),
+]);
 
 SenkaState ensureSenkaDailyTarget(SenkaState state, DateTime instant) {
-  final businessDate = senkaBusinessDate(instant);
+  final businessDate = senkaCurrentDate(instant);
   final key = dateKey(businessDate);
-  if (state.dailyTargetDateKey == key) return state;
+  if (state.monthKey != currentSenkaMonthKey(instant) ||
+      state.dailyTargetDateKey.compareTo(key) >= 0) {
+    return state;
+  }
   final projected = senkaProjected(state);
   final inferredStart = math
       .max(projected - state.day(businessDate).experience, 0)
@@ -99,34 +106,27 @@ SenkaState rebaseSenkaDailyTarget(
   DateTime instant,
 ) {
   final initialized = ensureSenkaDailyTarget(previous, instant);
-  final key = dateKey(senkaBusinessDate(instant));
   if (initialized.monthKey != next.monthKey) {
     return ensureSenkaDailyTarget(next, instant);
   }
   final projectionChange = senkaProjected(next) - senkaProjected(previous);
   return next.copyWith(
-    dailyTargetDateKey: key,
-    dailyProjectedSenkaAtStart: math
-        .max(initialized.dailyProjectedSenkaAtStart + projectionChange, 0)
-        .toDouble(),
+    dailyTargetDateKey: initialized.dailyTargetDateKey,
+    dailyProjectedSenkaAtStart: boundedSenkaValue(
+      initialized.dailyProjectedSenkaAtStart + projectionChange,
+    ),
   );
 }
 
 int senkaRemainingDaysInMonth(int year, int month, int day) =>
     DateTime.utc(year, month + 1, 0).day - day + 1;
 
+DateTime senkaCurrentDate(DateTime instant) => DateTime.parse(
+  '${senkaRecordDateKey(instant, currentSenkaMonthKey(instant))}T00:00:00Z',
+);
+
 int senkaAvailableDays(DateTime instant) {
-  final jst = toJst(instant);
-  final businessDate = senkaBusinessDate(instant);
-  if (jst.year != businessDate.year || jst.month != businessDate.month) {
-    return 0;
-  }
-  final lastDay = DateTime.utc(
-    businessDate.year,
-    businessDate.month + 1,
-    0,
-  ).day;
-  if (businessDate.day == lastDay && jst.hour >= 22) return 0;
+  final businessDate = senkaCurrentDate(instant);
   return senkaRemainingDaysInMonth(
     businessDate.year,
     businessDate.month,
@@ -139,13 +139,12 @@ DateTime senkaNextRefreshInstant(DateTime instant) {
   final jst = toJst(now);
   final today = DateTime.utc(jst.year, jst.month, jst.day);
   final tomorrow = today.add(const Duration(days: 1));
-  final lastDay = DateTime.utc(jst.year, jst.month + 1, 0).day;
   final candidates = <DateTime>[
-    _jstBoundary(today, 2),
-    _jstBoundary(today, 5),
-    if (jst.day == lastDay) _jstBoundary(today, 22),
-    _jstBoundary(tomorrow, 2),
-    _jstBoundary(tomorrow, 5),
+    for (final date in [today, tomorrow]) ...[
+      for (final hour in [0, 2, 3, 5, 14, 15]) _jstBoundary(date, hour),
+      if (date.day == DateTime.utc(date.year, date.month + 1, 0).day)
+        _jstBoundary(date, 22),
+    ],
   ]..removeWhere((candidate) => !candidate.isAfter(now));
   candidates.sort();
   return candidates.first;

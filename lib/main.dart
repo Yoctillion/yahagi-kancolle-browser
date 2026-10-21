@@ -1,3 +1,4 @@
+import 'src/theme/app_palette.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
@@ -37,6 +38,7 @@ import 'src/browser/game_fullscreen_controls.dart';
 import 'src/browser/app_exit_guard.dart';
 import 'src/settings/app_exit_settings.dart';
 import 'src/browser/game_frame_reload_port.dart';
+import 'src/browser/game_frame_rate_port.dart';
 import 'src/browser/game_refresh_dialog.dart';
 import 'src/browser/game_toolbar_controller.dart';
 import 'src/browser/game_toolbar_display_controller.dart';
@@ -107,6 +109,7 @@ import 'src/layout/hd_home_editor.dart';
 import 'src/layout/workspace_navigation_side.dart';
 import 'src/layout/workspace_context_header.dart';
 import 'src/layout/window_metrics_change.dart';
+import 'src/layout/camera_avoidance.dart';
 import 'src/layout/window_metrics_recovery_scheduler.dart';
 import 'src/kcwiki_report/kcwiki_report_collector.dart';
 import 'src/kcwiki_report/kcwiki_report_consumer.dart';
@@ -557,12 +560,13 @@ Future<void> main() async {
   shipSubtitleCatalogController = await ShipSubtitleCatalogController.load(
     language: shipSubtitleSettingsController.language,
   );
-  await ShipSubtitleRuntimeController(
+  final shipSubtitleRuntimeController = ShipSubtitleRuntimeController(
     settings: shipSubtitleSettingsController,
     catalog: shipSubtitleCatalogController,
     layout: layoutSettingsController,
     gameState: gameStateController,
-  ).initialize();
+  );
+  await shipSubtitleRuntimeController.initialize();
   final gameFrameRefreshShortcutSettings =
       await GameFrameRefreshShortcutSettings.load();
   final screenAwakeController = await ScreenAwakeController.load(
@@ -636,6 +640,9 @@ Future<void> main() async {
     webViewHost: diagnosticWebViewHost,
     renderer: diagnosticRenderer,
     generationId: diagnosticGeneration,
+    gamePerformanceSnapshot: Platform.isAndroid
+        ? const MethodChannelGameFrameRateRuntimePort().performanceSnapshot
+        : null,
   );
   final diagnosticController = DiagnosticController(
     settings: SharedPreferencesDiagnosticSettingsStore(),
@@ -699,6 +706,8 @@ Future<void> main() async {
     backupService = RecordBackupService(
       session: accountSession,
       port: const AndroidBackupDocumentPort(),
+      senkaStore: senkaController.store as SenkaBackupStore,
+      senkaController: senkaController,
     );
     RecordBackupService.shared = backupService;
     try {
@@ -753,6 +762,7 @@ Future<void> main() async {
     gameMouseWheelSettingsController: gameMouseWheelSettingsController,
     shipSubtitleSettingsController: shipSubtitleSettingsController,
     shipSubtitleCatalogController: shipSubtitleCatalogController,
+    shipSubtitleRuntimeController: shipSubtitleRuntimeController,
     gameFrameRefreshShortcutSettings: gameFrameRefreshShortcutSettings,
     diagnosticController: diagnosticController,
     telemetryController: telemetryController,
@@ -803,6 +813,7 @@ Future<void> main() async {
       await WidgetsBinding.instance.endOfFrame;
       await gameApiEventPipeline.idle;
       await gameStateController.logbookIdle;
+      await senkaController.idle;
     },
     end: () => unawaited(finishBackupMaintenance()),
     blocked: (error) {
@@ -1045,6 +1056,7 @@ class YahagiApp extends StatelessWidget {
     this.gameFrameRefreshShortcutSettings,
     this.shipSubtitleSettingsController,
     this.shipSubtitleCatalogController,
+    this.shipSubtitleRuntimeController,
     this.toolbarDisplayController,
     this.gameScreenshotController,
     this.showDeveloperDiagnostics = false,
@@ -1097,6 +1109,7 @@ class YahagiApp extends StatelessWidget {
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final ShipSubtitleSettingsController? shipSubtitleSettingsController;
   final ShipSubtitleCatalogController? shipSubtitleCatalogController;
+  final ShipSubtitleRuntimeController? shipSubtitleRuntimeController;
   final GameToolbarDisplayController? toolbarDisplayController;
   final GameScreenshotController? gameScreenshotController;
   final bool showDeveloperDiagnostics;
@@ -1130,12 +1143,16 @@ class YahagiApp extends StatelessWidget {
             controller: shipSubtitleCatalogController,
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(boldText: true),
-              child: Stack(
-                children: [
-                  child ?? const SizedBox.shrink(),
-                  if (backupMaintenanceOverlay?.value case final overlay?)
-                    Positioned.fill(child: overlay),
-                ],
+              child: CameraAvoidanceViewport(
+                enabled: layoutSettingsController.cameraAvoidanceEnabled,
+                distance: layoutSettingsController.cameraAvoidanceDistance,
+                child: Stack(
+                  children: [
+                    child ?? const SizedBox.shrink(),
+                    if (backupMaintenanceOverlay?.value case final overlay?)
+                      Positioned.fill(child: overlay),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1158,16 +1175,10 @@ class YahagiApp extends StatelessWidget {
           supportedLocales: AppLocalizations.supportedLocales,
           localeResolutionCallback: resolveUiLocale,
           navigatorObservers: <NavigatorObserver>[routeObserver],
-          theme: ThemeData(
-            brightness: Brightness.dark,
+          theme: createAppTheme(
+            mode: layoutSettingsController.appThemeMode,
             fontFamily: layoutSettingsController.fontFamily,
             fontFamilyFallback: layoutSettingsController.fontFamilyFallback,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xffd4a85f),
-              brightness: Brightness.dark,
-            ),
-            scaffoldBackgroundColor: const Color(0xff0a1823),
-            useMaterial3: true,
           ),
           home: TopNoticeHost(
             child: StartupUpdateNotice(
@@ -1221,6 +1232,7 @@ class YahagiApp extends StatelessWidget {
                   shipSubtitleSettingsController:
                       shipSubtitleSettingsController,
                   shipSubtitleCatalogController: shipSubtitleCatalogController,
+                  shipSubtitleRuntimeController: shipSubtitleRuntimeController,
                   toolbarDisplayController: toolbarDisplayController,
                   gameScreenshotController: gameScreenshotController,
                   headerNoticeController: headerNoticeController,
@@ -1424,6 +1436,7 @@ class YahagiShell extends StatefulWidget {
     this.gameFrameRefreshShortcutSettings,
     this.shipSubtitleSettingsController,
     this.shipSubtitleCatalogController,
+    this.shipSubtitleRuntimeController,
     this.toolbarDisplayController,
     this.gameScreenshotController,
     this.headerNoticeController,
@@ -1478,6 +1491,7 @@ class YahagiShell extends StatefulWidget {
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final ShipSubtitleSettingsController? shipSubtitleSettingsController;
   final ShipSubtitleCatalogController? shipSubtitleCatalogController;
+  final ShipSubtitleRuntimeController? shipSubtitleRuntimeController;
   final GameToolbarDisplayController? toolbarDisplayController;
   final GameScreenshotController? gameScreenshotController;
   final TopNoticeController? headerNoticeController;
@@ -1500,6 +1514,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
   WindowMetricsChangeTracker? _windowMetricsChangeTracker;
   int _workspaceIndex = 0;
   bool _gameFullscreen = false;
+  bool _layoutFitScheduled = false;
   Size? _normalWorkspaceSize;
   int? _expeditionCheckFleetId;
   int? _fleetCenterInitialFleetId;
@@ -1670,7 +1685,14 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         _hdEditing = false;
       }
     });
-    widget.browserController.fitGameScreen().catchError((Object _) {});
+    if (_layoutFitScheduled) return;
+    _layoutFitScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _layoutFitScheduled = false;
+      if (mounted) {
+        widget.browserController.fitGameScreen().catchError((Object _) {});
+      }
+    });
   }
 
   @override
@@ -1956,10 +1978,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                             padding: EdgeInsets.symmetric(
                               horizontal: isCompact ? 8 : 10,
                             ),
-                            decoration: const BoxDecoration(
-                              color: Color(0xff122431),
+                            decoration: BoxDecoration(
+                              color: appColor(context, Color(0xff122431)),
                               border: Border(
-                                bottom: BorderSide(color: Color(0xff294052)),
+                                bottom: BorderSide(
+                                  color: appColor(context, Color(0xff294052)),
+                                ),
                               ),
                             ),
                             child: TooltipVisibility(
@@ -1967,9 +1991,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               child: Row(
                                 children: [
                                   Material(
-                                    color: isToolbarVisible
-                                        ? const Color(0xff1a3447)
-                                        : Colors.transparent,
+                                    color: appColor(
+                                      context,
+                                      isToolbarVisible
+                                          ? const Color(0xff1a3447)
+                                          : Colors.transparent,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                     child: InkWell(
                                       key: const Key('yahagi-brand-button'),
@@ -2002,9 +2029,14 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                             SizedBox(width: isCompact ? 2 : 4),
                                             Text(
                                               'ヤハギ',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: isCompact ? 13 : null,
+                                              style: appTextStyle(
+                                                context,
+                                                TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: isCompact
+                                                      ? 13
+                                                      : null,
+                                                ),
                                               ),
                                             ),
                                             if (hdWindow || hdPortrait) ...[
@@ -2014,14 +2046,17 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 key: const Key(
                                                   'yahagi-hd-label',
                                                 ),
-                                                style: TextStyle(
-                                                  color: const Color(
-                                                    0xffffd54f,
+                                                style: appTextStyle(
+                                                  context,
+                                                  TextStyle(
+                                                    color: const Color(
+                                                      0xffffd54f,
+                                                    ),
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: isCompact
+                                                        ? 12
+                                                        : null,
                                                   ),
-                                                  fontWeight: FontWeight.w800,
-                                                  fontSize: isCompact
-                                                      ? 12
-                                                      : null,
                                                 ),
                                               ),
                                             ],
@@ -2032,9 +2067,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                     ? Icons.chevron_left
                                                     : Icons.chevron_right,
                                                 size: isCompact ? 14 : 16,
-                                                color: isToolbarVisible
-                                                    ? const Color(0xffd4a85f)
-                                                    : const Color(0xff8197a5),
+                                                color: appColor(
+                                                  context,
+                                                  isToolbarVisible
+                                                      ? const Color(0xffd4a85f)
+                                                      : const Color(0xff8197a5),
+                                                ),
                                               ),
                                             ],
                                           ],
@@ -2610,12 +2648,16 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                           : gamePanelExtent),
                                                 child: DecoratedBox(
                                                   decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xff0a1823,
+                                                    color: appColor(
+                                                      context,
+                                                      Color(0xff0a1823),
                                                     ),
                                                     boxShadow: [
                                                       BoxShadow(
-                                                        color: Colors.black38,
+                                                        color: appColor(
+                                                          context,
+                                                          Colors.black38,
+                                                        ),
                                                         offset: isLandscape
                                                             ? Offset(
                                                                 infoOnLeft
@@ -2652,20 +2694,22 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 child: Offstage(
                                                   offstage: _gameFullscreen,
                                                   child: isLandscape
-                                                      ? const VerticalDivider(
+                                                      ? VerticalDivider(
                                                           width: dividerExtent,
                                                           thickness:
                                                               dividerExtent,
-                                                          color: Color(
-                                                            0xff294052,
+                                                          color: appColor(
+                                                            context,
+                                                            Color(0xff294052),
                                                           ),
                                                         )
-                                                      : const Divider(
+                                                      : Divider(
                                                           height: dividerExtent,
                                                           thickness:
                                                               dividerExtent,
-                                                          color: Color(
-                                                            0xff294052,
+                                                          color: appColor(
+                                                            context,
+                                                            Color(0xff294052),
                                                           ),
                                                         ),
                                                 ),
@@ -3016,6 +3060,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                         widget.shipSubtitleSettingsController,
                                     shipSubtitleCatalogController:
                                         widget.shipSubtitleCatalogController,
+                                    shipSubtitleRuntimeController:
+                                        widget.shipSubtitleRuntimeController,
                                     toolbarDisplayController:
                                         widget.toolbarDisplayController,
                                     fcdMapController: widget.fcdMapController,
@@ -3117,13 +3163,18 @@ class WorkspaceNavigation extends StatelessWidget {
         width: controller.workspaceMenuHorizontal ? null : menuExtent,
         height: controller.workspaceMenuHorizontal ? menuExtent : null,
         decoration: BoxDecoration(
-          color: const Color(0xff0a1823),
+          color: appColor(context, Color(0xff0a1823)),
           border: controller.workspaceMenuHorizontal
-              ? const Border(
-                  top: BorderSide(color: Color(0xff294052)),
-                  bottom: BorderSide(color: Color(0xff294052)),
+              ? Border(
+                  top: BorderSide(color: appColor(context, Color(0xff294052))),
+                  bottom: BorderSide(
+                    color: appColor(context, Color(0xff294052)),
+                  ),
                 )
-              : workspaceNavigationBorder(menuOnRight: onRight),
+              : workspaceNavigationBorder(
+                  context: context,
+                  menuOnRight: onRight,
+                ),
         ),
         child: AnimatedBuilder(
           animation: Listenable.merge([controller, ?gameStateController]),
@@ -3371,12 +3422,14 @@ class _NavigationButton extends StatelessWidget {
             padding: horizontal
                 ? const EdgeInsets.only(top: 7.0)
                 : EdgeInsets.zero,
-            foregroundColor: selected
-                ? const Color(0xffd4a85f)
-                : const Color(0xff8197a5),
-            backgroundColor: selected
-                ? const Color(0xff2b2c22)
-                : Colors.transparent,
+            foregroundColor: appColor(
+              context,
+              selected ? const Color(0xffd4a85f) : const Color(0xff8197a5),
+            ),
+            backgroundColor: appColor(
+              context,
+              selected ? const Color(0xff2b2c22) : Colors.transparent,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(9),
             ),
@@ -3496,11 +3549,16 @@ class _InformationPanelState extends State<_InformationPanel> {
           ? const Key('information-panel')
           : ValueKey('hd-module-content-${widget.singleModule}'),
       decoration: BoxDecoration(
-        color: widget.singleModule == null
-            ? const Color(0xff0d1a26)
-            : Colors.transparent,
+        color: appColor(
+          context,
+          widget.singleModule == null
+              ? const Color(0xff0d1a26)
+              : Colors.transparent,
+        ),
         border: widget.singleModule == null
-            ? const Border(left: BorderSide(color: Color(0xff294052)))
+            ? Border(
+                left: BorderSide(color: appColor(context, Color(0xff294052))),
+              )
             : null,
       ),
       child: AnimatedBuilder(
@@ -3933,10 +3991,16 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: warning ? const Color(0xff3a292b) : const Color(0xff142735),
+        color: appColor(
+          context,
+          warning ? const Color(0xff3a292b) : const Color(0xff142735),
+        ),
         borderRadius: BorderRadius.circular(9),
         border: Border.all(
-          color: warning ? const Color(0xff75484a) : Colors.transparent,
+          color: appColor(
+            context,
+            warning ? const Color(0xff75484a) : Colors.transparent,
+          ),
         ),
       ),
       child: Column(
@@ -3946,7 +4010,10 @@ class _InfoCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xff8197a5), height: 1.35),
+            style: TextStyle(
+              color: appColor(context, Color(0xff8197a5)),
+              height: 1.35,
+            ),
           ),
         ],
       ),

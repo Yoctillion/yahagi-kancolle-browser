@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -26,7 +27,7 @@ class _BattleRecordsPageState extends State<BattleRecordsPage> {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: const Color(0xff081521),
+      color: appColor(context, const Color(0xff081521)),
       child: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
@@ -79,18 +80,23 @@ class _Header extends StatelessWidget {
     return Container(
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: const BoxDecoration(
-        color: Color(0xff0d1a26),
-        border: Border(bottom: BorderSide(color: Color(0xff294052))),
+      decoration: BoxDecoration(
+        color: appColor(context, Color(0xff0d1a26)),
+        border: Border(
+          bottom: BorderSide(color: appColor(context, Color(0xff294052))),
+        ),
       ),
       child: Row(
         children: [
           Text(
             l10n.battleRecords,
-            style: const TextStyle(
-              color: Color(0xffd4a85f),
-              fontWeight: FontWeight.w800,
-              fontSize: 17,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffd4a85f)),
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+              ),
             ),
           ),
           const Spacer(),
@@ -99,7 +105,7 @@ class _Header extends StatelessWidget {
               key: const Key('battle-rank-filter'),
               value: rankFilter,
               hint: Text(l10n.allRanks),
-              dropdownColor: const Color(0xff142735),
+              dropdownColor: appColor(context, Color(0xff142735)),
               items: <DropdownMenuItem<BattleRank?>>[
                 DropdownMenuItem<BattleRank?>(
                   value: null,
@@ -133,10 +139,10 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.history_toggle_off,
             size: 42,
-            color: Color(0xff567080),
+            color: appColor(context, Color(0xff567080)),
           ),
           const SizedBox(height: 12),
           Text(
@@ -146,7 +152,10 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             l10n.autoRecordHint,
-            style: const TextStyle(color: Color(0xff8197a5)),
+            style: appTextStyle(
+              context,
+              TextStyle(color: appColor(context, Color(0xff8197a5))),
+            ),
           ),
         ],
       ),
@@ -181,17 +190,17 @@ class _RecordCard extends StatelessWidget {
     final friendAlive = battle.friendShips.where((ship) => !ship.isSunk).length;
     final enemyAlive = battle.enemyShips.where((ship) => !ship.isSunk).length;
     return Material(
-      color: const Color(0xff142735),
+      color: appColor(context, Color(0xff142735)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: Color(0xff294052)),
+        side: BorderSide(color: appColor(context, Color(0xff294052))),
       ),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-        iconColor: const Color(0xffd4a85f),
-        collapsedIconColor: const Color(0xff8197a5),
+        iconColor: appColor(context, const Color(0xffd4a85f)),
+        collapsedIconColor: appColor(context, const Color(0xff8197a5)),
         leading: _RecordRank(rank: battle.rank),
         title: Row(
           children: [
@@ -207,7 +216,13 @@ class _RecordCard extends StatelessWidget {
             ),
             Text(
               _time(record.completedAt),
-              style: const TextStyle(color: Color(0xff8197a5), fontSize: 12),
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff8197a5)),
+                  fontSize: 12,
+                ),
+              ),
             ),
           ],
         ),
@@ -238,19 +253,19 @@ class _RecordCard extends StatelessWidget {
           ),
         ),
         children: [
-          const Divider(color: Color(0xff294052)),
+          Divider(color: appColor(context, Color(0xff294052))),
           LayoutBuilder(
             builder: (context, constraints) {
               final vertical = constraints.maxWidth < 680;
               final friend = _FleetResult(
                 title: l10n.friendFinalStatus,
                 ships: battle.friendShips,
-                color: const Color(0xff70c7bc),
+                color: appColor(context, Color(0xff70c7bc)),
               );
               final enemy = _FleetResult(
                 title: l10n.enemyFinalStatus,
                 ships: battle.enemyShips,
-                color: const Color(0xffff8c78),
+                color: appColor(context, const Color(0xffff8c78)),
               );
               return vertical
                   ? Column(
@@ -290,16 +305,19 @@ class _RecordRank extends StatelessWidget {
       height: 44,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xff2c2c22),
+        color: appColor(context, Color(0xff2c2c22)),
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: const Color(0xff8b6a2b)),
+        border: Border.all(color: appColor(context, Color(0xff8b6a2b))),
       ),
       child: Text(
         rank.label,
-        style: const TextStyle(
-          color: Color(0xffffd65c),
-          fontWeight: FontWeight.w900,
-          fontSize: 18,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, Color(0xffffd65c)),
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+          ),
         ),
       ),
     );
@@ -324,7 +342,10 @@ class _FleetResult extends StatelessWidget {
       children: [
         Text(
           title,
-          style: TextStyle(color: color, fontWeight: FontWeight.w800),
+          style: appTextStyle(
+            context,
+            TextStyle(color: color, fontWeight: FontWeight.w800),
+          ),
         ),
         const SizedBox(height: 7),
         for (final ship in ships) ...[
@@ -349,12 +370,15 @@ class _FleetResult extends StatelessWidget {
                       ),
                       Text(
                         '${ship.currentHp}/${ship.maxHp}',
-                        style: TextStyle(
-                          color: shipHpValueColor(
-                            ratio,
-                            isZeroHp: ship.currentHp <= 0,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: shipHpValueColor(
+                              ratio,
+                              isZeroHp: ship.currentHp <= 0,
+                            ),
+                            fontWeight: FontWeight.w700,
                           ),
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -363,8 +387,11 @@ class _FleetResult extends StatelessWidget {
                   LinearProgressIndicator(
                     value: ratio,
                     minHeight: 4,
-                    backgroundColor: const Color(0xff243b49),
-                    color: shipHpBarColor(ratio, isZeroHp: ship.currentHp <= 0),
+                    backgroundColor: appColor(context, Color(0xff243b49)),
+                    color: appColor(
+                      context,
+                      shipHpBarColor(ratio, isZeroHp: ship.currentHp <= 0),
+                    ),
                   ),
                   const SizedBox(height: 7),
                 ],

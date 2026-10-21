@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -33,7 +34,7 @@ class ImprovementPlannerView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xff081923),
+    color: appColor(context, const Color(0xff081923)),
     child: AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
@@ -109,14 +110,20 @@ class _WeekdayFilter extends StatelessWidget {
             width: 30,
             height: 30,
             child: Material(
-              color: controller.favoritesOnly
-                  ? const Color(0xff8a6628)
-                  : const Color(0xff102936),
+              color: appColor(
+                context,
+                controller.favoritesOnly
+                    ? const Color(0xff8a6628)
+                    : const Color(0xff102936),
+              ),
               shape: CircleBorder(
                 side: BorderSide(
-                  color: controller.favoritesOnly
-                      ? const Color(0xffffc85a)
-                      : const Color(0xff315064),
+                  color: appColor(
+                    context,
+                    controller.favoritesOnly
+                        ? const Color(0xffffc85a)
+                        : const Color(0xff315064),
+                  ),
                 ),
               ),
               child: InkWell(
@@ -126,7 +133,7 @@ class _WeekdayFilter extends StatelessWidget {
                 child: Icon(
                   controller.favoritesOnly ? Icons.star : Icons.star_border,
                   size: 18,
-                  color: const Color(0xffffc85a),
+                  color: appColor(context, Color(0xffffc85a)),
                 ),
               ),
             ),
@@ -226,7 +233,7 @@ Future<void> _showImprovementFilters(
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xff142735),
+      backgroundColor: appColor(context, Color(0xff142735)),
       builder: (_) => SafeArea(child: content),
     );
   }
@@ -399,8 +406,8 @@ class _SlidingSegment<T> extends StatelessWidget {
       height: 30 * scale,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xff102936),
-          border: Border.all(color: const Color(0xff315064)),
+          color: appColor(context, Color(0xff102936)),
+          border: Border.all(color: appColor(context, Color(0xff315064))),
           borderRadius: BorderRadius.circular(15),
         ),
         child: Stack(
@@ -415,7 +422,7 @@ class _SlidingSegment<T> extends StatelessWidget {
               height: 24 * scale,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: const Color(0xff8a6628),
+                  color: appColor(context, Color(0xff8a6628)),
                   borderRadius: BorderRadius.circular(13),
                 ),
               ),
@@ -427,7 +434,7 @@ class _SlidingSegment<T> extends StatelessWidget {
                     width: segmentWidth,
                     height: 28 * scale,
                     child: Material(
-                      color: Colors.transparent,
+                      color: appColor(context, Colors.transparent),
                       child: InkWell(
                         key: option.key,
                         borderRadius: BorderRadius.circular(14),
@@ -435,12 +442,15 @@ class _SlidingSegment<T> extends StatelessWidget {
                         child: Center(
                           child: Text(
                             uiText(context, option.label),
-                            style: TextStyle(
-                              color: option.value == selected
-                                  ? const Color(0xffffdc88)
-                                  : const Color(0xffa8bac4),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: option.value == selected
+                                    ? const Color(0xffffdc88)
+                                    : const Color(0xffa8bac4),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ),
@@ -529,7 +539,7 @@ class _ImprovementTableState extends State<_ImprovementTable> {
           text: gameNames(
             context,
           ).entityText(schedule.secretaryLabels.join('、')),
-          style: _cellStyle,
+          style: appTextStyle(context, _cellStyle),
         ),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: 154);
@@ -587,11 +597,11 @@ class _ImprovementTableState extends State<_ImprovementTable> {
         if (scale > 1)
           Tooltip(
             message: uiText(context, '收藏'),
-            child: const Icon(
+            child: Icon(
               Icons.star_border,
               key: Key('improvement-frozen-favorite'),
               size: 18,
-              color: Color(0xffb8c9d2),
+              color: appColor(context, Color(0xffb8c9d2)),
             ),
           )
         else
@@ -615,9 +625,10 @@ class _ImprovementTableState extends State<_ImprovementTable> {
               icon: Icon(
                 favorite ? Icons.star : Icons.star_border,
                 size: 18,
-                color: favorite
-                    ? const Color(0xffffc85a)
-                    : const Color(0xff78909c),
+                color: appColor(
+                  context,
+                  favorite ? const Color(0xffffc85a) : const Color(0xff78909c),
+                ),
               ),
             ),
           ),
@@ -863,11 +874,14 @@ class _Header extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         uiText(context, label),
-        style: const TextStyle(
-          color: Color(0xffb8c9d2),
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          height: 1.1,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, Color(0xffb8c9d2)),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            height: 1.1,
+          ),
         ),
       ),
     ),
@@ -897,7 +911,7 @@ class _EquipmentLine extends StatelessWidget {
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _cellStyle,
+            style: appTextStyle(context, _cellStyle),
           ),
         ),
         if (badge != null) ...[
@@ -905,7 +919,8 @@ class _EquipmentLine extends StatelessWidget {
           _ConsumeBadge(label: badge!),
           const SizedBox(width: 5),
         ],
-        if (count != null) Text('×$count', style: _quantityStyle),
+        if (count != null)
+          Text('×$count', style: appTextStyle(context, _quantityStyle)),
       ],
     ),
   );
@@ -962,7 +977,7 @@ class _StageMaterialCostLine extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '${stage.developmentMin} / ${stage.developmentMax}',
-          style: _quantityStyle,
+          style: appTextStyle(context, _quantityStyle),
         ),
         const SizedBox(width: 14),
         Image.asset(
@@ -974,7 +989,7 @@ class _StageMaterialCostLine extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '${stage.improvementMin} / ${stage.improvementMax}',
-          style: _quantityStyle,
+          style: appTextStyle(context, _quantityStyle),
         ),
       ],
     ),
@@ -1032,17 +1047,20 @@ class _ConsumeBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
     decoration: BoxDecoration(
-      color: const Color(0xff8b5e12),
+      color: appColor(context, const Color(0xff8b5e12)),
       borderRadius: BorderRadius.circular(4),
     ),
     child: Text(
       uiText(context, label),
       maxLines: 1,
-      style: const TextStyle(
-        color: Color(0xffffd56a),
-        fontSize: 9,
-        fontWeight: FontWeight.w900,
-        height: 1,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xffffd56a)),
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          height: 1,
+        ),
       ),
     ),
   );
@@ -1133,7 +1151,7 @@ class _RouteLane extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: Material(
-            color: Colors.transparent,
+            color: appColor(context, Colors.transparent),
             child: InkWell(
               onTap: onTap,
               borderRadius: BorderRadius.circular(7),
@@ -1141,16 +1159,25 @@ class _RouteLane extends StatelessWidget {
                 duration: const Duration(milliseconds: 160),
                 padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),
                 decoration: BoxDecoration(
-                  color: _color.withValues(alpha: isFocused ? 0.18 : 0.08),
+                  color: appColor(
+                    context,
+                    _color.withValues(alpha: isFocused ? 0.18 : 0.08),
+                  ),
                   borderRadius: BorderRadius.circular(7),
                   border: Border.all(
-                    color: _color.withValues(alpha: isFocused ? 1 : 0.66),
+                    color: appColor(
+                      context,
+                      _color.withValues(alpha: isFocused ? 1 : 0.66),
+                    ),
                     width: isFocused ? 2 : 1,
                   ),
                   boxShadow: isFocused
                       ? <BoxShadow>[
                           BoxShadow(
-                            color: _color.withValues(alpha: 0.24),
+                            color: appColor(
+                              context,
+                              _color.withValues(alpha: 0.24),
+                            ),
                             blurRadius: 8,
                           ),
                         ]
@@ -1167,17 +1194,25 @@ class _RouteLane extends StatelessWidget {
                           height: 18 * scale,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: _color.withValues(alpha: 0.2),
+                            color: appColor(
+                              context,
+                              _color.withValues(alpha: 0.2),
+                            ),
                             borderRadius: BorderRadius.circular(5),
-                            border: Border.all(color: _color),
+                            border: Border.all(
+                              color: appColor(context, _color),
+                            ),
                           ),
                           child: Text(
                             _label,
-                            style: TextStyle(
-                              color: _color,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              height: 1,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: _color,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
                             ),
                           ),
                         ),
@@ -1185,7 +1220,7 @@ class _RouteLane extends StatelessWidget {
                         UiText(
                           '路线 $_label',
                           style: TextStyle(
-                            color: _color,
+                            color: appColor(context, _color),
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             height: 1,
@@ -1316,7 +1351,7 @@ class _MaterialLine extends StatelessWidget {
               _localizedMaterialDisplayName(context, item),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: _cellStyle,
+              style: appTextStyle(context, _cellStyle),
             ),
           ),
           if (badge != null) ...[
@@ -1324,7 +1359,7 @@ class _MaterialLine extends StatelessWidget {
             _ConsumeBadge(label: badge!),
             const SizedBox(width: 5),
           ],
-          Text('×${item.count}', style: _quantityStyle),
+          Text('×${item.count}', style: appTextStyle(context, _quantityStyle)),
         ],
       ),
     );
@@ -1356,7 +1391,10 @@ class _BaseCostCell extends StatelessWidget {
                     height: 14,
                   ),
                   const SizedBox(width: 1),
-                  Text('${values[index]}', style: _cellStyle),
+                  Text(
+                    '${values[index]}',
+                    style: appTextStyle(context, _cellStyle),
+                  ),
                 ],
               ),
               if (index != values.length - 1) const SizedBox(width: 2),
@@ -1387,7 +1425,12 @@ class _Lines extends StatelessWidget {
                       leading[index],
                       const SizedBox(width: 6),
                     ],
-                    Expanded(child: Text(values[index], style: _cellStyle)),
+                    Expanded(
+                      child: Text(
+                        values[index],
+                        style: appTextStyle(context, _cellStyle),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1467,7 +1510,7 @@ class _SecretaryScheduleList extends StatelessWidget {
                     context,
                   ).entityText(schedules[groupIndex].secretaryLabels.join('、')),
                   softWrap: true,
-                  style: _cellStyle,
+                  style: appTextStyle(context, _cellStyle),
                 ),
               ),
             ],
@@ -1493,16 +1536,22 @@ class _SecretaryDayCell extends StatelessWidget {
     height: 18 * _englishTextLayoutScale(context),
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: active ? const Color(0xff258b68) : const Color(0xff37434a),
+      color: appColor(
+        context,
+        active ? const Color(0xff258b68) : const Color(0xff37434a),
+      ),
       borderRadius: BorderRadius.circular(2),
     ),
     child: Text(
       label,
-      style: TextStyle(
-        color: active ? const Color(0xffe5fff4) : const Color(0xff8fa0a8),
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        height: 1,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: active ? const Color(0xffe5fff4) : const Color(0xff8fa0a8),
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          height: 1,
+        ),
       ),
     ),
   );
@@ -1511,11 +1560,11 @@ class _SecretaryDayCell extends StatelessWidget {
 class _EmptyCell extends StatelessWidget {
   const _EmptyCell();
   @override
-  Widget build(BuildContext context) => const Padding(
+  Widget build(BuildContext context) => Padding(
     padding: EdgeInsets.symmetric(horizontal: 8),
     child: Align(
       alignment: Alignment.centerLeft,
-      child: Text('—', style: _cellStyle),
+      child: Text('—', style: appTextStyle(context, _cellStyle)),
     ),
   );
 }
@@ -1523,10 +1572,13 @@ class _EmptyCell extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
   @override
-  Widget build(BuildContext context) => const Center(
+  Widget build(BuildContext context) => Center(
     child: UiText(
       '当天没有符合条件的改修装备',
-      style: TextStyle(color: Color(0xff8da5b2), fontSize: 13),
+      style: TextStyle(
+        color: appColor(context, Color(0xff8da5b2)),
+        fontSize: 13,
+      ),
     ),
   );
 }

@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'fleet_ui_strings.dart';
 
@@ -44,9 +45,11 @@ class DashboardCard extends StatelessWidget {
             padding ??
             EdgeInsets.fromLTRB(14, collapsed ? 8 : 10, 10, collapsed ? 8 : 10),
         decoration: BoxDecoration(
-          color: const Color(0xff142735),
+          color: appColor(context, Color(0xff142735)),
           borderRadius: BorderRadius.circular(10),
-          border: borderColor != null ? Border.all(color: borderColor!) : null,
+          border: borderColor != null
+              ? Border.all(color: appColor(context, borderColor!))
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -77,9 +80,9 @@ class DashboardCard extends StatelessWidget {
                       children: [
                         if (showLogo) ...[
                           IconTheme(
-                            data: const IconThemeData(
+                            data: IconThemeData(
                               size: 16,
-                              color: Color(0xffd4a85f),
+                              color: appColor(context, Color(0xffd4a85f)),
                             ),
                             child: icon,
                           ),
@@ -96,10 +99,16 @@ class DashboardCard extends StatelessWidget {
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       title,
-                                      style: const TextStyle(
-                                        color: Color(0xffd4a85f),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
+                                      style: appTextStyle(
+                                        context,
+                                        TextStyle(
+                                          color: appColor(
+                                            context,
+                                            Color(0xffd4a85f),
+                                          ),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -144,7 +153,10 @@ class DashboardCard extends StatelessWidget {
         children: [
           if (showLogo) ...[
             IconTheme(
-              data: const IconThemeData(size: 16, color: Color(0xffd4a85f)),
+              data: IconThemeData(
+                size: 16,
+                color: appColor(context, Color(0xffd4a85f)),
+              ),
               child: icon,
             ),
             if (showTitle) const SizedBox(width: 6),
@@ -158,10 +170,13 @@ class DashboardCard extends StatelessWidget {
                 if (showTitle)
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Color(0xffd4a85f),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffd4a85f)),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 if (!collapsed && titleBadge != null) titleBadge!,
@@ -199,7 +214,7 @@ class DashboardCard extends StatelessWidget {
             ? Icons.keyboard_arrow_down_rounded
             : Icons.keyboard_arrow_up_rounded,
         size: 20,
-        color: const Color(0xff8fa8b6),
+        color: appColor(context, Color(0xff8fa8b6)),
       ),
     ),
   );

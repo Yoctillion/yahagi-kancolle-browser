@@ -152,6 +152,25 @@ void main() {
     );
   });
 
+  test('finite coordinates with infinite spans preserve only labels', () {
+    for (final axis in [0, 1]) {
+      final map = _geometryMap();
+      final spots = map['spots']! as Map<String, Object?>;
+      (spots['1']! as List<Object?>)[axis] = -1e308;
+      (spots['Y']! as List<Object?>)[axis] = 1e308;
+      final dataset = FcdMapDataset.parse(
+        _datasetJson(data: {'5-6': map}),
+        minimumMapCount: 1,
+      );
+
+      expect(dataset.geometryFor(mapAreaId: 5, mapInfoNo: 6), isNull);
+      expect(
+        dataset.resolve(mapAreaId: 5, mapInfoNo: 6, internalNodeId: 42),
+        'Y',
+      );
+    }
+  });
+
   test('compares validated FCD versions by numeric segments', () {
     final older = FcdMapVersion.parse('2026/07/28/02');
     final newerRevision = FcdMapVersion.parse('2026/07/28/10');

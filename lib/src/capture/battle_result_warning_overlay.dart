@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -221,10 +222,13 @@ class _BattleResultWarningOverlayState
             AppLocalizations.of(context) ??
             lookupAppLocalizations(const Locale('zh'));
         return AlertDialog(
-          backgroundColor: const Color(0xff122431),
+          backgroundColor: appColor(context, const Color(0xff122431)),
           title: Text(
             l10n.postBattleWarningTitle,
-            style: const TextStyle(color: Color(0xffd4a85f)),
+            style: appTextStyle(
+              context,
+              TextStyle(color: appColor(context, Color(0xffd4a85f))),
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -232,16 +236,22 @@ class _BattleResultWarningOverlayState
             children: [
               Text(
                 l10n.postBattleWarningHeadline,
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Colors.redAccent),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 l10n.postBattleWarningBody,
-                style: const TextStyle(color: Colors.white70),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, Colors.white70)),
+                ),
               ),
             ],
           ),
@@ -249,7 +259,7 @@ class _BattleResultWarningOverlayState
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xff4B9FD5),
+                foregroundColor: appColor(context, const Color(0xff4B9FD5)),
               ),
               child: Text(l10n.acknowledgeAndRetreat),
             ),

@@ -410,11 +410,11 @@ void main() {
     );
     expect(
       senkaNextRefreshInstant(DateTime.utc(2026, 8, 9, 17, 1)),
-      DateTime.utc(2026, 8, 9, 20),
+      DateTime.utc(2026, 8, 9, 18),
     );
     expect(
       senkaNextRefreshInstant(DateTime.utc(2026, 8, 9, 20, 1)),
-      DateTime.utc(2026, 8, 10, 17),
+      DateTime.utc(2026, 8, 10, 5),
     );
     expect(
       senkaNextRefreshInstant(DateTime.utc(2026, 8, 31, 11, 59)),
@@ -422,7 +422,7 @@ void main() {
     );
     expect(
       senkaNextRefreshInstant(DateTime.utc(2026, 8, 31, 13, 1)),
-      DateTime.utc(2026, 8, 31, 17),
+      DateTime.utc(2026, 8, 31, 15),
     );
   });
 

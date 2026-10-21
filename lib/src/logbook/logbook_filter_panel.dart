@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../localization/ui_text.dart';
@@ -29,14 +30,24 @@ Future<Map<String, String>?> showLogbookFilterPanel({
   required Map<String, String> values,
   required Map<String, String> defaults,
 }) {
+  final overlay = Navigator.of(
+    context,
+    rootNavigator: true,
+  ).overlay?.context.findRenderObject();
+  final localAnchor = overlay is RenderBox
+      ? Rect.fromPoints(
+          overlay.globalToLocal(anchor.topLeft),
+          overlay.globalToLocal(anchor.bottomRight),
+        )
+      : anchor;
   return showGeneralDialog<Map<String, String>>(
     context: context,
     barrierDismissible: true,
     barrierLabel: uiText(context, '关闭筛选'),
-    barrierColor: Colors.transparent,
+    barrierColor: appColor(context, Colors.transparent),
     transitionDuration: const Duration(milliseconds: 120),
     pageBuilder: (context, animation, secondaryAnimation) => _FilterPanelRoute(
-      anchor: anchor,
+      anchor: localAnchor,
       title: title,
       fields: fields,
       values: values,
@@ -106,12 +117,12 @@ class _FilterPanelRouteState extends State<_FilterPanelRoute> {
     key: const Key('logbook-filter-panel'),
     padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
     decoration: BoxDecoration(
-      color: const Color(0xff0b202d),
-      border: Border.all(color: const Color(0xff315064)),
+      color: appColor(context, Color(0xff0b202d)),
+      border: Border.all(color: appColor(context, Color(0xff315064))),
       borderRadius: BorderRadius.circular(10),
-      boxShadow: const [
+      boxShadow: [
         BoxShadow(
-          color: Color(0x66000000),
+          color: appColor(context, Color(0x66000000)),
           blurRadius: 14,
           offset: Offset(0, 6),
         ),
@@ -123,10 +134,13 @@ class _FilterPanelRouteState extends State<_FilterPanelRoute> {
       children: [
         Text(
           uiText(context, widget.title),
-          style: const TextStyle(
-            color: Color(0xffffc84d),
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Color(0xffffc84d)),
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -178,30 +192,36 @@ class _FilterPanelRouteState extends State<_FilterPanelRoute> {
       children: [
         Text(
           uiText(context, field.label),
-          style: const TextStyle(color: Color(0xff8fa5b2), fontSize: 11),
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Color(0xff8fa5b2)),
+              fontSize: 11,
+            ),
+          ),
         ),
         const SizedBox(height: 4),
         Container(
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: const Color(0xff0a1b27),
-            border: Border.all(color: const Color(0xff315064)),
+            color: appColor(context, const Color(0xff0a1b27)),
+            border: Border.all(color: appColor(context, Color(0xff315064))),
             borderRadius: BorderRadius.circular(8),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              dropdownColor: const Color(0xff102936),
+              dropdownColor: appColor(context, Color(0xff102936)),
               borderRadius: BorderRadius.circular(8),
-              icon: const Icon(
+              icon: Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: Color(0xffd7e3e9),
+                color: appColor(context, Color(0xffd7e3e9)),
                 size: 18,
               ),
-              style: const TextStyle(
-                color: Color(0xffd7e3e9),
+              style: TextStyle(
+                color: appColor(context, Color(0xffd7e3e9)),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -256,10 +276,16 @@ class _FilterActionButton extends StatelessWidget {
     width: 60,
     height: 34,
     child: Material(
-      color: emphasized ? const Color(0xff6d4b0f) : const Color(0xff183342),
+      color: appColor(
+        context,
+        emphasized ? const Color(0xff6d4b0f) : const Color(0xff183342),
+      ),
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: emphasized ? const Color(0xffc58d27) : const Color(0xff496574),
+          color: appColor(
+            context,
+            emphasized ? const Color(0xffc58d27) : const Color(0xff496574),
+          ),
         ),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -269,12 +295,15 @@ class _FilterActionButton extends StatelessWidget {
         child: Center(
           child: Text(
             label,
-            style: TextStyle(
-              color: emphasized
-                  ? const Color(0xffffd36b)
-                  : const Color(0xffa9bbc5),
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: emphasized
+                    ? const Color(0xffffd36b)
+                    : const Color(0xffa9bbc5),
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ),

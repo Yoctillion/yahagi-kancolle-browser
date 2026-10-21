@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -88,7 +89,10 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
                 child: Center(
                   child: Text(
                     l10n.landBaseNoData,
-                    style: const TextStyle(color: Color(0xff8197a5)),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, Color(0xff8197a5))),
+                    ),
                   ),
                 ),
               )
@@ -151,8 +155,8 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
     height: 22,
     padding: const EdgeInsets.all(2),
     decoration: BoxDecoration(
-      color: const Color(0xff102331),
-      border: Border.all(color: const Color(0xff294052)),
+      color: appColor(context, Color(0xff102331)),
+      border: Border.all(color: appColor(context, Color(0xff294052))),
       borderRadius: BorderRadius.circular(8),
     ),
     child: Row(
@@ -161,9 +165,12 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
         for (final areaId in areaIds)
           Material(
             key: Key('land-base-area-selector-$areaId'),
-            color: areaId == selectedAreaId
-                ? const Color(0xff8a6628)
-                : Colors.transparent,
+            color: appColor(
+              context,
+              areaId == selectedAreaId
+                  ? const Color(0xff8a6628)
+                  : Colors.transparent,
+            ),
             borderRadius: BorderRadius.circular(6),
             child: InkWell(
               onTap: () => onSelected(areaId),
@@ -173,12 +180,15 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
                 child: Center(
                   child: Text(
                     '$areaId',
-                    style: TextStyle(
-                      color: areaId == selectedAreaId
-                          ? const Color(0xffffdc88)
-                          : const Color(0xff9fb3bf),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: areaId == selectedAreaId
+                            ? const Color(0xffffdc88)
+                            : const Color(0xff9fb3bf),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
@@ -223,11 +233,18 @@ class LandBaseAirGroupRow extends StatelessWidget {
       key: Key('land-base-row-$_keySuffix'),
       padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
       decoration: BoxDecoration(
-        color: const Color(0xff1c3547),
-        border: Border.all(color: const Color(0xff4c6b84), width: 1.2),
+        color: appColor(context, Color(0xff1c3547)),
+        border: Border.all(
+          color: appColor(context, Color(0xff4c6b84)),
+          width: 1.2,
+        ),
         borderRadius: BorderRadius.circular(8),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 3)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: appColor(context, Colors.black45),
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
         ],
       ),
       child: LayoutBuilder(
@@ -290,14 +307,14 @@ class LandBaseAirGroupRow extends StatelessWidget {
                     _LandBaseActionChip(
                       key: Key('land-base-action-chip-$_keySuffix'),
                       label: _actionLabel(base.actionKind, l10n),
-                      color: _actionColor(base.actionKind),
+                      color: appColor(context, _actionColor(base.actionKind)),
                     ),
                     if (visible.contains('airPower')) ...[
                       const SizedBox(width: 3),
                       _LandBaseInfoChip(
                         key: Key('land-base-air-power-chip-$_keySuffix'),
                         label: '${l10n.airPower} ${airPower.displayValue}',
-                        color: const Color(0xffd4a74e),
+                        color: appColor(context, Color(0xffd4a74e)),
                       ),
                     ],
                     if (visible.contains('range')) ...[
@@ -306,7 +323,7 @@ class LandBaseAirGroupRow extends StatelessWidget {
                         key: Key('land-base-range-chip-$_keySuffix'),
                         label:
                             '${l10n.landBaseRange} ${base.effectiveDistance}',
-                        color: const Color(0xff70b8d8),
+                        color: appColor(context, Color(0xff70b8d8)),
                       ),
                     ],
                   ],
@@ -338,9 +355,9 @@ class LandBaseAirGroupRow extends StatelessWidget {
                             shipId: base.areaId * 10 + base.baseId,
                             currentHp: currentHp,
                             maxHp: maximumHp,
-                            color: shipHpBarColor(
-                              hpRatio,
-                              isZeroHp: currentHp <= 0,
+                            color: appColor(
+                              context,
+                              shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0),
                             ),
                             filter: damagePulseMode,
                             strokeWidth: 2,
@@ -473,14 +490,19 @@ class _LandBaseInfoChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.14),
-      border: Border.all(color: color.withValues(alpha: 0.42)),
+      color: appColor(context, color.withValues(alpha: 0.14)),
+      border: Border.all(
+        color: appColor(context, color.withValues(alpha: 0.42)),
+      ),
       borderRadius: BorderRadius.circular(4),
     ),
     child: Text(
       label,
       maxLines: 1,
-      style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w700),
+      style: appTextStyle(
+        context,
+        TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w700),
+      ),
     ),
   );
 }
@@ -494,18 +516,21 @@ class _LandBaseNameChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
     decoration: BoxDecoration(
-      color: const Color(0xff102331),
-      border: Border.all(color: const Color(0xff4c6b84)),
+      color: appColor(context, Color(0xff102331)),
+      border: Border.all(color: appColor(context, Color(0xff4c6b84))),
       borderRadius: BorderRadius.circular(4),
     ),
     child: Text(
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: Color(0xffe8f1f5),
-        fontSize: 8,
-        fontWeight: FontWeight.w700,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xffe8f1f5)),
+          fontSize: 8,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
   );
@@ -525,13 +550,18 @@ class _LandBaseActionChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.16),
-      border: Border.all(color: color.withValues(alpha: 0.42)),
+      color: appColor(context, color.withValues(alpha: 0.16)),
+      border: Border.all(
+        color: appColor(context, color.withValues(alpha: 0.42)),
+      ),
       borderRadius: BorderRadius.circular(4),
     ),
     child: Text(
       label,
-      style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w700),
+      style: appTextStyle(
+        context,
+        TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w700),
+      ),
     ),
   );
 }
@@ -570,7 +600,7 @@ class _LandBaseStackedHpMeter extends StatelessWidget {
             Icon(
               Icons.favorite_rounded,
               key: iconKey,
-              color: const Color(0xffef5a5a),
+              color: appColor(context, Color(0xffef5a5a)),
               size: 10,
             ),
             const SizedBox(width: 3),
@@ -580,13 +610,19 @@ class _LandBaseStackedHpMeter extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '$currentHp/$maximumHp',
-                  style: TextStyle(
-                    color: shipHpValueColor(hpRatio, isZeroHp: currentHp <= 0),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    fontFeatures: const <FontFeature>[
-                      FontFeature.tabularFigures(),
-                    ],
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: shipHpValueColor(
+                        hpRatio,
+                        isZeroHp: currentHp <= 0,
+                      ),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -600,12 +636,12 @@ class _LandBaseStackedHpMeter extends StatelessWidget {
             child: Container(
               key: trackKey,
               height: trackHeight,
-              color: const Color(0xff294052),
+              color: appColor(context, Color(0xff294052)),
               alignment: Alignment.centerLeft,
               child: FractionallySizedBox(
                 widthFactor: hpRatio,
                 heightFactor: 1,
-                child: ColoredBox(color: hpColor),
+                child: ColoredBox(color: appColor(context, hpColor)),
               ),
             ),
           ),
@@ -655,18 +691,25 @@ class _LandBaseSquadronSlot extends StatelessWidget {
       key: Key('land-base-slot-$suffix'),
       height: 34,
       decoration: BoxDecoration(
-        color: const Color(0xff102331),
+        color: appColor(context, Color(0xff102331)),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: missing
-              ? const Color(0xffef775f)
-              : fatigueColor?.withValues(alpha: 0.9) ?? const Color(0xff294052),
+          color: appColor(
+            context,
+            missing
+                ? const Color(0xffef775f)
+                : fatigueColor?.withValues(alpha: 0.9) ??
+                      const Color(0xff294052),
+          ),
         ),
         boxShadow: fatigueColor == null
             ? null
             : <BoxShadow>[
                 BoxShadow(
-                  color: fatigueColor.withValues(alpha: 0.42),
+                  color: appColor(
+                    context,
+                    fatigueColor.withValues(alpha: 0.42),
+                  ),
                   blurRadius: fatigue == LandBaseFatigueLevel.red ? 7 : 4,
                 ),
               ],
@@ -690,18 +733,21 @@ class _LandBaseSquadronSlot extends StatelessWidget {
                   key: Key('land-base-slot-count-$suffix'),
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xcc102331),
+                    color: appColor(context, Color(0xcc102331)),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
                     squadron == null ? '—' : '${squadron!.currentCount}',
-                    style: TextStyle(
-                      color: missing
-                          ? const Color(0xffff8b78)
-                          : const Color(0xffe8f1f5),
-                      fontSize: countFontSize,
-                      height: 1,
-                      fontWeight: FontWeight.w900,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: missing
+                            ? const Color(0xffff8b78)
+                            : const Color(0xffe8f1f5),
+                        fontSize: countFontSize,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),

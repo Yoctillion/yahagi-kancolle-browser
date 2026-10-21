@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -79,7 +80,13 @@ class ExpeditionStatusView extends StatelessWidget {
                 )
               : Text(
                   AppLocalizations.of(context)?.expeditionInProgress ?? '远征进行中',
-                  style: const TextStyle(color: _mutedColor, fontSize: 12),
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _mutedColor),
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
           trailing: OperationCountdownText(
             completionTime: fleet.mission.completionTime,
@@ -191,10 +198,13 @@ class _RepairDockCard extends StatelessWidget {
                 'HP ${ship.currentHp}/${ship.maxHp}',
                 maxLines: 1,
                 softWrap: false,
-                style: TextStyle(
-                  color: hpColor,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: hpColor,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -427,9 +437,9 @@ class _OperationCard extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            color: _cardColor,
+            color: appColor(context, _cardColor),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _borderColor),
+            border: Border.all(color: appColor(context, _borderColor)),
           ),
           child: phone
               ? Column(
@@ -518,10 +528,13 @@ class _OperationIdentity extends StatelessWidget {
           maxLines: 1,
           softWrap: false,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: eyebrowColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: eyebrowColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         const SizedBox(height: 5),
@@ -530,10 +543,13 @@ class _OperationIdentity extends StatelessWidget {
           maxLines: 1,
           softWrap: false,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Colors.white),
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
@@ -573,20 +589,26 @@ class _TimedProgress extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Color(0xffdce6eb),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xffdce6eb)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const Spacer(),
                 Text(
                   '$percentage%',
-                  style: const TextStyle(
-                    color: Color(0xffa9c6d2),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xffa9c6d2)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
               ],
@@ -596,8 +618,8 @@ class _TimedProgress extends StatelessWidget {
               value: progress,
               minHeight: 6,
               borderRadius: BorderRadius.circular(4),
-              color: _progressColor,
-              backgroundColor: const Color(0xff263f4d),
+              color: appColor(context, _progressColor),
+              backgroundColor: appColor(context, Color(0xff263f4d)),
             ),
             if (completionLabel != null) ...[
               const SizedBox(height: 4),
@@ -609,11 +631,16 @@ class _TimedProgress extends StatelessWidget {
                     '$completionLabel ${formatExpeditionCompletionTime(end, now: currentNow)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xffa9c6d2),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffa9c6d2)),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -642,16 +669,25 @@ class _UnavailableProgress extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Color(0xffdce6eb),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffdce6eb)),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const Spacer(),
             Text(
               AppLocalizations.of(context)?.questUnknown ?? '进度未知',
-              style: const TextStyle(color: Color(0xffa9c6d2), fontSize: 11),
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffa9c6d2)),
+                  fontSize: 11,
+                ),
+              ),
             ),
           ],
         ),
@@ -660,8 +696,8 @@ class _UnavailableProgress extends StatelessWidget {
           value: 0,
           minHeight: 6,
           borderRadius: BorderRadius.circular(4),
-          color: _progressColor,
-          backgroundColor: const Color(0xff263f4d),
+          color: appColor(context, _progressColor),
+          backgroundColor: appColor(context, Color(0xff263f4d)),
         ),
       ],
     );
@@ -691,19 +727,25 @@ class _StaticProgress extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Color(0xffdce6eb),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffdce6eb)),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const Spacer(),
             Text(
               status,
-              style: const TextStyle(
-                color: Color(0xffa9c6d2),
-                fontSize: 11,
-                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffa9c6d2)),
+                  fontSize: 11,
+                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                ),
               ),
             ),
           ],
@@ -713,8 +755,8 @@ class _StaticProgress extends StatelessWidget {
           value: value,
           minHeight: 6,
           borderRadius: BorderRadius.circular(4),
-          color: _progressColor,
-          backgroundColor: const Color(0xff263f4d),
+          color: appColor(context, _progressColor),
+          backgroundColor: appColor(context, Color(0xff263f4d)),
         ),
       ],
     );
@@ -754,7 +796,10 @@ class _ResourceLine extends StatelessWidget {
         if (prefix.isNotEmpty)
           Text(
             prefix,
-            style: const TextStyle(color: _mutedColor, fontSize: 12),
+            style: appTextStyle(
+              context,
+              TextStyle(color: appColor(context, _mutedColor), fontSize: 12),
+            ),
           ),
         for (final resource in resources)
           Row(
@@ -770,11 +815,14 @@ class _ResourceLine extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 '${resource.value}',
-                style: const TextStyle(
-                  color: Color(0xffc6d4db),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffc6d4db)),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
@@ -796,16 +844,19 @@ class _UnavailableCard extends StatelessWidget {
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
-        color: _cardColor,
+        color: appColor(context, _cardColor),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _borderColor),
+        border: Border.all(color: appColor(context, _borderColor)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: _mutedColor,
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, _mutedColor),
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -820,7 +871,13 @@ class _EmptyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(label, style: const TextStyle(color: _mutedColor)),
+      child: Text(
+        label,
+        style: appTextStyle(
+          context,
+          TextStyle(color: appColor(context, _mutedColor)),
+        ),
+      ),
     );
   }
 }
@@ -836,10 +893,13 @@ class _CompletedLabel extends StatelessWidget {
       label,
       maxLines: 1,
       textAlign: TextAlign.right,
-      style: const TextStyle(
-        color: Color(0xff64c894),
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xff64c894)),
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

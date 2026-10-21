@@ -1,8 +1,12 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../audio/game_audio_controller.dart';
+import '../localization/runtime_message_text.dart';
+import '../theme/app_theme.dart';
 import '../subtitles/ship_subtitle_settings.dart';
+import '../subtitles/ship_subtitle_runtime_controller.dart';
 import '../subtitles/ship_subtitle_settings_section.dart';
 import '../browser/game_toolbar_display_controller.dart';
 import 'background_game_retention_controller.dart';
@@ -16,6 +20,7 @@ import 'game_frame_rate_settings_section.dart';
 import 'game_rendering_mode_controller.dart';
 import 'game_rendering_mode_section.dart';
 import 'layout_settings_controller.dart';
+import 'camera_avoidance_settings_section.dart';
 import 'screen_awake_controller.dart';
 import 'game_mouse_wheel_settings.dart';
 import 'game_mouse_wheel_settings_section.dart';
@@ -32,6 +37,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
     required this.displayModeController,
     this.audioController,
     this.shipSubtitleSettingsController,
+    this.shipSubtitleRuntimeController,
     this.backgroundGameRetentionController,
     this.toolbarDisplayController,
     this.gameFrameRateSettingsController,
@@ -47,6 +53,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
   final DisplayModeController displayModeController;
   final GameAudioController? audioController;
   final ShipSubtitleSettingsController? shipSubtitleSettingsController;
+  final ShipSubtitleRuntimeController? shipSubtitleRuntimeController;
   final BackgroundGameRetentionController? backgroundGameRetentionController;
   final GameToolbarDisplayController? toolbarDisplayController;
   final GameFrameRateSettingsController? gameFrameRateSettingsController;
@@ -65,7 +72,7 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
     final english = Localizations.localeOf(context).languageCode == 'en';
 
     return Container(
-      color: const Color(0xff0d1a26),
+      color: appColor(context, const Color(0xff0d1a26)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
@@ -85,55 +92,107 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            l10n.language,
-                            key: const Key('settings-language-label'),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                      child: SettingsControlRow(
+                        label: Text(
+                          l10n.language,
+                          key: const Key('settings-language-label'),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        controlBuilder: (stacked) => DropdownButton<String>(
+                          isExpanded: stacked,
+                          itemHeight: null,
+                          value:
+                              layoutSettingsController.localeCode ??
+                              l10n.localeName,
+                          underline: const SizedBox(),
+                          alignment: AlignmentDirectional.centerEnd,
+                          items: [
+                            DropdownMenuItem(
+                              value: 'zh',
+                              child: Text(l10n.langZh),
                             ),
+                            DropdownMenuItem(
+                              value: 'zh_Hant',
+                              child: Text(l10n.langZhHant),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ja',
+                              child: Text(l10n.langJa),
+                            ),
+                            DropdownMenuItem(
+                              value: 'ko',
+                              child: Text(l10n.langKo),
+                            ),
+                            DropdownMenuItem(
+                              value: 'en',
+                              child: Text(l10n.langEn),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            layoutSettingsController.setLocaleCode(value);
+                          },
+                        ),
+                      ),
+                    ),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
+                    Padding(
+                      key: const Key('settings-app-theme-row'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: SettingsControlRow(
+                        label: Text(
+                          l10n.themeColorTitle,
+                          style: appTextStyle(
+                            context,
+                            SettingsTileTypography.title,
                           ),
-                          DropdownButton<String>(
-                            value:
-                                layoutSettingsController.localeCode ??
-                                l10n.localeName,
-                            underline: const SizedBox(),
-                            alignment: AlignmentDirectional.centerEnd,
-                            items: [
-                              DropdownMenuItem(
-                                value: 'zh',
-                                child: Text(l10n.langZh),
-                              ),
-                              DropdownMenuItem(
-                                value: 'zh_Hant',
-                                child: Text(l10n.langZhHant),
-                              ),
-                              DropdownMenuItem(
-                                value: 'ja',
-                                child: Text(l10n.langJa),
-                              ),
-                              DropdownMenuItem(
-                                value: 'ko',
-                                child: Text(l10n.langKo),
-                              ),
-                              DropdownMenuItem(
-                                value: 'en',
-                                child: Text(l10n.langEn),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              layoutSettingsController.setLocaleCode(value);
-                            },
-                          ),
-                        ],
+                        ),
+                        controlBuilder: (stacked) =>
+                            DropdownButton<AppThemeMode>(
+                              isExpanded: stacked,
+                              itemHeight: null,
+                              key: const Key('settings-app-theme-dropdown'),
+                              value: layoutSettingsController.appThemeMode,
+                              underline: const SizedBox(),
+                              alignment: AlignmentDirectional.centerEnd,
+                              items: [
+                                DropdownMenuItem(
+                                  value: AppThemeMode.dark,
+                                  child: Text(l10n.themeClassicDark),
+                                ),
+                                DropdownMenuItem(
+                                  value: AppThemeMode.seaSalt,
+                                  child: Text(l10n.themeSeaSaltTeal),
+                                ),
+                                DropdownMenuItem(
+                                  value: AppThemeMode.skyBlue,
+                                  child: Text(l10n.themeClearSkyBlue),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  layoutSettingsController.setAppThemeMode(
+                                    value,
+                                  );
+                                }
+                              },
+                            ),
                       ),
                     ),
                     if (layoutSettingsController.customFontController
                         case final fonts?) ...[
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
                       CustomFontSettingsSection(
                         controller: fonts,
                         fallbackFonts: {
@@ -142,7 +201,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         }.toList(),
                       ),
                     ],
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     Padding(
                       key: const Key('settings-ui-display-size-row'),
                       padding: const EdgeInsets.symmetric(
@@ -161,12 +223,18 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                                   key: const Key(
                                     'settings-ui-display-size-label',
                                   ),
-                                  style: SettingsTileTypography.title,
+                                  style: appTextStyle(
+                                    context,
+                                    SettingsTileTypography.title,
+                                  ),
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
                                   l10n.uiDisplaySizeDesc,
-                                  style: SettingsTileTypography.description,
+                                  style: appTextStyle(
+                                    context,
+                                    SettingsTileTypography.description,
+                                  ),
                                 ),
                               ],
                             ),
@@ -197,14 +265,20 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         ],
                       ),
                     ),
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     buildSwitchTile(
                       title: l10n.autoZoom,
                       titleKey: const Key('settings-auto-zoom-label'),
                       value: layoutSettingsController.autoZoom,
                       onChanged: (v) => layoutSettingsController.setAutoZoom(v),
                     ),
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     buildSliderTile(
                       title: l10n.infoPanelWidth,
                       value: layoutSettingsController
@@ -219,93 +293,118 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                             )
                           : null,
                     ),
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
+                    CameraAvoidanceSettingsSection(
+                      controller: layoutSettingsController,
+                    ),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     DisplayModeSection(controller: displayModeController),
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     Padding(
                       key: const Key('settings-workspace-menu-position'),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  l10n.workspaceMenuPosition,
-                                  style: SettingsTileTypography.title,
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  l10n.workspaceMenuPositionDesc,
-                                  style: SettingsTileTypography.description,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _resetOrderButton(
+                      child: SettingsControlRow(
+                        label: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.workspaceMenuPosition,
+                              style: appTextStyle(
                                 context,
-                                key: const Key(
-                                  'settings-reset-workspace-menu-order',
-                                ),
-                                onPressed: layoutSettingsController
-                                    .resetWorkspaceMenuOrder,
-                                label: l10n.restoreDefaultOrder,
+                                SettingsTileTypography.title,
                               ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: english ? 112 : 60,
-                                child: DropdownButton<String>(
-                                  isExpanded: true,
-                                  padding: const EdgeInsets.only(left: 14),
-                                  underline: const SizedBox.shrink(),
-                                  value: layoutSettingsController
-                                      .workspaceMenuPosition,
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: 'top',
-                                      child: Text(l10n.menuPositionTop),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'bottom',
-                                      child: Text(l10n.menuPositionBottom),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'left',
-                                      child: Text(l10n.menuPositionLeft),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'right',
-                                      child: Text(l10n.menuPositionRight),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      layoutSettingsController
-                                          .setWorkspaceMenuPosition(value);
-                                    }
-                                  },
-                                ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              l10n.workspaceMenuPositionDesc,
+                              style: appTextStyle(
+                                context,
+                                SettingsTileTypography.description,
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
+                        controlBuilder: (stacked) => Wrap(
+                          alignment: WrapAlignment.end,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            _resetOrderButton(
+                              context,
+                              key: const Key(
+                                'settings-reset-workspace-menu-order',
+                              ),
+                              onPressed: layoutSettingsController
+                                  .resetWorkspaceMenuOrder,
+                              label: l10n.restoreDefaultOrder,
+                            ),
+                            SizedBox(
+                              width: english
+                                  ? 112
+                                  : MediaQuery.textScalerOf(context).scale(28) +
+                                        32,
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                padding: const EdgeInsets.only(left: 14),
+                                underline: const SizedBox.shrink(),
+                                value: layoutSettingsController
+                                    .workspaceMenuPosition,
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'top',
+                                    child: Text(l10n.menuPositionTop),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'bottom',
+                                    child: Text(l10n.menuPositionBottom),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'left',
+                                    child: Text(l10n.menuPositionLeft),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'right',
+                                    child: Text(l10n.menuPositionRight),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    layoutSettingsController
+                                        .setWorkspaceMenuPosition(value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     buildActionTile(
                       title: fleetText(context, '功能区位置'),
                       titleKey: const Key('settings-information-panel-left'),
                       subtitle: fleetText(context, '选择功能区显示在左侧或右侧，竖屏保持上下布局。'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      trailing: Wrap(
+                        alignment: WrapAlignment.end,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 8,
                         children: [
                           _resetOrderButton(
                             context,
@@ -316,9 +415,11 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                                 .resetDashboardCardOrder,
                             label: l10n.restoreDefaultOrder,
                           ),
-                          const SizedBox(width: 12),
                           SizedBox(
-                            width: english ? 112 : 60,
+                            width: english
+                                ? 112
+                                : MediaQuery.textScalerOf(context).scale(28) +
+                                      32,
                             child: DropdownButton<String>(
                               key: const Key(
                                 'settings-information-panel-position',
@@ -355,7 +456,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                       ),
                     ),
                     if (layoutSettingsController.hdSettings.enabled) ...[
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
                       buildActionTile(
                         title: fleetText(context, '拓展功能区位置'),
                         titleKey: const Key(
@@ -390,7 +494,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         ),
                       ),
                     ],
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     buildSwitchTile(
                       title: l10n.uiLockTitle,
                       titleKey: const Key('settings-ui-lock-switch'),
@@ -421,7 +528,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                       value: layoutSettingsController.topNoticeEnabled,
                       onChanged: layoutSettingsController.setTopNoticeEnabled,
                     ),
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     Opacity(
                       opacity: layoutSettingsController.topNoticeEnabled
                           ? 1.0
@@ -442,12 +552,18 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                                   children: [
                                     Text(
                                       l10n.topNoticeDurationTitle,
-                                      style: SettingsTileTypography.title,
+                                      style: appTextStyle(
+                                        context,
+                                        SettingsTileTypography.title,
+                                      ),
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
                                       l10n.topNoticeDurationSubtitle,
-                                      style: SettingsTileTypography.description,
+                                      style: appTextStyle(
+                                        context,
+                                        SettingsTileTypography.description,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -478,11 +594,12 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color:
-                                        layoutSettingsController
-                                            .topNoticeEnabled
-                                        ? const Color(0xffd4a85f)
-                                        : const Color(0xff526776),
+                                    color: appColor(
+                                      context,
+                                      layoutSettingsController.topNoticeEnabled
+                                          ? const Color(0xffd4a85f)
+                                          : const Color(0xff526776),
+                                    ),
                                   ),
                                   items: [
                                     DropdownMenuItem(
@@ -583,7 +700,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                           if (audio.canToggle) audio.toggleMuted();
                         },
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
                       buildSwitchTile(
                         title: l10n.backgroundAudio,
                         titleKey: const Key('settings-background-audio'),
@@ -593,7 +713,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                       ),
                       if (backgroundGameRetentionController
                           case final retention?) ...<Widget>[
-                        const Divider(color: Color(0xff294052), height: 1),
+                        Divider(
+                          color: appColor(context, Color(0xff294052)),
+                          height: 1,
+                        ),
                         AnimatedBuilder(
                           animation: retention,
                           builder: (context, _) => buildSwitchTile(
@@ -601,9 +724,13 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                             titleKey: const Key(
                               'settings-background-game-retention',
                             ),
-                            subtitle:
-                                retention.errorMessage ??
-                                l10n.backgroundGameRetentionDesc,
+                            subtitle: switch (retention.errorMessage) {
+                              final error? => runtimeMessageText(
+                                context,
+                                error,
+                              ),
+                              null => l10n.backgroundGameRetentionDesc,
+                            },
                             value: retention.enabled,
                             onChanged: retention.setEnabled,
                           ),
@@ -617,7 +744,10 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
             if (shipSubtitleSettingsController case final subtitles?) ...[
               const SizedBox(height: 12),
               buildCard(
-                child: ShipSubtitleSettingsSection(controller: subtitles),
+                child: ShipSubtitleSettingsSection(
+                  controller: subtitles,
+                  runtimeController: shipSubtitleRuntimeController,
+                ),
               ),
             ],
             const SizedBox(height: 40),

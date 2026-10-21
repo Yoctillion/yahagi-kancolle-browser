@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -126,8 +127,8 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                 child: Container(
                   key: const Key('senka-metrics-grid'),
                   decoration: BoxDecoration(
-                    color: senkaPanelAlt,
-                    border: Border.all(color: senkaLine),
+                    color: appColor(context, senkaPanelAlt),
+                    border: Border.all(color: appColor(context, senkaLine)),
                     borderRadius: BorderRadius.circular(7),
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -143,7 +144,7 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                           secondKey: const Key('senka-metric-planned-quest'),
                         ),
                       ),
-                      const Divider(height: 1, color: senkaLine),
+                      Divider(height: 1, color: appColor(context, senkaLine)),
                       Expanded(
                         child: _metricRow(
                           l10n.senkaDailyRequired,
@@ -154,7 +155,7 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                           secondKey: const Key('senka-metric-today-remaining'),
                         ),
                       ),
-                      const Divider(height: 1, color: senkaLine),
+                      Divider(height: 1, color: appColor(context, senkaLine)),
                       Expanded(
                         child: _metricRow(
                           l10n.senkaUnsettledDelta,
@@ -205,10 +206,13 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
     children: [
       Text(
         label,
-        style: TextStyle(
-          color: senkaMuted,
-          fontSize: widget.compact ? 9 : 11,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: senkaMuted,
+            fontSize: widget.compact ? 9 : 11,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       SizedBox(height: widget.compact ? 2 : 4),
@@ -216,9 +220,9 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
         height: 44,
         child: Material(
           key: key,
-          color: senkaPanelAlt,
-          shape: const RoundedRectangleBorder(
-            side: BorderSide(color: senkaLine),
+          color: appColor(context, senkaPanelAlt),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: appColor(context, senkaLine)),
             borderRadius: BorderRadius.all(Radius.circular(4)),
           ),
           child: InkWell(
@@ -231,14 +235,21 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                   Expanded(
                     child: Text(
                       senkaNumber(value),
-                      style: TextStyle(
-                        color: senkaText,
-                        fontSize: widget.compact ? 12 : 16,
-                        fontWeight: FontWeight.w800,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: senkaText,
+                          fontSize: widget.compact ? 12 : 16,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
-                  const Icon(Icons.edit_outlined, size: 16, color: senkaMuted),
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: appColor(context, senkaMuted),
+                  ),
                 ],
               ),
             ),
@@ -290,12 +301,15 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
     final l10n = AppLocalizations.of(context)!;
     final amount = Text(
       senkaNumber(result.projected),
-      style: TextStyle(
-        color: senkaGold,
-        fontSize: widget.compact ? 24 : 34,
-        height: 1,
-        fontWeight: FontWeight.w900,
-        fontFeatures: const [FontFeature.tabularFigures()],
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: senkaGold,
+          fontSize: widget.compact ? 24 : 34,
+          height: 1,
+          fontWeight: FontWeight.w900,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ),
     );
     return Container(
@@ -303,8 +317,10 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
       width: double.infinity,
       padding: EdgeInsets.all(widget.compact ? 9 : 13),
       decoration: BoxDecoration(
-        color: senkaGold.withValues(alpha: .08),
-        border: Border.all(color: senkaGold.withValues(alpha: .55)),
+        color: appColor(context, senkaGold.withValues(alpha: .08)),
+        border: Border.all(
+          color: appColor(context, senkaGold.withValues(alpha: .55)),
+        ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -313,10 +329,13 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
           Text(
             l10n.senkaProjected,
             maxLines: 1,
-            style: TextStyle(
-              color: senkaMuted,
-              fontSize: widget.compact ? 9 : 11,
-              fontWeight: FontWeight.w700,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: senkaMuted,
+                fontSize: widget.compact ? 9 : 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           SizedBox(height: widget.compact ? 2 : 4),
@@ -337,10 +356,13 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   l10n.senkaUnit,
-                  style: TextStyle(
-                    color: senkaGold,
-                    fontSize: widget.compact ? 10 : 13,
-                    fontWeight: FontWeight.w800,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: senkaGold,
+                      fontSize: widget.compact ? 10 : 13,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -352,8 +374,8 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
             child: LinearProgressIndicator(
               minHeight: widget.compact ? 5 : 7,
               value: (result.percentage / 100).clamp(0, 1),
-              color: senkaGold,
-              backgroundColor: senkaBackground,
+              color: appColor(context, senkaGold),
+              backgroundColor: appColor(context, senkaBackground),
             ),
           ),
           SizedBox(height: widget.compact ? 4 : 6),
@@ -361,10 +383,13 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
             '（${senkaNumber(result.percentage)}% · $gapText）',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: senkaGold,
-              fontSize: widget.compact ? 8 : 10,
-              fontWeight: FontWeight.w700,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: senkaGold,
+                fontSize: widget.compact ? 8 : 10,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -382,7 +407,7 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
   }) => Row(
     children: [
       _metric(firstLabel, firstValue, key: firstKey),
-      const VerticalDivider(width: 1, color: senkaLine),
+      VerticalDivider(width: 1, color: appColor(context, senkaLine)),
       _metric(secondLabel, secondValue, key: secondKey),
     ],
   );
@@ -399,21 +424,27 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: senkaMuted,
-              fontSize: widget.compact ? 9 : 12,
-              fontWeight: FontWeight.w700,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: senkaMuted,
+                fontSize: widget.compact ? 9 : 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           SizedBox(height: widget.compact ? 2 : 4),
           Text(
             value,
             maxLines: 1,
-            style: TextStyle(
-              color: senkaText,
-              fontSize: widget.compact ? 12 : 16,
-              fontWeight: FontWeight.w800,
-              fontFeatures: const [FontFeature.tabularFigures()],
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: senkaText,
+                fontSize: widget.compact ? 12 : 16,
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],
@@ -433,9 +464,11 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
         Container(
           key: const Key('senka-calculator-footer'),
           height: widget.compact ? 28 : 38,
-          decoration: const BoxDecoration(
-            color: senkaPanelAlt,
-            border: Border(top: BorderSide(color: senkaLine)),
+          decoration: BoxDecoration(
+            color: appColor(context, senkaPanelAlt),
+            border: Border(
+              top: BorderSide(color: appColor(context, senkaLine)),
+            ),
           ),
           padding: EdgeInsets.symmetric(horizontal: widget.compact ? 5 : 10),
           child: Row(
@@ -443,14 +476,17 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
               Expanded(
                 child: Text.rich(
                   TextSpan(
-                    style: _footerStyle(),
+                    style: appTextStyle(context, _footerStyle()),
                     children: [
                       TextSpan(text: '${l10n.senkaPlannedEoReward} '),
                       TextSpan(
                         text: '+${senkaNumber(result.plannedEo)}',
-                        style: const TextStyle(
-                          color: senkaGold,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, senkaGold),
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
                     ],
@@ -462,14 +498,17 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
               Expanded(
                 child: Text.rich(
                   TextSpan(
-                    style: _footerStyle(),
+                    style: appTextStyle(context, _footerStyle()),
                     children: [
                       TextSpan(text: '${l10n.senkaPlannedQuestReward} '),
                       TextSpan(
                         text: '+${senkaNumber(result.plannedQuest)}',
-                        style: const TextStyle(
-                          color: senkaGold,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, senkaGold),
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
                     ],
@@ -481,15 +520,18 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
               Expanded(
                 child: Text.rich(
                   TextSpan(
-                    style: _footerStyle(),
+                    style: appTextStyle(context, _footerStyle()),
                     children: [
                       TextSpan(text: '${l10n.senkaTotal} '),
                       TextSpan(
                         text:
                             '+${senkaNumber(result.plannedEo + result.plannedQuest)}',
-                        style: const TextStyle(
-                          color: senkaGold,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, senkaGold),
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
                     ],
@@ -574,7 +616,7 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
   }
 
   TextStyle _footerStyle() => TextStyle(
-    color: senkaText,
+    color: appColor(context, senkaText),
     fontSize: widget.compact ? 11 : 13,
     fontWeight: FontWeight.w800,
   );
@@ -595,8 +637,10 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
         key: Key('senka-task-group-frame-$groupKey'),
         padding: EdgeInsets.all(widget.compact ? 5 : 7),
         decoration: BoxDecoration(
-          color: senkaPanelAlt.withValues(alpha: .58),
-          border: Border.all(color: senkaLine.withValues(alpha: .82)),
+          color: appColor(context, senkaPanelAlt.withValues(alpha: .58)),
+          border: Border.all(
+            color: appColor(context, senkaLine.withValues(alpha: .82)),
+          ),
           borderRadius: BorderRadius.circular(7),
         ),
         child: Column(
@@ -612,10 +656,13 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: senkaText,
-                          fontSize: widget.compact ? 12 : 15,
-                          fontWeight: FontWeight.w800,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: senkaText,
+                            fontSize: widget.compact ? 12 : 15,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
@@ -624,10 +671,13 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                   Text(
                     title,
                     maxLines: 1,
-                    style: TextStyle(
-                      color: senkaText,
-                      fontSize: widget.compact ? 12 : 15,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: senkaText,
+                        fontSize: widget.compact ? 12 : 15,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 if (legend != null) ...[
@@ -639,10 +689,13 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                       child: Text(
                         legend,
                         maxLines: 1,
-                        style: TextStyle(
-                          color: senkaMuted,
-                          fontSize: widget.compact ? 8 : 10,
-                          fontWeight: FontWeight.w700,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: senkaMuted,
+                            fontSize: widget.compact ? 8 : 10,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -721,11 +774,14 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                           SenkaRewardStatus.planned => '✓',
                           SenkaRewardStatus.completed => '○',
                         },
-                        style: TextStyle(
-                          color: contentColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          height: 1,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: contentColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -735,11 +791,14 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.left,
-                          style: TextStyle(
-                            color: labelColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: labelColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
+                            ),
                           ),
                         ),
                       ),
@@ -754,12 +813,15 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                     '+${senkaNumber(item.senka)}',
                     maxLines: 1,
                     textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: contentColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: contentColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ),
@@ -775,7 +837,10 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                 width: double.infinity,
                 height: 1.2,
                 child: ColoredBox(
-                  color: const Color(0xffb8c1c7).withValues(alpha: .78),
+                  color: appColor(
+                    context,
+                    const Color(0xffb8c1c7).withValues(alpha: .78),
+                  ),
                 ),
               ),
             ),
@@ -787,7 +852,7 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
       width: double.infinity,
       child: DecoratedBox(
         key: Key('senka-reward-visual-$keyPrefix-${item.id}'),
-        decoration: rewardStyle.decoration,
+        decoration: rewardStyle.decoration(context),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: Stack(
@@ -795,7 +860,7 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
               Positioned.fill(
                 child: Material(
                   key: Key('senka-reward-surface-$keyPrefix-${item.id}'),
-                  color: Colors.transparent,
+                  color: appColor(context, Colors.transparent),
                   child: rewardContent,
                 ),
               ),
@@ -810,10 +875,10 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
+                          colors: appColors(context, [
                             Colors.white.withValues(alpha: .2),
                             Colors.white.withValues(alpha: .03),
-                          ],
+                          ]),
                         ),
                       ),
                     ),
@@ -836,7 +901,7 @@ class _SenkaCalculatorViewState extends State<SenkaCalculatorView> {
         message: '$itemLabel · $statusLabel · +${senkaNumber(item.senka)}',
         child: Material(
           key: Key('senka-toggle-$keyPrefix-${item.id}'),
-          color: Colors.transparent,
+          color: appColor(context, Colors.transparent),
           child: InkWell(
             borderRadius: BorderRadius.circular(5),
             onTap: () => quest
@@ -885,17 +950,17 @@ class _RewardVisualStyle {
         ),
       };
 
-  BoxDecoration get decoration => BoxDecoration(
+  BoxDecoration decoration(BuildContext context) => BoxDecoration(
     gradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: gradient,
+      colors: appColors(context, gradient),
     ),
-    border: Border.all(color: border.withValues(alpha: .72)),
+    border: Border.all(color: appColor(context, border.withValues(alpha: .72))),
     borderRadius: BorderRadius.circular(5),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withValues(alpha: .25),
+        color: appColor(context, Colors.black.withValues(alpha: .25)),
         blurRadius: 3,
         offset: const Offset(0, 1),
       ),

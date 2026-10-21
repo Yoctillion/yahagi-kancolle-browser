@@ -52,30 +52,58 @@ final class FileShipSubtitleKc3Store implements ShipSubtitleKc3Store {
       await bundledReader(),
     );
     final backup = File('${cacheFile.path}.bak');
+    ShipSubtitleKc3Bundle cached;
     try {
-      if (!await cacheFile.exists() && await backup.exists()) {
-        await backup.rename(cacheFile.path);
-      }
-      if (!await cacheFile.exists()) return bundled;
-      ShipSubtitleKc3Bundle cached;
+      cached = await _readBundle(cacheFile);
+    } on Object {
       try {
-        cached = await _readBundle(cacheFile);
-        if (await backup.exists()) await backup.delete();
-      } on Object {
-        if (!await backup.exists()) rethrow;
         cached = await _readBundle(backup);
-        await cacheFile.delete();
-        await backup.rename(cacheFile.path);
+      } on Object {
+        return bundled;
+      }
+      try {
+        await _restoreBackup();
+      } on Object {
+        // A valid backup remains usable even when its primary cannot be repaired.
       }
       return cached.version.compareTo(bundled.version) >= 0 ? cached : bundled;
-    } on Object {
-      return bundled;
     }
+    try {
+      if (await backup.exists()) await backup.delete();
+    } on Object {
+      // Backup cleanup must not hide a successfully validated primary.
+    }
+    return cached.version.compareTo(bundled.version) >= 0 ? cached : bundled;
   }
 
   @override
-  Future<void> save(ShipSubtitleKc3Bundle bundle) async =>
-      _replaceAtomically(cacheFile, await compute(_encodeBundle, bundle));
+  Future<void> save(ShipSubtitleKc3Bundle bundle) async {
+    await _restoreValidBackup();
+    await _replaceAtomically(cacheFile, await compute(_encodeBundle, bundle));
+  }
+
+  Future<void> _restoreValidBackup() async {
+    final backup = File('${cacheFile.path}.bak');
+    if (!await backup.exists()) return;
+    try {
+      await _readBundle(cacheFile);
+      return;
+    } on Object {
+      // A damaged primary must not replace its sole valid backup on rotation.
+    }
+    try {
+      await _readBundle(backup);
+    } on Object {
+      return;
+    }
+    // Propagate repair failures so the normal writer cannot discard this backup.
+    await _restoreBackup();
+  }
+
+  Future<void> _restoreBackup() async {
+    if (await cacheFile.exists()) await cacheFile.delete();
+    await File('${cacheFile.path}.bak').rename(cacheFile.path);
+  }
 
   @override
   Future<DateTime?> loadLastCheckedAt() async {
@@ -112,8 +140,10 @@ Future<void> _replaceAtomically(File target, String source) async {
   final backup = File('${target.path}.bak');
   try {
     await temporary.writeAsString(source, flush: true);
-    if (await backup.exists()) await backup.delete();
-    if (await target.exists()) await target.rename(backup.path);
+    if (await target.exists()) {
+      if (await backup.exists()) await backup.delete();
+      await target.rename(backup.path);
+    }
     try {
       await temporary.rename(target.path);
       if (await backup.exists()) await backup.delete();

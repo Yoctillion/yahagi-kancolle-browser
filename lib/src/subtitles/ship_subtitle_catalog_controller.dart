@@ -491,41 +491,62 @@ final class ShipSubtitleCatalogController extends ChangeNotifier {
   Future<ShipSubtitleUpdateResult> _checkKcwikiGroup(DateTime checkedAt) async {
     try {
       final states = await Future.wait(kcwikiSubtitleLanguages.map(_stateFor));
-      final results = await Future.wait(
-        states.map((state) async {
-          try {
-            return await state.updater.checkAndUpdate(current: state.data);
-          } on Object catch (error) {
-            return ShipSubtitleUpdateFailed(
-              ShipSubtitleUpdateFailure.network,
-              error,
-              sourceHost: '',
-            );
-          }
-        }),
-      );
-      final failed = results.whereType<ShipSubtitleUpdateFailed>().firstOrNull;
-      if (failed != null) return failed;
-      final catalogs = <ShipSubtitleLanguage, ShipSubtitleCatalog>{};
-      for (var i = 0; i < states.length; i++) {
-        catalogs[kcwikiSubtitleLanguages[i]] = switch (results[i]) {
-          ShipSubtitleUpdated(:final catalog) => catalog,
-          ShipSubtitleUpToDate(:final catalog) => catalog,
-          ShipSubtitleUpdateFailed() => throw StateError(
-            'Unreachable failed subtitle update.',
-          ),
-        };
-      }
-      if (catalogs.values.map((catalog) => catalog.version).toSet().length !=
-          1) {
-        return ShipSubtitleUpdateFailed(
-          ShipSubtitleUpdateFailure.validation,
-          const FormatException(
-            'The kcwiki subtitle files have different versions.',
-          ),
-          sourceHost: '',
+      // A CDN can return individually valid files from different snapshots.
+      // Retry the entire source so independent language fallback cannot leave
+      // the group stuck with incompatible candidates or persist a partial set.
+      final sourceHosts =
+          states.every((state) => state.updater is ShipSubtitleUpdateService)
+          ? ShipSubtitleUpdateService.sourceHosts
+          : const <String?>[null];
+      var results = <ShipSubtitleUpdateResult>[];
+      var catalogs = <ShipSubtitleLanguage, ShipSubtitleCatalog>{};
+      ShipSubtitleUpdateFailed? failed;
+      for (final host in sourceHosts) {
+        results = await Future.wait(
+          states.map((state) async {
+            try {
+              return host == null
+                  ? await state.updater.checkAndUpdate(current: state.data)
+                  : await (state.updater as ShipSubtitleUpdateService)
+                        .checkKcwikiSource(
+                          current: state.data,
+                          sourceHost: host,
+                        );
+            } on Object catch (error) {
+              return ShipSubtitleUpdateFailed(
+                ShipSubtitleUpdateFailure.network,
+                error,
+                sourceHost: host ?? '',
+              );
+            }
+          }),
         );
+        failed = results.whereType<ShipSubtitleUpdateFailed>().firstOrNull;
+        if (failed != null) continue;
+        catalogs = {
+          for (var i = 0; i < states.length; i++)
+            kcwikiSubtitleLanguages[i]: switch (results[i]) {
+              ShipSubtitleUpdated(:final catalog) => catalog,
+              ShipSubtitleUpToDate(:final catalog) => catalog,
+              ShipSubtitleUpdateFailed() => throw StateError(
+                'Unreachable failed subtitle update.',
+              ),
+            },
+        };
+        if (catalogs.values.map((catalog) => catalog.version).toSet().length !=
+            1) {
+          failed = ShipSubtitleUpdateFailed(
+            ShipSubtitleUpdateFailure.validation,
+            const FormatException(
+              'The kcwiki subtitle files have different versions.',
+            ),
+            sourceHost: host ?? '',
+          );
+          continue;
+        }
+        break;
       }
+      if (failed != null) return failed;
       final snapshot = _resourceState.copyWith(
         catalogs: Map.unmodifiable(catalogs),
         kcwikiLastCheckedAt: checkedAt,

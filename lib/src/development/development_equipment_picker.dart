@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -123,24 +124,28 @@ class _DevelopmentEquipmentPickerState
           );
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
-      backgroundColor: Colors.transparent,
+      backgroundColor: appColor(context, Colors.transparent),
       child: Container(
         key: const Key('development-target-dialog'),
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xff101d27),
-          border: Border.all(color: const Color(0xff385064)),
+          color: appColor(context, Color(0xff101d27)),
+          border: Border.all(color: appColor(context, Color(0xff385064))),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 22, spreadRadius: 2),
+          boxShadow: [
+            BoxShadow(
+              color: appColor(context, Colors.black54),
+              blurRadius: 22,
+              spreadRadius: 2,
+            ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             _DialogHeader(controller: controller),
-            const Divider(height: 1, color: Color(0xff385064)),
+            Divider(height: 1, color: appColor(context, Color(0xff385064))),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -148,7 +153,7 @@ class _DevelopmentEquipmentPickerState
                   SizedBox(
                     width: leftWidth,
                     child: ColoredBox(
-                      color: const Color(0xff0b1720),
+                      color: appColor(context, const Color(0xff0b1720)),
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: groups.length,
@@ -156,9 +161,12 @@ class _DevelopmentEquipmentPickerState
                           final group = groups[index];
                           final selected = group.key == selectedGroupKey;
                           return Material(
-                            color: selected
-                                ? const Color(0xff244b69)
-                                : Colors.transparent,
+                            color: appColor(
+                              context,
+                              selected
+                                  ? const Color(0xff244b69)
+                                  : Colors.transparent,
+                            ),
                             child: InkWell(
                               key: Key(
                                 'development-equipment-type-${group.key}',
@@ -174,11 +182,14 @@ class _DevelopmentEquipmentPickerState
                                   _typeLabel(l10n, group),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: selected
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: selected
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -188,7 +199,10 @@ class _DevelopmentEquipmentPickerState
                       ),
                     ),
                   ),
-                  const VerticalDivider(width: 1, color: Color(0xff385064)),
+                  VerticalDivider(
+                    width: 1,
+                    color: appColor(context, Color(0xff385064)),
+                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -208,8 +222,14 @@ class _DevelopmentEquipmentPickerState
                               ? Center(
                                   child: Text(
                                     l10n.developmentNoResults,
-                                    style: const TextStyle(
-                                      color: Color(0xff91a9b5),
+                                    style: appTextStyle(
+                                      context,
+                                      TextStyle(
+                                        color: appColor(
+                                          context,
+                                          Color(0xff91a9b5),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 )
@@ -251,10 +271,10 @@ class _DialogHeader extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 16),
-          const Icon(
+          Icon(
             Icons.category_outlined,
             size: 20,
-            color: Color(0xffd4a85f),
+            color: appColor(context, Color(0xffd4a85f)),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -273,9 +293,12 @@ class _DialogHeader extends StatelessWidget {
                 ),
                 Text(
                   l10n.developmentSelectedCount(controller.targets.length),
-                  style: const TextStyle(
-                    color: Color(0xff89a5b3),
-                    fontSize: 11,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xff89a5b3)),
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
@@ -312,7 +335,10 @@ class _EquipmentOption extends StatelessWidget {
     final enabled =
         selected || controller.enabledEquipment.contains(equipment.id);
     return Material(
-      color: selected ? const Color(0xff1d5f91) : const Color(0xff172a38),
+      color: appColor(
+        context,
+        selected ? const Color(0xff1d5f91) : const Color(0xff172a38),
+      ),
       borderRadius: BorderRadius.circular(7),
       child: InkWell(
         key: Key('development-equipment-${equipment.id}'),
@@ -333,12 +359,15 @@ class _EquipmentOption extends StatelessWidget {
                   developmentEquipmentLabel(context, equipment),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: enabled
-                        ? const Color(0xffedf4f6)
-                        : const Color(0xff647986),
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: enabled
+                          ? const Color(0xffedf4f6)
+                          : const Color(0xff647986),
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -348,11 +377,14 @@ class _EquipmentOption extends StatelessWidget {
                     ? Icons.check_circle_rounded
                     : Icons.add_circle_outline,
                 size: 19,
-                color: selected
-                    ? const Color(0xff68b7ef)
-                    : enabled
-                    ? const Color(0xff7594a4)
-                    : const Color(0xff455966),
+                color: appColor(
+                  context,
+                  selected
+                      ? const Color(0xff68b7ef)
+                      : enabled
+                      ? const Color(0xff7594a4)
+                      : const Color(0xff455966),
+                ),
               ),
             ],
           ),

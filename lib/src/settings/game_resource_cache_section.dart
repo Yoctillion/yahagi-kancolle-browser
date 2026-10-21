@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -63,7 +64,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
               title: l10n.gameResourceCacheNone,
               subtitle: l10n.gameResourceCacheNoneDesc,
             ),
-            const Divider(color: Color(0xff294052), height: 1),
+            Divider(color: appColor(context, Color(0xff294052)), height: 1),
             _modeTile(
               mode: GameResourceCacheMode.full,
               title: l10n.gameResourceCacheFull,
@@ -74,7 +75,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheUnsupported,
-                  style: const TextStyle(color: Color(0xffffb4a9)),
+                  style: TextStyle(color: appColor(context, Color(0xffffb4a9))),
                 ),
               ),
             if (!controller.initialized || status.policyError)
@@ -82,7 +83,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheUnavailable,
-                  style: const TextStyle(color: Color(0xffffb4a9)),
+                  style: TextStyle(color: appColor(context, Color(0xffffb4a9))),
                 ),
               ),
             if (isFullCache && controller.manifestError)
@@ -90,16 +91,16 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheManifestFailed,
-                  style: const TextStyle(color: Color(0xffffb4a9)),
+                  style: TextStyle(color: appColor(context, Color(0xffffb4a9))),
                 ),
               ),
-            const Divider(color: Color(0xff294052), height: 1),
+            Divider(color: appColor(context, Color(0xff294052)), height: 1),
             if (isFullCache && status.capacityBlocked)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheCapacityBlocked,
-                  style: const TextStyle(color: Color(0xffffb4a9)),
+                  style: TextStyle(color: appColor(context, Color(0xffffb4a9))),
                 ),
               ),
             if (isFullCache && status.waitingForWifi)
@@ -107,7 +108,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheWaitingForWifi,
-                  style: const TextStyle(color: Color(0xff9bc7e4)),
+                  style: TextStyle(color: appColor(context, Color(0xff9bc7e4))),
                 ),
               ),
             Padding(
@@ -189,9 +190,11 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xff152d3b),
+                  color: appColor(context, Color(0xff152d3b)),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xff294f63)),
+                  border: Border.all(
+                    color: appColor(context, Color(0xff294f63)),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,7 +210,9 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                       const SizedBox(height: 4),
                       Text(
                         l10n.gameResourceCachePendingRetained,
-                        style: const TextStyle(color: Color(0xff9bc7e4)),
+                        style: TextStyle(
+                          color: appColor(context, Color(0xff9bc7e4)),
+                        ),
                       ),
                     ],
                   ],
@@ -246,9 +251,18 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Text(title, style: SettingsTileTypography.title),
+                  Text(
+                    title,
+                    style: appTextStyle(context, SettingsTileTypography.title),
+                  ),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: SettingsTileTypography.description),
+                  Text(
+                    subtitle,
+                    style: appTextStyle(
+                      context,
+                      SettingsTileTypography.description,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -257,9 +271,10 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
               selected
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
-              color: selected
-                  ? const Color(0xff70c7bc)
-                  : const Color(0xff8197a5),
+              color: appColor(
+                context,
+                selected ? const Color(0xff70c7bc) : const Color(0xff8197a5),
+              ),
             ),
           ],
         ),

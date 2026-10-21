@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -154,9 +155,9 @@ class _ServerOverview extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final current = state.playerRankingRow;
     return Material(
-      color: senkaPanel,
+      color: appColor(context, senkaPanel),
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: senkaLine),
+        side: BorderSide(color: appColor(context, senkaLine)),
         borderRadius: BorderRadius.circular(compact ? 7 : 11),
       ),
       child: Padding(
@@ -176,10 +177,13 @@ class _ServerOverview extends StatelessWidget {
                     l10n.senkaServer,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: senkaMuted,
-                      fontSize: compact ? 10 : 12,
-                      fontWeight: FontWeight.w700,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: senkaMuted,
+                        fontSize: compact ? 10 : 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   SizedBox(height: compact ? 2 : 4),
@@ -192,10 +196,13 @@ class _ServerOverview extends StatelessWidget {
                         unknown: l10n.senkaUnknownServer,
                       ),
                       maxLines: 1,
-                      style: TextStyle(
-                        color: senkaText,
-                        fontSize: compact ? 16 : 22,
-                        fontWeight: FontWeight.w900,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: senkaText,
+                          fontSize: compact ? 16 : 22,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ),
@@ -205,7 +212,7 @@ class _ServerOverview extends StatelessWidget {
             Container(
               width: 1,
               height: compact ? 44 : 60,
-              color: senkaLine,
+              color: appColor(context, senkaLine),
               margin: EdgeInsets.symmetric(horizontal: compact ? 10 : 18),
             ),
             Expanded(
@@ -217,10 +224,13 @@ class _ServerOverview extends StatelessWidget {
                     children: [
                       Text(
                         l10n.senkaUnit,
-                        style: TextStyle(
-                          color: senkaMuted,
-                          fontSize: compact ? 11 : 13,
-                          fontWeight: FontWeight.w700,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: senkaMuted,
+                            fontSize: compact ? 11 : 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -230,13 +240,16 @@ class _ServerOverview extends StatelessWidget {
                           alignment: Alignment.centerRight,
                           child: Text(
                             senkaNumber(current.senka),
-                            style: TextStyle(
-                              color: senkaYellow,
-                              fontSize: compact ? 22 : 30,
-                              fontWeight: FontWeight.w900,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: senkaYellow,
+                                fontSize: compact ? 22 : 30,
+                                fontWeight: FontWeight.w900,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -248,10 +261,13 @@ class _ServerOverview extends StatelessWidget {
                     children: [
                       Text(
                         l10n.senkaRank,
-                        style: TextStyle(
-                          color: senkaMuted,
-                          fontSize: compact ? 11 : 13,
-                          fontWeight: FontWeight.w700,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: senkaMuted,
+                            fontSize: compact ? 11 : 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -261,13 +277,16 @@ class _ServerOverview extends StatelessWidget {
                           alignment: Alignment.centerRight,
                           child: Text(
                             senkaInteger(current.rank),
-                            style: TextStyle(
-                              color: senkaYellow,
-                              fontSize: compact ? 22 : 30,
-                              fontWeight: FontWeight.w900,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: senkaYellow,
+                                fontSize: compact ? 22 : 30,
+                                fontWeight: FontWeight.w900,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -297,11 +316,14 @@ class _RankingPanel extends StatelessWidget {
       compact: compact,
       trailing: Text(
         l10n.senkaUpdated(timeStr),
-        style: TextStyle(
-          color: senkaMuted,
-          fontSize: compact ? 9 : 11,
-          fontWeight: FontWeight.w600,
-          fontFeatures: const [FontFeature.tabularFigures()],
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: senkaMuted,
+            fontSize: compact ? 9 : 11,
+            fontWeight: FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
       ),
       child: Padding(
@@ -310,6 +332,7 @@ class _RankingPanel extends StatelessWidget {
           children: [
             Expanded(
               child: _row(
+                context,
                 l10n.senkaOrder,
                 l10n.senkaUnit,
                 l10n.senkaChange,
@@ -320,104 +343,134 @@ class _RankingPanel extends StatelessWidget {
             for (final rank in const [5, 20, 100, 501])
               Expanded(
                 key: Key('ranking-row-$rank'),
-                child: _anchorRow(rank, state.rankingRow(rank), compact),
+                child: _anchorRow(
+                  context,
+                  rank,
+                  state.rankingRow(rank),
+                  compact,
+                ),
               ),
             Container(
               alignment: Alignment.centerLeft,
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               child: Text(
                 l10n.senkaCurrent,
-                style: TextStyle(
-                  color: senkaMuted,
-                  fontSize: compact ? 9 : 11,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: senkaMuted,
+                    fontSize: compact ? 9 : 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
-            Expanded(child: _playerRow(state.playerRankingRow, compact)),
+            Expanded(
+              child: _playerRow(context, state.playerRankingRow, compact),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _anchorRow(int rank, SenkaRankingRow row, bool compact) =>
-      DecoratedBox(
-        decoration: BoxDecoration(
-          color: senkaPanelAlt,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: _row(
-          '$rank',
-          senkaNumber(row.senka),
-          _delta(row.senkaDelta),
-          compact,
-          deltaColor: _deltaColor(row.senkaDelta),
-          deltaKey: Key('ranking-delta-$rank'),
-        ),
-      );
-
-  Widget _playerRow(SenkaRankingRow row, bool compact) => DecoratedBox(
+  Widget _anchorRow(
+    BuildContext context,
+    int rank,
+    SenkaRankingRow row,
+    bool compact,
+  ) => DecoratedBox(
     decoration: BoxDecoration(
-      color: const Color(0xff0b1e2a),
-      border: Border.all(color: const Color(0xff8a6628), width: 1.2),
-      borderRadius: BorderRadius.circular(6),
+      color: appColor(context, senkaPanelAlt),
+      borderRadius: BorderRadius.circular(4),
     ),
-    child: Row(
-      children: [
-        Expanded(
-          flex: 42,
-          child: Row(
-            key: const Key('player-rank-subcolumns'),
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: Text(
-                    senkaInteger(row.rank),
-                    key: const Key('player-rank'),
-                    style: _style(
-                      compact,
-                    ).copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  _rankDelta(row),
-                  style: _style(compact).copyWith(
-                    color: _rankColor(row.rankDirection),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 30,
-          child: Text(
-            senkaNumber(row.senka),
-            key: const Key('player-senka'),
-            style: _style(compact).copyWith(fontWeight: FontWeight.w800),
-          ),
-        ),
-        Expanded(
-          flex: 28,
-          child: Text(
-            _delta(row.senkaDelta),
-            key: const Key('player-senka-delta'),
-            style: _style(
-              compact,
-            ).copyWith(color: senkaGreen, fontWeight: FontWeight.w800),
-          ),
-        ),
-      ],
+    child: _row(
+      context,
+      '$rank',
+      senkaNumber(row.senka),
+      _delta(row.senkaDelta),
+      compact,
+      deltaColor: _deltaColor(row.senkaDelta),
+      deltaKey: Key('ranking-delta-$rank'),
     ),
   );
+
+  Widget _playerRow(BuildContext context, SenkaRankingRow row, bool compact) =>
+      DecoratedBox(
+        decoration: BoxDecoration(
+          color: appColor(context, Color(0xff0b1e2a)),
+          border: Border.all(
+            color: appColor(context, Color(0xff8a6628)),
+            width: 1.2,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 42,
+              child: Row(
+                key: const Key('player-rank-subcolumns'),
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text(
+                        senkaInteger(row.rank),
+                        key: const Key('player-rank'),
+                        style: appTextStyle(
+                          context,
+                          _style(compact).copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _rankDelta(row),
+                      style: appTextStyle(
+                        context,
+                        _style(compact).copyWith(
+                          color: _rankColor(row.rankDirection),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 30,
+              child: Text(
+                senkaNumber(row.senka),
+                key: const Key('player-senka'),
+                style: appTextStyle(
+                  context,
+                  _style(compact).copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 28,
+              child: Text(
+                _delta(row.senkaDelta),
+                key: const Key('player-senka-delta'),
+                style: appTextStyle(
+                  context,
+                  _style(
+                    compact,
+                  ).copyWith(color: senkaGreen, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 Widget _row(
+  BuildContext context,
   String rank,
   String senka,
   String delta,
@@ -431,12 +484,20 @@ Widget _row(
       flex: 42,
       child: Padding(
         padding: const EdgeInsets.only(left: 4),
-        child: Text(rank, maxLines: 1, style: _style(compact, header: header)),
+        child: Text(
+          rank,
+          maxLines: 1,
+          style: appTextStyle(context, _style(compact, header: header)),
+        ),
       ),
     ),
     Expanded(
       flex: 30,
-      child: Text(senka, maxLines: 1, style: _style(compact, header: header)),
+      child: Text(
+        senka,
+        maxLines: 1,
+        style: appTextStyle(context, _style(compact, header: header)),
+      ),
     ),
     Expanded(
       flex: 28,
@@ -444,7 +505,10 @@ Widget _row(
         delta,
         key: deltaKey,
         maxLines: 1,
-        style: _style(compact, header: header).copyWith(color: deltaColor),
+        style: appTextStyle(
+          context,
+          _style(compact, header: header).copyWith(color: deltaColor),
+        ),
       ),
     ),
   ],
@@ -535,7 +599,7 @@ class _SortiePanel extends StatelessWidget {
         label: l10n.senkaLatestRecord,
         excludeSemantics: true,
         child: Material(
-          color: Colors.transparent,
+          color: appColor(context, Colors.transparent),
           child: InkWell(
             key: const Key('senka-recent-records'),
             onTap: onOpenSortieLog,
@@ -543,16 +607,21 @@ class _SortiePanel extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xff142b3a),
-                border: Border.all(color: const Color(0xff2a4c62)),
+                color: appColor(context, const Color(0xff142b3a)),
+                border: Border.all(
+                  color: appColor(context, const Color(0xff2a4c62)),
+                ),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 l10n.senkaLatestRecord,
-                style: TextStyle(
-                  color: senkaText,
-                  fontSize: compact ? 10 : 12,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: senkaText,
+                    fontSize: compact ? 10 : 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -574,9 +643,11 @@ class _SortiePanel extends StatelessWidget {
               horizontal: 12,
               vertical: english ? 4 : 0,
             ),
-            decoration: const BoxDecoration(
-              color: Color(0xff071822),
-              border: Border(bottom: BorderSide(color: senkaLine)),
+            decoration: BoxDecoration(
+              color: appColor(context, Color(0xff071822)),
+              border: Border(
+                bottom: BorderSide(color: appColor(context, senkaLine)),
+              ),
             ),
             child: _responsiveHeader(context, [
               _summaryMetric(
@@ -604,20 +675,22 @@ class _SortiePanel extends StatelessWidget {
               Container(
                 height: compact ? 24 : 28,
                 decoration: BoxDecoration(
-                  color: const Color(0xff0b1e2a),
+                  color: appColor(context, Color(0xff0b1e2a)),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: senkaLine),
+                  border: Border.all(color: appColor(context, senkaLine)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _timeFilterButton(
+                      context,
                       l10n.senkaMonth,
                       'month',
                       timeFilter == 'month',
                       compact,
                     ),
                     _timeFilterButton(
+                      context,
                       l10n.senkaToday,
                       'today',
                       timeFilter == 'today',
@@ -649,15 +722,21 @@ class _SortiePanel extends StatelessWidget {
                               ? Icons.check_box
                               : Icons.check_box_outline_blank,
                           size: compact ? 14 : 18,
-                          color: showHidden ? senkaGold : senkaMuted,
+                          color: appColor(
+                            context,
+                            showHidden ? senkaGold : senkaMuted,
+                          ),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           l10n.senkaShowHidden,
-                          style: TextStyle(
-                            color: showHidden ? senkaText : senkaMuted,
-                            fontSize: compact ? 10 : 12,
-                            fontWeight: FontWeight.w700,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: showHidden ? senkaText : senkaMuted,
+                              fontSize: compact ? 10 : 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
@@ -669,14 +748,15 @@ class _SortiePanel extends StatelessWidget {
           ),
           Container(
             height: compact ? 26 : 34,
-            decoration: const BoxDecoration(
-              color: Color(0xff091a26),
+            decoration: BoxDecoration(
+              color: appColor(context, Color(0xff091a26)),
               border: Border(
-                top: BorderSide(color: senkaLine),
-                bottom: BorderSide(color: senkaLine),
+                top: BorderSide(color: appColor(context, senkaLine)),
+                bottom: BorderSide(color: appColor(context, senkaLine)),
               ),
             ),
             child: _sortieRow(
+              context,
               [
                 l10n.senkaArea,
                 l10n.senkaBoss,
@@ -693,11 +773,12 @@ class _SortiePanel extends StatelessWidget {
               child: ListView.builder(
                 itemCount: rows.length,
                 itemBuilder: (context, index) =>
-                    _sortieData(rows[index], index, l10n),
+                    _sortieData(context, rows[index], index, l10n),
               ),
             )
           else
-            for (var i = 0; i < rows.length; i++) _sortieData(rows[i], i, l10n),
+            for (var i = 0; i < rows.length; i++)
+              _sortieData(context, rows[i], i, l10n),
         ],
       ),
     );
@@ -730,21 +811,27 @@ class _SortiePanel extends StatelessWidget {
     final children = <Widget>[
       Text(
         label,
-        style: TextStyle(
-          color: senkaMuted,
-          fontSize: compact ? 9 : 12,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: senkaMuted,
+            fontSize: compact ? 9 : 12,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       if (Localizations.localeOf(context).languageCode != 'en')
         const SizedBox(width: 6),
       Text(
         value,
-        style: TextStyle(
-          color: senkaText,
-          fontSize: compact ? 11 : 14,
-          fontWeight: FontWeight.w900,
-          fontFeatures: const [FontFeature.tabularFigures()],
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: senkaText,
+            fontSize: compact ? 11 : 14,
+            fontWeight: FontWeight.w900,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
       ),
     ];
@@ -758,12 +845,16 @@ class _SortiePanel extends StatelessWidget {
   }
 
   Widget _timeFilterButton(
+    BuildContext context,
     String label,
     String value,
     bool active,
     bool compact,
   ) => Material(
-    color: active ? const Color(0xff3b2f1e) : Colors.transparent,
+    color: appColor(
+      context,
+      active ? const Color(0xff3b2f1e) : Colors.transparent,
+    ),
     borderRadius: BorderRadius.circular(5),
     child: InkWell(
       onTap: () => onTimeFilterChanged(value),
@@ -775,17 +866,25 @@ class _SortiePanel extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: TextStyle(
-            color: active ? const Color(0xffffdc88) : senkaMuted,
-            fontSize: compact ? 10 : 12,
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: active ? const Color(0xffffdc88) : senkaMuted,
+              fontSize: compact ? 10 : 12,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),
     ),
   );
 
-  Widget _sortieData(SenkaSortieStats stats, int index, AppLocalizations l10n) {
+  Widget _sortieData(
+    BuildContext context,
+    SenkaSortieStats stats,
+    int index,
+    AppLocalizations l10n,
+  ) {
     final isFavorite = state.favoriteSortieMapKeys.contains(stats.mapKey);
     final isHidden = state.hiddenSortieMapKeys.contains(stats.mapKey);
     final isEven = index % 2 == 0;
@@ -799,12 +898,18 @@ class _SortiePanel extends StatelessWidget {
       height: rowHeight,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: rowBg,
+          color: appColor(context, rowBg),
           border: Border(
-            top: const BorderSide(color: Color(0xff173245), width: 0.5),
-            bottom: const BorderSide(color: Color(0xff173245), width: 0.5),
+            top: BorderSide(
+              color: appColor(context, Color(0xff173245)),
+              width: 0.5,
+            ),
+            bottom: BorderSide(
+              color: appColor(context, Color(0xff173245)),
+              width: 0.5,
+            ),
             left: isFavorite
-                ? const BorderSide(color: senkaGold, width: 3.0)
+                ? BorderSide(color: appColor(context, senkaGold), width: 3.0)
                 : BorderSide.none,
           ),
         ),
@@ -817,14 +922,20 @@ class _SortiePanel extends StatelessWidget {
                   if (isFavorite)
                     Text(
                       '★ ',
-                      style: _sortieStyle(compact).copyWith(color: senkaGold),
+                      style: appTextStyle(
+                        context,
+                        _sortieStyle(compact).copyWith(color: senkaGold),
+                      ),
                     ),
                   Text(
                     stats.mapKey,
                     maxLines: 1,
-                    style: _sortieStyle(
-                      compact,
-                    ).copyWith(fontWeight: FontWeight.w800),
+                    style: appTextStyle(
+                      context,
+                      _sortieStyle(
+                        compact,
+                      ).copyWith(fontWeight: FontWeight.w800),
+                    ),
                   ),
                 ],
               ),
@@ -834,9 +945,12 @@ class _SortiePanel extends StatelessWidget {
               Text(
                 '${stats.bossArrivals}',
                 maxLines: 1,
-                style: _sortieStyle(compact).copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+                style: appTextStyle(
+                  context,
+                  _sortieStyle(compact).copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
               14,
@@ -845,9 +959,12 @@ class _SortiePanel extends StatelessWidget {
               Text(
                 '${stats.sorties}',
                 maxLines: 1,
-                style: _sortieStyle(compact).copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+                style: appTextStyle(
+                  context,
+                  _sortieStyle(compact).copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
               14,
@@ -856,9 +973,12 @@ class _SortiePanel extends StatelessWidget {
               Text(
                 '${stats.sWins} / ${stats.aWins}',
                 maxLines: 1,
-                style: _sortieStyle(compact).copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+                style: appTextStyle(
+                  context,
+                  _sortieStyle(compact).copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
               20,
@@ -887,7 +1007,10 @@ class _SortiePanel extends StatelessWidget {
                             child: Icon(
                               isFavorite ? Icons.star : Icons.star_border,
                               size: compact ? 17 : 20,
-                              color: isFavorite ? senkaGold : senkaMuted,
+                              color: appColor(
+                                context,
+                                isFavorite ? senkaGold : senkaMuted,
+                              ),
                             ),
                           ),
                         ),
@@ -913,7 +1036,10 @@ class _SortiePanel extends StatelessWidget {
                             child: Icon(
                               Icons.block,
                               size: compact ? 15 : 18,
-                              color: isHidden ? senkaRed : senkaMuted,
+                              color: appColor(
+                                context,
+                                isHidden ? senkaRed : senkaMuted,
+                              ),
                             ),
                           ),
                         ),
@@ -931,16 +1057,47 @@ class _SortiePanel extends StatelessWidget {
 }
 
 Widget _sortieRow(
+  BuildContext context,
   List<String> values,
   bool compact, {
   bool header = false,
 }) => Row(
   children: [
-    _cell(Text(values[0], style: _sortieStyle(compact, header: header)), 20),
-    _cell(Text(values[1], style: _sortieStyle(compact, header: header)), 14),
-    _cell(Text(values[2], style: _sortieStyle(compact, header: header)), 14),
-    _cell(Text(values[3], style: _sortieStyle(compact, header: header)), 20),
-    _cell(Text(values[4], style: _sortieStyle(compact, header: header)), 26),
+    _cell(
+      Text(
+        values[0],
+        style: appTextStyle(context, _sortieStyle(compact, header: header)),
+      ),
+      20,
+    ),
+    _cell(
+      Text(
+        values[1],
+        style: appTextStyle(context, _sortieStyle(compact, header: header)),
+      ),
+      14,
+    ),
+    _cell(
+      Text(
+        values[2],
+        style: appTextStyle(context, _sortieStyle(compact, header: header)),
+      ),
+      14,
+    ),
+    _cell(
+      Text(
+        values[3],
+        style: appTextStyle(context, _sortieStyle(compact, header: header)),
+      ),
+      20,
+    ),
+    _cell(
+      Text(
+        values[4],
+        style: appTextStyle(context, _sortieStyle(compact, header: header)),
+      ),
+      26,
+    ),
   ],
 );
 Widget _cell(Widget child, int flex) => Expanded(

@@ -86,13 +86,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      for (final mode in const ['进行中', '全任务']) {
+      for (final mode in const ['已接取', '全任务']) {
         await tester.tap(
           find.descendant(
             of: find.byKey(const Key('quest-mode-tabs')),
             matching: find.text(mode),
           ),
         );
+        await tester.pumpAndSettle();
+        if (find.byKey(const Key('quest-detail-panel')).evaluate().isEmpty) {
+          await tester.tap(find.byKey(const Key('quest-card-201')));
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(find.byKey(const Key('quest-detail-tab-rewards')));
         await tester.pumpAndSettle();
         await tester.ensureVisible(_resourceIcon(1));
         await tester.pumpAndSettle();

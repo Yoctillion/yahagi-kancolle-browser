@@ -518,6 +518,68 @@ test('182-character lines paginate within two lines inside the game and old page
   await page.close();
 });
 
+test('a one-character final page is readable before the real audio end and cannot return afterward', async () => {
+  const page = await pageFor();
+  await enable(page);
+  const quote = `${'甲'.repeat(20)}\n${'乙'.repeat(20)}\n尾`;
+  await send(page, { kind: 'catalog', quotes: { 1: { 1: quote } } });
+  await play(page, voice(1, 1));
+  const playback = await page.evaluate(() => new Promise(resolve => {
+    const subtitle = document.querySelector('[data-yahagi-ship-subtitle="text"]');
+    const pages = [];
+    const record = () => {
+      if (subtitle.textContent && subtitle.textContent !== pages.at(-1)?.text) {
+        pages.push({ text: subtitle.textContent, shownAt: performance.now() });
+      }
+    };
+    const observer = new MutationObserver(record);
+    observer.observe(subtitle, { childList: true });
+    window.audio.emit('play');
+    record();
+    // Howler's end is independent of the subtitle's own expiry timer.
+    setTimeout(() => {
+      const endedAt = performance.now();
+      window.audio.emit('end');
+      const textAtEnd = subtitle.textContent;
+      setTimeout(() => {
+        observer.disconnect();
+        resolve({ pages, endedAt, textAtEnd, textAfterEnd: subtitle.textContent });
+      }, 400);
+    }, window.audio.duration() * 1000);
+  }));
+  assert.equal(playback.pages.length, 2, `Every page must appear before end: ${JSON.stringify(playback)}`);
+  assert.equal(playback.pages[1].text, '睦月：尾');
+  assert.equal(playback.pages.map(entry => entry.text.slice('睦月：'.length).replace(/\n/g, '')).join(''), quote.replace(/\n/g, ''));
+  assert.ok(playback.endedAt - playback.pages[1].shownAt >= 500, `The final page needs reading time: ${JSON.stringify(playback)}`);
+  assert.equal(playback.textAtEnd, '', 'End clears the current page immediately');
+  assert.equal(playback.textAfterEnd, '', 'Expired page timers cannot restore the caption');
+  await page.close();
+});
+
+test('missing end events still expire captions and unknown durations retain their bounded fallback', async () => {
+  const page = await pageFor();
+  await page.clock.install({ time: new Date('2026-10-20T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-10-20T00:00:01Z'));
+  await enable(page);
+  await play(page, voice(1, 1));
+  await page.evaluate(() => window.audio.emit('play'));
+  await page.clock.runFor(2000);
+  assert.equal(await line(page), '睦月：你好，提督！', 'The known-duration watchdog retains its 300ms grace');
+  await page.clock.runFor(300);
+  assert.equal(await line(page), '', 'Missing end cannot leave a known-duration caption behind');
+  for (const mode of ['zero', 'nan', 'throws']) {
+    await page.evaluate(mode => {
+      window.audio.duration = () => { if (mode === 'throws') throw new Error('No duration'); return mode === 'zero' ? 0 : NaN; };
+      window.audio.emit('play');
+    }, mode);
+    await page.clock.runFor(2499);
+    assert.equal(await line(page), '睦月：你好，提督！', `${mode}: the short-line fallback lasts 2500ms`);
+    await page.clock.runFor(1);
+    assert.equal(await line(page), '', `${mode}: fallback expiry clears the caption`);
+  }
+  await page.close();
+});
+
 test('catalog switches clear old pages and the same cached voice replays current language as plain text', async () => {
   const page = await pageFor();
   await enable(page);

@@ -95,6 +95,10 @@ class GameFrameRateManager(
         }
     }
 
+    fun setForeground(foreground: Boolean) {
+        bridge.setForeground(foreground)
+    }
+
     fun dispose() {
         systemConstraints.dispose()
         bridge.dispose()

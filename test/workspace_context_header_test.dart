@@ -405,7 +405,7 @@ void main() {
     expect(find.byKey(const Key('senka-tab-calculator')), findsOneWidget);
   });
 
-  testWidgets('quest workspace switches between active and all quests', (
+  testWidgets('quest workspace switches between accepted and all quests', (
     tester,
   ) async {
     const questState = GameState(
@@ -447,39 +447,40 @@ void main() {
 
     expect(find.byKey(const Key('workspace-title-quest')), findsOneWidget);
     expect(find.byKey(const Key('quest-mode-tabs')), findsOneWidget);
-    expect(find.text('进行中'), findsOneWidget);
+    expect(find.text('已接取'), findsOneWidget);
     expect(find.text('全任务'), findsOneWidget);
     expect(find.textContaining('更新于'), findsNothing);
     await tester.tap(find.text('全任务'));
     expect(changedMode, QuestCenterMode.all);
   });
 
-  testWidgets('all quest workspace adds search and filter actions', (
-    tester,
-  ) async {
-    final filters = QuestFilterController();
-    addTearDown(filters.dispose);
-    await tester.pumpWidget(
-      _localizedApp(
-        home: Scaffold(
-          body: WorkspaceContextHeader(
-            workspaceIndex: 5,
-            state: const GameState(),
-            selectedFleetId: 1,
-            questMode: QuestCenterMode.all,
-            questFilters: filters,
+  for (final questMode in QuestCenterMode.values) {
+    testWidgets('quest workspace offers one query action in $questMode', (
+      tester,
+    ) async {
+      final filters = QuestFilterController();
+      addTearDown(filters.dispose);
+      await tester.pumpWidget(
+        _localizedApp(
+          home: Scaffold(
+            body: WorkspaceContextHeader(
+              workspaceIndex: 5,
+              state: const GameState(),
+              selectedFleetId: 1,
+              questMode: questMode,
+              questFilters: filters,
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.byKey(const Key('quest-search-button')), findsOneWidget);
-    expect(find.byKey(const Key('quest-filter-button')), findsOneWidget);
-    expect(
-      tester.getSize(find.byKey(const Key('quest-mode-tabs'))),
-      const Size(260, 38),
-    );
-  });
+      expect(find.byKey(const Key('quest-search-button')), findsOneWidget);
+      expect(find.byKey(const Key('quest-filter-button')), findsNothing);
+      expect(find.text('已接取'), findsOneWidget);
+      expect(find.text('全任务'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('quest workspace exposes translation before mode tabs', (
     tester,

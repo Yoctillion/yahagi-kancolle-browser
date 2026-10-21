@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 class DevelopmentSortHeader extends StatelessWidget {
@@ -16,10 +17,13 @@ class DevelopmentSortHeader extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     '$label${active ? ' ${ascending ? '▲' : '▼'}' : ''}',
     maxLines: 1,
-    style: TextStyle(
-      color: active ? const Color(0xffffc85a) : const Color(0xff9fb3bf),
-      fontSize: 11,
-      fontWeight: FontWeight.w800,
+    style: appTextStyle(
+      context,
+      TextStyle(
+        color: active ? const Color(0xffffc85a) : const Color(0xff9fb3bf),
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+      ),
     ),
   );
 }

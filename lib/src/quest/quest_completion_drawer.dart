@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -283,8 +284,13 @@ class _HeaderNoticeCapsule extends StatelessWidget {
         height: 34,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: const Color(0xff0a1622).withValues(alpha: 0.92),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
+          color: appColor(
+            context,
+            const Color(0xff0a1622).withValues(alpha: 0.92),
+          ),
+          border: Border.all(
+            color: appColor(context, color.withValues(alpha: 0.35)),
+          ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -293,17 +299,20 @@ class _HeaderNoticeCapsule extends StatelessWidget {
             Icon(
               QuestCompletionHeaderSlot.iconFor(notice),
               size: 16,
-              color: color,
+              color: appColor(context, color),
             ),
             const SizedBox(width: 8),
             Text(
               notice.message,
               maxLines: 1,
               softWrap: false,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xffe0e6e9),
-                fontWeight: FontWeight.w600,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  fontSize: 13,
+                  color: appColor(context, Color(0xffe0e6e9)),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],

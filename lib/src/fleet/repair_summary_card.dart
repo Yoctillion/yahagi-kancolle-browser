@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -193,12 +194,15 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
             )
           : Text(
               disabled ? fleetText(context, '锁') : strings.inactive,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: disabled
-                    ? const Color(0xff4a5c68)
-                    : const Color(0xff8197a5),
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: disabled
+                      ? const Color(0xff4a5c68)
+                      : const Color(0xff8197a5),
+                ),
               ),
             ),
       onTap: () => widget.onOpenRepair(
@@ -279,10 +283,13 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         disabled: false,
         detail: Text(
           strings.inactive,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xff8197a5),
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              fontSize: 11,
+              color: appColor(context, Color(0xff8197a5)),
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         onTap: () => widget.onOpenRepair(
@@ -309,7 +316,10 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         child: Text(
           visual.label,
           maxLines: 1,
-          style: operationSummaryTimeStyle.copyWith(color: visual.color),
+          style: appTextStyle(
+            context,
+            operationSummaryTimeStyle.copyWith(color: visual.color),
+          ),
         ),
       ),
       onTap: () => widget.onOpenRepair(
@@ -384,10 +394,13 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         disabled: false,
         detail: Text(
           strings.inactive,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xff8197a5),
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              fontSize: 11,
+              color: appColor(context, Color(0xff8197a5)),
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         onTap: () => widget.onOpenRepair(
@@ -414,7 +427,10 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         child: Text(
           visual.label,
           maxLines: 1,
-          style: operationSummaryTimeStyle.copyWith(color: visual.color),
+          style: appTextStyle(
+            context,
+            operationSummaryTimeStyle.copyWith(color: visual.color),
+          ),
         ),
       ),
       onTap: () => widget.onOpenRepair(
@@ -429,27 +445,27 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
   ) => switch (status) {
     NosakiSparkleShipStatus.sparkling => (
       label: fleetText(context, '刷闪中 (★$condition)'),
-      color: const Color(0xffefbd58),
+      color: appColor(context, Color(0xffefbd58)),
     ),
     NosakiSparkleShipStatus.completed => (
       label: fleetText(context, '已刷闪 (★$condition)'),
-      color: const Color(0xff65d493),
+      color: appColor(context, Color(0xff65d493)),
     ),
     NosakiSparkleShipStatus.nosakiSelf => (
       label: fleetText(context, '给粮舰 (★$condition)'),
-      color: const Color(0xff65d493),
+      color: appColor(context, Color(0xff65d493)),
     ),
     NosakiSparkleShipStatus.docked => (
       label: fleetText(context, '入渠中'),
-      color: const Color(0xff65b3e6),
+      color: appColor(context, Color(0xff65b3e6)),
     ),
     NosakiSparkleShipStatus.unable => (
       label: fleetText(context, '需Cond≥49'),
-      color: const Color(0xffef6f6c),
+      color: appColor(context, Color(0xffef6f6c)),
     ),
     NosakiSparkleShipStatus.unready => (
       label: fleetText(context, '未就绪'),
-      color: const Color(0xffef6f6c),
+      color: appColor(context, Color(0xffef6f6c)),
     ),
   };
 
@@ -460,19 +476,19 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
   ) => switch (status) {
     AnchorageRepairShipStatus.completed => (
       label: strings.completed,
-      color: const Color(0xff65d493),
+      color: appColor(context, Color(0xff65d493)),
     ),
     AnchorageRepairShipStatus.repairing => (
       label: remaining == null ? strings.repairing : _durationText(remaining),
-      color: const Color(0xffefbd58),
+      color: appColor(context, Color(0xffefbd58)),
     ),
     AnchorageRepairShipStatus.outOfRange => (
       label: strings.outOfRepairRange,
-      color: const Color(0xffef6f6c),
+      color: appColor(context, Color(0xffef6f6c)),
     ),
     AnchorageRepairShipStatus.unable => (
       label: strings.unableToRepair,
-      color: const Color(0xffef6f6c),
+      color: appColor(context, Color(0xffef6f6c)),
     ),
   };
 
@@ -506,9 +522,9 @@ class _RepairSummaryModeSelector extends StatelessWidget {
       height: 26,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xff10212e),
+        color: appColor(context, Color(0xff10212e)),
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xff294052)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -521,7 +537,7 @@ class _RepairSummaryModeSelector extends StatelessWidget {
             label,
           ) {
             final painter = TextPainter(
-              text: TextSpan(text: label, style: style),
+              text: TextSpan(text: label, style: appTextStyle(context, style)),
               textDirection: Directionality.of(context),
               textScaler: MediaQuery.textScalerOf(context),
               locale: Localizations.maybeLocaleOf(context),
@@ -600,7 +616,10 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xff5b4829) : Colors.transparent,
+      color: appColor(
+        context,
+        selected ? const Color(0xff5b4829) : Colors.transparent,
+      ),
       borderRadius: BorderRadius.circular(5),
       child: InkWell(
         borderRadius: BorderRadius.circular(5),
@@ -614,15 +633,21 @@ class _ModeButton extends StatelessWidget {
                 builder: (context, constraints) {
                   final style = DefaultTextStyle.of(context).style.merge(
                     TextStyle(
-                      color: selected
-                          ? const Color(0xffffcf67)
-                          : const Color(0xff8197a5),
+                      color: appColor(
+                        context,
+                        selected
+                            ? const Color(0xffffcf67)
+                            : const Color(0xff8197a5),
+                      ),
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                     ),
                   );
                   final painter = TextPainter(
-                    text: TextSpan(text: label, style: style),
+                    text: TextSpan(
+                      text: label,
+                      style: appTextStyle(context, style),
+                    ),
                     textDirection: Directionality.of(context),
                     textScaler: MediaQuery.textScalerOf(context),
                     locale: Localizations.maybeLocaleOf(context),
@@ -632,12 +657,16 @@ class _ModeButton extends StatelessWidget {
                   painter.dispose();
                   return Center(
                     child: useIcon
-                        ? Icon(compactIcon, size: 14, color: style.color)
+                        ? Icon(
+                            compactIcon,
+                            size: 14,
+                            color: appColor(context, style.color),
+                          )
                         : Text(
                             label,
                             maxLines: 1,
                             softWrap: false,
-                            style: style,
+                            style: appTextStyle(context, style),
                           ),
                   );
                 },
@@ -693,8 +722,8 @@ class _AnchorageFleetSelector extends StatelessWidget {
       height: vertical ? fleets.length * 26.0 + 4 : 28,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xff102331),
-        border: Border.all(color: const Color(0xff294052)),
+        color: appColor(context, Color(0xff102331)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Flex(
@@ -705,9 +734,12 @@ class _AnchorageFleetSelector extends StatelessWidget {
             Expanded(
               child: Material(
                 key: Key('repair-summary-fleet-${fleet.id}'),
-                color: fleet.id == selectedFleetId
-                    ? const Color(0xff8a6628)
-                    : Colors.transparent,
+                color: appColor(
+                  context,
+                  fleet.id == selectedFleetId
+                      ? const Color(0xff8a6628)
+                      : Colors.transparent,
+                ),
                 borderRadius: BorderRadius.circular(6),
                 child: InkWell(
                   onTap: () => onSelected(fleet.id),
@@ -721,12 +753,15 @@ class _AnchorageFleetSelector extends StatelessWidget {
                             ? '${fleet.id}'
                             : fleet.displayName,
                         maxLines: 1,
-                        style: TextStyle(
-                          color: fleet.id == selectedFleetId
-                              ? const Color(0xffffdc88)
-                              : const Color(0xff9fb3bf),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: fleet.id == selectedFleetId
+                                ? const Color(0xffffdc88)
+                                : const Color(0xff9fb3bf),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
@@ -781,7 +816,7 @@ class _RepairCapsule extends StatelessWidget {
             : (available - 42).clamp(32.0, 96.0).toDouble();
         final iconWidth = portraitWidth < 32 ? portraitWidth : 32.0;
         return Material(
-          color: Colors.transparent,
+          color: appColor(context, Colors.transparent),
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(6),
@@ -789,7 +824,7 @@ class _RepairCapsule extends StatelessWidget {
               key: contentKey,
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xff0d1a26),
+                color: appColor(context, Color(0xff0d1a26)),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -808,16 +843,19 @@ class _RepairCapsule extends StatelessWidget {
                         width: iconWidth,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: const Color(0xff142735),
+                          color: appColor(context, Color(0xff142735)),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Center(
                           child: Icon(
                             Icons.build_rounded,
                             size: 16,
-                            color: disabled
-                                ? const Color(0xff4a5c68)
-                                : const Color(0xff8197a5),
+                            color: appColor(
+                              context,
+                              disabled
+                                  ? const Color(0xff4a5c68)
+                                  : const Color(0xff8197a5),
+                            ),
                           ),
                         ),
                       ),
@@ -828,7 +866,7 @@ class _RepairCapsule extends StatelessWidget {
                     Expanded(
                       child: Row(
                         children: [
-                          Expanded(child: _nameText()),
+                          Expanded(child: _nameText(context)),
                           const SizedBox(width: 6),
                           Flexible(child: detail),
                         ],
@@ -849,9 +887,9 @@ class _RepairCapsule extends StatelessWidget {
                                       ? FittedBox(
                                           fit: BoxFit.scaleDown,
                                           alignment: Alignment.centerLeft,
-                                          child: _nameText(),
+                                          child: _nameText(context),
                                         )
-                                      : _nameText(),
+                                      : _nameText(context),
                                 ),
                                 if (dotColor != null)
                                   Container(
@@ -859,7 +897,7 @@ class _RepairCapsule extends StatelessWidget {
                                     height: 6,
                                     margin: const EdgeInsets.only(left: 4),
                                     decoration: BoxDecoration(
-                                      color: dotColor,
+                                      color: appColor(context, dotColor),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -888,14 +926,17 @@ class _RepairCapsule extends StatelessWidget {
     );
   }
 
-  Text _nameText() => Text(
+  Text _nameText(BuildContext context) => Text(
     name,
     maxLines: 1,
     overflow: fitFullName ? null : TextOverflow.ellipsis,
-    style: TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.bold,
-      color: disabled ? const Color(0xff4a5c68) : Colors.white,
+    style: appTextStyle(
+      context,
+      TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        color: disabled ? const Color(0xff4a5c68) : Colors.white,
+      ),
     ),
   );
 }

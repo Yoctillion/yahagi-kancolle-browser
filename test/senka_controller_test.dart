@@ -761,12 +761,20 @@ void main() {
     controller.accept(
       event('/kcsapi/api_req_sortie/battleresult', {
         'api_member_exp': 15001000,
-      }),
+      }, at: DateTime.utc(2026, 8, 20, 4)),
+    );
+    await controller.idle;
+    expect(controller.monthBaseSenka, 123.45);
+    expect(controller.state.playerRankingRow.senkaDelta, 0);
+    controller.accept(
+      event('/kcsapi/api_port/port', {
+        'api_basic': {'api_experience': 15001000},
+      }, at: DateTime.utc(2026, 8, 20, 4, 1)),
     );
     await controller.idle;
     expect(controller.monthBaseSenka, closeTo(124.15, 1e-9));
     expect(controller.state.playerRankingRow.senkaDelta, closeTo(0.7, 1e-9));
-    expect(store.saveCount, 3);
+    expect(store.saveCount, 4);
   });
 
   test('手动填写拒绝负数与非有限值且保存失败会返回 false', () async {
@@ -835,7 +843,7 @@ void main() {
     expect(store.saveCount, 0);
   });
 
-  test('时间边界刷新会在二点切换月份并建立新的日初基准', () async {
+  test('月末二十二点切换作战月份并建立新的日初基准', () async {
     var instant = DateTime.utc(2026, 8, 31, 12, 59);
     final store = MemorySenkaStore(
       SenkaState.forMonth('2026-08').copyWith(
@@ -849,7 +857,8 @@ void main() {
 
     instant = DateTime.utc(2026, 8, 31, 13);
     controller.refreshForCurrentTime();
-    expect(controller.state.monthKey, '2026-08');
+    expect(controller.state.monthKey, '2026-09');
+    expect(controller.state.monthArchives['2026-08'], isNotNull);
 
     instant = DateTime.utc(2026, 8, 31, 17);
     controller.refreshForCurrentTime();
@@ -1029,7 +1038,7 @@ void main() {
     await initializing;
     await controller.idle;
 
-    expect(controller.state.nickname, isEmpty);
+    expect(controller.state.nickname, '旧档');
     expect(controller.state.targetSenka, 100);
     expect(store.saveCount, 1);
     expect(store.saved?.toJson(), controller.state.toJson());
@@ -1174,9 +1183,10 @@ class DelayedLoadSenkaStore extends MemorySenkaStore {
   }
 }
 
-CapturedApiEvent event(String path, Object data) => CapturedApiEvent(
-  path: path,
-  responseBody: jsonEncode({'api_result': 1, 'api_data': data}),
-  source: CaptureSource.manual,
-  capturedAt: DateTime.utc(2026, 8, 10, 3),
-);
+CapturedApiEvent event(String path, Object data, {DateTime? at}) =>
+    CapturedApiEvent(
+      path: path,
+      responseBody: jsonEncode({'api_result': 1, 'api_data': data}),
+      source: CaptureSource.manual,
+      capturedAt: at ?? DateTime.utc(2026, 8, 10, 3),
+    );

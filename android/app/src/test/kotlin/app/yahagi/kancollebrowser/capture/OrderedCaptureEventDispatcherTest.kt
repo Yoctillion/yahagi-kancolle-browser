@@ -63,6 +63,37 @@ class OrderedCaptureEventDispatcherTest {
         assertTrue(delivered.isEmpty())
     }
 
+    @Test
+    fun retiredListenerCannotSubmitAsTheReplacementGeneration() {
+        val worker = QueuedExecutor()
+        val main = QueuedExecutor()
+        val delivered = mutableListOf<Map<String, Any?>>()
+        val dispatcher = OrderedCaptureEventDispatcher(
+            validator = CaptureMessageValidator(),
+            worker = worker,
+            postToMain = main::execute,
+            deliver = delivered::add,
+        )
+        // The listener captures this token when installed, not when called.
+        val retiredGeneration = dispatcher.currentGeneration
+        dispatcher.invalidatePending()
+        val replacementGeneration = dispatcher.currentGeneration
+
+        dispatcher.submit(
+            validStringMessage("/kcsapi/api_req_sortie/battle"), "https://game", retiredGeneration,
+        )
+        dispatcher.submit(
+            validBinaryMessage("/kcsapi/api_req_sortie/battle"), "https://game", retiredGeneration,
+        )
+        dispatcher.submit(
+            validStringMessage("/kcsapi/api_port/port"), "https://game", replacementGeneration,
+        )
+        worker.runAll()
+        main.runAll()
+
+        assertEquals(listOf("/kcsapi/api_port/port"), delivered.map { it["path"] })
+    }
+
     private fun validStringMessage(path: String): String =
         """
         {

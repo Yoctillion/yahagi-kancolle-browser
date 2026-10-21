@@ -387,6 +387,9 @@ void main() {
       'noticeModSuccessDetail',
       'questAvailable',
       'questInferredCompleted',
+      // These quest labels share standard spelling in both Chinese scripts.
+      'questAccepted',
+      'japaneseOriginal',
       'statFirepower',
       'statHp',
       'topNoticeDuration10s',
@@ -396,6 +399,8 @@ void main() {
       'expCalcTableView',
       'expCalcMap',
       'expCalcMvp',
+      // The original dark theme uses the same spelling in both Chinese scripts.
+      'themeClassicDark',
     };
     const reviewedJa = <String>{
       // The warning title uses shared game terminology.

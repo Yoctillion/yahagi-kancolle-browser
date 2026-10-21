@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../theme/app_palette.dart';
 
 /// Displays single-line text and smoothly scrolls back and forth (ping-pong)
 /// when the text exceeds the available width constraints.
@@ -128,7 +129,7 @@ class _MarqueeTextState extends State<MarqueeText>
         if (maxWidth <= 0 || !maxWidth.isFinite) {
           return Text(
             widget.text,
-            style: widget.style,
+            style: appTextStyle(context, widget.style),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: widget.textAlign,
@@ -157,7 +158,7 @@ class _MarqueeTextState extends State<MarqueeText>
         if (overflow <= 0.5 || MarqueeText.disableAnimationForTest) {
           return Text(
             widget.text,
-            style: widget.style,
+            style: appTextStyle(context, widget.style),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: widget.textAlign,
@@ -171,7 +172,7 @@ class _MarqueeTextState extends State<MarqueeText>
               width: textWidth + 8,
               child: Text(
                 widget.text,
-                style: widget.style,
+                style: appTextStyle(context, widget.style),
                 maxLines: 1,
                 softWrap: false,
                 textAlign: widget.textAlign,

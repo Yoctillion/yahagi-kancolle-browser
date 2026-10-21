@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,106 @@ import 'package:yahagi_kancolle_browser/src/settings/network_settings_controller
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_store.dart';
 
 void main() {
+  for (final mode in GameFrameRateMode.values) {
+    testWidgets('background stress preserves the game surface in ${mode.name}', (
+      tester,
+    ) async {
+      final fixture = _SurfaceFixture();
+      final settings = await GameFrameRateSettingsController.load(
+        MemoryGameFrameRateSettingsStore(mode),
+      );
+      addTearDown(settings.dispose);
+      _addLoadingTearDown(tester, fixture);
+      final runtime = _FakeNativeFrameRateRuntimePort();
+      await fixture.pump(
+        tester,
+        frameRateSettingsController: settings,
+        frameRateRuntimePortFactory: () => runtime,
+      );
+      await _pumpUntil(
+        tester,
+        () => fixture.port.calls.any((call) => call.startsWith('load:')),
+      );
+      fixture.port.addEvent(
+        _event(
+          'pageStarted',
+          generationId: 7,
+          url: 'https://osapi.dmm.com/game',
+        ),
+      );
+      fixture.port.addEvent(
+        _event(
+          'pageFinished',
+          generationId: 7,
+          url: 'https://osapi.dmm.com/game',
+        ),
+      );
+      await _pumpUntil(tester, () => fixture.port.calls.last == 'visible:true');
+      await _pumpUntil(tester, () => runtime.appliedTargets.isNotEmpty);
+      final initialLoads = fixture.port.calls
+          .where((c) => c.startsWith('load:'))
+          .length;
+      final random = Random(0x20261021 + mode.index);
+      var transitions = 0;
+      for (var cycle = 0; cycle < 250; cycle++) {
+        final states = random.nextBool()
+            ? [AppLifecycleState.inactive, AppLifecycleState.resumed]
+            : [
+                AppLifecycleState.inactive,
+                AppLifecycleState.hidden,
+                AppLifecycleState.paused,
+                AppLifecycleState.hidden,
+                AppLifecycleState.inactive,
+                AppLifecycleState.resumed,
+              ];
+        for (final state in states) {
+          tester.binding.handleAppLifecycleStateChanged(state);
+          await tester.pump(Duration(milliseconds: random.nextInt(20)));
+          transitions++;
+        }
+        if (cycle % 25 == 0) {
+          fixture.port.addEvent(_event('destroyed', generationId: 6));
+        }
+        await tester.pump(Duration(milliseconds: random.nextInt(1000)));
+        await tester.pump();
+        expect(
+          fixture.port.calls.where((c) => c == 'create'),
+          hasLength(1),
+          reason: 'mode=$mode cycle=$cycle must preserve WebView identity',
+        );
+        expect(fixture.port.calls, isNot(contains('reload')));
+        expect(fixture.port.calls, isNot(contains('destroy')));
+        expect(
+          fixture.port.calls.where((c) => c.startsWith('load:')),
+          hasLength(initialLoads),
+        );
+        expect(settings.mode, mode);
+        expect(
+          find.byKey(const Key('native-game-surface-error')),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      expect(
+        fixture.port.calls.lastWhere((c) => c.startsWith('visible:')),
+        'visible:true',
+      );
+      expect(transitions, greaterThan(500));
+      final expected = switch (mode) {
+        GameFrameRateMode.automatic ||
+        GameFrameRateMode.stable60 => GameFrameRateTarget.fps60,
+        GameFrameRateMode.stable30 => GameFrameRateTarget.fps30,
+        GameFrameRateMode.highRefresh => GameFrameRateTarget.highRefresh,
+      };
+      expect(runtime.appliedTargets.last, expected);
+      debugPrint(
+        'background widget stress mode=${mode.name} cycles=250 transitions=$transitions: passed',
+      );
+    });
+  }
+
   testWidgets(
     'native old finished document cannot complete the newer navigation',
     (tester) async {
@@ -930,6 +1031,128 @@ void main() {
       expect(capturePort.enabledCalls.last, isTrue);
     },
   );
+
+  test(
+    'default orchestrator reports a failed capture install and can retry',
+    () async {
+      final capturePort = _RecreatedWebViewCapturePort()
+        ..configureFailuresRemaining = 1;
+      final fixture = await _DefaultOrchestratorFixture.create(
+        <String>[],
+        capturePortFactory: () => capturePort,
+      );
+      addTearDown(fixture.dispose);
+
+      await expectLater(
+        fixture.orchestrator.prepareCapture(),
+        throwsStateError,
+      );
+      expect(fixture.captureController.state, GameCaptureState.error);
+      await fixture.orchestrator.prepareCapture();
+      expect(capturePort.configureCount, 2);
+      expect(fixture.captureController.state, GameCaptureState.ready);
+    },
+  );
+
+  test(
+    'failed renderer capture rebind cannot navigate an unhooked document',
+    () async {
+      final capturePort = _RecreatedWebViewCapturePort();
+      final fixture = await _DefaultOrchestratorFixture.create(
+        <String>[],
+        capturePortFactory: () => capturePort,
+      );
+      addTearDown(fixture.dispose);
+      await fixture.orchestrator.runCaptureStartup(
+        waitForSurface: () async {},
+        isActive: () => true,
+        navigate: () async => capturePort.emitBattle(1),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(fixture.captureController.latestEvent?.sequence, 1);
+
+      capturePort.replaceWebView();
+      capturePort.configureFailuresRemaining = 1;
+      var navigations = 0;
+      Future<void> recover() => fixture.orchestrator.runCaptureStartup(
+        waitForSurface: () async {},
+        isActive: () => true,
+        navigate: () async {
+          navigations++;
+          capturePort.emitBattle(2);
+        },
+      );
+      await expectLater(recover(), throwsStateError);
+      expect(navigations, 0);
+      expect(fixture.captureController.state, GameCaptureState.error);
+      await recover();
+      await Future<void>.delayed(Duration.zero);
+      expect(navigations, 1);
+      expect(fixture.captureController.latestEvent?.sequence, 2);
+    },
+  );
+
+  test('unsupported capture still allows browsing', () async {
+    final capturePort = _RecreatedWebViewCapturePort()..supported = false;
+    final fixture = await _DefaultOrchestratorFixture.create(
+      <String>[],
+      capturePortFactory: () => capturePort,
+    );
+    addTearDown(fixture.dispose);
+    var navigated = false;
+    await fixture.orchestrator.runCaptureStartup(
+      waitForSurface: () async {},
+      isActive: () => true,
+      navigate: () async => navigated = true,
+    );
+    expect(navigated, isTrue);
+    expect(fixture.captureController.state, GameCaptureState.unsupported);
+    expect(capturePort.configureCount, 0);
+  });
+
+  testWidgets('real capture errors reach the page finish recovery policy', (
+    tester,
+  ) async {
+    final surface = _SurfaceFixture();
+    final capturePort = _RecreatedWebViewCapturePort();
+    final startup = await _DefaultOrchestratorFixture.create(
+      <String>[],
+      capturePortFactory: () => capturePort,
+    );
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      startup.dispose();
+      await surface.dispose();
+    });
+    await surface.pump(
+      tester,
+      startupOrchestrator: _CapturePolicyStartupOrchestrator(
+        startup.orchestrator,
+      ),
+    );
+    for (var frame = 0; frame < 40; frame++) {
+      if (surface.port.calls.any((call) => call.startsWith('load:'))) break;
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+    expect(surface.port.calls.any((call) => call.startsWith('load:')), isTrue);
+    capturePort.supportFailuresRemaining = 2;
+    surface.port.addEvent(
+      _event('pageStarted', generationId: 7, url: 'https://game.example/'),
+    );
+    surface.port.addEvent(
+      _event('pageFinished', generationId: 7, url: 'https://game.example/'),
+    );
+    for (var frame = 0; frame < 40; frame++) {
+      if (surface.port.calls.contains('reload')) break;
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(surface.port.calls.where((call) => call == 'reload'), hasLength(1));
+    expect(capturePort.supportCalls, 3);
+    expect(startup.captureController.state, GameCaptureState.error);
+  });
 
   test('default orchestrator reuses one capture allowlist', () async {
     final calls = <String>[];
@@ -3513,6 +3736,44 @@ Future<void> _pumpUntil(WidgetTester tester, bool Function() condition) async {
   expect(condition(), isTrue);
 }
 
+// This widget probe exercises capture failure recovery, not network setup.
+// Keep the shared network arbiter out of its fake async zone so its retained
+// Future tail cannot strand network work in a later widget test's old zone.
+final class _CapturePolicyStartupOrchestrator
+    implements GameSurfaceStartupOrchestrator {
+  const _CapturePolicyStartupOrchestrator(this.delegate);
+
+  final DefaultGameSurfaceStartupOrchestrator delegate;
+
+  @override
+  Future<GameSurfaceNetworkResult> applyNetworkSettings() async =>
+      const GameSurfaceNetworkResult.success();
+
+  @override
+  Future<void> runCaptureStartup({
+    required Future<void> Function() waitForSurface,
+    required bool Function() isActive,
+    required Future<void> Function() navigate,
+  }) => delegate.runCaptureStartup(
+    waitForSurface: waitForSurface,
+    isActive: isActive,
+    navigate: navigate,
+  );
+
+  @override
+  Future<void> prepareCapture() => delegate.prepareCapture();
+
+  @override
+  Future<void> attachAudioPortOnce() => delegate.attachAudioPortOnce();
+
+  @override
+  Future<bool> attachFrameRatePlatformPort() =>
+      delegate.attachFrameRatePlatformPort();
+
+  @override
+  void dispose() => delegate.dispose();
+}
+
 final class _DefaultOrchestratorFixture {
   _DefaultOrchestratorFixture._({
     required this.orchestrator,
@@ -3606,6 +3867,9 @@ final class _RecreatedWebViewCapturePort implements GameCapturePort {
   String? _installedSession;
   int configureCount = 0;
   int supportCalls = 0;
+  int configureFailuresRemaining = 0;
+  int supportFailuresRemaining = 0;
+  bool supported = true;
   Completer<bool>? supportGate;
 
   @override
@@ -3614,7 +3878,11 @@ final class _RecreatedWebViewCapturePort implements GameCapturePort {
   @override
   Future<bool> isSupported() async {
     supportCalls++;
-    return await supportGate?.future ?? true;
+    if (supportFailuresRemaining > 0) {
+      supportFailuresRemaining--;
+      throw StateError('capture support check failed');
+    }
+    return await supportGate?.future ?? supported;
   }
 
   @override
@@ -3623,6 +3891,10 @@ final class _RecreatedWebViewCapturePort implements GameCapturePort {
     required String script,
   }) async {
     configureCount++;
+    if (configureFailuresRemaining > 0) {
+      configureFailuresRemaining--;
+      throw StateError('capture install failed');
+    }
     _installedGeneration = enabled ? _generation : null;
     _installedSession = RegExp(
       "const captureSessionId = '([^']+)'",

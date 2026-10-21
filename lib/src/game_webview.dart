@@ -1,3 +1,4 @@
+import 'theme/app_palette.dart';
 import 'localization/runtime_message_text.dart';
 import 'dart:async';
 
@@ -357,7 +358,15 @@ final class DefaultGameSurfaceStartupOrchestrator
         );
       }
       if (epoch != _captureEpoch) return;
-      if (revision == _captureRevision) return;
+      if (revision == _captureRevision) {
+        // The controller exposes configuration errors as state. Startup must
+        // propagate them before navigating, while unsupported capture remains
+        // a valid browsing fallback.
+        if (enabled && gameCaptureController.state == GameCaptureState.error) {
+          throw StateError('Game capture configuration failed');
+        }
+        return;
+      }
     }
   }
 
@@ -1538,7 +1547,7 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
         _buildWebView(),
         if (_startupState != GameStartupState.ready)
           Container(
-            color: const Color(0xff102431),
+            color: appColor(context, Color(0xff102431)),
             child: Center(child: _buildStartupOverlay()),
           ),
       ],
@@ -1607,13 +1616,20 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+          Icon(
+            Icons.error_outline,
+            color: appColor(context, Colors.redAccent),
+            size: 48,
+          ),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Text(
               runtimeMessageText(context, _startupErrorMessage),
-              style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+              style: TextStyle(
+                color: appColor(context, Colors.redAccent),
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -1640,8 +1656,8 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
                   .retryWithSystemNetwork,
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xff183631),
-              foregroundColor: const Color(0xff80c8bd),
+              backgroundColor: appColor(context, Color(0xff183631)),
+              foregroundColor: appColor(context, Color(0xff80c8bd)),
             ),
           ),
         ],
@@ -1651,11 +1667,14 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const CircularProgressIndicator(color: Color(0xffd4a85f)),
+        CircularProgressIndicator(color: appColor(context, Color(0xffd4a85f))),
         const SizedBox(height: 24),
         Text(
           runtimeMessageText(context, _getStartupStatusText()),
-          style: const TextStyle(color: Color(0xff8197a5), fontSize: 14),
+          style: TextStyle(
+            color: appColor(context, Color(0xff8197a5)),
+            fontSize: 14,
+          ),
         ),
       ],
     );

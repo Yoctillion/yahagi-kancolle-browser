@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -101,7 +102,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     return Container(
-      color: const Color(0xff0d1a26),
+      color: appColor(context, const Color(0xff0d1a26)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
@@ -113,7 +114,10 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                 title: l10n.logoutAndClear,
                 titleKey: const Key('settings-logout-label'),
                 subtitle: l10n.logoutAndClearDesc,
-                trailing: const Icon(Icons.logout, color: Color(0xffd4a85f)),
+                trailing: Icon(
+                  Icons.logout,
+                  color: appColor(context, Color(0xffd4a85f)),
+                ),
                 onTap: () => _logoutAndClear(context, l10n),
               ),
             ),
@@ -168,7 +172,10 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                       ),
                     ),
                     if (telemetryController case final telemetry?) ...<Widget>[
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
                       AnimatedBuilder(
                         animation: telemetry,
                         builder: (context, _) => buildSwitchTile(
@@ -180,7 +187,10 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         ),
                       ),
                     ],
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                     DiagnosticUserSection(controller: diagnostics),
                   ],
                 ),
@@ -297,7 +307,10 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         ),
                       ),
                     ),
-                    const Divider(color: Color(0xff294052), height: 1),
+                    Divider(
+                      color: appColor(context, Color(0xff294052)),
+                      height: 1,
+                    ),
                   ],
                   buildActionTile(
                     key: const Key('settings-clear-quest-cache'),
@@ -317,7 +330,10 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                       }
                     },
                   ),
-                  const Divider(color: Color(0xff294052), height: 1),
+                  Divider(
+                    color: appColor(context, Color(0xff294052)),
+                    height: 1,
+                  ),
                   buildActionTile(
                     key: const Key('settings-clear-logbook'),
                     title: RecordBackupStrings.of(context).clearLogbook,
@@ -325,7 +341,10 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                     trailing: const Icon(Icons.delete_forever_outlined),
                     onTap: () => _clearLogbook(context, l10n),
                   ),
-                  const Divider(color: Color(0xff294052), height: 1),
+                  Divider(
+                    color: appColor(context, Color(0xff294052)),
+                    height: 1,
+                  ),
                   buildActionTile(
                     key: const Key('settings-clear-composition-records'),
                     title: RecordBackupStrings.of(context).clearComposition,
@@ -335,7 +354,10 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
                     trailing: const Icon(Icons.delete_forever_outlined),
                     onTap: () => _clearCompositionRecords(context, l10n),
                   ),
-                  const Divider(color: Color(0xff294052), height: 1),
+                  Divider(
+                    color: appColor(context, Color(0xff294052)),
+                    height: 1,
+                  ),
                   buildActionTile(
                     key: const Key('settings-clear-web-cache'),
                     title: l10n.clearWebCache,
@@ -431,7 +453,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
         builder: (dialogContext) => AlertDialog(
           title: Text(l10n.kcwikiReportConfirmTitle),
           content: Text(l10n.kcwikiReportConfirmDesc),
-          backgroundColor: const Color(0xff142735),
+          backgroundColor: appColor(context, const Color(0xff142735)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -474,7 +496,7 @@ class DataSettingsPage extends StatelessWidget with SettingsUIHelpers {
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.logoutConfirmTitle),
         content: Text(l10n.logoutConfirmDesc),
-        backgroundColor: const Color(0xff142735),
+        backgroundColor: appColor(context, const Color(0xff142735)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         actions: <Widget>[
           TextButton(

@@ -169,6 +169,7 @@ void main() {
             ),
           ),
         );
+        await _openRewardTab(tester, id);
         final json = raw['$id'] as Map<String, dynamic>;
         _expectReward(tester, id, json, expected, '$phase/${mode.name}');
         expect(tester.takeException(), isNull, reason: '$id/$phase');
@@ -286,6 +287,7 @@ void main() {
                 ),
               ),
             );
+            await _openRewardTab(tester, id);
             _expectReward(tester, id, json, materials, phase);
             expect(
               find.byType(VerticalDivider),
@@ -336,6 +338,23 @@ List<int> _fixedResources(Map<String, dynamic> json) =>
     : (json['resources'][0] as List<dynamic>)
           .map((value) => value == '' ? 0 : (value as num).toInt())
           .toList();
+
+Future<void> _openRewardTab(WidgetTester tester, int id) async {
+  // A portrait scope change returns to the list; explicit initialQuestId links
+  // may already have opened the detail. Both paths now put rewards in a tab.
+  if (find.byKey(const Key('quest-detail-panel')).evaluate().isEmpty) {
+    final card = find.byKey(Key('quest-card-$id'));
+    await tester.ensureVisible(card);
+    await tester.pump();
+    await tester.tap(card);
+    await tester.pump();
+  }
+  final rewardsTab = find.byKey(const Key('quest-detail-tab-rewards'));
+  await tester.ensureVisible(rewardsTab);
+  await tester.pump();
+  await tester.tap(rewardsTab);
+  await tester.pump();
+}
 
 void _expectReward(
   WidgetTester tester,

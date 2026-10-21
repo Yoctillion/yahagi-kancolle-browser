@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import 'fleet_ui_strings.dart';
@@ -81,9 +82,11 @@ class _NosakiSparkleViewState extends State<NosakiSparkleView> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: const BoxDecoration(
-            color: Color(0xff0a1823),
-            border: Border(bottom: BorderSide(color: _border)),
+          decoration: BoxDecoration(
+            color: appColor(context, Color(0xff0a1823)),
+            border: Border(
+              bottom: BorderSide(color: appColor(context, _border)),
+            ),
           ),
           child: FleetSwitcherBar(
             fleets: state.fleets,
@@ -198,11 +201,14 @@ class _NosakiSummaryGrid extends StatelessWidget {
                             context,
                             '${projection.eligibleShipCount} 艘（${projection.fuelCostPerTick} ',
                           ),
-                          style: const TextStyle(
-                            color: Color(0xffedf2f4),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
-                            fontFeatures: [FontFeature.tabularFigures()],
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, Color(0xffedf2f4)),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
                           ),
                         ),
                         Image.asset(
@@ -213,20 +219,26 @@ class _NosakiSummaryGrid extends StatelessWidget {
                         ),
                         Text(
                           fleetText(context, '/次）'),
-                          style: TextStyle(
-                            color: Color(0xffedf2f4),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: Color(0xffedf2f4),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
                     )
                   : Text(
                       fleetText(context, '0 艘'),
-                      style: TextStyle(
-                        color: Color(0xffedf2f4),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: Color(0xffedf2f4),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
             ),
@@ -263,11 +275,14 @@ class _NosakiSummaryCard extends StatelessWidget {
           value ?? '',
           maxLines: 1,
           softWrap: false,
-          style: TextStyle(
-            color: valueColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            fontFeatures: const [FontFeature.tabularFigures()],
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: valueColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         );
 
@@ -276,8 +291,8 @@ class _NosakiSummaryCard extends StatelessWidget {
       height: height,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _surfaceRaised,
-        border: Border.all(color: _border),
+        color: appColor(context, _surfaceRaised),
+        border: Border.all(color: appColor(context, _border)),
         borderRadius: BorderRadius.circular(9),
       ),
       child: FittedBox(
@@ -290,10 +305,13 @@ class _NosakiSummaryCard extends StatelessWidget {
               label,
               maxLines: 1,
               softWrap: false,
-              style: const TextStyle(
-                color: _muted,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, _muted),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -319,8 +337,8 @@ class _NosakiSparkleTable extends StatelessWidget {
     return Container(
       key: const Key('nosaki-sparkle-table'),
       decoration: BoxDecoration(
-        color: _surface,
-        border: Border.all(color: _border),
+        color: appColor(context, _surface),
+        border: Border.all(color: appColor(context, _border)),
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
@@ -363,8 +381,8 @@ class _NosakiTableCells extends StatelessWidget {
       constraints: BoxConstraints(minHeight: header ? 32 : 48),
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: header ? 4 : 5),
       decoration: BoxDecoration(
-        color: header ? _surfaceRaised : _surface,
-        border: const Border(bottom: BorderSide(color: _border)),
+        color: appColor(context, header ? _surfaceRaised : _surface),
+        border: Border(bottom: BorderSide(color: appColor(context, _border))),
       ),
       child: Row(
         children: [
@@ -372,10 +390,13 @@ class _NosakiTableCells extends StatelessWidget {
             Expanded(
               flex: _flexes[index],
               child: DefaultTextStyle(
-                style: TextStyle(
-                  color: header ? _muted : const Color(0xffdce6eb),
-                  fontSize: header ? 11 : 12,
-                  fontWeight: header ? FontWeight.w800 : FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: header ? _muted : const Color(0xffdce6eb),
+                    fontSize: header ? 11 : 12,
+                    fontWeight: header ? FontWeight.w800 : FontWeight.w700,
+                  ),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -463,10 +484,13 @@ class _NosakiShipIdentity extends StatelessWidget {
                   name,
                   maxLines: 1,
                   softWrap: false,
-                  style: const TextStyle(
-                    color: Color(0xffeef3f5),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xffeef3f5)),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -474,10 +498,13 @@ class _NosakiShipIdentity extends StatelessWidget {
                 'Lv.${row.ship.level} · $posLabel',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _muted,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, _muted),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -493,10 +520,10 @@ class _HpLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('♥', style: TextStyle(color: _red)),
+        Text('♥', style: appTextStyle(context, TextStyle(color: _red))),
         SizedBox(width: 3),
         Text('HP'),
       ],
@@ -514,17 +541,23 @@ class _NosakiHpValue extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('♥', style: TextStyle(color: _red, fontSize: 12)),
+        Text(
+          '♥',
+          style: appTextStyle(context, TextStyle(color: _red, fontSize: 12)),
+        ),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             '${ship.currentHp}/${ship.maxHp}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xffe6edf0),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffe6edf0)),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
@@ -573,17 +606,20 @@ class _NosakiCondBadge extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
-            color: bg,
-            border: Border.all(color: border),
+            color: appColor(context, bg),
+            border: Border.all(color: appColor(context, border)),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             '$icon$condition',
-            style: TextStyle(
-              color: fg,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              fontFeatures: const [FontFeature.tabularFigures()],
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: fg,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ),
@@ -605,7 +641,7 @@ class _TimeToTarget extends StatelessWidget {
     if (row.status == NosakiSparkleShipStatus.completed) {
       return Text(
         fleetText(context, '已达成 54'),
-        style: TextStyle(color: _sparkleGold),
+        style: appTextStyle(context, TextStyle(color: _sparkleGold)),
       );
     }
     if (row.estimatedTimeTo54 == null) {
@@ -642,18 +678,19 @@ class _NosakiStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        color: appColor(context, color.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: appColor(context, color.withValues(alpha: 0.45)),
+        ),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
         fleetText(context, label),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
+        style: appTextStyle(
+          context,
+          TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w800),
         ),
       ),
     );
