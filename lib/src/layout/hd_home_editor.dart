@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import 'flat_style.dart';
+import 'panel_style.dart';
 
 /// Shared by the ordinary dashboard, HD sidebar and HD bottom row.
 class DashboardEditItem extends StatelessWidget {
@@ -22,13 +24,16 @@ class DashboardEditItem extends StatelessWidget {
       final content = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Checkbox(
-            value: !hidden,
-            activeColor: const Color(0xffd4a85f),
-            checkColor: Colors.black,
-            side: const BorderSide(color: Color(0xff8fa8b6), width: 2),
-            onChanged: (_) => onToggle(),
-          ),
+          if (PanelStyleScope.isFlat(context))
+            _FlatVisibilityToggle(id: id, visible: !hidden, onToggle: onToggle)
+          else
+            Checkbox(
+              value: !hidden,
+              activeColor: const Color(0xffd4a85f),
+              checkColor: Colors.black,
+              side: const BorderSide(color: Color(0xff8fa8b6), width: 2),
+              onChanged: (_) => onToggle(),
+            ),
           Expanded(child: child),
         ],
       );
@@ -57,6 +62,37 @@ class DashboardEditItem extends StatelessWidget {
         ],
       );
     },
+  );
+}
+
+/// Material 的 Checkbox 固定占 48，和 24 高的扁平标题行对不齐。
+class _FlatVisibilityToggle extends StatelessWidget {
+  const _FlatVisibilityToggle({
+    required this.id,
+    required this.visible,
+    required this.onToggle,
+  });
+  final String id;
+  final bool visible;
+  final VoidCallback onToggle;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    checked: visible,
+    child: SizedBox.square(
+      key: Key('dashboard-visibility-$id'),
+      dimension: flatHeaderHeight,
+      child: InkResponse(
+        radius: flatHeaderHeight / 2,
+        onTap: onToggle,
+        child: Icon(
+          visible
+              ? Icons.check_box_rounded
+              : Icons.check_box_outline_blank_rounded,
+          size: flatActionIconSize,
+          color: visible ? flatAccentColor : flatMutedColor,
+        ),
+      ),
+    ),
   );
 }
 
@@ -153,52 +189,128 @@ class DashboardEditor extends StatelessWidget {
   final void Function(String, String?, bool) onMove;
   final VoidCallback onReset, onDone;
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
+    return Column(
+      children: [
+        if (flat) _flatBar(context) else _cardBar(context),
+        Expanded(
+          child: ListView(
+            primary: false,
+            padding: flat
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(horizontal: 12),
+            children: [
+              for (final id in modules)
+                DashboardDropTarget(
+                  key: Key('dashboard-target-$id'),
+                  id: id,
+                  onMove: (data, after) => onMove(data, id, after),
+                  child: DashboardEditItem(
+                    id: id,
+                    hidden: hidden.contains(id),
+                    onToggle: () => onToggle(id),
+                    child: cardBuilder(id),
+                  ),
+                ),
+              DashboardDropTarget(
+                key: const Key('dashboard-target-end'),
+                onMove: (id, _) => onMove(id, null, false),
+                child: const SizedBox(height: 64, width: double.infinity),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _cardBar(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      Row(
+      IconButton(
+        key: const Key('dashboard-edit-reset'),
+        tooltip: AppLocalizations.of(context)!.restoreDefaultOrder,
+        onPressed: onReset,
+        icon: const Icon(Icons.settings_backup_restore_rounded),
+        color: const Color(0xff8197a5),
+      ),
+      IconButton(
+        key: const Key('dashboard-edit-done'),
+        tooltip: AppLocalizations.of(context)!.editDone,
+        onPressed: onDone,
+        icon: const Icon(Icons.check_rounded),
+        color: const Color(0xffd4a85f),
+      ),
+    ],
+  );
+
+  // 放不下时先省略「还原」：「完成」是退出编辑的唯一入口，最多占满整行。
+  Widget _flatBar(BuildContext context) => SizedBox(
+    key: const Key('dashboard-edit-bar'),
+    height: flatHeaderHeight,
+    child: LayoutBuilder(
+      builder: (context, constraints) => Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          IconButton(
-            key: const Key('dashboard-edit-reset'),
-            tooltip: AppLocalizations.of(context)!.restoreDefaultOrder,
-            onPressed: onReset,
-            icon: const Icon(Icons.settings_backup_restore_rounded),
-            color: const Color(0xff8197a5),
+          Flexible(
+            child: _FlatTextButton(
+              key: const Key('dashboard-edit-reset'),
+              label: AppLocalizations.of(context)!.restoreDefaultOrder,
+              color: flatMutedColor,
+              onTap: onReset,
+            ),
           ),
-          IconButton(
-            key: const Key('dashboard-edit-done'),
-            tooltip: AppLocalizations.of(context)!.editDone,
-            onPressed: onDone,
-            icon: const Icon(Icons.check_rounded),
-            color: const Color(0xffd4a85f),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+            child: _FlatTextButton(
+              key: const Key('dashboard-edit-done'),
+              label: AppLocalizations.of(context)!.editDone,
+              color: flatAccentColor,
+              bold: true,
+              onTap: onDone,
+            ),
           ),
         ],
       ),
-      Expanded(
-        child: ListView(
-          primary: false,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          children: [
-            for (final id in modules)
-              DashboardDropTarget(
-                key: Key('dashboard-target-$id'),
-                id: id,
-                onMove: (data, after) => onMove(data, id, after),
-                child: DashboardEditItem(
-                  id: id,
-                  hidden: hidden.contains(id),
-                  onToggle: () => onToggle(id),
-                  child: cardBuilder(id),
-                ),
-              ),
-            DashboardDropTarget(
-              key: const Key('dashboard-target-end'),
-              onMove: (id, _) => onMove(id, null, false),
-              child: const SizedBox(height: 64, width: double.infinity),
+    ),
+  );
+}
+
+class _FlatTextButton extends StatelessWidget {
+  const _FlatTextButton({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.bold = false,
+  });
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool bold;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: flatRowFontSize,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
             ),
-          ],
+          ),
         ),
       ),
-    ],
+    ),
   );
 }

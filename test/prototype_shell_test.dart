@@ -2570,6 +2570,18 @@ void main() {
         }
       });
     }
+    testWidgets('极简档模块编辑列表用扁平开关和顶栏', (tester) async {
+      await _pumpMinimalShell(tester);
+      await tester.longPress(find.byKey(const ValueKey('fleet')));
+      await tester.pumpAndSettle();
+      expect(find.byType(Checkbox), findsNothing);
+      expect(
+        find.byKey(const Key('dashboard-visibility-fleet')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('dashboard-edit-bar')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
     testWidgets(
       'minimal landscape game page hides header and shows menu button',
       (tester) async {
