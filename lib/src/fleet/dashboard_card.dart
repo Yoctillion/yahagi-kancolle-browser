@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import 'fleet_ui_strings.dart';
 
@@ -42,7 +43,7 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     return AnimatedSize(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
@@ -59,7 +60,7 @@ class DashboardCard extends StatelessWidget {
                   ),
         decoration: flat
             ? const BoxDecoration(
-                border: Border(bottom: BorderSide(color: Color(0xff1b3142))),
+                border: Border(bottom: BorderSide(color: flatDividerColor)),
               )
             : BoxDecoration(
                 color: const Color(0xff142735),
@@ -93,7 +94,7 @@ class DashboardCard extends StatelessWidget {
                 if (flat) {
                   return SizedBox(
                     key: const Key('dashboard-card-header'),
-                    height: 24,
+                    height: flatHeaderHeight,
                     child: _flatHeader(context),
                   );
                 }
@@ -184,7 +185,7 @@ class DashboardCard extends StatelessWidget {
       children: [
         if (showLogo) ...[
           IconTheme(
-            data: const IconThemeData(size: 13, color: Color(0xffd4a85f)),
+            data: const IconThemeData(size: 13, color: flatAccentColor),
             child: icon,
           ),
           if (showTitle) const SizedBox(width: 6),
@@ -249,7 +250,7 @@ class DashboardCard extends StatelessWidget {
   TextStyle _titleStyle(bool flat) => TextStyle(
     color: const Color(0xffd4a85f),
     fontWeight: FontWeight.w700,
-    fontSize: flat ? 11 : 14,
+    fontSize: flat ? flatRowFontSize : 14,
   );
 
   bool _showSummary(bool flat) =>
@@ -260,7 +261,7 @@ class DashboardCard extends StatelessWidget {
     key: const Key('dashboard-card-summary'),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
-    style: const TextStyle(color: Color(0xff8197a5), fontSize: 10.5),
+    style: const TextStyle(color: flatMutedColor, fontSize: flatSmallFontSize),
   );
 
   Widget _englishHeader(BuildContext context, bool flat) => Column(

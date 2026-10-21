@@ -3,6 +3,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
+import '../layout/flat_style.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
 import '../layout/flat_empty_text.dart';
@@ -91,7 +92,7 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
           onSelected: (selected) => setState(() => _selectedAreaId = selected),
         ),
         child: bases.isEmpty
-            ? PanelStyleScope.of(context) == PanelStyle.flat
+            ? PanelStyleScope.isFlat(context)
                   ? FlatEmptyText(l10n.landBaseNoData)
                   : Padding(
                       padding: const EdgeInsets.all(16),
@@ -120,8 +121,7 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
                           columnCount;
                       return Wrap(
                         spacing: gap,
-                        runSpacing:
-                            PanelStyleScope.of(context) == PanelStyle.flat
+                        runSpacing: PanelStyleScope.isFlat(context)
                             ? flatRowSpacing
                             : gap,
                         children: <Widget>[
@@ -159,7 +159,7 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return FlatTextToggle(
         key: const Key('land-base-area-switcher'),
         options: [
@@ -237,7 +237,7 @@ class LandBaseAirGroupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return _FlatLandBaseRow(
         key: Key('land-base-row-$_keySuffix'),
         state: state,

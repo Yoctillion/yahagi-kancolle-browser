@@ -90,7 +90,7 @@ class ExpeditionMissionPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mission = missions[selectedMissionId];
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final label =
         '${expeditionDisplayId(selectedMissionId, mission)} · ${mission?.name ?? ExpeditionStrings.of(context).expeditionFallbackName}';
     return Material(

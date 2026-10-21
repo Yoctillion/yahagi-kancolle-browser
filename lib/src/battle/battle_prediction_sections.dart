@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 
@@ -37,7 +38,7 @@ class BattlePredictionSections extends StatelessWidget {
                   BattlePredictionSection.enemyPreview,
                 ]),
     );
-    final gap = PanelStyleScope.of(context) == PanelStyle.flat ? 4.0 : 9.0;
+    final gap = PanelStyleScope.isFlat(context) ? flatSectionGap : 9.0;
     final children = <Widget>[];
     for (final section in effectiveOrder) {
       final content = sections[section];

@@ -1,3 +1,4 @@
+import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -30,10 +31,10 @@ class OfficialEnemyPreview extends StatelessWidget {
     final mainShips = ships
         .where((ship) => ship.fleetRole == BattleFleetRole.main)
         .toList();
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final divider = Divider(
       height: 1,
-      color: flat ? const Color(0xff1b3142) : const Color(0xff203746),
+      color: flat ? flatDividerColor : const Color(0xff203746),
     );
     const cardRowPadding = EdgeInsets.symmetric(horizontal: 9, vertical: 4);
     const flatRowPadding = EdgeInsets.symmetric(vertical: 2);
@@ -87,7 +88,7 @@ class OfficialEnemyPreview extends StatelessWidget {
                         border: Border(
                           right: BorderSide(
                             color: flat
-                                ? const Color(0xff1b3142)
+                                ? flatDividerColor
                                 : const Color(0xff203746),
                           ),
                         ),

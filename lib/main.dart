@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'src/layout/flat_style.dart';
 import 'src/widgets/app_scroll_behavior.dart';
 import 'src/settings/fleet_display_settings_section.dart';
 import 'src/settings/module_display_settings.dart';
@@ -1961,7 +1962,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           ? null
           : const BoxDecoration(
               border: Border(
-                top: BorderSide(color: Color(0xff1b3142), width: dividerExtent),
+                top: BorderSide(color: flatDividerColor, width: dividerExtent),
               ),
             ),
       child: _buildGameResourceBar(

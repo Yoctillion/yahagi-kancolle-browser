@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../layout/flat_style.dart';
 import 'battle_ui_text.dart';
 import 'battle_detail_strings.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
-import '../layout/flat_list_row.dart';
 import 'battle_models.dart';
 
 const double _battlePillHeight = 20;
@@ -65,14 +65,12 @@ class AdaptiveBattleHeader extends StatelessWidget {
 }
 
 const Color _flatAirColor = Color(0xff7fd6c8);
-const Color _flatRewardColor = Color(0xffd4a85f);
-const Color _flatMutedColor = Color(0xff8197a5);
 const Color _flatGainColor = Color(0xff83d5c8);
 const Color _flatLossColor = Color(0xffff8c78);
 
 const TextSpan flatSegmentSeparator = TextSpan(
   text: ' · ',
-  style: TextStyle(color: _flatMutedColor),
+  style: TextStyle(color: flatMutedColor),
 );
 
 /// Flat-style replacement for the status pill row: plain text with only the
@@ -100,14 +98,13 @@ class BattleTagLine extends StatelessWidget {
         // Whole-word match so a node named "B" does not hide "Boss 战".
         if (!nodeLabel.contains(label) &&
             !label.split(' ').contains(nodeLabel.trim()))
-          (strings.localize(label), _flatMutedColor),
+          (strings.localize(label), flatMutedColor),
       if (battle.airSuperiority != null)
         (
           l10n.airStateLabel(strings.localize(battle.airSuperiority!)),
           _flatAirColor,
         ),
-      for (final label in metaLabels)
-        (strings.localize(label), _flatMutedColor),
+      for (final label in metaLabels) (strings.localize(label), flatMutedColor),
     ];
     const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
     return Text.rich(
@@ -155,7 +152,7 @@ class BattleDropLine extends StatelessWidget {
           if (rewardItems.isNotEmpty) _rewardItemsText(rewardItems),
         ].join(' · '),
         style: const TextStyle(
-          color: _flatRewardColor,
+          color: flatAccentColor,
           fontSize: 10.5,
           fontWeight: FontWeight.w600,
         ),
@@ -267,13 +264,13 @@ class FlatNavigationHeader extends StatelessWidget {
           text: l10n.battleLastFormation(
             strings.localize(formationLabel(formation)),
           ),
-          style: const TextStyle(color: _flatMutedColor),
+          style: const TextStyle(color: flatMutedColor),
         ),
       ],
       CombinedFleetHeaderSegment(:final type) => [
         TextSpan(
           text: strings.localize(type.label),
-          style: const TextStyle(color: _flatMutedColor),
+          style: const TextStyle(color: flatMutedColor),
         ),
       ],
       ResourceChangesHeaderSegment(:final changes) => [
@@ -302,7 +299,7 @@ class FlatNavigationHeader extends StatelessWidget {
       RewardItemsHeaderSegment(:final items) => [
         TextSpan(
           text: _rewardItemsText(items),
-          style: const TextStyle(color: _flatRewardColor),
+          style: const TextStyle(color: flatAccentColor),
         ),
       ],
       NodeTypeHeaderSegment(:final label) => [

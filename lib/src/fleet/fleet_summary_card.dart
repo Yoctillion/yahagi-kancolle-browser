@@ -1,3 +1,4 @@
+import '../layout/flat_style.dart';
 import '../settings/fleet_display_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -92,7 +93,7 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
             ? null
             : detectFleetSpecialAttack(state, selectedFleet);
         final twoColumns = HdModuleColumns.of(context) > 1;
-        final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+        final flat = PanelStyleScope.isFlat(context);
         void selectFleet(int id) => setState(() => _selectedFleetId = id);
         final fleetSwitcher = flat
             ? _FleetUnderlineSwitcher(
@@ -266,15 +267,15 @@ class _FleetSummaryBody extends StatelessWidget {
         ],
       );
     }
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ?switcher,
         if (metrics != null) ...[
-          if (switcher != null) SizedBox(height: flat ? 2 : 4),
+          if (switcher != null) SizedBox(height: flat ? flatRowSpacing : 4),
           metrics!,
-          SizedBox(height: flat ? 2 : 6),
+          SizedBox(height: flat ? flatRowSpacing : 6),
         ] else if (flat && switcher != null)
           const SizedBox(height: 2),
         ships,
@@ -517,7 +518,7 @@ class _FleetSummaryMetrics extends StatelessWidget {
               current.formula33.isNotEmpty
         ? () => showFleetLineOfSightDetails(context, current)
         : null;
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return SeparatedWrap(
         key: const Key('fleet-summary-metrics'),
         separator: '·',

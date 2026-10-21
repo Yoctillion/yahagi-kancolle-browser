@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'flat_style.dart';
 
 class FlatTextToggleOption {
   const FlatTextToggleOption({
@@ -34,10 +35,8 @@ class FlatTextToggle extends StatelessWidget {
               child: Text(
                 option.label,
                 style: TextStyle(
-                  color: option.selected
-                      ? const Color(0xffd4a85f)
-                      : const Color(0xff8197a5),
-                  fontSize: 10.5,
+                  color: option.selected ? flatAccentColor : flatMutedColor,
+                  fontSize: flatSmallFontSize,
                   fontWeight: FontWeight.w700,
                 ),
               ),

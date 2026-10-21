@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import 'battle_detail_strings.dart';
 import 'battle_ui_text.dart';
@@ -55,7 +56,7 @@ class _SortieMapSectionState extends State<SortieMapSection> {
     final expanded = widget.expanded;
     final progress = widget.progress;
     final english = Localizations.localeOf(context).languageCode == 'en';
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final summary = widget.showCurrentNode ? scene.summary : progress.mapKey;
     final title = BattleUiText(
       scene.strings.sortieMapTitle,
@@ -103,7 +104,7 @@ class _SortieMapSectionState extends State<SortieMapSection> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: _muted,
-                            fontSize: flat ? 10.5 : 10,
+                            fontSize: flat ? flatSmallFontSize : 10,
                           ),
                         ),
                         if (!expanded && scene.needsUpdate)

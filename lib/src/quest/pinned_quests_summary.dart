@@ -1,3 +1,4 @@
+import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 import '../game_state/game_state_controller.dart';
@@ -54,7 +55,7 @@ class PinnedQuestsSummary extends StatelessWidget {
         final l10n =
             AppLocalizations.of(context) ??
             lookupAppLocalizations(const Locale('zh'));
-        final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+        final flat = PanelStyleScope.isFlat(context);
 
         return DashboardCard(
           collapsedSummary: collapsed ? questSummary(l10n, state) : null,

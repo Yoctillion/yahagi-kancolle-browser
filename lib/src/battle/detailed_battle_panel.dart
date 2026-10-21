@@ -1,3 +1,4 @@
+import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -45,7 +46,7 @@ class DetailedBattlePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     final enemyPreviewShips =
         battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
@@ -78,7 +79,7 @@ class DetailedBattlePanel extends StatelessWidget {
               battle: battle,
               showLastFormationHint: showLastFormationHint,
             ),
-            SizedBox(height: flat ? 4 : 7),
+            SizedBox(height: flat ? flatSectionGap : 7),
           ],
           BattlePredictionSections(
             order: sectionOrder,
@@ -190,7 +191,7 @@ class _NavigationOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: FlatNavigationHeader(
@@ -400,7 +401,7 @@ class _FleetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     return Container(
       decoration: flat
           ? null
@@ -430,7 +431,7 @@ class _FleetGroup extends StatelessWidget {
             if (index > 0)
               Divider(
                 height: 1,
-                color: flat ? const Color(0xff1b3142) : const Color(0xff203746),
+                color: flat ? flatDividerColor : const Color(0xff203746),
               ),
             BattleShipDetailsTap(
               ship: ships[index],
@@ -463,7 +464,7 @@ class _BattleShipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final isEscaped = ship.isEscaped;
     final side = ship.side == BattleSide.friend ? 'friend' : 'enemy';
     final ratio = ship.maxHp <= 0

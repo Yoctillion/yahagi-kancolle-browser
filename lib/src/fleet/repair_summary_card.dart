@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'fleet_ui_strings.dart';
@@ -62,7 +63,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         int? previousDockMask;
         // 扁平折叠态的摘要带倒计时，需要继续逐秒刷新且不能复用缓存。
         final summaryTicks =
-            widget.collapsed && PanelStyleScope.of(context) == PanelStyle.flat;
+            widget.collapsed && PanelStyleScope.isFlat(context);
         return SecondTickBuilder(
           enabled: !widget.collapsed || summaryTicks,
           builder: (context, now, _) {
@@ -131,7 +132,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     );
   }
 
-  bool get _flat => PanelStyleScope.of(context) == PanelStyle.flat;
+  bool get _flat => PanelStyleScope.isFlat(context);
 
   bool _isDockActive(RepairDock? dock) =>
       dock != null &&
@@ -540,7 +541,10 @@ class _RepairSummaryModeSelector extends StatelessWidget {
           final english = Localizations.localeOf(context).languageCode == 'en';
           final labelWidth = constraints.maxWidth / 3 - 14;
           final style = DefaultTextStyle.of(context).style.merge(
-            TextStyle(fontSize: flat ? 10.5 : 10, fontWeight: FontWeight.w700),
+            TextStyle(
+              fontSize: flat ? flatSmallFontSize : 10,
+              fontWeight: FontWeight.w700,
+            ),
           );
           final useShortLabels = [dockLabel, anchorageLabel, nosakiLabel].any((
             label,
@@ -647,7 +651,7 @@ class _ModeButton extends StatelessWidget {
                       color: selected
                           ? const Color(0xffffcf67)
                           : const Color(0xff8197a5),
-                      fontSize: flat ? 10.5 : 10,
+                      fontSize: flat ? flatSmallFontSize : 10,
                       fontWeight: FontWeight.w700,
                     ),
                   );
@@ -801,7 +805,7 @@ class _RepairCapsule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return FlatListRow(
         key: contentKey,
         onTap: onTap,

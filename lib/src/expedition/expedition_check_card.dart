@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../account/account_session.dart';
 
+import '../layout/flat_style.dart';
 import '../localization/ui_text.dart';
 import '../localization/game_name_localizations.dart';
 
@@ -106,7 +107,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     super.dispose();
   }
 
-  bool get _flat => PanelStyleScope.of(context) == PanelStyle.flat;
+  bool get _flat => PanelStyleScope.isFlat(context);
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +129,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _controls(strings),
-          SizedBox(height: _flat ? 4 : 10),
+          SizedBox(height: _flat ? flatSectionGap : 10),
           _statusBox(
             strings.waiting,
             false,
@@ -175,11 +176,11 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _controls(strings),
-        SizedBox(height: flat ? 4 : 8),
+        SizedBox(height: flat ? flatSectionGap : 8),
         _fleetSelector(fleets),
-        SizedBox(height: flat ? 2 : 7),
+        SizedBox(height: flat ? flatRowSpacing : 7),
         _missionSelector(state, missionId),
-        SizedBox(height: flat ? 4 : 8),
+        SizedBox(height: flat ? flatSectionGap : 8),
         if (_greatSuccess && flat) ...[
           _statusBox(
             '${strings.normalCheck}：${evaluation.normalPassed ? strings.passed : strings.failed}',
@@ -224,11 +225,11 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
         if (_detailed) ...[
           SizedBox(height: flat ? 6 : 10),
           _sectionTitle(strings.expectedIncome, flat),
-          SizedBox(height: flat ? 2 : 5),
+          SizedBox(height: flat ? flatRowSpacing : 5),
           _resourceGrid(income, flat),
           SizedBox(height: flat ? 6 : 10),
           _sectionTitle(strings.conditions, flat),
-          SizedBox(height: flat ? 2 : 5),
+          SizedBox(height: flat ? flatRowSpacing : 5),
           for (final condition in [
             ...evaluation.normalConditions,
             if (_greatSuccess) ...evaluation.greatSuccessConditions,
@@ -361,7 +362,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             softWrap: false,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: selected ? flatTimeColor : flatIdleColor,
+              color: selected ? flatAccentColor : flatMutedColor,
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
             ),
@@ -438,15 +439,15 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
               Text(
                 '$_target%',
                 style: TextStyle(
-                  fontSize: _flat ? 10.5 : 10,
-                  color: _flat ? flatTimeColor : const Color(0xffdce6eb),
+                  fontSize: _flat ? flatSmallFontSize : 10,
+                  color: _flat ? flatAccentColor : const Color(0xffdce6eb),
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Icon(
                 Icons.arrow_drop_down,
                 size: 14,
-                color: _flat ? flatTimeColor : const Color(0xffdce6eb),
+                color: _flat ? flatAccentColor : const Color(0xffdce6eb),
               ),
             ],
           ),
@@ -509,7 +510,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             overflow: TextOverflow.ellipsis,
             style: flatRowTextStyle(
               color: neutral
-                  ? flatIdleColor
+                  ? flatMutedColor
                   : passed
                   ? flatDoneColor
                   : _flatFailColor,
@@ -705,7 +706,10 @@ Widget _itemTile(ExpeditionRewardItem item, bool flat) {
               label ?? '道具',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: flatIdleColor, fontSize: 11),
+              style: const TextStyle(
+                color: flatMutedColor,
+                fontSize: flatRowFontSize,
+              ),
             ),
           ),
         const SizedBox(width: 4),
@@ -714,7 +718,10 @@ Widget _itemTile(ExpeditionRewardItem item, bool flat) {
             kindText,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: flatIdleColor, fontSize: 11),
+            style: const TextStyle(
+              color: flatMutedColor,
+              fontSize: flatRowFontSize,
+            ),
           ),
         ),
         const Spacer(),

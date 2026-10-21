@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -133,7 +134,7 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
 
   Widget _buildShipsCheckView(GameState state, AppLocalizations l10n) {
     final warnings = _generateWarnings(state, l10n);
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     if (warnings.isEmpty) {
       return Center(
         child: Text(
@@ -271,7 +272,7 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
   }
 
   Widget _buildMapsGaugeView(GameState state, AppLocalizations l10n) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final emptyFontSize = flat ? flatRowFontSize : 13.0;
     final allGauges = state.memberMapInfos.values
         .where((m) => m.hasGauge)
@@ -567,7 +568,7 @@ class _SortieSummaryModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.of(context) == PanelStyle.flat) {
+    if (PanelStyleScope.isFlat(context)) {
       return FlatTextToggle(
         key: const Key('sortie-check-mode-selector'),
         options: [
@@ -689,7 +690,7 @@ class _MapGaugeRow extends StatelessWidget {
       'Event' => const Color(0xffba68c8),
       _ => const Color(0xff90a4ae),
     };
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final nameColor = isCleared
         ? const Color(0xff607786)
         : const Color(0xffdce6eb);

@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'flat_style.dart';
 import 'game_edge_tap_guard.dart';
-
-const flatRowSpacing = 2.0;
-const flatRowFontSize = 11.0;
-const flatTimeColor = Color(0xffd4a85f);
-const flatDoneColor = Color(0xff4cc06a);
-const flatIdleColor = Color(0xff8197a5);
 
 /// 极简档的模块行：无底色，左侧标签和名称，右侧右对齐的时间或状态。
 /// 标签按自身宽度排布且各自封顶，trailing 封顶一半宽度，名称独占其余空间。

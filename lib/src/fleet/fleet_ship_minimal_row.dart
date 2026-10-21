@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../battle/prophet_hp_bar.dart';
 import '../game_state/game_state.dart';
+import '../layout/flat_style.dart';
 import '../layout/game_edge_tap_guard.dart';
 import '../localization/game_name_localizations.dart';
 import '../settings/battle_status_effect_settings.dart';
@@ -181,7 +182,6 @@ class FleetShipMinimalRow extends StatelessWidget {
   final VoidCallback? onTap;
 
   static const _textColor = Color(0xffdce6eb);
-  static const _mutedColor = Color(0xff8197a5);
 
   bool _show(String key) => visible.contains(key);
 
@@ -283,7 +283,7 @@ class FleetShipMinimalRow extends StatelessWidget {
         Text(
           'Lv${ship.level}',
           style: TextStyle(
-            color: _mutedColor,
+            color: flatMutedColor,
             fontSize: 9,
             fontWeight: FontWeight.w700,
             shadows: shadows,

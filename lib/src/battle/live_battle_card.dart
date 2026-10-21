@@ -1,3 +1,4 @@
+import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +16,6 @@ import '../fleet/dashboard_card.dart';
 import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
-import '../layout/flat_list_row.dart';
 import '../layout/flat_text_toggle.dart';
 import '../layout/panel_style.dart';
 import '../game_state/game_state.dart';
@@ -158,7 +158,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -200,7 +200,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
               if (!idle && !widget.controller.isPredictionConfirmed)
                 Padding(
                   key: const Key('battle-unconfirmed-warning'),
-                  padding: EdgeInsets.only(bottom: flat ? 4 : 8),
+                  padding: EdgeInsets.only(bottom: flat ? flatSectionGap : 8),
                   child: Text(
                     (AppLocalizations.of(context) ??
                             lookupAppLocalizations(const Locale('zh')))
@@ -214,7 +214,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
               if (idle) ...[
                 if (mapSection != null) ...[
                   mapSection,
-                  SizedBox(height: flat ? 4 : 9),
+                  SizedBox(height: flat ? flatSectionGap : 9),
                 ],
                 const _IdleBattleContent(),
               ] else if (_mode == BattlePanelMode.detailed)
@@ -259,7 +259,7 @@ class _ModeSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     if (flat) {
       // BattleUiText 在显示时按语言本地化标签，共享组件只渲染 Text，所以这里先转换。
       final strings = BattleDetailStrings.of(context);
@@ -373,7 +373,7 @@ class _CompactBattlePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = isPhoneDensity(context);
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     if (navigation) {
       final navigationHeader = Container(
@@ -440,7 +440,7 @@ class _CompactBattlePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           navigationHeader,
-          SizedBox(height: flat ? 4 : 7),
+          SizedBox(height: flat ? flatSectionGap : 7),
           BattlePredictionSections(
             order: sectionOrder,
             legacyEnemyPreviewPosition: enemyPreviewPosition,
@@ -451,7 +451,7 @@ class _CompactBattlePanel extends StatelessWidget {
               children: [
                 if (raid != null) ...[
                   LandBaseRaidPanel(result: raid, compact: true),
-                  SizedBox(height: flat ? 4 : 9),
+                  SizedBox(height: flat ? flatSectionGap : 9),
                 ],
                 friendlyFleets,
               ],
@@ -551,7 +551,7 @@ class _CompactBattlePanel extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: flat ? 4 : 8),
+              SizedBox(height: flat ? flatSectionGap : 8),
               _CompactFleetGrid(
                 battle: battle,
                 damagePulseMode: damagePulseMode,
@@ -575,7 +575,7 @@ class _CompactFleetGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final friendCombined = battle.friendEscort.isNotEmpty;
     final enemyCombined = battle.enemyEscort.isNotEmpty;
     final mvpPositions = battle.mvpPositions;
@@ -950,7 +950,7 @@ class _CompactBarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final isEscaped = ship.isEscaped;
     final ratio = ship.maxHp <= 0
         ? 0.0
@@ -1087,12 +1087,12 @@ class _IdleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final label = Text(
       AppLocalizations.of(context)?.standby ?? '待机',
       style: TextStyle(
         color: const Color(0xff9db2bf),
-        fontSize: flat ? 10.5 : 11,
+        fontSize: flat ? flatSmallFontSize : 11,
         fontWeight: FontWeight.w700,
       ),
     );
@@ -1113,7 +1113,7 @@ class _IdleBattleContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final text = AppLocalizations.of(context)?.waitingForSortieData ?? '等待出击数据';
     if (flat) {
       return Padding(
@@ -1131,7 +1131,7 @@ class _IdleBattleContent extends StatelessWidget {
               child: Text(
                 text,
                 style: const TextStyle(
-                  color: flatIdleColor,
+                  color: flatMutedColor,
                   fontSize: flatRowFontSize,
                 ),
               ),
@@ -1194,12 +1194,12 @@ class _StatusBadge extends StatelessWidget {
         : forecast
         ? const Color(0xff4a3b21)
         : const Color(0xff183e38);
-    final flat = PanelStyleScope.of(context) == PanelStyle.flat;
+    final flat = PanelStyleScope.isFlat(context);
     final text = BattleUiText(
       label,
       style: TextStyle(
         color: foreground,
-        fontSize: flat ? 10.5 : 11,
+        fontSize: flat ? flatSmallFontSize : 11,
         fontWeight: FontWeight.w700,
       ),
     );
