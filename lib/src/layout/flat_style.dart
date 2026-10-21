@@ -11,3 +11,4 @@ const flatSmallFontSize = 10.5;
 const flatRowSpacing = 2.0;
 const flatSectionGap = 4.0;
 const flatHeaderHeight = 24.0;
+const flatActionIconSize = 17.0;
