@@ -1136,6 +1136,10 @@ void main() {
       expect(rect('header-resource-material-1').left, expandedM1.left);
       expect(rect('header-resource-material-4').left, expandedM4.left);
       expect(
+        rect('header-resource-material-4').top,
+        rect('header-resource-material-1').top,
+      );
+      expect(
         rect('information-panel-resources-toggle').left,
         greaterThanOrEqualTo(rect('header-resource-material-4').right),
       );
@@ -1811,7 +1815,7 @@ void main() {
       expectRowsClearRightCorner(tester);
     });
 
-    testWidgets('collapsed toggle follows the first row corner inset', (
+    testWidgets('collapsed row too narrow for four cells wraps into 2x2', (
       tester,
     ) async {
       await pumpPanel(tester);
@@ -1821,7 +1825,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      final rowRight = panelWidth - 8 - cornerInsetAt(radius, 6 + 4);
+      Rect rect(int id) =>
+          tester.getRect(find.byKey(Key('header-resource-material-$id')));
+      expect(rect(2).top, rect(1).top);
+      expect(rect(3).top, greaterThan(rect(1).top));
+      expect(rect(4).top, rect(3).top);
+      expect(rect(3).left, rect(1).left);
+      expect(find.byKey(const Key('header-resource-material-5')), findsNothing);
+      for (final id in [1, 2, 3]) {
+        expect(rect(id).width, greaterThanOrEqualTo(55), reason: '$id');
+      }
+      expectRowsClearRightCorner(tester);
+      final rowRight =
+          panelWidth - 8 - cornerInsetAt(radius, rect(4).top + (20 - 12) / 2);
       final icon = tester.getRect(
         find.byIcon(Icons.keyboard_arrow_down_rounded),
       );

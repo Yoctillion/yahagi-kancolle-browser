@@ -424,6 +424,9 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   static const double _gridToggleExtent = 24;
   static const double _gridToggleMaxOverhang = 8;
 
+  // 13dp 图标 + 2dp 间隙 + 40dp 数值位：六位数值缩放仍在 0.9 以上。
+  static const double _gridMinReadableCellWidth = 55;
+
   static bool _isWideGridItem(String id) =>
       id == headerSenkaId ||
       id == headerAnchorageTimerId ||
@@ -530,7 +533,6 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     required AppLocalizations l10n,
     required HeaderUiSize uiSize,
   }) {
-    const columns = _gridColumns;
     final collapsed = _gridCollapsed(controller);
     final padding = widget.gridPadding;
     final radii = widget.gridCornerRadii;
@@ -559,10 +561,28 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
         double naturalWidth(String id) => naturalWidths[id] ??=
             _gridNaturalWidth(context, id, uiSize: uiSize);
 
+        double plainCellWidth(int row, int columns) => math.max(
+          0.0,
+          (rowWidth(row) - _gridSpacing * (columns - 1)) / columns,
+        );
+
+        var columns = _gridColumns;
         final List<List<String>> rows;
         if (collapsed) {
-          final plain = ids.where((id) => !_isWideGridItem(id)).take(columns);
-          rows = [if (plain.isNotEmpty) plain.toList()];
+          final plain = ids
+              .where((id) => !_isWideGridItem(id))
+              .take(columns)
+              .toList();
+          // 折叠后只剩的这一行在网格顶边，屏幕圆角切得最多；挤不下可读的数值
+          // 就改成两行两列。
+          if (plain.length > 2 &&
+              plainCellWidth(0, columns) < _gridMinReadableCellWidth) {
+            columns = 2;
+          }
+          rows = [
+            for (var i = 0; i < plain.length; i += columns)
+              plain.sublist(i, math.min(i + columns, plain.length)),
+          ];
         } else {
           rows = _gridRows(
             ids,
@@ -593,10 +613,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                 (available - (last ? toggleReserve : 0) - used) / row.length;
             cellWidths = [for (final w in natural) math.max(0.0, w + extra)];
           } else {
-            final cell = math.max(
-              0.0,
-              (available - _gridSpacing * (columns - 1)) / columns,
-            );
+            final cell = plainCellWidth(index, columns);
             // 末行没排满时按钮落在空位里，排满了才让末格让出按钮的位置。
             final reserve = last && row.length == columns ? toggleReserve : 0.0;
             cellWidths = [
