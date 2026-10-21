@@ -62,10 +62,12 @@ class DisplayCornersController extends ChangeNotifier {
   ]);
 
   final MethodChannel _channel;
-  CornerRadii _radii = CornerRadii.fallback;
+  CornerRadii? _radii;
   bool _disposed = false;
 
-  CornerRadii get radii => _radii;
+  /// null when the platform reports nothing; [DisplayCorners.of] then infers
+  /// the radii from the platform.
+  CornerRadii? get radii => _radii;
 
   Future<void> refresh(double devicePixelRatio) async {
     Map<Object?, Object?>? raw;
@@ -80,20 +82,21 @@ class DisplayCornersController extends ChangeNotifier {
     }
     if (_disposed) return;
 
-    double corner(String key) {
-      final px = raw?[key];
-      if (px is! num || devicePixelRatio <= 0) {
-        return CornerRadii.fallback.topLeft;
-      }
-      return px / devicePixelRatio;
+    // Android 12+ reports null for a corner that is not rounded: a square
+    // screen, or a split-screen window that does not reach that corner.
+    double corner(Map<Object?, Object?> raw, String key) {
+      final px = raw[key];
+      return px is num && devicePixelRatio > 0 ? px / devicePixelRatio : 0;
     }
 
-    final next = CornerRadii(
-      topLeft: corner('topLeft'),
-      topRight: corner('topRight'),
-      bottomLeft: corner('bottomLeft'),
-      bottomRight: corner('bottomRight'),
-    );
+    final next = raw == null
+        ? null
+        : CornerRadii(
+            topLeft: corner(raw, 'topLeft'),
+            topRight: corner(raw, 'topRight'),
+            bottomLeft: corner(raw, 'bottomLeft'),
+            bottomRight: corner(raw, 'bottomRight'),
+          );
     if (next == _radii) return;
     _radii = next;
     notifyListeners();
@@ -115,16 +118,19 @@ class DisplayCorners extends InheritedNotifier<DisplayCornersController> {
 
   static CornerRadii of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<DisplayCorners>();
-    final radii = scope?.notifier?.radii ?? CornerRadii.fallback;
-    // iOS has no way to query the radius. Only notch/island iPhones have ~55dp
-    // corners; iPads and home-button iPhones have a status bar but near-square
-    // corners, so they keep the 24dp fallback.
-    if (radii == CornerRadii.fallback &&
-        defaultTargetPlatform == TargetPlatform.iOS &&
-        _isFullScreenIphone(context)) {
-      return iosFullScreenCorners;
-    }
-    return radii;
+    final radii = scope?.notifier?.radii;
+    if (radii != null) return radii;
+    return switch (defaultTargetPlatform) {
+      // Below Android 12 there is no radius API; guessing a radius would give
+      // up space on the many square-cornered screens, so treat it as square.
+      TargetPlatform.android => const CornerRadii.all(0),
+      // iOS has no way to query the radius. Only notch/island iPhones have
+      // ~55dp corners; iPads and home-button iPhones have a status bar but
+      // near-square corners, so they keep the 24dp fallback.
+      TargetPlatform.iOS when _isFullScreenIphone(context) =>
+        iosFullScreenCorners,
+      _ => CornerRadii.fallback,
+    };
   }
 
   static bool _isFullScreenIphone(BuildContext context) {
