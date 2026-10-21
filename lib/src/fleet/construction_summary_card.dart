@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_style.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';

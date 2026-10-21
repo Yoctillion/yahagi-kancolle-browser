@@ -4,7 +4,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'src/layout/flat_style.dart';
 import 'src/widgets/app_scroll_behavior.dart';
 import 'src/settings/fleet_display_settings_section.dart';
 import 'src/settings/module_display_settings.dart';
@@ -103,6 +102,7 @@ import 'src/game_state/game_api_event_pipeline.dart';
 import 'src/game_state/game_state_store.dart';
 import 'src/layout/adaptive_layout.dart';
 import 'src/layout/display_corners.dart';
+import 'src/layout/flat_style.dart';
 import 'src/layout/hd_workspace_geometry.dart';
 import 'src/layout/minimal_layout.dart';
 import 'src/layout/module_summaries.dart';

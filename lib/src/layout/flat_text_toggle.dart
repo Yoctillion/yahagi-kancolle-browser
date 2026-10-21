@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'flat_style.dart';
 
 class FlatTextToggleOption {
