@@ -353,6 +353,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get panelResourcesCollapse => '자원 접기';
 
   @override
+  String get panelResourcesCollapsedItems => '접었을 때 표시';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => '기본값으로 복원';
+
+  @override
   String get minimalResourcePositionTitle => '자원 위치';
 
   @override

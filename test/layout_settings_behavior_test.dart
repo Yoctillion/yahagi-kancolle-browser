@@ -97,6 +97,55 @@ void main() {
     },
   );
 
+  test('collapsed panel resources default to null and persist', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final controller = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(controller.collapsedPanelResourceIds, isNull);
+    var notified = 0;
+    controller.addListener(() => notified++);
+    await controller.setCollapsedPanelResourceIds([
+      headerShipCapacityId,
+      'material-2',
+    ]);
+    expect(notified, 1);
+    var restored = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(restored.collapsedPanelResourceIds, [
+      headerShipCapacityId,
+      'material-2',
+    ]);
+
+    await restored.setCollapsedPanelResourceIds(const <String>[]);
+    restored = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(restored.collapsedPanelResourceIds, isEmpty);
+
+    await restored.setCollapsedPanelResourceIds(null);
+    restored = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(restored.collapsedPanelResourceIds, isNull);
+  });
+
+  test('collapsed panel resources drop unknown and duplicate ids', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'layout_minimal_collapsed_resource_ids': <String>[
+        'material-1',
+        'bogus',
+        'material-1',
+        headerSenkaId,
+      ],
+    });
+    final controller = await LayoutSettingsController.load(
+      SharedPreferencesLayoutSettingsStore(),
+    );
+    expect(controller.collapsedPanelResourceIds, ['material-1', headerSenkaId]);
+  });
+
   test('information panel defaults right and persists both sides', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     var controller = await LayoutSettingsController.load(

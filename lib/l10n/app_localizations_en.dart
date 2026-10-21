@@ -364,6 +364,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get panelResourcesCollapse => 'Collapse resources';
 
   @override
+  String get panelResourcesCollapsedItems => 'Shown when collapsed';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => 'Restore default';
+
+  @override
   String get minimalResourcePositionTitle => 'Resource position';
 
   @override

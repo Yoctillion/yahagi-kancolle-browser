@@ -300,7 +300,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
-    if (widget.layout == ResourceBarLayout.grid && !isEditing) {
+    if (widget.layout == ResourceBarLayout.grid) {
       return _buildGrid(
         ids,
         controller: controller,
@@ -435,6 +435,22 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
       id == headerShipCapacityId ||
       id == headerEquipmentCapacityId;
 
+  static List<String> _defaultCollapsedGridIds(List<String> ids) =>
+      ids.where((id) => !_isWideGridItem(id)).take(_gridColumns).toList();
+
+  /// 折叠后显示的项，按 [ids] 的顺序；用户没选过时取前 4 个普通资源。
+  static List<String> _collapsedGridIds(
+    List<String> ids,
+    LayoutSettingsController? controller,
+  ) {
+    final chosen = controller?.collapsedPanelResourceIds?.toSet();
+    if (chosen == null) return _defaultCollapsedGridIds(ids);
+    return [
+      for (final id in ids)
+        if (chosen.contains(id)) id,
+    ];
+  }
+
   bool _localGridCollapsed = false;
 
   bool _gridCollapsed(LayoutSettingsController? controller) =>
@@ -567,29 +583,26 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
         );
 
         var columns = _gridColumns;
-        final List<List<String>> rows;
+        final shown = collapsed ? _collapsedGridIds(ids, controller) : ids;
+        List<List<String>> packRows() => _gridRows(
+          shown,
+          columns,
+          rowWidth: rowWidth,
+          naturalWidth: naturalWidth,
+        );
+        var rows = packRows();
         if (collapsed) {
-          final plain = ids
-              .where((id) => !_isWideGridItem(id))
-              .take(columns)
-              .toList();
-          // 折叠后只剩的这一行在网格顶边，屏幕圆角切得最多；挤不下可读的数值
-          // 就改成两行两列。
-          if (plain.length > 2 &&
-              plainCellWidth(0, columns) < _gridMinReadableCellWidth) {
-            columns = 2;
-          }
-          rows = [
-            for (var i = 0; i < plain.length; i += columns)
-              plain.sublist(i, math.min(i + columns, plain.length)),
-          ];
-        } else {
-          rows = _gridRows(
-            ids,
-            columns,
-            rowWidth: rowWidth,
-            naturalWidth: naturalWidth,
+          // 折叠后行数少、靠近网格顶边，屏幕圆角切得多；普通资源的首行挤不下
+          // 可读的数值就改成两列。
+          final plainRow = rows.indexWhere(
+            (row) => !_isWideGridItem(row.first),
           );
+          if (plainRow >= 0 &&
+              rows[plainRow].length > 2 &&
+              plainCellWidth(plainRow, columns) < _gridMinReadableCellWidth) {
+            columns = 2;
+            rows = packRows();
+          }
         }
         // 折叠按钮压在末行右端，向右伸进留白（至多 8）以少占末格；点击框必须留
         // 在 Stack 内才能被点到，所以伸出量受末行右侧留白限制。
@@ -791,8 +804,10 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
       onLongPress: () {
         if (controller?.uiLocked == true) {
           TopNotice.show(context, message: l10n.uiLockedToast);
-        } else {
+        } else if (widget.layout != ResourceBarLayout.grid) {
           setState(() => _editing = true);
+        } else if (controller != null) {
+          _showCollapsedItemsPicker(controller);
         }
       },
       child: Tooltip(
@@ -1009,13 +1024,71 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     );
   }
 
-  Future<void> _showResourceFilter(LayoutSettingsController controller) async {
+  Future<void> _showResourceFilter(LayoutSettingsController controller) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    return _showResourceChecklist(
+      controller,
+      title: l10n.selectHeaderVisibleItems,
+      ids: () => controller.headerResourceOrder,
+      checked: () => controller.visibleHeaderResourceIds.toSet(),
+      onToggle: controller.toggleHeaderResourceVisible,
+    );
+  }
+
+  Future<void> _showCollapsedItemsPicker(LayoutSettingsController controller) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    List<String> visibleIds() {
+      final visible = controller.visibleHeaderResourceIds.toSet();
+      return [
+        for (final id in controller.headerResourceOrder)
+          if (visible.contains(id)) id,
+      ];
+    }
+
+    return _showResourceChecklist(
+      controller,
+      key: const Key('panel-resource-collapsed-dialog'),
+      title: l10n.panelResourcesCollapsedItems,
+      ids: visibleIds,
+      checked: () => _collapsedGridIds(visibleIds(), controller).toSet(),
+      onToggle: (id) {
+        // 从已存的选择出发而不是从可见项出发，隐藏项上的勾才不会被冲掉。
+        final next = {
+          ...controller.collapsedPanelResourceIds ??
+              _defaultCollapsedGridIds(visibleIds()),
+        };
+        if (!next.remove(id)) next.add(id);
+        controller.setCollapsedPanelResourceIds(next.toList());
+      },
+      action: IconButton(
+        key: const Key('panel-resource-collapsed-reset'),
+        tooltip: l10n.panelResourcesCollapsedItemsReset,
+        onPressed: () => controller.setCollapsedPanelResourceIds(null),
+        icon: const Icon(Icons.restart_alt_rounded, color: Color(0xffe0b25c)),
+      ),
+    );
+  }
+
+  Future<void> _showResourceChecklist(
+    LayoutSettingsController controller, {
+    Key? key,
+    required String title,
+    required List<String> Function() ids,
+    required Set<String> Function() checked,
+    required void Function(String id) onToggle,
+    Widget? action,
+  }) async {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
+        key: key,
         backgroundColor: const Color(0xff102532),
         shape: RoundedRectangleBorder(
           side: const BorderSide(color: Color(0xff315064)),
@@ -1032,7 +1105,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                   children: [
                     Expanded(
                       child: Text(
-                        l10n.selectHeaderVisibleItems,
+                        title,
                         style: const TextStyle(
                           color: Color(0xffe0b25c),
                           fontSize: 15,
@@ -1040,6 +1113,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                         ),
                       ),
                     ),
+                    ?action,
                     IconButton(
                       key: const Key('header-resource-filter-done'),
                       tooltip: l10n.editDone,
@@ -1064,89 +1138,21 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                         }
                       });
                     }
-                    final visible = controller.visibleHeaderResourceIds.toSet();
+                    final items = ids();
+                    final checkedIds = checked();
                     return ListView.builder(
                       key: const Key('header-resource-filter-list'),
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      itemCount: controller.headerResourceOrder.length,
+                      itemCount: items.length,
                       itemBuilder: (context, index) {
-                        final id = controller.headerResourceOrder[index];
-                        if (id == headerSenkaId) {
-                          return _HeaderSenkaFilterRow(
-                            senka: widget.senka,
-                            rank: widget.rank,
-                            visible: visible.contains(id),
-                            onChanged: controller.uiLocked
-                                ? null
-                                : () => controller.toggleHeaderResourceVisible(
-                                    id,
-                                  ),
-                          );
-                        }
-                        if (id == headerAnchorageTimerId) {
-                          return _HeaderAnchorageTimerFilterRow(
-                            elapsed: _anchorageElapsed,
-                            visible: visible.contains(id),
-                            onChanged: controller.uiLocked
-                                ? null
-                                : () => controller.toggleHeaderResourceVisible(
-                                    id,
-                                  ),
-                          );
-                        }
-                        if (id == headerNosakiTimerId) {
-                          return _HeaderNosakiTimerFilterRow(
-                            elapsed: _nosakiElapsed,
-                            visible: visible.contains(id),
-                            onChanged: controller.uiLocked
-                                ? null
-                                : () => controller.toggleHeaderResourceVisible(
-                                    id,
-                                  ),
-                          );
-                        }
-                        if (id == headerFrameRefreshId) {
-                          return _HeaderCapacityFilterRow(
-                            id: id,
-                            label: l10n.frameRefreshShortcutLabel,
-                            value: '',
-                            icon: Icons.refresh_rounded,
-                            visible: visible.contains(id),
-                            onChanged: controller.uiLocked
-                                ? null
-                                : () => controller.toggleHeaderResourceVisible(
-                                    id,
-                                  ),
-                          );
-                        }
-                        if (id == headerShipCapacityId ||
-                            id == headerEquipmentCapacityId) {
-                          final ships = id == headerShipCapacityId;
-                          return _HeaderCapacityFilterRow(
-                            id: id,
-                            label: ships ? l10n.shipGirl : l10n.equipment,
-                            value:
-                                '${widget.state.hasPortData ? (ships ? widget.state.ships.length : widget.state.equipmentCapacityUsed) : '—'} / ${ships ? widget.state.maxShipCount ?? '—' : widget.state.maxEquipmentCount ?? '—'}',
-                            icon: ships
-                                ? Icons.directions_boat_filled_rounded
-                                : Icons.build_rounded,
-                            visible: visible.contains(id),
-                            onChanged: controller.uiLocked
-                                ? null
-                                : () => controller.toggleHeaderResourceVisible(
-                                    id,
-                                  ),
-                          );
-                        }
-                        final spec = headerResourceById[id]!;
-                        return _HeaderResourceFilterRow(
-                          spec: spec,
-                          value: spec.value(widget.state),
-                          visible: visible.contains(id),
+                        final id = items[index];
+                        return _buildChecklistRow(
+                          id,
+                          l10n: l10n,
+                          checked: checkedIds.contains(id),
                           onChanged: controller.uiLocked
                               ? null
-                              : () =>
-                                    controller.toggleHeaderResourceVisible(id),
+                              : () => onToggle(id),
                         );
                       },
                     );
@@ -1157,6 +1163,67 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildChecklistRow(
+    String id, {
+    required AppLocalizations l10n,
+    required bool checked,
+    required VoidCallback? onChanged,
+  }) {
+    if (id == headerSenkaId) {
+      return _HeaderSenkaFilterRow(
+        senka: widget.senka,
+        rank: widget.rank,
+        checked: checked,
+        onChanged: onChanged,
+      );
+    }
+    if (id == headerAnchorageTimerId) {
+      return _HeaderAnchorageTimerFilterRow(
+        elapsed: _anchorageElapsed,
+        checked: checked,
+        onChanged: onChanged,
+      );
+    }
+    if (id == headerNosakiTimerId) {
+      return _HeaderNosakiTimerFilterRow(
+        elapsed: _nosakiElapsed,
+        checked: checked,
+        onChanged: onChanged,
+      );
+    }
+    if (id == headerFrameRefreshId) {
+      return _HeaderCapacityFilterRow(
+        id: id,
+        label: l10n.frameRefreshShortcutLabel,
+        value: '',
+        icon: Icons.refresh_rounded,
+        checked: checked,
+        onChanged: onChanged,
+      );
+    }
+    if (id == headerShipCapacityId || id == headerEquipmentCapacityId) {
+      final ships = id == headerShipCapacityId;
+      return _HeaderCapacityFilterRow(
+        id: id,
+        label: ships ? l10n.shipGirl : l10n.equipment,
+        value:
+            '${widget.state.hasPortData ? (ships ? widget.state.ships.length : widget.state.equipmentCapacityUsed) : '—'} / ${ships ? widget.state.maxShipCount ?? '—' : widget.state.maxEquipmentCount ?? '—'}',
+        icon: ships
+            ? Icons.directions_boat_filled_rounded
+            : Icons.build_rounded,
+        checked: checked,
+        onChanged: onChanged,
+      );
+    }
+    final spec = headerResourceById[id]!;
+    return _HeaderResourceFilterRow(
+      spec: spec,
+      value: spec.value(widget.state),
+      checked: checked,
+      onChanged: onChanged,
     );
   }
 }
@@ -1712,7 +1779,7 @@ class _HeaderCapacityFilterRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    required this.visible,
+    required this.checked,
     required this.onChanged,
   });
 
@@ -1720,7 +1787,7 @@ class _HeaderCapacityFilterRow extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
-  final bool visible;
+  final bool checked;
   final VoidCallback? onChanged;
 
   @override
@@ -1735,7 +1802,7 @@ class _HeaderCapacityFilterRow extends StatelessWidget {
           children: [
             Checkbox(
               key: Key('header-resource-visible-$id'),
-              value: visible,
+              value: checked,
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
@@ -1772,13 +1839,13 @@ class _HeaderSenkaFilterRow extends StatelessWidget {
   const _HeaderSenkaFilterRow({
     required this.senka,
     required this.rank,
-    required this.visible,
+    required this.checked,
     required this.onChanged,
   });
 
   final double? senka;
   final int? rank;
-  final bool visible;
+  final bool checked;
   final VoidCallback? onChanged;
 
   @override
@@ -1793,7 +1860,7 @@ class _HeaderSenkaFilterRow extends StatelessWidget {
           children: [
             Checkbox(
               key: const Key('header-resource-visible-senka'),
-              value: visible,
+              value: checked,
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
@@ -1833,12 +1900,12 @@ class _HeaderSenkaFilterRow extends StatelessWidget {
 class _HeaderAnchorageTimerFilterRow extends StatelessWidget {
   const _HeaderAnchorageTimerFilterRow({
     required this.elapsed,
-    required this.visible,
+    required this.checked,
     required this.onChanged,
   });
 
   final String elapsed;
-  final bool visible;
+  final bool checked;
   final VoidCallback? onChanged;
 
   @override
@@ -1853,7 +1920,7 @@ class _HeaderAnchorageTimerFilterRow extends StatelessWidget {
           children: [
             Checkbox(
               key: const Key('header-resource-visible-anchorage-timer'),
-              value: visible,
+              value: checked,
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
@@ -1893,12 +1960,12 @@ class _HeaderAnchorageTimerFilterRow extends StatelessWidget {
 class _HeaderNosakiTimerFilterRow extends StatelessWidget {
   const _HeaderNosakiTimerFilterRow({
     required this.elapsed,
-    required this.visible,
+    required this.checked,
     required this.onChanged,
   });
 
   final String elapsed;
-  final bool visible;
+  final bool checked;
   final VoidCallback? onChanged;
 
   @override
@@ -1913,7 +1980,7 @@ class _HeaderNosakiTimerFilterRow extends StatelessWidget {
           children: [
             Checkbox(
               key: const Key('header-resource-visible-nosaki-timer'),
-              value: visible,
+              value: checked,
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
@@ -1954,13 +2021,13 @@ class _HeaderResourceFilterRow extends StatelessWidget {
   const _HeaderResourceFilterRow({
     required this.spec,
     required this.value,
-    required this.visible,
+    required this.checked,
     required this.onChanged,
   });
 
   final HeaderResourceSpec spec;
   final int? value;
-  final bool visible;
+  final bool checked;
   final VoidCallback? onChanged;
 
   @override
@@ -1975,7 +2042,7 @@ class _HeaderResourceFilterRow extends StatelessWidget {
           children: [
             Checkbox(
               key: Key('header-resource-visible-${spec.id}'),
-              value: visible,
+              value: checked,
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),

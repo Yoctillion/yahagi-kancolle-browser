@@ -115,6 +115,8 @@
   "uiDisplaySizeMinimal": "極簡",
   "panelResourcesExpand": "展開資源",
   "panelResourcesCollapse": "摺疊資源",
+  "panelResourcesCollapsedItems": "摺疊時顯示",
+  "panelResourcesCollapsedItemsReset": "恢復預設",
   "minimalResourcePositionTitle": "資源位置",
   "minimalResourcePositionDesc": "極簡檔手機橫屏遊戲頁的資源顯示在資訊欄頂部、遊戲上方的細橫欄，或螢幕底部的細橫欄",
   "minimalResourcePositionPanel": "資訊欄",

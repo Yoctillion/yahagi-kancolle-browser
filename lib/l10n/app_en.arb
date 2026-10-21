@@ -164,6 +164,8 @@
   "uiDisplaySizeMinimal": "Minimal",
   "panelResourcesExpand": "Expand resources",
   "panelResourcesCollapse": "Collapse resources",
+  "panelResourcesCollapsedItems": "Shown when collapsed",
+  "panelResourcesCollapsedItemsReset": "Restore default",
   "minimalResourcePositionTitle": "Resource position",
   "minimalResourcePositionDesc": "Where Minimal shows resources on the game page in phone landscape: atop the info panel, in a thin bar above the game, or in a thin bar along the bottom of the screen",
   "minimalResourcePositionPanel": "Info panel",

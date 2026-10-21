@@ -733,6 +733,18 @@ abstract class AppLocalizations {
   /// **'折叠资源'**
   String get panelResourcesCollapse;
 
+  /// No description provided for @panelResourcesCollapsedItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'折叠时显示'**
+  String get panelResourcesCollapsedItems;
+
+  /// No description provided for @panelResourcesCollapsedItemsReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get panelResourcesCollapsedItemsReset;
+
   /// No description provided for @minimalResourcePositionTitle.
   ///
   /// In zh, this message translates to:

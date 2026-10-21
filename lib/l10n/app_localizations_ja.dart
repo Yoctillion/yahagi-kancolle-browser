@@ -350,6 +350,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get panelResourcesCollapse => '資源を折りたたむ';
 
   @override
+  String get panelResourcesCollapsedItems => '折りたたみ時に表示';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => 'デフォルトに戻す';
+
+  @override
   String get minimalResourcePositionTitle => '資源の位置';
 
   @override
