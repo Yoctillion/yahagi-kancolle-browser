@@ -58,6 +58,7 @@ import 'package:yahagi_kancolle_browser/src/development/equipment_development_pa
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_completion_feedback.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_completion_drawer.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
 const _phoneLandscape = Size(873, 393);
@@ -2539,6 +2540,36 @@ void main() {
   );
 
   group('minimal game shell', () {
+    for (final onLeft in [false, true]) {
+      testWidgets('资源区折叠按钮与模块折叠箭头右缘对齐 (onLeft: $onLeft)', (tester) async {
+        final layout = await _pumpMinimalShell(tester);
+        await layout.setInformationPanelOnLeft(onLeft);
+        await tester.pumpAndSettle();
+        bool chevron(Widget w) =>
+            w is Icon &&
+            (w.icon == Icons.keyboard_arrow_up_rounded ||
+                w.icon == Icons.keyboard_arrow_down_rounded);
+        final gridRight = tester
+            .getRect(
+              find.descendant(
+                of: find.byKey(const Key('information-panel-resources-toggle')),
+                matching: find.byType(Icon),
+              ),
+            )
+            .right;
+        final cardChevrons = find.descendant(
+          of: find.byType(DashboardCard),
+          matching: find.byWidgetPredicate(chevron),
+        );
+        expect(cardChevrons, findsWidgets);
+        for (final element in cardChevrons.evaluate()) {
+          expect(
+            tester.getRect(find.byWidget(element.widget)).right,
+            gridRight,
+          );
+        }
+      });
+    }
     testWidgets(
       'minimal landscape game page hides header and shows menu button',
       (tester) async {

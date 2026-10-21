@@ -7,6 +7,7 @@ import 'fleet_ui_strings.dart';
 import '../../l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
 import '../layout/display_corners.dart';
+import '../layout/flat_collapse_chevron.dart';
 import '../settings/header_resource_settings.dart';
 import '../settings/layout_settings_controller.dart';
 import '../performance/second_tick_scope.dart';
@@ -423,6 +424,9 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
   static const double _gridToggleExtent = 24;
   static const double _gridToggleMaxOverhang = 8;
 
+  // 13dp 图标 + 2dp 间隙 + 40dp 数值位：六位数值缩放仍在 0.9 以上。
+  static const double _gridMinReadableCellWidth = 55;
+
   static bool _isWideGridItem(String id) =>
       id == headerSenkaId ||
       id == headerAnchorageTimerId ||
@@ -445,9 +449,18 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     }
   }
 
+  static String? _gridPartner(String id) => switch (id) {
+    headerAnchorageTimerId => headerNosakiTimerId,
+    headerNosakiTimerId => headerAnchorageTimerId,
+    headerShipCapacityId => headerEquipmentCapacityId,
+    headerEquipmentCapacityId => headerShipCapacityId,
+    _ => null,
+  };
+
   // 宽项和普通资源分组成行，换类时另起一行，两类项都保持用户排的顺序。宽项按
-  // 自然宽度贪心装行（各行可用宽度因圆角内缩而不同）；普通资源按列数分行，列能
-  // 上下对齐。
+  // 自然宽度贪心装行（各行可用宽度因圆角内缩而不同），相邻的泊地与野埼、舰娘与
+  // 装备容量作为一个整体装行，免得被行尾截成两半；一整行都放不下这一对时才拆开。
+  // 普通资源按列数分行，列能上下对齐。
   static List<List<String>> _gridRows(
     List<String> ids,
     int columns, {
@@ -457,23 +470,46 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     final rows = <List<String>>[];
     var row = <String>[];
     var used = 0.0;
-    for (final id in ids) {
-      final wide = _isWideGridItem(id);
+    void flush() {
+      if (row.isEmpty) return;
+      rows.add(row);
+      row = <String>[];
+      used = 0;
+    }
+
+    void addWide(List<String> unit) {
+      final width =
+          unit.fold(0.0, (sum, id) => sum + naturalWidth(id)) +
+          _gridSpacing * (unit.length - 1);
       if (row.isNotEmpty &&
-          (_isWideGridItem(row.first) != wide ||
-              (wide
-                  ? used + _gridSpacing + naturalWidth(id) >
-                        rowWidth(rows.length)
-                  : row.length == columns))) {
-        rows.add(row);
-        row = <String>[];
+          (!_isWideGridItem(row.first) ||
+              used + _gridSpacing + width > rowWidth(rows.length))) {
+        flush();
       }
-      if (wide) {
-        used = (row.isEmpty ? 0 : used + _gridSpacing) + naturalWidth(id);
+      if (unit.length > 1 && width > rowWidth(rows.length)) {
+        for (final id in unit) {
+          addWide([id]);
+        }
+        return;
+      }
+      used = (row.isEmpty ? 0 : used + _gridSpacing) + width;
+      row.addAll(unit);
+    }
+
+    for (var i = 0; i < ids.length; i++) {
+      final id = ids[i];
+      if (_isWideGridItem(id)) {
+        final paired = i + 1 < ids.length && ids[i + 1] == _gridPartner(id);
+        addWide(paired ? [id, ids[++i]] : [id]);
+        continue;
+      }
+      if (row.isNotEmpty &&
+          (_isWideGridItem(row.first) || row.length == columns)) {
+        flush();
       }
       row.add(id);
     }
-    if (row.isNotEmpty) rows.add(row);
+    flush();
     return rows;
   }
 
@@ -497,7 +533,6 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     required AppLocalizations l10n,
     required HeaderUiSize uiSize,
   }) {
-    const columns = _gridColumns;
     final collapsed = _gridCollapsed(controller);
     final padding = widget.gridPadding;
     final radii = widget.gridCornerRadii;
@@ -526,10 +561,28 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
         double naturalWidth(String id) => naturalWidths[id] ??=
             _gridNaturalWidth(context, id, uiSize: uiSize);
 
+        double plainCellWidth(int row, int columns) => math.max(
+          0.0,
+          (rowWidth(row) - _gridSpacing * (columns - 1)) / columns,
+        );
+
+        var columns = _gridColumns;
         final List<List<String>> rows;
         if (collapsed) {
-          final plain = ids.where((id) => !_isWideGridItem(id)).take(columns);
-          rows = [if (plain.isNotEmpty) plain.toList()];
+          final plain = ids
+              .where((id) => !_isWideGridItem(id))
+              .take(columns)
+              .toList();
+          // 折叠后只剩的这一行在网格顶边，屏幕圆角切得最多；挤不下可读的数值
+          // 就改成两行两列。
+          if (plain.length > 2 &&
+              plainCellWidth(0, columns) < _gridMinReadableCellWidth) {
+            columns = 2;
+          }
+          rows = [
+            for (var i = 0; i < plain.length; i += columns)
+              plain.sublist(i, math.min(i + columns, plain.length)),
+          ];
         } else {
           rows = _gridRows(
             ids,
@@ -560,10 +613,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                 (available - (last ? toggleReserve : 0) - used) / row.length;
             cellWidths = [for (final w in natural) math.max(0.0, w + extra)];
           } else {
-            final cell = math.max(
-              0.0,
-              (available - _gridSpacing * (columns - 1)) / columns,
-            );
+            final cell = plainCellWidth(index, columns);
             // 末行没排满时按钮落在空位里，排满了才让末格让出按钮的位置。
             final reserve = last && row.length == columns ? toggleReserve : 0.0;
             cellWidths = [
@@ -639,34 +689,18 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     required AppLocalizations l10n,
     required double iconInset,
   }) {
-    return Semantics(
-      button: true,
+    // 图标右缘与各行右缘对齐，伸进内边距的只是点击框。
+    return FlatCollapseChevron(
+      key: const Key('information-panel-resources-toggle'),
+      collapsed: collapsed,
       label: collapsed
           ? l10n.panelResourcesExpand
           : l10n.panelResourcesCollapse,
-      child: SizedBox.square(
-        key: const Key('information-panel-resources-toggle'),
-        dimension: _gridToggleExtent,
-        child: InkResponse(
-          radius: _gridToggleExtent / 2,
-          onTap: () => _toggleGridCollapsed(controller),
-          // 图标右缘与各行右缘对齐，伸进内边距的只是点击框。
-          child: Padding(
-            padding: EdgeInsets.only(right: iconInset),
-            child: Align(
-              // 点击框贴着末行底边，比 20dp 的行高出 4dp；图标对齐末行的中线。
-              alignment: const Alignment(1, 4 / 9),
-              child: Icon(
-                collapsed
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_up_rounded,
-                size: 15,
-                color: const Color(0xff8fa8b6),
-              ),
-            ),
-          ),
-        ),
-      ),
+      onTap: () => _toggleGridCollapsed(controller),
+      width: _gridToggleExtent,
+      // 点击框贴着末行底边，比 20dp 的行高出 4dp；图标对齐末行的中线。
+      iconAlignment: const Alignment(1, 4 / 9),
+      iconInset: iconInset,
     );
   }
 

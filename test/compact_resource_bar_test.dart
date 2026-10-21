@@ -1136,6 +1136,10 @@ void main() {
       expect(rect('header-resource-material-1').left, expandedM1.left);
       expect(rect('header-resource-material-4').left, expandedM4.left);
       expect(
+        rect('header-resource-material-4').top,
+        rect('header-resource-material-1').top,
+      );
+      expect(
         rect('information-panel-resources-toggle').left,
         greaterThanOrEqualTo(rect('header-resource-material-4').right),
       );
@@ -1734,7 +1738,84 @@ void main() {
       expect(cornerInsetAt(radius, rows.first.first.top + 4), greaterThan(20));
     });
 
-    testWidgets('collapsed toggle follows the first row corner inset', (
+    testWidgets('running timers keep each timer and capacity pair together', (
+      tester,
+    ) async {
+      await pumpPanel(tester, timersRunning: true);
+
+      expect(tester.takeException(), isNull);
+      Rect rect(String id) =>
+          tester.getRect(find.byKey(Key('header-resource-$id')));
+      final rows = rowsOf(tester, wideKeys);
+      expect(rows, hasLength(3));
+      expect(rows[0], [rect(headerSenkaId)]);
+      expect(rows[1], [
+        rect(headerAnchorageTimerId),
+        rect(headerNosakiTimerId),
+      ]);
+      expect(rows[2], [
+        rect(headerShipCapacityId),
+        rect(headerEquipmentCapacityId),
+      ]);
+      expectRowsClearRightCorner(tester);
+    });
+
+    testWidgets('a timer whose partner is hidden packs like any wide item', (
+      tester,
+    ) async {
+      final controller = await loadGridController();
+      await controller.toggleHeaderResourceVisible(headerNosakiTimerId);
+      await controller.toggleHeaderResourceVisible(headerFrameRefreshId);
+      await pumpPanel(tester, controller: controller, timersRunning: true);
+
+      expect(tester.takeException(), isNull);
+      Rect rect(String id) =>
+          tester.getRect(find.byKey(Key('header-resource-$id')));
+      final rows = rowsOf(tester, wideKeys);
+      expect(rows.expand((row) => row), hasLength(5));
+      final capacityRow = rows.firstWhere(
+        (row) => row.contains(rect(headerShipCapacityId)),
+      );
+      expect(capacityRow, contains(rect(headerEquipmentCapacityId)));
+      expect(capacityRow, hasLength(2));
+      expectRowsClearRightCorner(tester);
+    });
+
+    testWidgets('timers ordered apart are not pulled together', (tester) async {
+      const apart = <String>[
+        headerAnchorageTimerId,
+        headerShipCapacityId,
+        headerNosakiTimerId,
+        headerEquipmentCapacityId,
+      ];
+      final controller = await loadGridController();
+      await controller.setHeaderResourceOrder(<String>[
+        headerSenkaId,
+        ...apart,
+        ...allHeaderResourceIds.where(
+          (id) => id != headerSenkaId && !apart.contains(id),
+        ),
+      ]);
+      await pumpPanel(tester, controller: controller, timersRunning: true);
+
+      expect(tester.takeException(), isNull);
+      final rects = [
+        for (final id in apart)
+          tester.getRect(find.byKey(Key('header-resource-$id'))),
+      ];
+      for (var i = 1; i < rects.length; i++) {
+        final previous = rects[i - 1];
+        expect(
+          rects[i].top > previous.top ||
+              (rects[i].top == previous.top && rects[i].left > previous.left),
+          isTrue,
+          reason: apart[i],
+        );
+      }
+      expectRowsClearRightCorner(tester);
+    });
+
+    testWidgets('collapsed row too narrow for four cells wraps into 2x2', (
       tester,
     ) async {
       await pumpPanel(tester);
@@ -1744,7 +1825,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      final rowRight = panelWidth - 8 - cornerInsetAt(radius, 6 + 4);
+      Rect rect(int id) =>
+          tester.getRect(find.byKey(Key('header-resource-material-$id')));
+      expect(rect(2).top, rect(1).top);
+      expect(rect(3).top, greaterThan(rect(1).top));
+      expect(rect(4).top, rect(3).top);
+      expect(rect(3).left, rect(1).left);
+      expect(find.byKey(const Key('header-resource-material-5')), findsNothing);
+      for (final id in [1, 2, 3]) {
+        expect(rect(id).width, greaterThanOrEqualTo(55), reason: '$id');
+      }
+      expectRowsClearRightCorner(tester);
+      final rowRight =
+          panelWidth - 8 - cornerInsetAt(radius, rect(4).top + (20 - 12) / 2);
       final icon = tester.getRect(
         find.byIcon(Icons.keyboard_arrow_down_rounded),
       );
