@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/equipment_display.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_minimal_row.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_repair_status.dart';
@@ -100,6 +101,7 @@ Widget _row(
   int shipId, {
   Set<String> visible = defaultFields,
   ShipRepairStatus? repairStatus,
+  EquipmentMechanismDisplay? specialAttack,
 }) => SizedBox(
   width: 320,
   child: FleetShipMinimalRow(
@@ -110,6 +112,7 @@ Widget _row(
     damagePulseFilter: DamagePulseFilter.all,
     moraleSparkleMode: MoraleSparkleMode.blinking,
     repairStatus: repairStatus,
+    specialAttack: specialAttack,
   ),
 );
 
@@ -154,25 +157,81 @@ void main() {
     expect(moraleBandOf(19), MoraleBand.exhausted);
   });
 
-  testWidgets('only opening ASW is shown among ship mechanisms', (
+  testWidgets('each mechanism follows its own display toggle', (tester) async {
+    final state = _mechanismState();
+    Future<void> pumpRows(Set<String> visible) async {
+      await tester.pumpWidget(
+        _app(
+          Column(
+            children: [
+              _row(state, 1, visible: visible),
+              _row(state, 2, visible: visible),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    await pumpRows(defaultFields);
+    expect(
+      find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+      findsOneWidget,
+    );
+    expect(find.text('先制对潜'), findsOneWidget);
+    expect(
+      find.byKey(const Key('minimal-mechanism-2-nightCarrierAttack')),
+      findsOneWidget,
+    );
+
+    await pumpRows(defaultFields.difference({'night'}));
+    expect(
+      find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('minimal-mechanism-2-nightCarrierAttack')),
+      findsNothing,
+    );
+
+    await pumpRows(defaultFields.difference({'asw'}));
+    expect(
+      find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('several mechanisms on one ship switch to short labels', (
     tester,
   ) async {
+    const specialAttack = EquipmentMechanismDisplay(
+      label: '大和型特殊攻击',
+      shortLabel: '特攻',
+      description: '',
+      tone: MechanismTone.specialAttack,
+      kind: CombatMechanismKind.fleetSpecialAttack,
+    );
     final state = _mechanismState();
-    await tester.pumpWidget(
-      _app(Column(children: [_row(state, 1), _row(state, 2)])),
-    );
+    await tester.pumpWidget(_app(_row(state, 1, specialAttack: specialAttack)));
     await tester.pump();
 
-    expect(find.byKey(const Key('minimal-oasw-1')), findsOneWidget);
+    expect(find.text('先反'), findsOneWidget);
+    expect(find.text('特攻'), findsOneWidget);
+    expect(find.text('先制对潜'), findsNothing);
+
+    await tester.pumpWidget(
+      _app(
+        _row(
+          state,
+          1,
+          visible: defaultFields.difference({'special'}),
+          specialAttack: specialAttack,
+        ),
+      ),
+    );
+    await tester.pump();
     expect(find.text('先制对潜'), findsOneWidget);
-    expect(find.byKey(const Key('minimal-oasw-2')), findsNothing);
-    expect(find.textContaining('夜'), findsNothing);
-
-    await tester.pumpWidget(
-      _app(_row(state, 1, visible: defaultFields.difference({'mechanisms'}))),
-    );
-    await tester.pump();
-    expect(find.byKey(const Key('minimal-oasw-1')), findsNothing);
+    expect(find.text('特攻'), findsNothing);
   });
 
   testWidgets('display toggles control supply bars and the speed tag', (

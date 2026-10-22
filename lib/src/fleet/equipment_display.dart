@@ -23,6 +23,7 @@ class EquipmentMechanismDisplay {
     required this.description,
     this.tone = MechanismTone.neutral,
     this.rate,
+    this.kind,
   });
 
   final String label;
@@ -30,6 +31,7 @@ class EquipmentMechanismDisplay {
   final String description;
   final MechanismTone tone;
   final double? rate;
+  final CombatMechanismKind? kind;
 
   String get effectiveShortLabel => shortLabel ?? label;
 
@@ -41,6 +43,14 @@ class EquipmentMechanismDisplay {
     }
     return base;
   }
+}
+
+enum CombatMechanismKind {
+  openingAsw,
+  antiAirCutIn,
+  rocketBarrage,
+  nightCarrierAttack,
+  fleetSpecialAttack,
 }
 
 enum MechanismTone {

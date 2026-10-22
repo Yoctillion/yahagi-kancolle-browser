@@ -194,9 +194,6 @@ class FleetDisplaySettingsSection extends StatelessWidget {
                               count >= limit
                           ? null
                           : (value) => change(item.key, value),
-                      tooltip: item.key == 'mechanisms'
-                          ? text(FleetUiKeys.mechanismsHint)
-                          : null,
                       // Selection is indicated by the background only.
                       showCheckmark: false,
                     ),

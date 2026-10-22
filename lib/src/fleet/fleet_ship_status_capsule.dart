@@ -125,7 +125,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
     final allMechanisms = <EquipmentMechanismDisplay>[
       ...shipMechanisms,
       if (widget.specialAttack != null) widget.specialAttack!,
-    ];
+    ].where((m) => showsMechanism(widget.visible, m)).toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -730,23 +730,14 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
           shipFatigueColor(ship.condition),
         ),
       for (var i = 0; i < mechanisms.length; i++)
-        if (show('mechanisms'))
-          badge(
-            i == 0 ? 'mechanism' : 'mechanism-$i',
-            mechanisms[i].detailedShortLabel,
-            _mechanismColor(mechanisms[i].tone),
-          ),
+        badge(
+          i == 0 ? 'mechanism' : 'mechanism-$i',
+          mechanisms[i].detailedShortLabel,
+          mechanismToneColor(mechanisms[i].tone),
+        ),
     ];
   }
 }
-
-Color _mechanismColor(MechanismTone tone) => switch (tone) {
-  MechanismTone.antiAir => const Color(0xffffc861),
-  MechanismTone.specialAttack => const Color(0xffff8b88),
-  MechanismTone.nightAttack => const Color(0xffbfa4ff),
-  MechanismTone.neutral ||
-  MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-};
 
 class MiniBadge extends StatelessWidget {
   const MiniBadge({super.key, required this.text, required this.color});

@@ -221,12 +221,13 @@ void main() {
         5,
       );
       expect(checkbox('torpedo').onSelected, isNull);
-      final mechanism = tester.widget<FilterChip>(
-        find.byKey(const Key('fleet-display-mechanisms')),
+      final antiAirCutIn = tester.widget<FilterChip>(
+        find.byKey(const Key('fleet-display-aaci')),
       );
-      mechanism.onSelected!(false);
+      antiAirCutIn.onSelected!(false);
       await tester.pump();
-      expect(controller.fleetDisplayFields, isNot(contains('mechanisms')));
+      expect(controller.fleetDisplayFields, isNot(contains('aaci')));
+      expect(controller.fleetDisplayFields, contains('asw'));
       expect(tester.takeException(), isNull);
 
       expect(

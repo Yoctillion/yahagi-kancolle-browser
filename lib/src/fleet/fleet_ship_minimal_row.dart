@@ -170,6 +170,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     required this.damagePulseFilter,
     required this.moraleSparkleMode,
     this.repairStatus,
+    this.specialAttack,
     this.onTap,
   });
 
@@ -180,6 +181,7 @@ class FleetShipMinimalRow extends StatelessWidget {
   final DamagePulseFilter damagePulseFilter;
   final MoraleSparkleMode moraleSparkleMode;
   final ShipRepairStatus? repairStatus;
+  final EquipmentMechanismDisplay? specialAttack;
   final VoidCallback? onTap;
 
   static const _textColor = Color(0xffdce6eb);
@@ -249,12 +251,16 @@ class FleetShipMinimalRow extends StatelessWidget {
             ? null
             : gameNames(context).shipName(master.name, shipId: master.id)) ??
         fleetText(context, FleetUiKeys.unknownShip);
-    final openingAsw = _show('mechanisms')
-        ? detectShipCombatMechanisms(
-            state,
-            ship,
-          ).where((m) => m.tone == MechanismTone.antiSubmarine).firstOrNull
-        : null;
+    final mechanisms = [
+      ...detectShipCombatMechanisms(state, ship),
+      ?specialAttack,
+    ].where((m) => showsMechanism(visible, m)).toList();
+    // 一行只有一个机制时写全称，多个时改用短称，免得整段被 FittedBox 缩得看不清。
+    final mechanismLabel = mechanisms.length == 1
+        ? (EquipmentMechanismDisplay m) =>
+              gameNames(context).entityText(fleetText(context, m.label))
+        : (EquipmentMechanismDisplay m) =>
+              fleetText(context, m.effectiveShortLabel);
     final speed = ShipSpeedVisual.fromSpeed(ship.effectiveSpeed(master));
     final meta = <Widget>[
       if (_show('level'))
@@ -273,13 +279,11 @@ class FleetShipMinimalRow extends StatelessWidget {
           color: speed.foreground,
           background: speed.background,
         ),
-      if (openingAsw != null)
+      for (final mechanism in mechanisms)
         _Tag(
-          key: Key('minimal-oasw-${ship.id}'),
-          text: gameNames(
-            context,
-          ).entityText(fleetText(context, openingAsw.label)),
-          color: const Color(0xff8ec6e8),
+          key: Key('minimal-mechanism-${ship.id}-${mechanism.kind?.name}'),
+          text: mechanismLabel(mechanism),
+          color: mechanismToneColor(mechanism.tone),
         ),
       if (repairStatus != null)
         _Tag(
