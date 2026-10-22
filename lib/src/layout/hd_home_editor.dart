@@ -22,11 +22,12 @@ class DashboardEditItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final content = Row(
+      final flat = PanelStyleScope.isFlat(context);
+      Widget content = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (PanelStyleScope.isFlat(context))
-            _FlatVisibilityToggle(id: id, visible: !hidden, onToggle: onToggle)
+          if (flat)
+            _FlatVisibilityIcon(id: id, visible: !hidden)
           else
             Checkbox(
               value: !hidden,
@@ -38,6 +39,13 @@ class DashboardEditItem extends StatelessWidget {
           Expanded(child: DashboardEditingScope(child: child)),
         ],
       );
+      // 扁平档的勾选框只有图标大小，按常见复选框的习惯整行都可点；齿轮自己吃掉点击。
+      if (flat) {
+        content = Semantics(
+          checked: !hidden,
+          child: InkWell(onTap: onToggle, child: content),
+        );
+      }
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -67,32 +75,18 @@ class DashboardEditItem extends StatelessWidget {
 }
 
 /// Material 的 Checkbox 固定占 48，和 24 高的扁平标题行对不齐。
-class _FlatVisibilityToggle extends StatelessWidget {
-  const _FlatVisibilityToggle({
-    required this.id,
-    required this.visible,
-    required this.onToggle,
-  });
+class _FlatVisibilityIcon extends StatelessWidget {
+  const _FlatVisibilityIcon({required this.id, required this.visible});
   final String id;
   final bool visible;
-  final VoidCallback onToggle;
   @override
-  Widget build(BuildContext context) => Semantics(
-    checked: visible,
-    child: SizedBox.square(
-      key: Key('dashboard-visibility-$id'),
-      dimension: flatHeaderHeight,
-      child: InkResponse(
-        radius: flatHeaderHeight / 2,
-        onTap: onToggle,
-        child: Icon(
-          visible
-              ? Icons.check_box_rounded
-              : Icons.check_box_outline_blank_rounded,
-          size: flatActionIconSize,
-          color: visible ? flatAccentColor : flatMutedColor,
-        ),
-      ),
+  Widget build(BuildContext context) => SizedBox.square(
+    key: Key('dashboard-visibility-$id'),
+    dimension: flatHeaderHeight,
+    child: Icon(
+      visible ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+      size: flatActionIconSize,
+      color: visible ? flatAccentColor : flatMutedColor,
     ),
   );
 }
