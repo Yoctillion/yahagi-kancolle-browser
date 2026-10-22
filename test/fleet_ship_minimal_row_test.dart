@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import 'package:yahagi_kancolle_browser/src/battle/prophet_hp_bar.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/equipment_display.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_minimal_row.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
@@ -327,6 +328,55 @@ void main() {
     await pumpRows(MoraleSparkleMode.off);
     expect(find.byKey(const Key('minimal-morale-1')), findsNothing);
     expect(find.byKey(const Key('minimal-morale-4')), findsOneWidget);
+  });
+
+  testWidgets('hiding bars turns the status line into plain values', (
+    tester,
+  ) async {
+    final state = demoState();
+    for (final width in [190.0, 320.0]) {
+      await tester.pumpWidget(
+        _app(
+          SizedBox(
+            width: width,
+            child: FleetShipMinimalRow(
+              state: state,
+              ship: state.ships[2]!,
+              visible: defaultFields.difference({'bars'}),
+              shipTypeLabelMode: FleetShipTypeLabelMode.localizedName,
+              damagePulseFilter: DamagePulseFilter.all,
+              moraleSparkleMode: MoraleSparkleMode.blinking,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final row = find.byKey(const Key('minimal-ship-row-2'));
+      expect(
+        find.descendant(of: row, matching: find.byType(ProphetHpBar)),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('minimal-supply-fuel-2')), findsNothing);
+      expect(find.byKey(const Key('minimal-supply-ammo-2')), findsNothing);
+      final hp = find.byKey(const Key('minimal-hp-value-2'));
+      final fuel = find.byKey(const Key('minimal-supply-fuel-value-2'));
+      final ammo = find.byKey(const Key('minimal-supply-ammo-value-2'));
+      expect(tester.widget<Text>(hp).data, '20/27');
+      expect(tester.widget<Text>(fuel).data, '13/25');
+      expect(tester.widget<Text>(ammo).data, '15/30');
+      // 数值紧跟疲劳块从左排，不留出血条的位置。
+      expect(
+        tester.getRect(hp).left,
+        lessThan(tester.getRect(row).left + width * .3),
+      );
+      expect(tester.getRect(fuel).left, greaterThan(tester.getRect(hp).right));
+      expect(
+        tester.getRect(ammo).left,
+        greaterThan(tester.getRect(fuel).right),
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('retreated ships show zero hp and a desaturated portrait', (
