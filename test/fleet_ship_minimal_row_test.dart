@@ -282,6 +282,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('hidden morale still flags tired and sparkling ships', (
+    tester,
+  ) async {
+    // demoState 的疲劳：1 号 85、2 号 49、4 号 15。
+    final state = demoState();
+    final hidden = defaultFields.difference({'morale'});
+    Future<void> pumpRows(MoraleSparkleMode sparkle) async {
+      await tester.pumpWidget(
+        _app(
+          Column(
+            children: [
+              for (final id in [1, 2, 4])
+                SizedBox(
+                  width: 320,
+                  child: FleetShipMinimalRow(
+                    state: state,
+                    ship: state.ships[id]!,
+                    visible: hidden,
+                    shipTypeLabelMode: FleetShipTypeLabelMode.localizedName,
+                    damagePulseFilter: DamagePulseFilter.all,
+                    moraleSparkleMode: sparkle,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    await pumpRows(MoraleSparkleMode.blinking);
+    expect(find.byKey(const Key('minimal-morale-1')), findsOneWidget);
+    expect(find.byKey(const Key('minimal-morale-2')), findsNothing);
+    expect(find.byKey(const Key('minimal-morale-4')), findsOneWidget);
+    // 放在第一行，不挤动第二行血条的起点。
+    expect(
+      tester.getRect(find.byKey(const Key('minimal-morale-4'))).bottom,
+      lessThanOrEqualTo(
+        tester.getRect(find.byKey(const Key('minimal-name-4'))).bottom + 1,
+      ),
+    );
+
+    await pumpRows(MoraleSparkleMode.off);
+    expect(find.byKey(const Key('minimal-morale-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-morale-4')), findsOneWidget);
+  });
+
   testWidgets('retreated ships show zero hp and a desaturated portrait', (
     tester,
   ) async {

@@ -188,6 +188,17 @@ class FleetShipMinimalRow extends StatelessWidget {
 
   bool _show(String key) => visible.contains(key);
 
+  // 与普通档无头像时一致：疲劳值关闭后，疲劳不足与闪光仍要能看到。
+  bool get _moraleWarns =>
+      ship.condition < 30 ||
+      (ship.condition >= 50 && moraleSparkleMode != MoraleSparkleMode.off);
+
+  Widget _moraleChip() => MoraleChip(
+    key: Key('minimal-morale-${ship.id}'),
+    value: ship.condition,
+    sparkleMode: moraleSparkleMode,
+  );
+
   static double _ratio(int current, int max) =>
       max <= 0 ? 0 : (current / max).clamp(0.0, 1.0);
 
@@ -260,6 +271,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     ].where((m) => showsMechanism(visible, m)).toList();
     final speed = ShipSpeedVisual.fromSpeed(ship.effectiveSpeed(master));
     final meta = <Widget>[
+      if (!_show('morale') && _moraleWarns) _moraleChip(),
       if (_show('level'))
         Text(
           'Lv${ship.level}',
@@ -396,14 +408,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     final showSupply = _show('fuel') || _show('ammo');
     return Row(
       children: [
-        if (_show('morale')) ...[
-          MoraleChip(
-            key: Key('minimal-morale-${ship.id}'),
-            value: ship.condition,
-            sparkleMode: moraleSparkleMode,
-          ),
-          const SizedBox(width: 4),
-        ],
+        if (_show('morale')) ...[_moraleChip(), const SizedBox(width: 4)],
         if (_show('hp')) ...[
           Expanded(
             child: repairStatus == ShipRepairStatus.retreat
