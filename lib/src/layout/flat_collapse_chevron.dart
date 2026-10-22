@@ -29,22 +29,30 @@ class FlatCollapseChevron extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: InkResponse(
-          radius: height / 2,
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.only(right: iconInset),
-            child: Align(
-              alignment: iconAlignment,
-              child: Icon(
-                collapsed
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_up_rounded,
-                size: 15,
-                color: const Color(0xff8fa8b6),
+      // 自带透明 Material：墨水画在最近的 Material 上，若借用整屏那层，就被铺在
+      // 它上面的信息栏底色盖住。
+      child: Material(
+        type: MaterialType.transparency,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: InkResponse(
+            radius: height / 2,
+            // 透明 Material 会把墨水裁成点击框的矩形，圆形边界让水波也保持圆形。
+            containedInkWell: true,
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Padding(
+              padding: EdgeInsets.only(right: iconInset),
+              child: Align(
+                alignment: iconAlignment,
+                child: Icon(
+                  collapsed
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                  size: 15,
+                  color: const Color(0xff8fa8b6),
+                ),
               ),
             ),
           ),
