@@ -111,7 +111,11 @@ void main() {
   test(
     'saved settings migrate mechanisms and enforce a maximum of five metrics',
     () {
-      expect(normalizeDisplayFields({'asw', 'night'}), {'mechanisms'});
+      expect(normalizeDisplayFields({'asw', 'night'}), {'asw', 'night'});
+      expect(normalizeDisplayFields({'mechanisms', 'hp'}), {
+        ...mechanismFields,
+        'hp',
+      });
       final restored = normalizeDisplayFields(allFields);
       expect(restored.intersection(summaryFields).length, 5);
       expect(normalizeDisplayFields({}), isEmpty);

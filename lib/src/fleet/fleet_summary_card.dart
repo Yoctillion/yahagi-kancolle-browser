@@ -202,6 +202,7 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                               damagePulseFilter: widget.damagePulseFilter,
                               moraleSparkleMode: widget.moraleSparkleMode,
                               repairStatus: repairStatuses[ships[i].id],
+                              specialAttack: i == 0 ? specialAttack : null,
                               onTap: () => widget.onOpenFleet(_selectedFleetId),
                             ),
                           ],

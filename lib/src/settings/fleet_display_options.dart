@@ -1,3 +1,4 @@
+import '../fleet/equipment_display.dart';
 import '../fleet/fleet_ui_strings.dart';
 
 enum FleetShipTypeLabelMode { localizedName, abbreviation }
@@ -26,7 +27,7 @@ const defaultFields = <String>{
   'type',
   'shipSpeed',
   'morale',
-  'mechanisms',
+  ...mechanismFields,
   'speed',
   'total-level',
   'air-power',
@@ -42,14 +43,26 @@ Set<String> get compactFields => defaultFields.difference({
 });
 
 final summaryFields = displayGroups[FleetUiKeys.summaryGroup]!.keys.toSet();
+const mechanismFields = {'asw', 'aaci', 'rocket', 'night', 'special'};
+
+bool showsMechanism(Set<String> visible, EquipmentMechanismDisplay mechanism) =>
+    visible.contains(switch (mechanism.kind) {
+      CombatMechanismKind.openingAsw => 'asw',
+      CombatMechanismKind.antiAirCutIn => 'aaci',
+      CombatMechanismKind.rocketBarrage => 'rocket',
+      CombatMechanismKind.nightCarrierAttack => 'night',
+      CombatMechanismKind.fleetSpecialAttack => 'special',
+      null => null,
+    });
 Set<String> get allFields =>
     displayGroups.values.expand((group) => group.keys).toSet();
 const maximumSummaryFields = 5;
 
 Set<String> normalizeDisplayFields(Iterable<String> saved) {
   final migrated = saved.toSet();
-  if (migrated.any({'asw', 'aaci', 'rocket', 'night', 'special'}.contains)) {
-    migrated.add('mechanisms');
+  // 曾有一版把五个机制开关合并成单个 'mechanisms'，读到它时按全开还原。
+  if (migrated.remove('mechanisms')) {
+    migrated.addAll(mechanismFields);
   }
   final valid = migrated.intersection(allFields);
   final overflow = summaryFields
