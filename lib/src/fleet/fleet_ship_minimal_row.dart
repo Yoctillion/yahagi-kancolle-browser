@@ -188,6 +188,17 @@ class FleetShipMinimalRow extends StatelessWidget {
 
   bool _show(String key) => visible.contains(key);
 
+  // 与普通档无头像时一致：疲劳值关闭后，疲劳不足与闪光仍要能看到。
+  bool get _moraleWarns =>
+      ship.condition < 30 ||
+      (ship.condition >= 50 && moraleSparkleMode != MoraleSparkleMode.off);
+
+  Widget _moraleChip() => MoraleChip(
+    key: Key('minimal-morale-${ship.id}'),
+    value: ship.condition,
+    sparkleMode: moraleSparkleMode,
+  );
+
   static double _ratio(int current, int max) =>
       max <= 0 ? 0 : (current / max).clamp(0.0, 1.0);
 
@@ -196,6 +207,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     final master = state.masterForShip(ship);
     final portrait = _show('portrait');
     final shadows = portrait ? flatOnImageShadows : null;
+    final hasStatus = ['hp', 'fuel', 'ammo', 'morale'].any(_show);
     final lines = Padding(
       padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
       child: Column(
@@ -203,8 +215,10 @@ class FleetShipMinimalRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(height: 14, child: _identityLine(context, master, shadows)),
-          const SizedBox(height: 1),
-          SizedBox(height: 12, child: _statusLine(master, shadows)),
+          if (hasStatus) ...[
+            const SizedBox(height: 1),
+            SizedBox(height: 12, child: _statusLine(master, shadows)),
+          ],
         ],
       ),
     );
@@ -243,7 +257,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     List<Shadow>? shadows,
   ) {
     final typeLabel = _show('type')
-        ? fleetShipTypeLabel(context, state, master, shipTypeLabelMode) ??
+        ? fleetShipTypeShortLabel(context, state, master, shipTypeLabelMode) ??
               fleetText(context, FleetUiKeys.unknownShipType)
         : null;
     final name =
@@ -257,6 +271,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     ].where((m) => showsMechanism(visible, m)).toList();
     final speed = ShipSpeedVisual.fromSpeed(ship.effectiveSpeed(master));
     final meta = <Widget>[
+      if (!_show('morale') && _moraleWarns) _moraleChip(),
       if (_show('level'))
         Text(
           'Lv${ship.level}',
@@ -384,6 +399,9 @@ class FleetShipMinimalRow extends StatelessWidget {
         : ship.currentHp;
     final hpRatio = _ratio(currentHp, ship.maxHp);
     final barColor = shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0);
+    if (!_show('bars')) {
+      return _valueLine(master, shadows, currentHp, hpRatio, barColor);
+    }
     final hpBar = ProphetHpBar(
       value: hpRatio,
       color: barColor,
@@ -393,14 +411,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     final showSupply = _show('fuel') || _show('ammo');
     return Row(
       children: [
-        if (_show('morale')) ...[
-          MoraleChip(
-            key: Key('minimal-morale-${ship.id}'),
-            value: ship.condition,
-            sparkleMode: moraleSparkleMode,
-          ),
-          const SizedBox(width: 4),
-        ],
+        if (_show('morale')) ...[_moraleChip(), const SizedBox(width: 4)],
         if (_show('hp')) ...[
           Expanded(
             child: repairStatus == ShipRepairStatus.retreat
@@ -456,6 +467,99 @@ class FleetShipMinimalRow extends StatelessWidget {
             ],
           ),
         ],
+      ],
+    );
+  }
+
+  // 与普通档关闭条状一致只剩数值；补给细条也随之换成数值，从左依次排开。
+  Widget _valueLine(
+    MasterShip? master,
+    List<Shadow>? shadows,
+    int currentHp,
+    double hpRatio,
+    Color barColor,
+  ) {
+    Widget value(String text, Color color, Key key) => Text(
+      text,
+      key: key,
+      maxLines: 1,
+      style: TextStyle(
+        color: color,
+        fontSize: 9,
+        fontWeight: FontWeight.w800,
+        fontFeatures: const [FontFeature.tabularFigures()],
+        shadows: shadows,
+      ),
+    );
+    Widget item(Widget icon, Widget value) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [icon, const SizedBox(width: 2), value],
+    );
+    Widget supply(String key, String asset, int current, int max) => item(
+      Image.asset(asset, width: 10, height: 10),
+      value(
+        '$current/$max',
+        shipSupplyValueColor(_ratio(current, max)),
+        Key('minimal-supply-$key-value-${ship.id}'),
+      ),
+    );
+    final hpText = value(
+      '$currentHp/${ship.maxHp}',
+      shipHpValueColor(hpRatio, isZeroHp: currentHp <= 0),
+      Key('minimal-hp-value-${ship.id}'),
+    );
+    final items = <Widget>[
+      if (_show('hp'))
+        item(
+          Icon(
+            Icons.favorite_rounded,
+            color: const Color(0xffef5a5a),
+            size: 10,
+            shadows: shadows,
+          ),
+          repairStatus == ShipRepairStatus.retreat
+              ? hpText
+              : DamagePulseGlow(
+                  currentHp: currentHp,
+                  maxHp: ship.maxHp,
+                  filter: damagePulseFilter,
+                  normalColor: barColor,
+                  child: hpText,
+                ),
+        ),
+      if (_show('fuel'))
+        supply(
+          'fuel',
+          'assets/images/material/01.png',
+          ship.currentFuel,
+          master?.maxFuel ?? 0,
+        ),
+      if (_show('ammo'))
+        supply(
+          'ammo',
+          'assets/images/material/02.png',
+          ship.currentAmmo,
+          master?.maxAmmo ?? 0,
+        ),
+    ];
+    return Row(
+      children: [
+        if (_show('morale')) ...[_moraleChip(), const SizedBox(width: 4)],
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  items[i],
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -441,6 +441,26 @@
 "lib/src/localization/game_name_catalog.dart|陸上施設"
 "lib/src/localization/game_name_catalog.dart|陆上设施"
 "lib/src/localization/game_name_catalog.dart|陸上設施"
+# Two-character short forms of original Japanese ship-type names for the minimal fleet row; CJK locales keep source names.
+"lib/src/fleet/fleet_ship_type_label.dart|海防"
+"lib/src/fleet/fleet_ship_type_label.dart|駆逐"
+"lib/src/fleet/fleet_ship_type_label.dart|軽巡"
+"lib/src/fleet/fleet_ship_type_label.dart|雷巡"
+"lib/src/fleet/fleet_ship_type_label.dart|重巡"
+"lib/src/fleet/fleet_ship_type_label.dart|航巡"
+"lib/src/fleet/fleet_ship_type_label.dart|軽母"
+"lib/src/fleet/fleet_ship_type_label.dart|戦艦"
+"lib/src/fleet/fleet_ship_type_label.dart|航戦"
+"lib/src/fleet/fleet_ship_type_label.dart|空母"
+"lib/src/fleet/fleet_ship_type_label.dart|潜水"
+"lib/src/fleet/fleet_ship_type_label.dart|潜空"
+"lib/src/fleet/fleet_ship_type_label.dart|補給"
+"lib/src/fleet/fleet_ship_type_label.dart|水母"
+"lib/src/fleet/fleet_ship_type_label.dart|揚陸"
+"lib/src/fleet/fleet_ship_type_label.dart|装母"
+"lib/src/fleet/fleet_ship_type_label.dart|工作"
+"lib/src/fleet/fleet_ship_type_label.dart|潜母"
+"lib/src/fleet/fleet_ship_type_label.dart|練巡"
 
 # Development pool source-data markers from kc-development-tools labels/descriptions.
 # EN/KO display replaces these group, exclusion and ship-class tokens; CJK locales preserve source data.
