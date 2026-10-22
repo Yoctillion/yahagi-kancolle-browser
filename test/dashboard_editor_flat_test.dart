@@ -64,19 +64,29 @@ Widget _host({
 );
 
 void main() {
-  testWidgets('flat 显隐开关是与标题行同高居中的小勾选框', (tester) async {
+  testWidgets('flat 编辑行加高到 32，勾选框和齿轮垂直居中', (tester) async {
     final calls = _Calls();
     await tester.pumpWidget(
       _host(style: PanelStyle.flat, calls: calls, hidden: {'repair'}),
     );
     expect(find.byType(Checkbox), findsNothing);
     final toggle = find.byKey(const Key('dashboard-visibility-fleet'));
-    expect(tester.getSize(toggle), const Size.square(flatHeaderHeight));
+    expect(
+      tester.getSize(toggle),
+      const Size(flatHeaderHeight, flatEditRowHeight),
+    );
     final header = find.descendant(
       of: find.byKey(const Key('card-fleet')),
       matching: find.byKey(const Key('dashboard-card-header')),
     );
+    expect(tester.getSize(header).height, flatEditRowHeight);
     expect(tester.getCenter(toggle).dy, tester.getCenter(header).dy);
+    expect(
+      tester
+          .getCenter(find.byKey(const Key('fleet-display-settings-button')))
+          .dy,
+      tester.getCenter(header).dy,
+    );
     expect(
       find.descendant(
         of: toggle,

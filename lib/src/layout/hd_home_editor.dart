@@ -74,15 +74,16 @@ class DashboardEditItem extends StatelessWidget {
   );
 }
 
-/// Material 的 Checkbox 固定占 48，和 24 高的扁平标题行对不齐。
+/// Material 的 Checkbox 固定占 48，比扁平档的编辑行还高，放进去对不齐。
 class _FlatVisibilityIcon extends StatelessWidget {
   const _FlatVisibilityIcon({required this.id, required this.visible});
   final String id;
   final bool visible;
   @override
-  Widget build(BuildContext context) => SizedBox.square(
+  Widget build(BuildContext context) => SizedBox(
     key: Key('dashboard-visibility-$id'),
-    dimension: flatHeaderHeight,
+    width: flatHeaderHeight,
+    height: flatEditRowHeight,
     child: Icon(
       visible ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
       size: flatActionIconSize,
