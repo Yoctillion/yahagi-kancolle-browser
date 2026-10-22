@@ -196,6 +196,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     final master = state.masterForShip(ship);
     final portrait = _show('portrait');
     final shadows = portrait ? flatOnImageShadows : null;
+    final hasStatus = ['hp', 'fuel', 'ammo', 'morale'].any(_show);
     final lines = Padding(
       padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
       child: Column(
@@ -203,8 +204,10 @@ class FleetShipMinimalRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(height: 14, child: _identityLine(context, master, shadows)),
-          const SizedBox(height: 1),
-          SizedBox(height: 12, child: _statusLine(master, shadows)),
+          if (hasStatus) ...[
+            const SizedBox(height: 1),
+            SizedBox(height: 12, child: _statusLine(master, shadows)),
+          ],
         ],
       ),
     );

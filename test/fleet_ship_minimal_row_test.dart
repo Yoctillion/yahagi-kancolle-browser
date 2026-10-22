@@ -257,6 +257,31 @@ void main() {
     expect(find.text('高速'), findsOneWidget);
   });
 
+  testWidgets('status line is dropped when all its fields are hidden', (
+    tester,
+  ) async {
+    final state = demoState();
+    await tester.pumpWidget(_app(_row(state, 2)));
+    await tester.pump();
+    final full = tester.getSize(find.byKey(const Key('minimal-ship-row-2')));
+
+    await tester.pumpWidget(
+      _app(
+        _row(
+          state,
+          2,
+          visible: defaultFields.difference({'hp', 'fuel', 'ammo', 'morale'}),
+        ),
+      ),
+    );
+    await tester.pump();
+    final identityOnly = tester.getSize(
+      find.byKey(const Key('minimal-ship-row-2')),
+    );
+    expect(identityOnly.height, lessThan(full.height - 10));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('retreated ships show zero hp and a desaturated portrait', (
     tester,
   ) async {
