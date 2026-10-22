@@ -178,7 +178,7 @@ void main() {
       find.byKey(const Key('minimal-mechanism-1-openingAsw')),
       findsOneWidget,
     );
-    expect(find.text('先制对潜'), findsOneWidget);
+    expect(find.text('先反'), findsOneWidget);
     expect(
       find.byKey(const Key('minimal-mechanism-2-nightCarrierAttack')),
       findsOneWidget,
@@ -201,9 +201,7 @@ void main() {
     );
   });
 
-  testWidgets('several mechanisms on one ship switch to short labels', (
-    tester,
-  ) async {
+  testWidgets('mechanism tags always use short labels', (tester) async {
     const specialAttack = EquipmentMechanismDisplay(
       label: '大和型特殊攻击',
       shortLabel: '特攻',
@@ -230,7 +228,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('先制对潜'), findsOneWidget);
+    expect(find.text('先反'), findsOneWidget);
     expect(find.text('特攻'), findsNothing);
   });
 

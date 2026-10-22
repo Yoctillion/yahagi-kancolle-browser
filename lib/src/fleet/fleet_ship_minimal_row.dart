@@ -255,12 +255,6 @@ class FleetShipMinimalRow extends StatelessWidget {
       ...detectShipCombatMechanisms(state, ship),
       ?specialAttack,
     ].where((m) => showsMechanism(visible, m)).toList();
-    // 一行只有一个机制时写全称，多个时改用短称，免得整段被 FittedBox 缩得看不清。
-    final mechanismLabel = mechanisms.length == 1
-        ? (EquipmentMechanismDisplay m) =>
-              gameNames(context).entityText(fleetText(context, m.label))
-        : (EquipmentMechanismDisplay m) =>
-              fleetText(context, m.effectiveShortLabel);
     final speed = ShipSpeedVisual.fromSpeed(ship.effectiveSpeed(master));
     final meta = <Widget>[
       if (_show('level'))
@@ -282,7 +276,7 @@ class FleetShipMinimalRow extends StatelessWidget {
       for (final mechanism in mechanisms)
         _Tag(
           key: Key('minimal-mechanism-${ship.id}-${mechanism.kind?.name}'),
-          text: mechanismLabel(mechanism),
+          text: fleetText(context, mechanism.effectiveShortLabel),
           color: mechanismToneColor(mechanism.tone),
         ),
       if (repairStatus != null)
