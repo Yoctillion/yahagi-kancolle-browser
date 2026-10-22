@@ -81,7 +81,9 @@ class DashboardCard extends StatelessWidget {
                 if (flat) {
                   return SizedBox(
                     key: const Key('dashboard-card-header'),
-                    height: flatHeaderHeight,
+                    height: DashboardEditingScope.isEditing(context)
+                        ? flatEditRowHeight
+                        : flatHeaderHeight,
                     child: _flatHeader(context),
                   );
                 }

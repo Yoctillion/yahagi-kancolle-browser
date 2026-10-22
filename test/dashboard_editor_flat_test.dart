@@ -12,6 +12,7 @@ class _Calls {
   final toggled = <String>[];
   var resets = 0;
   var dones = 0;
+  final moves = <String>[];
 }
 
 Widget _host({
@@ -51,7 +52,7 @@ Widget _host({
                 ),
               ),
               onToggle: calls.toggled.add,
-              onMove: (_, _, _) {},
+              onMove: (id, target, after) => calls.moves.add('$id>$target'),
               onReset: () => calls.resets++,
               onDone: () => calls.dones++,
             ),
@@ -63,19 +64,29 @@ Widget _host({
 );
 
 void main() {
-  testWidgets('flat 显隐开关是与标题行同高居中的小勾选框', (tester) async {
+  testWidgets('flat 编辑行加高到 32，勾选框和齿轮垂直居中', (tester) async {
     final calls = _Calls();
     await tester.pumpWidget(
       _host(style: PanelStyle.flat, calls: calls, hidden: {'repair'}),
     );
     expect(find.byType(Checkbox), findsNothing);
     final toggle = find.byKey(const Key('dashboard-visibility-fleet'));
-    expect(tester.getSize(toggle), const Size.square(flatHeaderHeight));
+    expect(
+      tester.getSize(toggle),
+      const Size(flatHeaderHeight, flatEditRowHeight),
+    );
     final header = find.descendant(
       of: find.byKey(const Key('card-fleet')),
       matching: find.byKey(const Key('dashboard-card-header')),
     );
+    expect(tester.getSize(header).height, flatEditRowHeight);
     expect(tester.getCenter(toggle).dy, tester.getCenter(header).dy);
+    expect(
+      tester
+          .getCenter(find.byKey(const Key('fleet-display-settings-button')))
+          .dy,
+      tester.getCenter(header).dy,
+    );
     expect(
       find.descendant(
         of: toggle,
@@ -92,6 +103,39 @@ void main() {
     );
     await tester.tap(toggle);
     expect(calls.toggled, ['fleet']);
+  });
+
+  testWidgets('flat 点条目任意位置切换显隐，点齿轮不切换', (tester) async {
+    final calls = _Calls();
+    await tester.pumpWidget(_host(style: PanelStyle.flat, calls: calls));
+    await tester.tap(find.text('repair'));
+    expect(calls.toggled, ['repair']);
+    await tester.tap(find.byKey(const Key('fleet-display-settings-button')));
+    expect(calls.toggled, ['repair']);
+  });
+
+  testWidgets('flat 整行可点后仍能长按拖动排序', (tester) async {
+    final calls = _Calls();
+    await tester.pumpWidget(_host(style: PanelStyle.flat, calls: calls));
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('fleet')),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const Key('dashboard-target-end'))),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(calls.moves, ['fleet>null']);
+    expect(calls.toggled, isEmpty);
+  });
+
+  testWidgets('card 样式点标题不切换显隐', (tester) async {
+    final calls = _Calls();
+    await tester.pumpWidget(_host(style: PanelStyle.card, calls: calls));
+    await tester.tap(find.text('repair'));
+    expect(calls.toggled, isEmpty);
   });
 
   testWidgets('flat 列表不留左右内边距', (tester) async {
