@@ -379,6 +379,68 @@ void main() {
     }
   });
 
+  testWidgets('original ship type names use two-character short forms', (
+    tester,
+  ) async {
+    const names = {3: '軽巡洋艦', 4: '重雷装巡洋艦', 6: '航空巡洋艦', 11: '正規空母', 16: '水上機母艦'};
+    final state = GameState.empty.copyWith(
+      hasPortData: true,
+      masterShipTypes: {
+        for (final e in names.entries)
+          e.key: MasterShipType(id: e.key, name: e.value),
+      },
+      masterShips: {
+        for (final id in names.keys)
+          id: MasterShip(id: id, name: '艦$id', shipTypeId: id, speed: 10),
+      },
+      ships: {
+        for (final id in names.keys)
+          id: OwnedShip(
+            id: id,
+            masterId: id,
+            level: 1,
+            currentHp: 10,
+            maxHp: 10,
+            condition: 49,
+          ),
+      },
+    );
+    Future<void> pumpRows(FleetShipTypeLabelMode mode) async {
+      await tester.pumpWidget(
+        _app(
+          Column(
+            children: [
+              for (final id in names.keys)
+                SizedBox(
+                  width: 210,
+                  child: FleetShipMinimalRow(
+                    state: state,
+                    ship: state.ships[id]!,
+                    visible: defaultFields,
+                    shipTypeLabelMode: mode,
+                    damagePulseFilter: DamagePulseFilter.all,
+                    moraleSparkleMode: MoraleSparkleMode.blinking,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    await pumpRows(FleetShipTypeLabelMode.localizedName);
+    for (final short in ['軽巡', '雷巡', '航巡', '空母', '水母']) {
+      expect(find.text(short), findsOneWidget);
+    }
+    expect(find.text('軽巡洋艦'), findsNothing);
+
+    await pumpRows(FleetShipTypeLabelMode.abbreviation);
+    for (final abbreviation in ['CL', 'CLT', 'CAV', 'CV', 'AV']) {
+      expect(find.text(abbreviation), findsOneWidget);
+    }
+  });
+
   testWidgets('retreated ships show zero hp and a desaturated portrait', (
     tester,
   ) async {

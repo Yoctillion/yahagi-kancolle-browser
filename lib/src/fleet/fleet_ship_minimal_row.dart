@@ -257,7 +257,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     List<Shadow>? shadows,
   ) {
     final typeLabel = _show('type')
-        ? fleetShipTypeLabel(context, state, master, shipTypeLabelMode) ??
+        ? fleetShipTypeShortLabel(context, state, master, shipTypeLabelMode) ??
               fleetText(context, FleetUiKeys.unknownShipType)
         : null;
     final name =
