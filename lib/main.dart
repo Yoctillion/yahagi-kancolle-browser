@@ -27,6 +27,10 @@ import 'src/battle/formation_memory.dart';
 import 'src/logbook/logbook_database.dart';
 import 'src/logbook/logbook_page.dart';
 import 'src/battle/live_battle_card.dart';
+import 'src/practice/practice_opponent_controller.dart';
+import 'src/practice/practice_opponent_panel.dart';
+import 'src/smart_panel/smart_panel_card.dart';
+import 'src/smart_panel/smart_panel_controller.dart';
 import 'src/audio/game_audio_controller.dart';
 import 'src/audio/game_audio_store.dart';
 import 'src/browser/game_browser_controller.dart';
@@ -84,6 +88,7 @@ import 'src/fleet/anchorage_repair_navigation.dart';
 import 'src/fleet/anchorage_repair_view.dart';
 import 'src/fleet/fleet_summary_card.dart';
 import 'src/fleet/land_base_summary_card.dart';
+import 'src/expedition/expedition_check_card.dart';
 import 'src/fleet/expedition_summary_card.dart';
 import 'src/fleet/repair_summary_card.dart';
 import 'src/fleet/construction_summary_card.dart';
@@ -532,6 +537,15 @@ Future<void> main() async {
     layoutSettingsController: layoutSettingsController,
     topNoticeController: headerNoticeController,
   );
+  final smartPanelController = SmartPanelController(
+    stateProvider: () => gameStateController.state,
+    waitForGameState: () => gameStateController.idle,
+    autoSwitchEnabled: () => layoutSettingsController.smartPanelAutoSwitch,
+    accountSession: accountSession,
+  );
+  final practiceOpponentController = PracticeOpponentController(
+    accountSession: accountSession,
+  );
   gameApiEventPipeline = GameApiEventPipeline(
     settleGameState: () async {
       await gameStateController.idle;
@@ -547,6 +561,8 @@ Future<void> main() async {
       battleController,
       newShipReminderController,
       gameInfoNoticeController,
+      smartPanelController,
+      practiceOpponentController,
     ],
     onBackgroundDecodeFallback: (path) {
       if (!kcwikiReportController.enabled) return;
@@ -770,6 +786,8 @@ Future<void> main() async {
     screenAwakeController: screenAwakeController,
     headerNoticeController: headerNoticeController,
     gameInfoNoticeController: gameInfoNoticeController,
+    smartPanelController: smartPanelController,
+    practiceOpponentController: practiceOpponentController,
     gameMouseWheelSettingsController: gameMouseWheelSettingsController,
     shipSubtitleSettingsController: shipSubtitleSettingsController,
     shipSubtitleCatalogController: shipSubtitleCatalogController,
@@ -1063,6 +1081,8 @@ class YahagiApp extends StatelessWidget {
     this.screenAwakeController,
     this.headerNoticeController,
     this.gameInfoNoticeController,
+    this.smartPanelController,
+    this.practiceOpponentController,
     this.gameMouseWheelSettingsController,
     this.gameFrameRefreshShortcutSettings,
     this.shipSubtitleSettingsController,
@@ -1116,6 +1136,8 @@ class YahagiApp extends StatelessWidget {
   final ScreenAwakeController? screenAwakeController;
   final TopNoticeController? headerNoticeController;
   final GameInfoNoticeController? gameInfoNoticeController;
+  final SmartPanelController? smartPanelController;
+  final PracticeOpponentController? practiceOpponentController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final ShipSubtitleSettingsController? shipSubtitleSettingsController;
@@ -1250,6 +1272,8 @@ class YahagiApp extends StatelessWidget {
                   gameScreenshotController: gameScreenshotController,
                   headerNoticeController: headerNoticeController,
                   gameInfoNoticeController: gameInfoNoticeController,
+                  smartPanelController: smartPanelController,
+                  practiceOpponentController: practiceOpponentController,
                   showDeveloperDiagnostics: showDeveloperDiagnostics,
                   diagnosticController: diagnosticController,
                   telemetryController: telemetryController,
@@ -1481,6 +1505,8 @@ class YahagiShell extends StatefulWidget {
     this.gameScreenshotController,
     this.headerNoticeController,
     this.gameInfoNoticeController,
+    this.smartPanelController,
+    this.practiceOpponentController,
     this.fcdMapController,
     this.questCatalogController,
     this.sortieMapCatalogController,
@@ -1536,6 +1562,8 @@ class YahagiShell extends StatefulWidget {
   final GameScreenshotController? gameScreenshotController;
   final TopNoticeController? headerNoticeController;
   final GameInfoNoticeController? gameInfoNoticeController;
+  final SmartPanelController? smartPanelController;
+  final PracticeOpponentController? practiceOpponentController;
   final bool showDeveloperDiagnostics;
   final DiagnosticController? diagnosticController;
   final TelemetryController? telemetryController;
@@ -1622,6 +1650,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     widget.newShipReminderController?.removeListener(_handleNewShipAlert);
     widget.kcwikiReportConsumer?.dispose();
     widget.gameInfoNoticeController?.dispose();
+    widget.smartPanelController?.dispose();
+    widget.practiceOpponentController?.dispose();
     _questFilters.dispose();
     _gameModsController.dispose();
     _windowMetricsRecoveryScheduler.dispose();
@@ -2704,6 +2734,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                           }) => _InformationPanel(
                                             questCatalogController:
                                                 widget.questCatalogController,
+                                            smartPanelController:
+                                                widget.smartPanelController,
+                                            practiceOpponentController: widget
+                                                .practiceOpponentController,
                                             hdEditing: _hdEditing,
                                             onHdEditingChanged: (editing) =>
                                                 setState(
@@ -3849,8 +3883,12 @@ class _InformationPanel extends StatefulWidget {
     this.singleModule,
     this.excludedModules = const {},
     this.bottomSafeArea = 0,
+    this.smartPanelController,
+    this.practiceOpponentController,
   });
 
+  final SmartPanelController? smartPanelController;
+  final PracticeOpponentController? practiceOpponentController;
   final bool hd;
   final double bottomSafeArea;
   final QuestCatalogController? questCatalogController;
@@ -3883,6 +3921,140 @@ class _InformationPanel extends StatefulWidget {
 class _InformationPanelState extends State<_InformationPanel> {
   bool _isEditing = false;
   final Set<String> _hdCollapsed = {};
+
+  LayoutSettingsController get _layout => widget.layoutSettingsController;
+
+  Widget _expeditionCard({
+    required bool collapsed,
+    required VoidCallback onToggleCollapse,
+    VoidCallback? onOpenDisplaySettings,
+  }) => ExpeditionSummaryCard(
+    showLogo: _layout.moduleShowLogo('expedition'),
+    showTitle: _layout.moduleShowName('expedition'),
+    visible: _layout.moduleDisplayFields('expedition'),
+    onOpenDisplaySettings: onOpenDisplaySettings,
+    controller: widget.gameStateController,
+    collapsed: collapsed,
+    onToggleCollapse: onToggleCollapse,
+    onOpenExpedition: widget.onOpenExpedition,
+    onOpenExpeditionCheck: widget.onOpenExpeditionCheck,
+  );
+
+  Widget _repairCard({
+    required bool collapsed,
+    required VoidCallback onToggleCollapse,
+    VoidCallback? onOpenDisplaySettings,
+  }) => RepairSummaryCard(
+    showLogo: _layout.moduleShowLogo('repair'),
+    showTitle: _layout.moduleShowName('repair'),
+    visible: _layout.moduleDisplayFields('repair'),
+    onOpenDisplaySettings: onOpenDisplaySettings,
+    controller: widget.gameStateController,
+    collapsed: collapsed,
+    onToggleCollapse: onToggleCollapse,
+    onOpenRepair: widget.onOpenRepair,
+  );
+
+  Widget _questsCard({
+    required bool collapsed,
+    required VoidCallback onToggleCollapse,
+    VoidCallback? onOpenDisplaySettings,
+  }) => PinnedQuestsSummary(
+    catalogController: widget.questCatalogController,
+    visible: _layout.moduleDisplayFields('quests'),
+    showLogo: _layout.moduleShowLogo('quests'),
+    showTitle: _layout.moduleShowName('quests'),
+    onOpenDisplaySettings: onOpenDisplaySettings,
+    controller: widget.gameStateController,
+    collapsed: collapsed,
+    onToggleCollapse: onToggleCollapse,
+    onOpenQuest: widget.onOpenQuest,
+  );
+
+  Widget _battleCard({
+    required Key key,
+    required bool collapsed,
+    required VoidCallback onToggleCollapse,
+    VoidCallback? onOpenDisplaySettings,
+    BattlePanelMode? lockedMode,
+  }) => LiveBattleCard(
+    key: key,
+    showLogo: _layout.moduleShowLogo('battle'),
+    showTitle: _layout.moduleShowName('battle'),
+    onOpenDisplaySettings: onOpenDisplaySettings,
+    controller: widget.battleController,
+    showEnemyPortraits:
+        widget.battlePredictionSettingsController?.enemyPortraitsEnabled ??
+        true,
+    showLastFormationHint:
+        widget.battlePredictionSettingsController?.lastFormationHintEnabled ??
+        true,
+    sectionOrder: widget.battlePredictionSettingsController?.sectionOrder,
+    damagePulseMode: widget.safetySettingsController.battleStatusEffects
+        .pulseFilterFor(BattleEffectSurface.prediction),
+    collapsed: collapsed,
+    onToggleCollapse: onToggleCollapse,
+    lockedMode: lockedMode,
+  );
+
+  Widget _preSortieCard({
+    required Key key,
+    required bool collapsed,
+    required VoidCallback onToggleCollapse,
+    VoidCallback? onOpenDisplaySettings,
+  }) => PreSortieCheckSummary(
+    key: key,
+    showLogo: _layout.moduleShowLogo('pre_sortie'),
+    showTitle: _layout.moduleShowName('pre_sortie'),
+    onOpenDisplaySettings: onOpenDisplaySettings,
+    controller: widget.gameStateController,
+    settingsController: _layout,
+    collapsed: collapsed,
+    onToggleCollapse: onToggleCollapse,
+    onOpenFleet: widget.onOpenFleet,
+  );
+
+  // Embedded cards keep their own PageStorage keys so mode switches made in the
+  // smart panel never leak into the standalone cards.
+  Widget _smartStateBody(BuildContext context, SmartPanelState state) {
+    void noop() {}
+    return switch (state) {
+      SmartPanelState.home => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _expeditionCard(collapsed: false, onToggleCollapse: noop),
+          _repairCard(collapsed: false, onToggleCollapse: noop),
+        ],
+      ),
+      SmartPanelState.sortieCheck => _preSortieCard(
+        key: const PageStorageKey('smart-pre-sortie'),
+        collapsed: false,
+        onToggleCollapse: noop,
+      ),
+      SmartPanelState.battle => _battleCard(
+        key: const PageStorageKey('smart-live-battle'),
+        collapsed: false,
+        onToggleCollapse: noop,
+        lockedMode: BattlePanelMode.detailed,
+      ),
+      SmartPanelState.quests => _questsCard(
+        collapsed: false,
+        onToggleCollapse: noop,
+      ),
+      SmartPanelState.expeditionCheck => ExpeditionCheckContent(
+        controller: widget.gameStateController,
+        onOpenDetails: widget.onOpenExpeditionCheck,
+        fleetRequest: widget.smartPanelController?.expeditionFleetRequest,
+      ),
+      SmartPanelState.practice => switch (widget.practiceOpponentController) {
+        final practice? => PracticeOpponentPanel(
+          controller: practice,
+          gameStateController: widget.gameStateController,
+        ),
+        null => const SizedBox.shrink(),
+      },
+    };
+  }
 
   @override
   void initState() {
@@ -4075,16 +4247,9 @@ class _InformationPanelState extends State<_InformationPanel> {
                   collapsed: isCollapsed,
                   onToggleCollapse: editing ? () {} : toggle,
                 ),
-                'expedition' => ExpeditionSummaryCard(
-                  showLogo: widget.layoutSettingsController.moduleShowLogo(
-                    'expedition',
-                  ),
-                  showTitle: widget.layoutSettingsController.moduleShowName(
-                    'expedition',
-                  ),
-                  visible: widget.layoutSettingsController.moduleDisplayFields(
-                    'expedition',
-                  ),
+                'expedition' => _expeditionCard(
+                  collapsed: isCollapsed,
+                  onToggleCollapse: editing ? () {} : toggle,
                   onOpenDisplaySettings: editing
                       ? () => showModuleDisplaySettings(
                           context,
@@ -4092,23 +4257,11 @@ class _InformationPanelState extends State<_InformationPanel> {
                           'expedition',
                         )
                       : null,
-                  controller: widget.gameStateController,
-                  collapsed: isCollapsed,
-                  onToggleCollapse: editing ? () {} : toggle,
-                  onOpenExpedition: widget.onOpenExpedition,
-                  onOpenExpeditionCheck: widget.onOpenExpeditionCheck,
                 ),
 
-                'repair' => RepairSummaryCard(
-                  showLogo: widget.layoutSettingsController.moduleShowLogo(
-                    'repair',
-                  ),
-                  showTitle: widget.layoutSettingsController.moduleShowName(
-                    'repair',
-                  ),
-                  visible: widget.layoutSettingsController.moduleDisplayFields(
-                    'repair',
-                  ),
+                'repair' => _repairCard(
+                  collapsed: isCollapsed,
+                  onToggleCollapse: editing ? () {} : toggle,
                   onOpenDisplaySettings: editing
                       ? () => showModuleDisplaySettings(
                           context,
@@ -4116,10 +4269,6 @@ class _InformationPanelState extends State<_InformationPanel> {
                           'repair',
                         )
                       : null,
-                  controller: widget.gameStateController,
-                  collapsed: isCollapsed,
-                  onToggleCollapse: editing ? () {} : toggle,
-                  onOpenRepair: widget.onOpenRepair,
                 ),
                 'construction' => ConstructionSummaryCard(
                   showLogo: widget.layoutSettingsController.moduleShowLogo(
@@ -4143,17 +4292,9 @@ class _InformationPanelState extends State<_InformationPanel> {
                   onToggleCollapse: editing ? () {} : toggle,
                   onOpenConstruction: widget.onOpenConstruction,
                 ),
-                'quests' => PinnedQuestsSummary(
-                  catalogController: widget.questCatalogController,
-                  visible: widget.layoutSettingsController.moduleDisplayFields(
-                    'quests',
-                  ),
-                  showLogo: widget.layoutSettingsController.moduleShowLogo(
-                    'quests',
-                  ),
-                  showTitle: widget.layoutSettingsController.moduleShowName(
-                    'quests',
-                  ),
+                'quests' => _questsCard(
+                  collapsed: isCollapsed,
+                  onToggleCollapse: editing ? () {} : toggle,
                   onOpenDisplaySettings: editing
                       ? () => showModuleDisplaySettings(
                           context,
@@ -4161,19 +4302,11 @@ class _InformationPanelState extends State<_InformationPanel> {
                           'quests',
                         )
                       : null,
-                  controller: widget.gameStateController,
+                ),
+                'battle' => _battleCard(
+                  key: const PageStorageKey('dashboard-live-battle'),
                   collapsed: isCollapsed,
                   onToggleCollapse: editing ? () {} : toggle,
-                  onOpenQuest: widget.onOpenQuest,
-                ),
-                'battle' => LiveBattleCard(
-                  key: const PageStorageKey('dashboard-live-battle'),
-                  showLogo: widget.layoutSettingsController.moduleShowLogo(
-                    'battle',
-                  ),
-                  showTitle: widget.layoutSettingsController.moduleShowName(
-                    'battle',
-                  ),
                   onOpenDisplaySettings: editing
                       ? () => showModuleDisplaySettings(
                           context,
@@ -4181,34 +4314,11 @@ class _InformationPanelState extends State<_InformationPanel> {
                           'battle',
                         )
                       : null,
-                  controller: widget.battleController,
-                  showEnemyPortraits:
-                      widget
-                          .battlePredictionSettingsController
-                          ?.enemyPortraitsEnabled ??
-                      true,
-                  showLastFormationHint:
-                      widget
-                          .battlePredictionSettingsController
-                          ?.lastFormationHintEnabled ??
-                      true,
-                  sectionOrder:
-                      widget.battlePredictionSettingsController?.sectionOrder,
-                  damagePulseMode: widget
-                      .safetySettingsController
-                      .battleStatusEffects
-                      .pulseFilterFor(BattleEffectSurface.prediction),
+                ),
+                'pre_sortie' => _preSortieCard(
+                  key: const PageStorageKey('dashboard-pre-sortie'),
                   collapsed: isCollapsed,
                   onToggleCollapse: editing ? () {} : toggle,
-                ),
-                'pre_sortie' => PreSortieCheckSummary(
-                  key: const PageStorageKey('dashboard-pre-sortie'),
-                  showLogo: widget.layoutSettingsController.moduleShowLogo(
-                    'pre_sortie',
-                  ),
-                  showTitle: widget.layoutSettingsController.moduleShowName(
-                    'pre_sortie',
-                  ),
                   onOpenDisplaySettings: editing
                       ? () => showModuleDisplaySettings(
                           context,
@@ -4216,12 +4326,26 @@ class _InformationPanelState extends State<_InformationPanel> {
                           'pre_sortie',
                         )
                       : null,
-                  controller: widget.gameStateController,
-                  settingsController: widget.layoutSettingsController,
-                  collapsed: isCollapsed,
-                  onToggleCollapse: editing ? () {} : toggle,
-                  onOpenFleet: widget.onOpenFleet,
                 ),
+                'smart' => switch (widget.smartPanelController) {
+                  final smart? => SmartPanelCard(
+                    controller: smart,
+                    headerStyle: _layout.smartPanelHeaderStyle,
+                    showLogo: _layout.moduleShowLogo('smart'),
+                    showTitle: _layout.moduleShowName('smart'),
+                    onOpenDisplaySettings: editing
+                        ? () => showModuleDisplaySettings(
+                            context,
+                            widget.layoutSettingsController,
+                            'smart',
+                          )
+                        : null,
+                    collapsed: isCollapsed,
+                    onToggleCollapse: editing ? () {} : toggle,
+                    stateBody: _smartStateBody,
+                  ),
+                  null => const SizedBox.shrink(),
+                },
                 _ => const SizedBox.shrink(),
               };
 

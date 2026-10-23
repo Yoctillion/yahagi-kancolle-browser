@@ -54,6 +54,7 @@ abstract class LayoutSettingsStore {
     'construction',
     'quests',
     'pre_sortie',
+    'smart',
   ];
 
   Future<List<String>> loadDashboardCardCollapsed();
