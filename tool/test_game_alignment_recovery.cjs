@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../lib/src/browser/game_page_alignment_script.dart'), 'utf8').split("r'''")[1].split("''';")[0];
-function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle') {
+function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wrapper = 'ooi-game', tag = 'iframe'} = {}) {
   const elements = new Map();
   const messages = [];
   let observer;
@@ -27,13 +27,17 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle') {
     remove() {writes++;}, contentWindow: {scrollTo() {scrolls++;}}});
   elements.set('game_frame', element());
   const canvas = {...element(), width: 1200, height: 720};
-  const ooi = {...element(), querySelector: () => ooiVisible ? elements.get('game_frame') : null};
-  elements.set('ooi-game', ooi);
+  const matchesOoiFrame = selector => selector.split(',').some(part =>
+    part.trim() === `${tag}#externalswf` ||
+    part.trim() === `${wrapper === 'ooi-game' ? '#ooi-page #ooi-game' : '#flashWrap'} > ${tag}#externalswf`);
+  const ooi = {...element(), querySelector: selector => ooiVisible && matchesOoiFrame(selector) ? elements.get('game_frame') : null};
+  elements.set(wrapper, ooi);
+  elements.get('game_frame').parentElement = ooi;
   const context = {location: {hostname, pathname}, getComputedStyle: () => ({display:'block',visibility:'visible'}),
     document: {readyState:'complete', documentElement: {}, body:{},
       head: {appendChild(e) {writes++;elements.set(e.id,e);}}, createElement: element,
       addEventListener: on, removeEventListener: off,
-      getElementById: id => elements.get(id), querySelector: () => ooiVisible ? elements.get('game_frame') : null,
+      getElementById: id => elements.get(id), querySelector: selector => ooiVisible && matchesOoiFrame(selector) ? elements.get('game_frame') : null,
       querySelectorAll: s => {scans++; return s === '#game_frame, #game-container' && visible ? [elements.get('game_frame')]
         : s === 'canvas' && canvasVisible ? [canvas] : s === 'dialog[open]' && dialogOpen ? [element()] : [];}},
     MutationObserver: class {constructor(cb) {observer=cb;observerCount++;} disconnect() {} observe() {}},
@@ -48,6 +52,7 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle') {
   return {messages, listeners, loading: value => {context.document.readyState = value ? 'loading' : 'complete';},
     show: value => {visible = value;}, dialog: value => {dialogOpen = value;},
     canvas: value => {canvasVisible = value;}, ooi: value => {ooiVisible = value;},
+    emptyOoiContainer: () => elements.set('ooi-game', {...element(), querySelector: () => null}),
     run: () => vm.runInContext(source, context), mutate: () => observer?.([]),
     emit: event => {for (const callback of [...(listeners.get(event) || [])]) callback();},
     flush: (kind) => {for (const id of [...scheduled.keys()]) {const task = scheduled.get(id); if(task && (!kind || task.kind === kind)) {scheduled.delete(id);task.callback();}}},
@@ -177,3 +182,41 @@ assert.equal(login.read(),'web');assert.deepEqual(login.effects(),loginBeforeRea
 const ooiBeforeRead = ooiGame.effects();
 assert.equal(ooiGame.read(),'web');assert.deepEqual(ooiGame.effects(),ooiBeforeRead);
 console.log('Pure current-document presentation reads have no fitting, mutation or notification side effects');
+
+for (const [route, wrapper] of [
+  ['/kancolle', 'ooi-game'], ['/kancolle/', 'ooi-game'],
+  ['/poi', 'flashWrap'], ['/poi/', 'flashWrap'],
+  ['/flash', 'flashWrap'], ['/flash/', 'flashWrap'],
+]) {
+  for (const tag of ['iframe', 'embed']) {
+    const ooiMode = page('ooi.moe', route, {wrapper, tag});
+    ooiMode.show(false);ooiMode.run();
+    ooiMode.viewport(600, 360);ooiMode.ooi(true);ooiMode.mutate();ooiMode.flush();
+    assert.equal(ooiMode.property('--yahagi-ooi-scale'), '0.5', `${route} ${tag} must fit a late game surface`);
+    assert.deepEqual(ooiMode.messages.filter(message => message.startsWith('game')), [], 'OOI wrappers must not also request native scaling');
+    ooiMode.viewport(1500, 900);ooiMode.emit('resize');ooiMode.flush();
+    assert.equal(ooiMode.property('--yahagi-ooi-scale'), '1.25', `${route} ${tag} must fill a large tablet panel`);
+  }
+}
+
+for (const route of ['/kancolle', '/poi', '/flash', '/kcs2/index.php']) {
+  const directOoi = page('ooi.moe', route);
+  directOoi.show(false);directOoi.run();
+  directOoi.canvas(true);directOoi.mutate();directOoi.flush();
+  assert.equal(directOoi.messages.at(-1), 'game', `${route} must fit a late standalone game canvas`);
+  directOoi.dialog(true);directOoi.mutate();directOoi.flush();
+  assert.equal(directOoi.messages.at(-1), 'web', 'An OOI dialog must release native game scaling');
+}
+
+for (const [host, route] of [['ooi.moe', '/'], ['ooi.moe', '/login'], ['ooi.moe', '/connector'], ['ooi.moe', '/poi-help'], ['ooi.moe.example.com', '/poi']]) {
+  const otherOoi = page(host, route, {wrapper: 'flashWrap'});
+  otherOoi.ooi(true);otherOoi.canvas(true);
+  assert.equal(otherOoi.run(), 'web', 'Only exact OOI game routes may be fitted');
+  assert.equal(otherOoi.property('--yahagi-ooi-scale'), undefined);
+}
+console.log('OOI browser/poi/flash routes, iframe/embed surfaces, standalone canvas, tablet resize and login isolation passed');
+
+const twoOoiContainers = page('ooi.moe', '/poi', {wrapper: 'flashWrap'});
+twoOoiContainers.emptyOoiContainer();twoOoiContainers.show(false);twoOoiContainers.ooi(true);twoOoiContainers.viewport(600, 360);
+twoOoiContainers.run();
+assert.equal(twoOoiContainers.property('--yahagi-ooi-scale'), '0.5', 'The fitted wrapper must be the parent of the detected game frame');

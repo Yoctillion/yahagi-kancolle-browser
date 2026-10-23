@@ -2,7 +2,8 @@ import '../bridge/captured_api_event.dart';
 import '../capture/game_capture_path_catalog.dart';
 import '../game_state/game_api_decoder.dart';
 import 'senka_calculation.dart';
-import 'senka_catalog.dart';
+import 'senka_ledger.dart';
+import 'senka_reward_reducer.dart';
 import 'senka_state.dart';
 
 class SenkaReducer {
@@ -29,13 +30,6 @@ class SenkaReducer {
 
   SenkaState reduce(SenkaState state, CapturedApiEvent event) {
     final monthKey = currentSenkaMonthKey(event.capturedAt);
-    final stateMonth = parseSenkaMonthKey(state.monthKey);
-    final eventMonth = parseSenkaMonthKey(monthKey)!;
-    if (stateMonth != null &&
-        (eventMonth.year * 12 + eventMonth.month) <
-            (stateMonth.year * 12 + stateMonth.month)) {
-      return state;
-    }
     var current = migrateSenkaExperienceTracking(
       migrateSenkaStateToMonth(state, monthKey),
     );
@@ -43,18 +37,18 @@ class SenkaReducer {
     current = identical(rewardMigrated, current)
         ? ensureSenkaDailyTarget(current, event.capturedAt)
         : rebaseSenkaDailyTarget(current, rewardMigrated, event.capturedAt);
-    if (_isSortieLifecyclePath(event.path) &&
+    final staleLifecycle =
+        _isSortieLifecyclePath(event.path) &&
         current.latestSortieEventAt != null &&
-        event.capturedAt.isBefore(current.latestSortieEventAt!)) {
-      return current;
-    }
+        event.capturedAt.isBefore(current.latestSortieEventAt!);
     if (!supportsPath(event.path)) return current;
-    if (event.sourceOrigin.isNotEmpty) {
+    if (!staleLifecycle && event.sourceOrigin.isNotEmpty) {
       current = current.copyWith(serverOrigin: event.sourceOrigin);
     }
 
     final data = GameApiDecoder.decodeEventData(event);
     if (data is! Map) {
+      if (staleLifecycle) return current;
       if (_sortieResultPaths.contains(event.path)) {
         final active = current.activeSortie;
         return current.copyWith(
@@ -80,19 +74,30 @@ class SenkaReducer {
     }
     final map = data.cast<Object?, Object?>();
 
-    current = _identity(current, event.path, map);
+    if (staleLifecycle && event.path == '/kcsapi/api_port/port') {
+      final member = _int(_map(map['api_basic'])?['api_member_id']);
+      if (member > 0 && member != current.memberId) return current;
+    }
+
+    if (!staleLifecycle) current = _identity(current, event.path, map);
     if (_experiencePaths.contains(event.path)) {
       current = _experience(current, event.path, map, event.capturedAt);
     }
-    if (event.path == '/kcsapi/api_get_member/mapinfo') {
-      current = _mapInfo(current, map, event.capturedAt);
-    } else if (event.path == '/kcsapi/api_req_quest/clearitemget') {
-      current = _questClear(current, event, event.capturedAt);
-    } else if (event.path == _rankingPath) {
+    current = reduceSenkaRewards(current, event, recordGain: recordSenkaReward);
+    if (event.path == _rankingPath) {
       current = _ranking(current, map, event.capturedAt);
     }
-    current = _sortie(current, event.path, map, event.capturedAt);
-    return current.copyWith(updatedAt: event.capturedAt);
+    if (!staleLifecycle) {
+      current = _sortie(current, event.path, map, event.capturedAt);
+    }
+    if (staleLifecycle && identical(current, state)) return state;
+    return current.copyWith(
+      updatedAt:
+          current.updatedAt != null &&
+              current.updatedAt!.isAfter(event.capturedAt)
+          ? current.updatedAt
+          : event.capturedAt,
+    );
   }
 
   bool supportsPath(String path) => GameCapturePathCatalog.senka.contains(path);
@@ -337,86 +342,25 @@ class SenkaReducer {
     Map<Object?, Object?> data,
     DateTime capturedAt,
   ) {
-    final experience = switch (path) {
-      '/kcsapi/api_port/port' => _int(
-        _map(data['api_basic'])?['api_experience'],
-      ),
-      '/kcsapi/api_get_member/record' => _firstInt(data['api_experience']),
-      '/kcsapi/api_get_member/basic' => _int(data['api_experience']),
-      _ => _int(data['api_member_exp']),
+    final raw = switch (path) {
+      '/kcsapi/api_port/port' => _map(data['api_basic'])?['api_experience'],
+      '/kcsapi/api_get_member/record' =>
+        data['api_experience'] is List
+            ? (data['api_experience'] as List).firstOrNull
+            : data['api_experience'],
+      '/kcsapi/api_get_member/basic' => data['api_experience'],
+      _ => data['api_member_exp'],
     };
-    if (experience <= 0) return state;
-    final previous = state.latestExperience;
-    if (previous == null) {
-      return state.copyWith(latestExperience: experience);
-    }
-    if (experience <= previous) return state;
-    final gained = (experience - previous) * experienceToSenkaRate;
-    return _addDay(
-      state.copyWith(latestExperience: experience),
+    final experience = raw is num && raw.isFinite && raw == raw.toInt()
+        ? raw.toInt()
+        : int.tryParse('$raw');
+    if (experience == null) return state;
+    return observeSenkaExperience(
+      state,
+      experience,
       capturedAt,
-      experience: gained,
-    );
-  }
-
-  SenkaState _mapInfo(
-    SenkaState state,
-    Map<Object?, Object?> data,
-    DateTime capturedAt,
-  ) {
-    final values = data['api_map_info'];
-    if (values is! List) return state;
-    final cleared = <int>{};
-    final known = <int>{};
-    for (final value in values) {
-      final map = _map(value);
-      if (map == null) continue;
-      final id = _int(map['api_id']);
-      if (senkaEoById(id) == null) continue;
-      known.add(id);
-      if (_int(map['api_cleared']) > 0) cleared.add(id);
-    }
-    if (known.isEmpty) return state;
-    final completed = Set<int>.of(state.completedEoIds)
-      ..removeAll(known)
-      ..addAll(cleared);
-    final newlyCleared = cleared.difference(state.completedEoIds);
-    final gained = newlyCleared.fold<double>(
-      0,
-      (sum, id) => sum + (senkaEoById(id)?.senka ?? 0),
-    );
-    var next = state.copyWith(
-      completedEoIds: completed,
-      eoTrackingInitialized: true,
-    );
-    if (gained == 0) return next;
-    if (!state.eoTrackingInitialized) {
-      next = next.copyWith(
-        unattributedEoSenka: state.unattributedEoSenka + gained,
-      );
-      return _rebaseLocalBaseline(next, gained);
-    }
-    return _addDay(next, capturedAt, eo: gained);
-  }
-
-  SenkaState _questClear(
-    SenkaState state,
-    CapturedApiEvent event,
-    DateTime capturedAt,
-  ) {
-    final id = _int(event.requestParams['api_quest_id']);
-    final quest = senkaQuestById(id);
-    if (quest == null) return state;
-    final statuses = Map<int, SenkaRewardStatus>.of(state.questStatuses)
-      ..[id] = SenkaRewardStatus.completed;
-    if (state.recordedQuestIds.contains(id)) {
-      return state.copyWith(questStatuses: statuses);
-    }
-    final recorded = Set<int>.of(state.recordedQuestIds)..add(id);
-    return _addDay(
-      state.copyWith(questStatuses: statuses, recordedQuestIds: recorded),
-      capturedAt,
-      quest: quest.senka.toDouble(),
+      sortieResult: _sortieResultPaths.contains(path),
+      returnedToPort: path == '/kcsapi/api_port/port',
     );
   }
 
@@ -425,6 +369,9 @@ class SenkaReducer {
     Map<Object?, Object?> data,
     DateTime capturedAt,
   ) {
+    final cutoff = senkaRankingCutoff(capturedAt);
+    // Before 03:00 on the first day, the API still serves last month's ranks.
+    if (currentSenkaMonthKey(cutoff) != state.monthKey) return state;
     final latest = state.rankingUpdatedAt;
     if (latest != null && !capturedAt.isAfter(latest)) return state;
     final rawList = data['api_list'];
@@ -451,12 +398,15 @@ class SenkaReducer {
     final playerRow = playerRows.length == 1 ? playerRows.single : null;
     final page = _int(data['api_disp_page']);
     double? playerSenka;
+    double? playerBaseline;
     for (final raw in rows) {
       final rank = _int(raw['api_mxltvkpyuklh']);
       final encrypted = _int(raw['api_wuhnhojjxmke']);
       if (rank <= 0 || encrypted <= 0) continue;
       final senka = _decrypt(decryptState, rank, encrypted);
       String? key;
+      var localBaseline = state.monthRecorded;
+      var confirmedCutoff = cutoff;
       if (const {5, 20, 100, 501}.contains(rank) &&
           page == (rank / 10).ceil()) {
         key = '$rank';
@@ -464,15 +414,56 @@ class SenkaReducer {
       if (identical(raw, playerRow)) {
         key = 'player';
         playerSenka = senka;
+        final previous = history['player']?.lastOrNull;
+        final previousCutoff = previous == null
+            ? null
+            : previous.settlementCutoff ??
+                  senkaRankingCutoff(previous.capturedAt);
+        final pending = state.settlementPeriods.entries.fold<double>(0, (
+          sum,
+          entry,
+        ) {
+          final start = DateTime.parse(entry.key).toUtc();
+          return start.isBefore(cutoff) ? sum : sum + entry.value.total;
+        });
+        final priorBaseline = (previous?.localSenkaAtCapture ?? 0)
+            .clamp(0.0, state.monthRecorded)
+            .toDouble();
+        localBaseline = previousCutoff == cutoff
+            ? priorBaseline
+            : (state.monthRecorded - pending)
+                  .clamp(priorBaseline, state.monthRecorded)
+                  .toDouble();
+        // A still-unchanged score cannot confirm a whole point of settlement.
+        // Keep the prior cutoff so a later, actually refreshed response can
+        // settle the mature gains. Sub-point gains may settle without changing
+        // the ranking's rounded score.
+        if (previous != null &&
+            previousCutoff != cutoff &&
+            localBaseline - priorBaseline >= 1 - 1e-9 &&
+            (senka - previous.senka).abs() < 1e-9 &&
+            _decryptionMagic(decryptState) == _decryptionMagic(state)) {
+          localBaseline = priorBaseline;
+          confirmedCutoff = previousCutoff!;
+        }
+        playerBaseline = localBaseline;
       }
       if (key == null) continue;
       final snapshots = history.putIfAbsent(key, () => []);
+      final previousSnapshot = snapshots.lastOrNull;
+      if (previousSnapshot != null &&
+          previousSnapshot.rank == rank &&
+          (previousSnapshot.senka - senka).abs() < 1e-9 &&
+          previousSnapshot.settlementCutoff == confirmedCutoff) {
+        snapshots.removeLast();
+      }
       snapshots.add(
         SenkaRankingSnapshot(
           rank: rank,
           senka: senka,
           capturedAt: capturedAt,
-          localSenkaAtCapture: state.monthRecorded,
+          localSenkaAtCapture: localBaseline,
+          settlementCutoff: confirmedCutoff,
         ),
       );
       if (snapshots.length > 2) snapshots.removeAt(0);
@@ -480,19 +471,18 @@ class SenkaReducer {
     return decryptState.copyWith(
       rankingHistory: history,
       calculatorCurrentSenka: playerSenka,
-      calculatorLocalSenkaAtSet: playerSenka == null
-          ? null
-          : state.monthRecorded,
+      calculatorLocalSenkaAtSet: playerBaseline,
     );
   }
 
   double _decrypt(SenkaState state, int rank, int encrypted) {
-    final magic = state.magic > 9
-        ? state.magic
-        : _magicLeft[state.memberId % 10];
+    final magic = _decryptionMagic(state);
     final value = encrypted / _magicRight[rank % 13] / magic - 73 - 18;
     return value > 0 ? value : 0;
   }
+
+  int _decryptionMagic(SenkaState state) =>
+      state.magic > 9 ? state.magic : _magicLeft[state.memberId % 10];
 
   int? _inferMagic(SenkaState state, List<Map<Object?, Object?>> rows) {
     if (rows.length < 2) return null;
@@ -573,55 +563,6 @@ class SenkaReducer {
     final nextAverage = scores[1].$2 / scores[1].$3;
     return nextAverage - bestAverage > 0.000001 ? scores.first.$1 : null;
   }
-
-  SenkaState _rebaseLocalBaseline(SenkaState state, double gained) {
-    final playerHistory = state.rankingHistory['player'];
-    if (playerHistory == null || playerHistory.isEmpty) {
-      return state.copyWith(
-        calculatorLocalSenkaAtSet: state.calculatorCurrentSenka > 0
-            ? state.monthRecorded
-            : state.calculatorLocalSenkaAtSet,
-      );
-    }
-    final history = <String, List<SenkaRankingSnapshot>>{
-      for (final entry in state.rankingHistory.entries)
-        entry.key: List<SenkaRankingSnapshot>.of(entry.value),
-    };
-    final latest = playerHistory.last;
-    history['player'] = <SenkaRankingSnapshot>[
-      ...playerHistory.take(playerHistory.length - 1),
-      SenkaRankingSnapshot(
-        rank: latest.rank,
-        senka: latest.senka,
-        capturedAt: latest.capturedAt,
-        localSenkaAtCapture: latest.localSenkaAtCapture + gained,
-      ),
-    ];
-    return state.copyWith(
-      rankingHistory: history,
-      calculatorLocalSenkaAtSet:
-          (state.calculatorLocalSenkaAtSet ?? latest.localSenkaAtCapture) +
-          gained,
-    );
-  }
-
-  SenkaState _addDay(
-    SenkaState state,
-    DateTime capturedAt, {
-    double experience = 0,
-    double eo = 0,
-    double quest = 0,
-  }) {
-    final businessDate = senkaBusinessDate(capturedAt);
-    final key = dateKey(businessDate);
-    final days = Map<String, SenkaDayRecord>.of(state.days);
-    days[key] = (days[key] ?? const SenkaDayRecord()).add(
-      experience: experience,
-      eo: eo,
-      quest: quest,
-    );
-    return state.copyWith(days: days);
-  }
 }
 
 const _sortieStartPath = '/kcsapi/api_req_map/start';
@@ -646,9 +587,6 @@ Map<Object?, Object?>? _map(Object? value) =>
 
 int _int(Object? value, [int fallback = 0]) =>
     value is num ? value.toInt() : int.tryParse('$value') ?? fallback;
-
-int _firstInt(Object? value) =>
-    value is List && value.isNotEmpty ? _int(value.first) : _int(value);
 
 int? _positiveInt(Object? value) {
   if (value is! num || !value.isFinite) return null;

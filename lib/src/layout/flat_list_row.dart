@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_palette.dart';
 import 'flat_style.dart';
 import 'game_edge_tap_guard.dart';
 
@@ -79,25 +80,27 @@ class FlatIconLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: <Widget>[
-      Icon(icon, size: size, color: color),
+      Icon(icon, size: size, color: appColor(context, color)),
       const SizedBox(width: 4),
       Expanded(child: child),
     ],
   );
 }
 
-TextStyle flatRowTextStyle({
+TextStyle flatRowTextStyle(
+  BuildContext context, {
   Color color = Colors.white,
   FontWeight weight = FontWeight.w700,
   List<Shadow>? shadows,
 }) => TextStyle(
   fontSize: flatRowFontSize,
   fontWeight: weight,
-  color: color,
+  color: appColor(context, color),
   shadows: shadows,
 );
 
 Widget flatRowText(
+  BuildContext context,
   String text, {
   Key? key,
   Color color = Colors.white,
@@ -107,7 +110,7 @@ Widget flatRowText(
   key: key,
   maxLines: 1,
   overflow: TextOverflow.ellipsis,
-  style: flatRowTextStyle(color: color, shadows: shadows),
+  style: flatRowTextStyle(context, color: color, shadows: shadows),
 );
 
 /// 右侧状态控件：宽度不够时整体缩小而不是换行或溢出。

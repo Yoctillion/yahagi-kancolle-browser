@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../backup/record_backup.dart';
@@ -148,14 +149,17 @@ class RecordBackupSection extends StatelessWidget with SettingsUIHelpers {
                     return null;
                   }),
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           buildActionTile(
             key: const Key('settings-backup-folder'),
             title: strings.folder,
             subtitle: strings.folderHint,
             trailing: Icon(
               Icons.folder_open_outlined,
-              color: service.enabled ? null : const Color(0xff526776),
+              color: appColor(
+                context,
+                service.enabled ? null : const Color(0xff526776),
+              ),
             ),
             enabled: service.enabled && !busy,
             onTap: () => _run(context, () async {
@@ -163,14 +167,17 @@ class RecordBackupSection extends StatelessWidget with SettingsUIHelpers {
               return selected ? strings.folderSelected : null;
             }),
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           buildActionTile(
             key: const Key('settings-backup-sync'),
             title: strings.sync,
             subtitle: status,
             trailing: Icon(
               Icons.sync,
-              color: service.enabled ? null : const Color(0xff526776),
+              color: appColor(
+                context,
+                service.enabled ? null : const Color(0xff526776),
+              ),
             ),
             enabled: service.enabled && known && service.hasDirectory && !busy,
             onTap: () => _run(context, () async {
@@ -178,26 +185,32 @@ class RecordBackupSection extends StatelessWidget with SettingsUIHelpers {
               return strings.syncDone;
             }),
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           buildActionTile(
             key: const Key('settings-backup-export'),
             title: strings.export,
             subtitle: strings.exportHint,
             trailing: Icon(
               Icons.ios_share_outlined,
-              color: service.enabled ? null : const Color(0xff526776),
+              color: appColor(
+                context,
+                service.enabled ? null : const Color(0xff526776),
+              ),
             ),
             enabled: service.enabled && known && service.hasDirectory && !busy,
             onTap: () => _export(context),
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           buildActionTile(
             key: const Key('settings-backup-import'),
             title: strings.import,
             subtitle: strings.importHint,
             trailing: Icon(
               Icons.restore_outlined,
-              color: service.enabled ? null : const Color(0xff526776),
+              color: appColor(
+                context,
+                service.enabled ? null : const Color(0xff526776),
+              ),
             ),
             enabled: service.enabled && known && !busy,
             onTap: () => _restore(context),

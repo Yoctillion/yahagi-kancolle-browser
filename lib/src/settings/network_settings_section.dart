@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/runtime_message_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -256,9 +257,11 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xff142a35),
+        color: appColor(context, Color(0xff142a35)),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: headerColor.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: appColor(context, headerColor.withValues(alpha: 0.5)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -267,28 +270,36 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
             children: [
               Icon(
                 success ? Icons.check_circle : Icons.error,
-                color: headerColor,
+                color: appColor(context, headerColor),
                 size: 20,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _localizedProxyResultMessage(l10n, result),
-                  style: TextStyle(
-                    color: headerColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: headerColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
               Text(
                 '${result.elapsedMs}ms',
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                style: TextStyle(
+                  color: AppPalette.of(context).isDark
+                      ? Colors.white54
+                      : AppPalette.of(context).muted,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
           if (result.details.isNotEmpty) ...[
-            const Divider(color: Color(0xff294052)),
+            Divider(color: appColor(context, Color(0xff294052))),
             _buildDetailRow(l10n, l10n.tcpConnection, result.details['proxy']),
             _buildDetailRow(
               l10n,
@@ -343,21 +354,32 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                 width: 100,
                 child: Text(
                   label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  style: TextStyle(
+                    color: appColor(context, Colors.white70),
+                    fontSize: 13,
+                  ),
                 ),
               ),
-              Icon(icon, color: color, size: 14),
+              Icon(icon, color: appColor(context, color), size: 14),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   statusText,
-                  style: TextStyle(color: color, fontSize: 13),
+                  style: appTextStyle(
+                    context,
+                    TextStyle(color: color, fontSize: 13),
+                  ),
                 ),
               ),
               if (status == 'success' || status == 'failed')
                 Text(
                   '${elapsedMs}ms',
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  style: TextStyle(
+                    color: AppPalette.of(context).isDark
+                        ? Colors.white38
+                        : AppPalette.of(context).muted,
+                    fontSize: 12,
+                  ),
                 ),
             ],
           ),
@@ -367,9 +389,12 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
               child: Text(
                 error,
                 style: TextStyle(
-                  color: status == 'failed'
-                      ? Colors.red.shade300
-                      : const Color(0xff94a3b8),
+                  color: appColor(
+                    context,
+                    status == 'failed'
+                        ? Colors.red.shade300
+                        : const Color(0xff94a3b8),
+                  ),
                   fontSize: 11,
                   height: 1.2,
                 ),
@@ -380,7 +405,10 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
               padding: const EdgeInsets.only(left: 104, top: 2),
               child: Text(
                 'HTTP $statusCode',
-                style: const TextStyle(color: Color(0xff94a3b8), fontSize: 11),
+                style: TextStyle(
+                  color: appColor(context, const Color(0xff94a3b8)),
+                  fontSize: 11,
+                ),
               ),
             ),
         ],
@@ -413,13 +441,21 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade900.withValues(alpha: 0.3),
+                  color: appColor(
+                    context,
+                    Colors.red.shade900.withValues(alpha: 0.3),
+                  ),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade700),
+                  border: Border.all(
+                    color: appColor(context, Colors.red.shade700),
+                  ),
                 ),
                 child: Text(
                   l10n.proxyNotSupported,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: TextStyle(
+                    color: appColor(context, Colors.white),
+                    fontSize: 13,
+                  ),
                 ),
               ),
 
@@ -496,9 +532,11 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                 ),
                 child: Material(
                   key: const Key('network-proxy-input'),
-                  color: Colors.transparent,
-                  shape: const RoundedRectangleBorder(
-                    side: BorderSide(color: Color(0xff8197a5)),
+                  color: appColor(context, Colors.transparent),
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: appColor(context, Color(0xff8197a5)),
+                    ),
                     borderRadius: BorderRadius.all(Radius.circular(4)),
                   ),
                   child: InkWell(
@@ -517,8 +555,8 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                               children: [
                                 Text(
                                   l10n.hostAddress,
-                                  style: const TextStyle(
-                                    color: Color(0xff8197a5),
+                                  style: TextStyle(
+                                    color: appColor(context, Color(0xff8197a5)),
                                     fontSize: 11,
                                   ),
                                 ),
@@ -539,8 +577,8 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                             children: [
                               Text(
                                 l10n.port,
-                                style: const TextStyle(
-                                  color: Color(0xff8197a5),
+                                style: TextStyle(
+                                  color: appColor(context, Color(0xff8197a5)),
                                   fontSize: 11,
                                 ),
                               ),
@@ -563,7 +601,7 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                 ),
               ),
 
-            const Divider(color: Color(0xff294052), height: 32),
+            Divider(color: appColor(context, Color(0xff294052)), height: 32),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -572,8 +610,8 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                 children: [
                   Text(
                     '${l10n.currentSavedMode}: ${c.settings.mode.name}',
-                    style: const TextStyle(
-                      color: Color(0xff8197a5),
+                    style: TextStyle(
+                      color: appColor(context, Color(0xff8197a5)),
                       fontSize: 13,
                     ),
                   ),
@@ -594,8 +632,8 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                         : const Icon(Icons.speed, size: 18),
                     label: Text(l10n.testConnection),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff183631),
-                      foregroundColor: const Color(0xff80c8bd),
+                      backgroundColor: appColor(context, Color(0xff183631)),
+                      foregroundColor: appColor(context, Color(0xff80c8bd)),
                     ),
                   ),
 
@@ -614,8 +652,11 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                         : const Icon(Icons.check_circle_outline, size: 18),
                     label: Text(l10n.applySettings),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xffd4a85f),
-                      foregroundColor: Colors.black87,
+                      backgroundColor: appColor(context, Color(0xffd4a85f)),
+                      foregroundColor: appOnAccentColor(
+                        context,
+                        Colors.black87,
+                      ),
                     ),
                   ),
 
@@ -627,7 +668,9 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                           : _restoreSystemNetwork,
                       child: Text(
                         l10n.restoreSystemNetwork,
-                        style: const TextStyle(color: Color(0xff8197a5)),
+                        style: TextStyle(
+                          color: appColor(context, Color(0xff8197a5)),
+                        ),
                       ),
                     ),
                   ],
@@ -667,15 +710,21 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                 children: <Widget>[
                   Text(
                     title,
-                    style: SettingsTileTypography.title.copyWith(
-                      color: enabled ? null : const Color(0xff526776),
+                    style: appTextStyle(
+                      context,
+                      SettingsTileTypography.title.copyWith(
+                        color: enabled ? null : const Color(0xff526776),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: SettingsTileTypography.description.copyWith(
-                      color: enabled ? null : const Color(0xff526776),
+                    style: appTextStyle(
+                      context,
+                      SettingsTileTypography.description.copyWith(
+                        color: enabled ? null : const Color(0xff526776),
+                      ),
                     ),
                   ),
                 ],
@@ -686,11 +735,14 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
               selected
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
-              color: selected
-                  ? const Color(0xffd4a85f)
-                  : enabled
-                  ? const Color(0xff8197a5)
-                  : const Color(0xff526776),
+              color: appColor(
+                context,
+                selected
+                    ? const Color(0xffd4a85f)
+                    : enabled
+                    ? const Color(0xff8197a5)
+                    : const Color(0xff526776),
+              ),
             ),
           ],
         ),

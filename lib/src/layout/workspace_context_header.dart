@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -147,10 +148,13 @@ class WorkspaceContextHeader extends StatelessWidget {
           Text(
             l10n.repair,
             key: const Key('workspace-title-repair-fleet'),
-            style: const TextStyle(
-              color: Color(0xffe0b25c),
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffe0b25c)),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -169,10 +173,13 @@ class WorkspaceContextHeader extends StatelessWidget {
           Text(
             l10n.construction,
             key: const Key('workspace-title-construction'),
-            style: const TextStyle(
-              color: Color(0xffe0b25c),
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffe0b25c)),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -239,24 +246,26 @@ class WorkspaceContextHeader extends StatelessWidget {
                   compactTranslation: constraints.maxWidth < 560,
                 );
           if (constraints.maxWidth < 430) {
-            return Align(
-              alignment: Alignment.centerRight,
-              child: FittedBox(fit: BoxFit.scaleDown, child: controls),
-            );
+            return Align(alignment: Alignment.centerRight, child: controls);
           }
           return Row(
             children: [
               Text(
                 l10n.quests,
                 key: const Key('workspace-title-quest'),
-                style: const TextStyle(
-                  color: Color(0xffe0b25c),
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffe0b25c)),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              const Spacer(),
-              controls,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Align(alignment: Alignment.centerRight, child: controls),
+              ),
             ],
           );
         },
@@ -268,10 +277,13 @@ class WorkspaceContextHeader extends StatelessWidget {
           Text(
             l10n.battleRecords,
             key: const Key('workspace-title-logbook'),
-            style: const TextStyle(
-              color: Color(0xffe0b25c),
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffe0b25c)),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -293,10 +305,13 @@ class WorkspaceContextHeader extends StatelessWidget {
           Text(
             _ownedInventoryTitle(l10n),
             key: const Key('workspace-title-owned-inventory'),
-            style: const TextStyle(
-              color: Color(0xffe0b25c),
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffe0b25c)),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -336,10 +351,13 @@ class WorkspaceContextHeader extends StatelessWidget {
           Text(
             l10n.settings,
             key: const Key('workspace-title-settings'),
-            style: const TextStyle(
-              color: Color(0xffe0b25c),
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffe0b25c)),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -356,10 +374,13 @@ class WorkspaceContextHeader extends StatelessWidget {
       final title = Text(
         l10n.senka,
         key: const Key('workspace-title-senka'),
-        style: const TextStyle(
-          color: Color(0xffe0b25c),
-          fontSize: 17,
-          fontWeight: FontWeight.w800,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, Color(0xffe0b25c)),
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       );
       final tabs = SenkaModeTabs(
@@ -399,10 +420,13 @@ class WorkspaceContextHeader extends StatelessWidget {
               Text(
                 l10n.toolbox,
                 key: const Key('workspace-title-tools'),
-                style: const TextStyle(
-                  color: Color(0xffe0b25c),
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffe0b25c)),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -421,10 +445,13 @@ class WorkspaceContextHeader extends StatelessWidget {
         Text(
           page.$2,
           key: Key('workspace-title-${page.$1}'),
-          style: const TextStyle(
-            color: Color(0xffe0b25c),
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Color(0xffe0b25c)),
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         if (workspaceIndex == 2 && onExpeditionModeChanged != null) ...[
@@ -481,8 +508,8 @@ class DevelopmentWorkbenchModeTabs extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff315064)),
+        color: appColor(context, const Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, const Color(0xff315064))),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -490,9 +517,10 @@ class DevelopmentWorkbenchModeTabs extends StatelessWidget {
           for (final value in DevelopmentWorkbenchMode.values)
             Expanded(
               child: Material(
-                color: mode == value
-                    ? const Color(0xff8a6628)
-                    : Colors.transparent,
+                color: appColor(
+                  context,
+                  mode == value ? const Color(0xff8a6628) : Colors.transparent,
+                ),
                 borderRadius: BorderRadius.circular(16),
                 child: InkWell(
                   key: Key(switch (value) {
@@ -511,12 +539,15 @@ class DevelopmentWorkbenchModeTabs extends StatelessWidget {
                         DevelopmentWorkbenchMode.formula =>
                           l10n.developmentFormula,
                       },
-                      style: TextStyle(
-                        color: mode == value
-                            ? const Color(0xffffdc88)
-                            : const Color(0xff9fb3bf),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: mode == value
+                              ? const Color(0xffffdc88)
+                              : const Color(0xff9fb3bf),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
@@ -547,8 +578,8 @@ class ConstructionModeTabs extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff315064)),
+        color: appColor(context, const Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, const Color(0xff315064))),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -556,9 +587,10 @@ class ConstructionModeTabs extends StatelessWidget {
           for (final value in ConstructionCenterMode.values)
             Expanded(
               child: Material(
-                color: mode == value
-                    ? const Color(0xff8a6628)
-                    : Colors.transparent,
+                color: appColor(
+                  context,
+                  mode == value ? const Color(0xff8a6628) : Colors.transparent,
+                ),
                 borderRadius: BorderRadius.circular(16),
                 child: InkWell(
                   key: Key('construction-mode-${value.name}'),
@@ -572,12 +604,15 @@ class ConstructionModeTabs extends StatelessWidget {
                         ConstructionCenterMode.development => l10n.development,
                         ConstructionCenterMode.improvement => l10n.improvement,
                       },
-                      style: TextStyle(
-                        color: mode == value
-                            ? const Color(0xffffdc88)
-                            : const Color(0xff9fb3bf),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: mode == value
+                              ? const Color(0xffffdc88)
+                              : const Color(0xff9fb3bf),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
@@ -605,8 +640,8 @@ class SenkaModeTabs extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff315064)),
+        color: appColor(context, Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, Color(0xff315064))),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -620,9 +655,12 @@ class SenkaModeTabs extends StatelessWidget {
                 excludeSemantics: true,
                 child: Material(
                   key: Key('senka-tab-${value.name}'),
-                  color: mode == value
-                      ? const Color(0xff8a6628)
-                      : Colors.transparent,
+                  color: appColor(
+                    context,
+                    mode == value
+                        ? const Color(0xff8a6628)
+                        : Colors.transparent,
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
@@ -632,12 +670,15 @@ class SenkaModeTabs extends StatelessWidget {
                         senkaCenterModeLabel(l10n, value),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: mode == value
-                              ? const Color(0xffffdc88)
-                              : const Color(0xff9fb3bf),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: mode == value
+                                ? const Color(0xffffdc88)
+                                : const Color(0xff9fb3bf),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
@@ -676,8 +717,8 @@ class SettingsSegmented extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff315064)),
+        color: appColor(context, Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, Color(0xff315064))),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -711,7 +752,10 @@ class _SettingsSegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: selected ? const Color(0xff8a6628) : Colors.transparent,
+    color: appColor(
+      context,
+      selected ? const Color(0xff8a6628) : Colors.transparent,
+    ),
     borderRadius: BorderRadius.circular(16),
     child: InkWell(
       onTap: onTap,
@@ -721,10 +765,15 @@ class _SettingsSegmentButton extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: selected ? const Color(0xffffdc88) : const Color(0xff9fb3bf),
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: selected
+                  ? const Color(0xffffdc88)
+                  : const Color(0xff9fb3bf),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),

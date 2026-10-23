@@ -142,7 +142,9 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     override fun onResume() {
         super.onResume()
         gameSurfacesResumed = true
+        gameFrameRateManager?.setForeground(true)
         nativeWebViewStartup?.setForeground(true)
+        gameSurfaceRecoveryTrigger.onResume()
         deferredGameSurfaceRecoveryReason?.let { reason ->
             deferredGameSurfaceRecoveryReason = null
             scheduleGameSurfaceRecovery(reason)
@@ -152,7 +154,9 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
 
     override fun onPause() {
         gameSurfacesResumed = false
+        gameFrameRateManager?.setForeground(false)
         nativeWebViewStartup?.setForeground(false)
+        gameSurfaceRecoveryTrigger.onPause()
         if (pendingGameSurfaceRecoveryActions.isNotEmpty()) {
             deferredGameSurfaceRecoveryReason = GameSurfaceRecoveryReason.CONFIGURATION_CHANGED
         }
@@ -322,6 +326,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
                 }
 
                 override fun onRenderProcessGone() {
+                    gameCaptureBridge?.onRenderProcessGone()
                     nativeWebViewStartup?.onRenderProcessGone()
                 }
 
@@ -730,7 +735,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         ).setMethodCallHandler(bypassManager)
 
         val frameRateManager = GameFrameRateManager(
-            GameFrameRateBridge(this),
+            GameFrameRateBridge(this).apply { setForeground(gameSurfacesResumed) },
             AndroidGameFrameRateSystemConstraints(this),
         )
         gameFrameRateManager = frameRateManager

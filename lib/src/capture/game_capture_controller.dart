@@ -309,6 +309,10 @@ final class GameCaptureController extends ChangeNotifier {
           : GameCaptureState.capturing;
     } catch (error) {
       if (!_isCurrentConfiguration(revision, port)) return;
+      // A failed binding cannot authorize delayed events from the old document
+      // or turn the installation error back into a capturing state.
+      _configuredEnabled = null;
+      _configuredScript = null;
       _state = GameCaptureState.error;
       _errorMessage = _safeError(error);
     }

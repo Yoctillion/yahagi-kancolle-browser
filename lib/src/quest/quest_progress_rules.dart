@@ -1,5 +1,31 @@
 import '../game_state/game_state.dart';
 
+const _knownQuestStepFields = {
+  'description',
+  'required',
+  'init',
+  'shipType',
+  'maparea',
+  'mission',
+  'times',
+  'slotitemType2',
+  'slotitemId',
+  'mapcell',
+  'materialShipType',
+  'materialShipMinCount',
+  'flagship',
+  'secondship',
+  'escortship',
+  'shipNamesAll',
+  'flagshiptype',
+  'escortshiptype',
+  'flagshipclass',
+  'secondshipclass',
+  'escortshipclass',
+  'fleetlimit',
+  'banshiptype',
+};
+
 String questPeriodKey(int ruleType, int apiType, DateTime now) {
   final date = now.toUtc().add(const Duration(hours: 4));
   final day = DateTime.utc(date.year, date.month, date.day);
@@ -28,15 +54,26 @@ class QuestProgressGoal {
   final int id;
   final Map<String, dynamic> raw;
   int get type => (raw['type'] as num?)?.toInt() ?? 0;
+  int get revision => (raw['revision'] as num?)?.toInt() ?? 0;
   Map<String, Map<String, dynamic>> get steps => {
     for (final e in raw.entries)
       if (e.value is Map) e.key: Map<String, dynamic>.from(e.value as Map),
   };
-  // Some workshop tasks need conditions that cannot be proved by an action count.
-  bool get completeOnCount => steps.keys.every((key) {
-    final event = key.split('@').first;
-    return !{'destory_item', 'destroy_ship', 'remodel_ship'}.contains(event);
-  });
+  // Incomplete fleet/equipment rules may provide reference counts, but those
+  // counts cannot prove completion. Unknown constraints also fail closed when
+  // restoring counts written by an older version of the rule engine.
+  bool get completeOnCount =>
+      raw['fuzzy'] != true &&
+      steps.isNotEmpty &&
+      steps.entries.every((step) {
+        final event = step.key.split('@').first;
+        return !{
+              'destory_item',
+              'destroy_ship',
+              'remodel_ship',
+            }.contains(event) &&
+            step.value.keys.every(_knownQuestStepFields.contains);
+      });
 }
 
 class QuestProgressEvent {
@@ -53,32 +90,7 @@ class QuestProgressEvent {
 }
 
 bool matchesQuestStep(Map<String, dynamic> goal, QuestProgressEvent event) {
-  const known = {
-    'description',
-    'required',
-    'init',
-    'shipType',
-    'maparea',
-    'mission',
-    'times',
-    'slotitemType2',
-    'slotitemId',
-    'mapcell',
-    'materialShipType',
-    'materialShipMinCount',
-    'flagship',
-    'secondship',
-    'escortship',
-    'shipNamesAll',
-    'flagshiptype',
-    'escortshiptype',
-    'flagshipclass',
-    'secondshipclass',
-    'escortshipclass',
-    'fleetlimit',
-    'banshiptype',
-  };
-  if (goal.keys.any((k) => !known.contains(k))) return false;
+  if (goal.keys.any((k) => !_knownQuestStepFields.contains(k))) return false;
   for (final key in [
     'shipType',
     'maparea',

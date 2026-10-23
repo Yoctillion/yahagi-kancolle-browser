@@ -9,6 +9,16 @@ class AppLocalizationsKo extends AppLocalizations {
   AppLocalizationsKo([String locale = 'ko']) : super(locale);
 
   @override
+  String get cameraAvoidanceTitle => '카메라 회피';
+
+  @override
+  String get cameraAvoidanceDesc =>
+      '카메라가 있는 쪽의 화면 여백을 조정합니다. 화면을 뒤집으면 여백도 자동으로 반대쪽으로 바뀝니다.';
+
+  @override
+  String get cameraAvoidanceDistance => '회피 거리';
+
+  @override
   String get operationProtectionTitle => '오조작 방지';
 
   @override
@@ -329,6 +339,18 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get layoutSettings => '화면 및 레이아웃';
+
+  @override
+  String get themeColorTitle => '테마 색상';
+
+  @override
+  String get themeClassicDark => '기본 다크';
+
+  @override
+  String get themeSeaSaltTeal => '씨솔트 틸';
+
+  @override
+  String get themeClearSkyBlue => '스카이 블루';
 
   @override
   String get uiDisplaySizeTitle => 'UI 크기';
@@ -697,6 +719,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get viewOnGitHub => 'GitHub에서 보기';
+
+  @override
+  String get officialWebsite => '공식 사이트';
 
   @override
   String get checkForUpdates => '업데이트 확인';
@@ -3753,5 +3778,47 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String summaryWarnings(int count) {
     return '경고 $count';
+  }
+
+  @override
+  String get questQueryTitle => '임무 검색 및 필터';
+
+  @override
+  String questQueryScope(String scope) {
+    return '검색 범위: $scope';
+  }
+
+  @override
+  String questApplyQuery(int count) {
+    return '임무 $count개 표시';
+  }
+
+  @override
+  String get questAccepted => '수락함';
+
+  @override
+  String get questConditionsAndProgress => '조건 및 진행도';
+
+  @override
+  String get questSelectTask => '임무를 선택하여 완료 조건 확인';
+
+  @override
+  String get questBackToList => '임무 목록으로 돌아가기';
+
+  @override
+  String get questReturnToTarget => '대상 임무로 돌아가기';
+
+  @override
+  String get questNoPrerequisites => '데이터에 직접 선행 임무가 기재되어 있지 않습니다';
+
+  @override
+  String get questNoSuccessors => '데이터에 후속 임무가 기재되어 있지 않습니다';
+
+  @override
+  String get japaneseOriginal => '일본어 원문';
+
+  @override
+  String questQueryActive(int count) {
+    return '검색 조건 $count개 적용 중';
   }
 }

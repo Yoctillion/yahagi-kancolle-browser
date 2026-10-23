@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -260,7 +261,7 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
     final result = await _showAccountDialog<Set<String>>(
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
-          backgroundColor: const Color(0xff102532),
+          backgroundColor: appColor(context, Color(0xff102532)),
           title: Text(_l.resourceTrendCustomize),
           content: SizedBox(
             width: 360,
@@ -273,7 +274,7 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
                       key: ValueKey('resource-filter-${resource.key}'),
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
-                      activeColor: const Color(0xffbd9349),
+                      activeColor: appColor(context, Color(0xffbd9349)),
                       value: draft.contains(resource.key),
                       secondary: Image.asset(
                         'assets/images/material/${resource.icon}.png',
@@ -295,9 +296,12 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
                   if (draft.isEmpty)
                     Text(
                       _l.resourceTrendAtLeastOne,
-                      style: const TextStyle(
-                        color: Color(0xffffaa91),
-                        fontSize: 12,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffffaa91)),
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                 ],
@@ -358,7 +362,7 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
       data: _data!,
       resourceKey: resource.key,
       label: resource.label(_l),
-      color: resource.color,
+      color: appColor(context, resource.color),
       iconId: resource.icon,
       plotHeight: height,
       expanded: expanded,
@@ -370,7 +374,7 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
     _showAccountDialog<void>(
       useSafeArea: false,
       builder: (dialogContext) => Dialog.fullscreen(
-        backgroundColor: const Color(0xff091b28),
+        backgroundColor: appColor(context, Color(0xff091b28)),
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) => ValueListenableBuilder(
@@ -412,16 +416,19 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
     height: 310,
     child: Center(
       child: _loading
-          ? const CircularProgressIndicator(
+          ? CircularProgressIndicator(
               strokeWidth: 2,
-              color: Color(0xffbfa16b),
+              color: appColor(context, Color(0xffbfa16b)),
             )
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _l.resourceTrendLoadError,
-                  style: const TextStyle(color: Color(0xffa7bbc6)),
+                  style: appTextStyle(
+                    context,
+                    TextStyle(color: appColor(context, Color(0xffa7bbc6))),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextButton.icon(
@@ -437,7 +444,7 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xff091b28),
+    color: appColor(context, Color(0xff091b28)),
     child: LayoutBuilder(
       builder: (context, constraints) {
         final size = MediaQuery.sizeOf(context);
@@ -465,7 +472,7 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                color: const Color(0xff142735),
+                color: appColor(context, Color(0xff142735)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 5,
@@ -498,16 +505,25 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 13,
                                       ),
-                                      foregroundColor: days == _days
-                                          ? const Color(0xffffc857)
-                                          : const Color(0xff9eb2bd),
-                                      backgroundColor: days == _days
-                                          ? const Color(0xff403923)
-                                          : Colors.transparent,
-                                      side: BorderSide(
-                                        color: days == _days
-                                            ? const Color(0xffb98a28)
+                                      foregroundColor: appColor(
+                                        context,
+                                        days == _days
+                                            ? const Color(0xffffc857)
+                                            : const Color(0xff9eb2bd),
+                                      ),
+                                      backgroundColor: appColor(
+                                        context,
+                                        days == _days
+                                            ? const Color(0xff403923)
                                             : Colors.transparent,
+                                      ),
+                                      side: BorderSide(
+                                        color: appColor(
+                                          context,
+                                          days == _days
+                                              ? const Color(0xffb98a28)
+                                              : Colors.transparent,
+                                        ),
                                       ),
                                       shape: const StadiumBorder(),
                                       textStyle: TextStyle(
@@ -578,9 +594,9 @@ class _ResourceTrendPageState extends State<ResourceTrendPage>
                     else
                       _chart(plotHeight),
                     if (_loading && _data != null)
-                      const LinearProgressIndicator(
+                      LinearProgressIndicator(
                         minHeight: 2,
-                        color: Color(0xffbfa16b),
+                        color: appColor(context, Color(0xffbfa16b)),
                       ),
                   ],
                 ),
@@ -634,13 +650,19 @@ class _ResourceCapsule extends StatelessWidget {
       child: Tooltip(
         message: label,
         child: Material(
-          color: selected ? const Color(0xff1b3543) : const Color(0xff142735),
+          color: appColor(
+            context,
+            selected ? const Color(0xff1b3543) : const Color(0xff142735),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
             side: BorderSide(
-              color: selected
-                  ? resource.color.withValues(alpha: .7)
-                  : const Color(0xff29404e),
+              color: appColor(
+                context,
+                selected
+                    ? resource.color.withValues(alpha: .7)
+                    : const Color(0xff29404e),
+              ),
             ),
           ),
           clipBehavior: Clip.antiAlias,
@@ -650,7 +672,10 @@ class _ResourceCapsule extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: resource.color, width: 3),
+                  left: BorderSide(
+                    color: appColor(context, resource.color),
+                    width: 3,
+                  ),
                 ),
               ),
               padding: const EdgeInsets.only(left: 7, right: 9),
@@ -665,7 +690,10 @@ class _ResourceCapsule extends StatelessWidget {
                   double measure(String s) => (TextPainter(
                     text: TextSpan(
                       text: s,
-                      style: DefaultTextStyle.of(context).style.merge(style),
+                      style: appTextStyle(
+                        context,
+                        DefaultTextStyle.of(context).style.merge(style),
+                      ),
                     ),
                     textDirection: TextDirection.ltr,
                     textScaler: scaler,
@@ -686,7 +714,10 @@ class _ResourceCapsule extends StatelessWidget {
                             width: 26,
                             height: 26,
                             decoration: BoxDecoration(
-                              color: resource.color.withValues(alpha: .12),
+                              color: appColor(
+                                context,
+                                resource.color.withValues(alpha: .12),
+                              ),
                               borderRadius: BorderRadius.circular(5),
                             ),
                             alignment: Alignment.center,
@@ -699,15 +730,19 @@ class _ResourceCapsule extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             value,
-                            style: style.copyWith(
-                              color: const Color(0xffeff5f8),
+                            style: appTextStyle(
+                              context,
+                              style.copyWith(color: const Color(0xffeff5f8)),
                             ),
                           ),
                           const Spacer(),
                           const SizedBox(width: 12),
                           Text(
                             change,
-                            style: style.copyWith(color: changeColor),
+                            style: appTextStyle(
+                              context,
+                              style.copyWith(color: changeColor),
+                            ),
                           ),
                         ],
                       ),

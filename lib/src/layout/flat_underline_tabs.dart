@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_palette.dart';
 import 'flat_style.dart';
 import 'flat_text_toggle.dart';
 
@@ -29,7 +30,7 @@ class FlatUnderlineTabs extends StatelessWidget {
                       bottom: BorderSide(
                         width: 2,
                         color: option.selected
-                            ? flatAccentColor
+                            ? appColor(context, flatAccentColor)
                             : Colors.transparent,
                       ),
                     ),
@@ -41,9 +42,10 @@ class FlatUnderlineTabs extends StatelessWidget {
                       softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: option.selected
-                            ? flatAccentColor
-                            : flatMutedColor,
+                        color: appColor(
+                          context,
+                          option.selected ? flatAccentColor : flatMutedColor,
+                        ),
                         fontSize: flatRowFontSize,
                         fontWeight: FontWeight.w700,
                       ),

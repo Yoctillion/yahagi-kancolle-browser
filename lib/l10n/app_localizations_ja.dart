@@ -9,6 +9,15 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
+  String get cameraAvoidanceTitle => 'カメラ回避';
+
+  @override
+  String get cameraAvoidanceDesc => 'カメラ側の画面の余白を調整します。画面を反転すると、自動で反対側に切り替わります。';
+
+  @override
+  String get cameraAvoidanceDistance => '回避距離';
+
+  @override
   String get operationProtectionTitle => '誤操作防止';
 
   @override
@@ -326,6 +335,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get layoutSettings => 'UIとレイアウト';
+
+  @override
+  String get themeColorTitle => 'テーマカラー';
+
+  @override
+  String get themeClassicDark => '標準ダーク';
+
+  @override
+  String get themeSeaSaltTeal => 'シーソルト';
+
+  @override
+  String get themeClearSkyBlue => 'スカイブルー';
 
   @override
   String get uiDisplaySizeTitle => 'UIの表示サイズ';
@@ -693,6 +714,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get viewOnGitHub => 'GitHubを見る';
+
+  @override
+  String get officialWebsite => '公式サイト';
 
   @override
   String get checkForUpdates => '更新を確認';
@@ -3730,5 +3754,47 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String summaryWarnings(int count) {
     return '警告 $count';
+  }
+
+  @override
+  String get questQueryTitle => '任務の検索・絞り込み';
+
+  @override
+  String questQueryScope(String scope) {
+    return '検索範囲：$scope';
+  }
+
+  @override
+  String questApplyQuery(int count) {
+    return '$count 件の任務を表示';
+  }
+
+  @override
+  String get questAccepted => '受注済み';
+
+  @override
+  String get questConditionsAndProgress => '達成条件・進捗';
+
+  @override
+  String get questSelectTask => '任務を選択して達成条件を確認';
+
+  @override
+  String get questBackToList => '任務一覧に戻る';
+
+  @override
+  String get questReturnToTarget => '対象の任務に戻る';
+
+  @override
+  String get questNoPrerequisites => 'データに直接の前提任務の記載がありません';
+
+  @override
+  String get questNoSuccessors => 'データに後続任務の記載がありません';
+
+  @override
+  String get japaneseOriginal => '日本語原文';
+
+  @override
+  String questQueryActive(int count) {
+    return '$count 件の検索条件を適用中';
   }
 }

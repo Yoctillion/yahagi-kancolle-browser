@@ -1,6 +1,8 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import 'senka_calculation.dart';
 import 'senka_state.dart';
 import 'senka_ui.dart';
 
@@ -26,8 +28,8 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
     super.didUpdateWidget(oldWidget);
     final oldMonth = parseSenkaMonthKey(oldWidget.state.monthKey);
     final newMonth = parseSenkaMonthKey(widget.state.monthKey);
-    final oldDate = senkaBusinessDate(oldWidget.now);
-    final newDate = senkaBusinessDate(widget.now);
+    final oldDate = senkaCurrentDate(oldWidget.now);
+    final newDate = senkaCurrentDate(widget.now);
     if (oldMonth != newMonth ||
         oldDate.year != newDate.year ||
         oldDate.month != newDate.month) {
@@ -45,12 +47,12 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
       narrowWeekdays.first,
     ];
     final parsed = parseSenkaMonthKey(widget.state.monthKey);
-    final currentDate = senkaBusinessDate(widget.now);
+    final currentDate = senkaCurrentDate(widget.now);
     final year = parsed?.year ?? currentDate.year;
     final month = parsed?.month ?? currentDate.month;
-    final first = DateTime(year, month, 1);
+    final first = DateTime.utc(year, month, 1);
     final leading = first.weekday - 1;
-    final count = DateTime(year, month + 1, 0).day;
+    final count = DateTime.utc(year, month + 1, 0).day;
     final shownSelected = selected.year == year && selected.month == month
         ? selected
         : first;
@@ -63,10 +65,13 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
           senkaNumber(widget.state.monthRecorded),
           senkaNumber(widget.state.monthExperienceSenka),
         ),
-        style: TextStyle(
-          color: senkaGold,
-          fontSize: widget.compact ? 10 : 14,
-          fontWeight: FontWeight.w800,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: senkaGold,
+            fontSize: widget.compact ? 10 : 14,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
       child: Column(
@@ -74,7 +79,7 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
           Container(
             key: const Key('calendar-weekday-background'),
             height: widget.compact ? 22 : 32,
-            color: const Color(0xff071822),
+            color: appColor(context, const Color(0xff071822)),
             padding: EdgeInsets.symmetric(horizontal: widget.compact ? 2 : 6),
             child: Row(
               key: const Key('calendar-weekday-row'),
@@ -84,10 +89,13 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
                     child: Center(
                       child: Text(
                         day,
-                        style: TextStyle(
-                          color: const Color(0xff8fa7b7),
-                          fontSize: widget.compact ? 11 : 14,
-                          fontWeight: FontWeight.w800,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: const Color(0xff8fa7b7),
+                            fontSize: widget.compact ? 11 : 14,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
@@ -135,8 +143,10 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
                 : widget.compact
                 ? 24
                 : 38,
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: senkaLine)),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: appColor(context, senkaLine)),
+              ),
             ),
             child: Row(
               children: [
@@ -183,7 +193,7 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
   ) {
     final day = slot - leading + 1;
     final inMonth = day >= 1 && day <= count;
-    final date = inMonth ? DateTime(year, month, day) : null;
+    final date = inMonth ? DateTime.utc(year, month, day) : null;
     final record = date == null
         ? const SenkaDayRecord()
         : widget.state.day(date);
@@ -222,21 +232,30 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
         : (isFuture && record.total == 0 ? const Color(0xff627d8e) : senkaGold);
 
     final Border border = chosen
-        ? Border.all(color: const Color(0xffe4b34e), width: 1.5)
+        ? Border.all(
+            color: appColor(context, const Color(0xffe4b34e)),
+            width: 1.5,
+          )
         : (isToday
-              ? Border.all(color: const Color(0xff8a6628), width: 1.5)
-              : Border.all(color: const Color(0xff1c3545), width: 1));
+              ? Border.all(
+                  color: appColor(context, const Color(0xff8a6628)),
+                  width: 1.5,
+                )
+              : Border.all(
+                  color: appColor(context, const Color(0xff1c3545)),
+                  width: 1,
+                ));
 
     final cell = Material(
       key: Key(inMonth ? 'calendar-cell-$day' : 'calendar-cell-out-$slot'),
-      color: Colors.transparent,
+      color: appColor(context, Colors.transparent),
       child: InkWell(
         onTap: date == null ? null : () => setState(() => selected = date),
         child: inMonth
             ? Container(
                 margin: EdgeInsets.all(widget.compact ? 1.5 : 2.5),
                 decoration: BoxDecoration(
-                  color: backgroundColor,
+                  color: appColor(context, backgroundColor),
                   borderRadius: BorderRadius.circular(widget.compact ? 5 : 7),
                   border: border,
                 ),
@@ -246,11 +265,14 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
                   children: [
                     Text(
                       '$day',
-                      style: TextStyle(
-                        color: dayNumberColor,
-                        fontSize: widget.compact ? 15 : 21,
-                        fontWeight: FontWeight.w800,
-                        height: 1.05,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: dayNumberColor,
+                          fontSize: widget.compact ? 15 : 21,
+                          fontWeight: FontWeight.w800,
+                          height: 1.05,
+                        ),
                       ),
                     ),
                     SizedBox(height: widget.compact ? 1 : 2),
@@ -258,12 +280,15 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
                       displayValue,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: valueColor,
-                        fontSize: widget.compact ? 12 : 16,
-                        fontWeight: FontWeight.w700,
-                        height: 1.05,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: valueColor,
+                          fontSize: widget.compact ? 12 : 16,
+                          fontWeight: FontWeight.w700,
+                          height: 1.05,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
                   ],
@@ -289,21 +314,27 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
     final labelText = Text(
       label,
       textAlign: english ? TextAlign.center : null,
-      style: TextStyle(
-        color: senkaText,
-        fontSize: widget.compact ? 11 : 13,
-        fontWeight: FontWeight.w800,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: senkaText,
+          fontSize: widget.compact ? 11 : 13,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
     final valueText = Text(
       '${value >= 0 ? '+' : ''}${value.toStringAsFixed(2)}',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: senkaGold,
-        fontSize: widget.compact ? 11 : 13,
-        fontWeight: FontWeight.w800,
-        fontFeatures: const [FontFeature.tabularFigures()],
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: senkaGold,
+          fontSize: widget.compact ? 11 : 13,
+          fontWeight: FontWeight.w800,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ),
     );
     return Expanded(
@@ -328,12 +359,12 @@ class _SenkaCalendarViewState extends State<SenkaCalendarView> {
 }
 
 DateTime _initialSelection(SenkaState state, DateTime now) {
-  final currentDate = senkaBusinessDate(now);
+  final currentDate = senkaCurrentDate(now);
   final month = parseSenkaMonthKey(state.monthKey);
   if (month == null) {
-    return DateTime(currentDate.year, currentDate.month, currentDate.day);
+    return DateTime.utc(currentDate.year, currentDate.month, currentDate.day);
   }
   return currentDate.year == month.year && currentDate.month == month.month
-      ? DateTime(month.year, month.month, currentDate.day)
-      : DateTime(month.year, month.month, 1);
+      ? DateTime.utc(month.year, month.month, currentDate.day)
+      : DateTime.utc(month.year, month.month, 1);
 }

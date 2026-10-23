@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../../l10n/app_localizations.dart';
@@ -115,7 +116,7 @@ class HdPortraitGrid extends StatelessWidget {
                         key: ValueKey('hd-portrait-cell-${item.id}'),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: const Color(0xff142735),
+                            color: appColor(context, const Color(0xff142735)),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Align(

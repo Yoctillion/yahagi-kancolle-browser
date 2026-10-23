@@ -4,6 +4,7 @@ import '../widgets/lazy_indexed_stack.dart';
 import '../audio/game_audio_controller.dart';
 import '../subtitles/ship_subtitle_settings.dart';
 import '../subtitles/ship_subtitle_catalog_controller.dart';
+import '../subtitles/ship_subtitle_runtime_controller.dart';
 import '../browser/gadget_bypass_controller.dart';
 import '../browser/game_browser_controller.dart';
 import '../browser/game_toolbar_display_controller.dart';
@@ -69,6 +70,7 @@ class SettingsPage extends StatelessWidget {
     this.gameMouseWheelSettingsController,
     this.shipSubtitleSettingsController,
     this.shipSubtitleCatalogController,
+    this.shipSubtitleRuntimeController,
     this.gameFrameRefreshShortcutSettings,
     this.toolbarDisplayController,
     this.fcdMapController,
@@ -113,6 +115,7 @@ class SettingsPage extends StatelessWidget {
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final ShipSubtitleSettingsController? shipSubtitleSettingsController;
   final ShipSubtitleCatalogController? shipSubtitleCatalogController;
+  final ShipSubtitleRuntimeController? shipSubtitleRuntimeController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final GameToolbarDisplayController? toolbarDisplayController;
   final FcdMapController? fcdMapController;
@@ -141,6 +144,7 @@ class SettingsPage extends StatelessWidget {
           displayModeController: displayModeController,
           audioController: audioController,
           shipSubtitleSettingsController: shipSubtitleSettingsController,
+          shipSubtitleRuntimeController: shipSubtitleRuntimeController,
           backgroundGameRetentionController: backgroundGameRetentionController,
           toolbarDisplayController: toolbarDisplayController,
           gameFrameRateSettingsController: gameFrameRateSettingsController,

@@ -70,15 +70,18 @@ void main() {
             await tester.pump(const Duration(milliseconds: 300));
           } else {
             await _openQuestNavigation(tester);
+            await _selectQuest(tester);
           }
           expect(find.byType(QuestCenterPage), findsOneWidget);
+          expect(find.text('Accepted'), findsOneWidget);
           expect(
             find.byKey(const Key('quest-detail-title-201')),
             findsOneWidget,
           );
-          expect(find.text('Base rewards'), findsOneWidget);
-          expect(find.text(_rewardText), findsOneWidget);
           expect(find.text('任务列表与奖励详情遵循保存的显示模式。'), findsOneWidget);
+          await _openRewards(tester);
+          expect(find.text('Base rewards'), findsWidgets);
+          expect(find.text(_rewardText), findsOneWidget);
           _expectHorizontal(tester, 'English quest details at $size');
           expect(
             tester.takeException(),
@@ -97,11 +100,13 @@ void main() {
       expect(fixture.display.displayMode, DisplayMode.landscape);
 
       await _openQuestNavigation(tester);
+      await _selectQuest(tester);
       final page = find.byType(QuestCenterPage);
       // A normal left sidebar leaves 752 logical pixels from the 800px window.
       // That is below the old 760px page breakpoint despite saved landscape.
       expect(tester.getSize(page).width, closeTo(752, 0.01));
       _expectHorizontal(tester, 'saved landscape on initial navigation');
+      await _openRewards(tester);
       expect(find.text(_rewardText), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
@@ -112,6 +117,7 @@ void main() {
   ) async {
     final fixture = await _pumpQuestApp(tester);
     await _openQuestNavigation(tester);
+    await _selectQuest(tester);
     final page = find.byType(QuestCenterPage);
     final originalElement = tester.element(page);
 
@@ -121,7 +127,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(await fixture.store.loadDisplayMode(), DisplayMode.portrait);
     expect(tester.element(page), same(originalElement));
-    _expectVertical(tester, 'portrait at the same window size');
+    _expectStacked(tester, 'portrait at the same window size');
+    await _openRewards(tester);
     expect(find.text(_rewardText), findsOneWidget);
 
     await fixture.display.setDisplayMode(DisplayMode.landscape);
@@ -129,6 +136,7 @@ void main() {
     expect(await fixture.store.loadDisplayMode(), DisplayMode.landscape);
     expect(tester.element(page), same(originalElement));
     _expectHorizontal(tester, 'landscape restored without reopening quests');
+    await _openRewards(tester);
     expect(find.text(_rewardText), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -148,6 +156,7 @@ void main() {
     expect(find.byType(QuestCenterPage), findsOneWidget);
     expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
     _expectHorizontal(tester, 'pinned summary navigation');
+    await _openRewards(tester);
     expect(find.text(_rewardText), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -161,6 +170,7 @@ void main() {
       displayMode: DisplayMode.portrait,
     );
     await _openQuestNavigation(tester);
+    await _selectQuest(tester);
     final page = find.byType(QuestCenterPage);
     final originalElement = tester.element(page);
     expect(tester.getSize(page).width, closeTo(552, 0.01));
@@ -178,11 +188,46 @@ void main() {
 
     tester.view.physicalSize = const Size(390, 780);
     await tester.pump(const Duration(milliseconds: 300));
-    _expectVertical(tester, 'compact portrait window after folding');
+    _expectStacked(tester, 'compact portrait window after folding');
     expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
+    await _openRewards(tester);
     expect(find.text(_rewardText), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'portrait quest navigation keeps its list above selected details',
+    (tester) async {
+      await _pumpQuestApp(
+        tester,
+        size: const Size(390, 780),
+        displayMode: DisplayMode.portrait,
+      );
+      await _openQuestNavigation(tester);
+
+      _expectStacked(tester, 'phone portrait on initial navigation');
+      final page = find.byType(QuestCenterPage);
+      final originalElement = tester.element(page);
+
+      await _selectQuest(tester);
+      _expectStacked(tester, 'phone portrait after selecting a quest');
+      expect(tester.element(page), same(originalElement));
+      expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
+      expect(find.text('任务列表与奖励详情遵循保存的显示模式。'), findsOneWidget);
+      await _openRewards(tester);
+      expect(find.text(_rewardText), findsOneWidget);
+      _expectStacked(
+        tester,
+        'portrait list remains visible while reading rewards',
+      );
+
+      await _selectQuest(tester);
+      _expectStacked(tester, 'reselecting updates the lower detail in place');
+      expect(tester.element(page), same(originalElement));
+      expect(find.text('任务列表与奖励详情遵循保存的显示模式。'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 void _expectHorizontal(WidgetTester tester, String reason) {
@@ -192,11 +237,53 @@ void _expectHorizontal(WidgetTester tester, String reason) {
   expect(detail.top, lessThan(card.bottom), reason: reason);
 }
 
-void _expectVertical(WidgetTester tester, String reason) {
-  final card = tester.getRect(find.byKey(const Key('quest-card-201')));
+void _expectStacked(WidgetTester tester, String reason) {
+  expect(
+    find.byKey(const Key('quest-card-201')),
+    findsOneWidget,
+    reason: reason,
+  );
+  expect(
+    find.byKey(const Key('quest-list-panel')),
+    findsOneWidget,
+    reason: reason,
+  );
+  expect(
+    find.byKey(const Key('quest-detail-panel')),
+    findsOneWidget,
+    reason: reason,
+  );
+  final list = tester.getRect(find.byKey(const Key('quest-list-panel')));
   final detail = tester.getRect(find.byKey(const Key('quest-detail-panel')));
-  expect(detail.top, greaterThanOrEqualTo(card.bottom), reason: reason);
-  expect(detail.left, lessThan(card.right), reason: reason);
+  final paneHeight = list.height + detail.height;
+  expect(detail.top, greaterThanOrEqualTo(list.bottom), reason: reason);
+  expect(detail.left, closeTo(list.left, 0.01), reason: reason);
+  expect(detail.width, closeTo(list.width, 0.01), reason: reason);
+  expect(list.height, lessThanOrEqualTo(paneHeight / 2 + 0.01), reason: reason);
+  expect(
+    detail.height,
+    greaterThanOrEqualTo(paneHeight / 2 - 0.01),
+    reason: reason,
+  );
+  expect(
+    find.byKey(const Key('quest-back-to-list')),
+    findsNothing,
+    reason: reason,
+  );
+}
+
+Future<void> _selectQuest(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('quest-card-201')));
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+Future<void> _openRewards(WidgetTester tester) async {
+  final tab = find.byKey(const Key('quest-detail-tab-rewards'));
+  await tester.ensureVisible(tab);
+  await tester.tap(tab);
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.ensureVisible(find.text(_rewardText));
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 Future<void> _openQuestNavigation(WidgetTester tester) async {

@@ -13,9 +13,18 @@ import 'ship_subtitle_language.dart';
 import 'ship_subtitle_port.dart';
 import 'ship_subtitle_settings.dart';
 
+enum ShipSubtitleRuntimeStatus {
+  checking,
+  unsupported,
+  failed,
+  waitingForGameData,
+  ready,
+}
+
 /// Keeps the optional game-frame renderer in sync without sending its complete
 /// translation catalog for every layout, font, or drag change.
-final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
+final class ShipSubtitleRuntimeController extends ChangeNotifier
+    with WidgetsBindingObserver {
   ShipSubtitleRuntimeController({
     required this.settings,
     required this.catalog,
@@ -36,10 +45,12 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
   final LayoutSettingsController layout;
   final GameStateController gameState;
   final ShipSubtitlePort port;
-  Future<void>? _initializing;
+  Future<void>? _retryOperation;
   Future<void>? _drain;
   Future<void> _positionTail = Future<void>.value();
   bool _ready = false;
+  bool _hasSupportedPort = false;
+  bool _initialized = false;
   bool _disposed = false;
   bool _wasEnabled = false;
   bool _foreground =
@@ -59,31 +70,96 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
   ShipSubtitleKc3Bundle? _observedNameBundle;
   ShipSubtitleLanguage? _requestedLanguage;
   bool _observedLanguageReady = false;
+  bool _observedLanguageLoading = false;
+  Object? _observedLanguageError;
   Object? lastError;
+  ShipSubtitleRuntimeStatus _status = ShipSubtitleRuntimeStatus.checking;
+  ShipSubtitleRuntimeStatus get status => _status;
 
   Future<void> get idle async {
-    while (_drain != null) {
-      await _drain;
+    while (_retryOperation != null || _drain != null) {
+      await (_retryOperation ?? _drain!);
     }
   }
 
   Future<void> get positionIdle => _positionTail;
 
-  Future<void> initialize() => _initializing ??= _initialize();
-
-  Future<void> _initialize() async {
-    if (_disposed) return;
+  Future<void> initialize() {
+    if (_disposed) return Future<void>.value();
+    if (_initialized) return idle;
     _onSettingsChanged();
-    _ready = await port.isSupported();
-    if (_disposed || !_ready) return;
-    _schedule();
-    await idle;
+    _initialized = true;
+    return retry();
   }
+
+  /// Recheck platform support and resubmit current data without losing opt-in.
+  /// Serialize retries with an older send so its completion cannot restore stale
+  /// sent markers after the new attempt has invalidated them.
+  Future<void> retry() {
+    if (_disposed) return Future<void>.value();
+    return _retryOperation ??= _retry().whenComplete(() {
+      _retryOperation = null;
+    });
+  }
+
+  Future<void> _retry() async {
+    _ready = false;
+    _revision++;
+    _setStatus(ShipSubtitleRuntimeStatus.checking);
+    try {
+      await _drain;
+      if (_disposed) return;
+      _sentConfig = null;
+      _sentCatalog = null;
+      _sentCatalogLanguage = null;
+      _sentCatalogShips = null;
+      _sentShips = null;
+      _sentShipsLanguage = null;
+      _sentNameBundle = null;
+      if (!_catalogMatchesLanguage) {
+        await catalog.selectLanguage(settings.language);
+        if (_disposed) return;
+      }
+      final supported = await port.isSupported().timeout(
+        const Duration(seconds: 10),
+      );
+      if (_disposed) return;
+      _ready = supported;
+      if (supported) _hasSupportedPort = true;
+      lastError = null;
+      if (!supported) {
+        _setStatus(ShipSubtitleRuntimeStatus.unsupported);
+        return;
+      }
+      _schedule();
+      while (_drain != null) {
+        await _drain;
+      }
+    } catch (error) {
+      if (_disposed) return;
+      _ready = false;
+      lastError = error;
+      _setStatus(ShipSubtitleRuntimeStatus.failed);
+    }
+  }
+
+  void _setStatus(ShipSubtitleRuntimeStatus value) {
+    if (_disposed || _status == value) return;
+    _status = value;
+    notifyListeners();
+  }
+
+  bool get _needsSupportRetry =>
+      !_ready || _status == ShipSubtitleRuntimeStatus.failed;
 
   void _onSettingsChanged() {
     if (_disposed) return;
     final language = settings.language;
-    if (_requestedLanguage != language || catalog.language != language) {
+    if (_requestedLanguage != language ||
+        catalog.language != language ||
+        (settings.enabled &&
+            !catalog.isLanguageReady &&
+            !catalog.isLoadingLanguage)) {
       _requestedLanguage = language;
       unawaited(
         catalog.selectLanguage(language).catchError((Object error) {
@@ -91,9 +167,18 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
         }),
       );
     }
-    if (settings.enabled != _wasEnabled) {
+    final enabledChanged = settings.enabled != _wasEnabled;
+    if (enabledChanged) {
       _wasEnabled = settings.enabled;
       _restartUpdateTimer();
+    }
+    if (_initialized &&
+        enabledChanged &&
+        settings.enabled &&
+        _foreground &&
+        _needsSupportRetry) {
+      unawaited(retry());
+      return;
     }
     _schedule();
   }
@@ -125,19 +210,29 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
     if (_foreground == foreground) return;
     _foreground = foreground;
     _restartUpdateTimer();
+    if (_initialized && foreground && settings.enabled && _needsSupportRetry) {
+      unawaited(retry());
+      return;
+    }
     _schedule();
   }
 
   void _onCatalogChanged() {
     final ready = _catalogMatchesLanguage;
+    final loading = catalog.isLoadingLanguage;
+    final error = ready ? null : catalog.lastError;
     if (identical(_observedCatalog, catalog.data) &&
         identical(_observedNameBundle, catalog.kc3Bundle) &&
-        ready == _observedLanguageReady) {
+        ready == _observedLanguageReady &&
+        loading == _observedLanguageLoading &&
+        identical(error, _observedLanguageError)) {
       return;
     }
     _observedCatalog = catalog.data;
     _observedNameBundle = catalog.kc3Bundle;
     _observedLanguageReady = ready;
+    _observedLanguageLoading = loading;
+    _observedLanguageError = error;
     _schedule();
     if (ready) _checkIfDue();
   }
@@ -147,6 +242,10 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
 
   bool get _renderingEnabled =>
       _foreground && settings.enabled && _catalogMatchesLanguage;
+
+  // A failed support recheck must not prevent stopping an existing renderer.
+  // Keep disable delivery serialized with older sends, even while checking.
+  bool get _canDisable => _hasSupportedPort && !_renderingEnabled;
 
   void _onMasterChanged() {
     final ships = gameState.state.masterShips;
@@ -178,7 +277,7 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
   }
 
   void _schedule() {
-    if (_disposed || !_ready) return;
+    if (_disposed || (!_ready && !_canDisable)) return;
     _revision++;
     if (_drain != null) return;
     final operation = _synchronize();
@@ -192,10 +291,10 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
 
   Future<void> _synchronize() async {
     var processed = -1;
-    while (!_disposed && processed != _revision) {
+    while (!_disposed && (_ready || _canDisable) && processed != _revision) {
       processed = _revision;
       try {
-        if (_renderingEnabled) {
+        if (_ready && _renderingEnabled) {
           final ships = gameState.state.masterShips;
           final language = settings.language;
           final nameBundle = catalog.kc3Bundle;
@@ -216,6 +315,7 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
                   },
             ]);
             if (_disposed) return;
+            if (!_ready) continue;
             _sentShips = ships;
             _sentShipsLanguage = language;
             _sentNameBundle = nameBundle;
@@ -232,12 +332,14 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
                   : data,
             );
             if (_disposed) return;
+            if (!_ready) continue;
             _sentCatalog = data;
             _sentCatalogLanguage = language;
             _sentCatalogShips = ships;
           }
         }
         if (_disposed) return;
+        if (!_ready && !_canDisable) return;
         if (processed != _revision) continue;
         final config = <String, Object?>{
           'enabled': _renderingEnabled,
@@ -257,13 +359,34 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
           if (_disposed) return;
           _sentConfig = config;
         }
+        if (!_ready) continue;
+        if (settings.enabled && !_catalogMatchesLanguage) {
+          lastError = catalog.lastError;
+          _setStatus(
+            catalog.isLoadingLanguage
+                ? ShipSubtitleRuntimeStatus.checking
+                : ShipSubtitleRuntimeStatus.failed,
+          );
+          continue;
+        }
         lastError = null;
+        final hasVoiceFiles = gameState.state.masterShips.values.any(
+          (ship) => ship.portraitFileName?.isNotEmpty ?? false,
+        );
+        _setStatus(
+          settings.enabled && !hasVoiceFiles
+              ? ShipSubtitleRuntimeStatus.waitingForGameData
+              : ShipSubtitleRuntimeStatus.ready,
+        );
       } catch (error) {
+        if (_disposed || !_ready) return;
         lastError = error;
+        _setStatus(ShipSubtitleRuntimeStatus.failed);
       }
     }
   }
 
+  @override
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -274,6 +397,7 @@ final class ShipSubtitleRuntimeController with WidgetsBindingObserver {
     layout.removeListener(_schedule);
     gameState.removeListener(_onMasterChanged);
     port.dispose();
+    super.dispose();
   }
 }
 

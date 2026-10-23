@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -41,7 +42,7 @@ class GameRenderingModeSection extends StatelessWidget {
               title: l10n.gameRenderingModeNativeActivity,
               subtitle: l10n.gameRenderingModeNativeActivityDesc,
             ),
-            const Divider(color: Color(0xff294052), height: 1),
+            Divider(color: appColor(context, Color(0xff294052)), height: 1),
           ],
           _modeTile(
             context,
@@ -50,7 +51,7 @@ class GameRenderingModeSection extends StatelessWidget {
             title: l10n.gameRenderingModeCompatibility,
             subtitle: l10n.gameRenderingModeCompatibilityDesc,
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           _modeTile(
             context,
             key: const Key('rendering-mode-standard'),
@@ -58,7 +59,7 @@ class GameRenderingModeSection extends StatelessWidget {
             title: l10n.gameRenderingModeStandard,
             subtitle: l10n.gameRenderingModeStandardDesc,
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           _modeTile(
             context,
             key: const Key('rendering-mode-canvas'),
@@ -94,9 +95,18 @@ class GameRenderingModeSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Text(title, style: SettingsTileTypography.title),
+                  Text(
+                    title,
+                    style: appTextStyle(context, SettingsTileTypography.title),
+                  ),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: SettingsTileTypography.description),
+                  Text(
+                    subtitle,
+                    style: appTextStyle(
+                      context,
+                      SettingsTileTypography.description,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -105,9 +115,10 @@ class GameRenderingModeSection extends StatelessWidget {
               selected
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
-              color: selected
-                  ? const Color(0xff70c7bc)
-                  : const Color(0xff8197a5),
+              color: appColor(
+                context,
+                selected ? const Color(0xff70c7bc) : const Color(0xff8197a5),
+              ),
             ),
           ],
         ),
@@ -137,8 +148,8 @@ class GameRenderingModeSection extends StatelessWidget {
               Text(
                 l10n.gameRenderingModeBattleWarning,
                 key: const Key('rendering-mode-battle-warning'),
-                style: const TextStyle(
-                  color: Colors.orangeAccent,
+                style: TextStyle(
+                  color: appColor(context, Colors.orangeAccent),
                   fontWeight: FontWeight.w700,
                 ),
               ),

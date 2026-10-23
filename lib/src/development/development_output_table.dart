@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../fleet/equipment_type_icon.dart';
@@ -67,8 +68,8 @@ class _DevelopmentOutputTableState extends State<DevelopmentOutputTable> {
     return Container(
       key: const Key('development-output-table'),
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff294052)),
+        color: appColor(context, const Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, const Color(0xff294052))),
         borderRadius: BorderRadius.circular(12),
       ),
       clipBehavior: Clip.antiAlias,
@@ -82,15 +83,15 @@ class _DevelopmentOutputTableState extends State<DevelopmentOutputTable> {
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
             ),
           ),
-          const Divider(height: 1, color: Color(0xff294052)),
+          Divider(height: 1, color: appColor(context, Color(0xff294052))),
           LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: DataTable(
-                  headingRowColor: const WidgetStatePropertyAll(
-                    Color(0xff0e212d),
+                  headingRowColor: WidgetStatePropertyAll(
+                    appColor(context, const Color(0xff0e212d)),
                   ),
                   headingRowHeight: 34,
                   dataRowMinHeight: 44,
@@ -160,15 +161,24 @@ class _DevelopmentOutputTableState extends State<DevelopmentOutputTable> {
                                     ),
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: const Color(0xffb48732),
+                                        color: appColor(
+                                          context,
+                                          const Color(0xffb48732),
+                                        ),
                                       ),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       widget.targetLabel,
-                                      style: const TextStyle(
-                                        color: Color(0xffffc85a),
-                                        fontSize: 10,
+                                      style: appTextStyle(
+                                        context,
+                                        TextStyle(
+                                          color: appColor(
+                                            context,
+                                            Color(0xffffc85a),
+                                          ),
+                                          fontSize: 10,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -194,10 +204,13 @@ class _DevelopmentOutputTableState extends State<DevelopmentOutputTable> {
                             Text(
                               '${_rate(item.totalRate)}%',
                               key: Key('development-final-rate-${item.id}'),
-                              style: const TextStyle(
-                                color: Color(0xffffc85a),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
+                              style: appTextStyle(
+                                context,
+                                TextStyle(
+                                  color: appColor(context, Color(0xffffc85a)),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
                           ),

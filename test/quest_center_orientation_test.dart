@@ -47,6 +47,8 @@ void main() {
         );
         await tester.pumpAndSettle();
         _expectSideBySide(tester);
+        await tester.tap(find.byKey(const Key('quest-detail-tab-rewards')));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text(_rewards));
         await tester.pumpAndSettle();
         expect(find.text(_rewards), findsOneWidget);
@@ -55,17 +57,25 @@ void main() {
     }
   }
 
-  testWidgets('automatic portrait keeps the list above detail', (tester) async {
-    final controller = await _prepare(tester, const Size(390, 780));
-    await tester.pumpWidget(
-      MaterialApp(
-        home: QuestCenterPage(controller: controller, catalog: _catalog),
-      ),
-    );
-    await tester.pumpAndSettle();
-    _expectStacked(tester);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'automatic portrait keeps a short list above its selected detail',
+    (tester) async {
+      final controller = await _prepare(tester, const Size(390, 780));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: QuestCenterPage(controller: controller, catalog: _catalog),
+        ),
+      );
+      await tester.pumpAndSettle();
+      _expectStacked(tester);
+      final list = tester.getRect(find.byKey(const Key('quest-list-panel')));
+      final detail = tester.getRect(
+        find.byKey(const Key('quest-detail-panel')),
+      );
+      expect(list.height, lessThan(detail.height));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final window in const <Size>[
     Size(844, 390),
@@ -161,6 +171,8 @@ void main() {
           );
           await tester.pumpAndSettle();
           _expectSideBySide(tester);
+          await tester.tap(find.byKey(const Key('quest-detail-tab-rewards')));
+          await tester.pumpAndSettle();
           await tester.ensureVisible(find.text(_rewards));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
@@ -219,6 +231,8 @@ void main() {
         );
         expect(status.right, lessThanOrEqualTo(card.right));
         expect(status.bottom, lessThanOrEqualTo(card.bottom));
+        await tester.tap(find.byKey(const Key('quest-detail-tab-rewards')));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text(_rewards));
         await tester.pumpAndSettle();
         final reward = tester.getRect(find.text(_rewards));
@@ -308,10 +322,18 @@ void _expectSideBySide(WidgetTester tester) {
 }
 
 void _expectStacked(WidgetTester tester) {
-  final card = tester.getRect(find.byKey(const Key('quest-card-201')));
+  expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
+  expect(find.byKey(const Key('quest-list-panel')), findsOneWidget);
+  expect(find.byKey(const Key('quest-detail-panel')), findsOneWidget);
+  expect(find.byKey(const Key('quest-back-to-list')), findsNothing);
+  final list = tester.getRect(find.byKey(const Key('quest-list-panel')));
   final detail = tester.getRect(find.byKey(const Key('quest-detail-panel')));
-  expect(detail.top, greaterThanOrEqualTo(card.bottom));
-  expect(detail.left, lessThan(card.right));
+  final paneHeight = list.height + detail.height;
+  expect(detail.top, greaterThanOrEqualTo(list.bottom));
+  expect(detail.left, closeTo(list.left, 0.01));
+  expect(detail.width, closeTo(list.width, 0.01));
+  expect(list.height, lessThanOrEqualTo(paneHeight / 2 + 0.01));
+  expect(detail.height, greaterThanOrEqualTo(paneHeight / 2 - 0.01));
 }
 
 class _Store extends QuestStore {

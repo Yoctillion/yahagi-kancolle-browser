@@ -251,6 +251,10 @@ void main() {
 
       expect(controller.state, GameCaptureState.error);
       expect(controller.errorMessage, contains('StateError'));
+      port.emit(_event(sequence: 99));
+      await Future<void>.delayed(Duration.zero);
+      expect(forwarded, isEmpty);
+      expect(controller.state, GameCaptureState.error);
       await controller.configure(enabled: true);
       expect(port.configureCalls, 3);
       expect(controller.state, GameCaptureState.ready);

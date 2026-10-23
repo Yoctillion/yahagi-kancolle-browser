@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -23,7 +24,10 @@ class GameFrameRateSettingsSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(l10n.gameFrameRateTitle, style: SettingsTileTypography.title),
+            Text(
+              l10n.gameFrameRateTitle,
+              style: appTextStyle(context, SettingsTileTypography.title),
+            ),
             const SizedBox(height: 10),
             SegmentedButton<GameFrameRateMode>(
               key: const Key('game-frame-rate-mode'),
@@ -65,7 +69,7 @@ class GameFrameRateSettingsSection extends StatelessWidget {
                       GameFrameRateMode.highRefresh =>
                         l10n.gameFrameRateHighRefreshDesc,
                     },
-              style: SettingsTileTypography.description,
+              style: appTextStyle(context, SettingsTileTypography.description),
             ),
           ],
         ),

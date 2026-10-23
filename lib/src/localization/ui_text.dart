@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import '../theme/app_palette.dart';
 
 class UiText extends StatelessWidget {
   const UiText(
@@ -20,7 +21,7 @@ class UiText extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     uiText(context, data),
-    style: style,
+    style: appTextStyle(context, style),
     maxLines: maxLines,
     overflow: overflow,
     textAlign: textAlign,

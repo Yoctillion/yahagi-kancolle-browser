@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -44,7 +45,9 @@ class DevelopmentRecipeTable extends StatelessWidget {
               showCheckboxColumn: false,
               sortColumnIndex: null,
               sortAscending: controller.sortAscending,
-              headingRowColor: const WidgetStatePropertyAll(Color(0xff0e212d)),
+              headingRowColor: WidgetStatePropertyAll(
+                appColor(context, const Color(0xff0e212d)),
+              ),
               headingRowHeight: 34,
               dataRowMinHeight: 44,
               dataRowMaxHeight: 44,
@@ -151,8 +154,8 @@ class DevelopmentRecipeTable extends StatelessWidget {
       key: const Key('development-recipe-table-frame'),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff294052)),
+        color: appColor(context, const Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, const Color(0xff294052))),
         borderRadius: BorderRadius.circular(12),
       ),
       clipBehavior: Clip.antiAlias,
@@ -166,7 +169,7 @@ class DevelopmentRecipeTable extends StatelessWidget {
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
             ),
           ),
-          const Divider(height: 1, color: Color(0xff294052)),
+          Divider(height: 1, color: appColor(context, Color(0xff294052))),
           content,
         ],
       ),
@@ -185,9 +188,12 @@ class DevelopmentRecipeTable extends StatelessWidget {
       selected: applied,
       color: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const Color(0xff1d3d52);
+          return appColor(context, const Color(0xff1d3d52));
         }
-        return index.isEven ? const Color(0xff0b202d) : const Color(0xff0e2330);
+        return appColor(
+          context,
+          index.isEven ? const Color(0xff0b202d) : const Color(0xff0e2330),
+        );
       }),
       onSelectChanged: (_) => controller.applyRecipe(recipe),
       cells: [
@@ -213,9 +219,12 @@ class DevelopmentRecipeTable extends StatelessWidget {
         DataCell(
           Text(
             '${_rate(recipe.targetRate)}%',
-            style: const TextStyle(
-              color: Color(0xffffc85a),
-              fontWeight: FontWeight.w900,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffffc85a)),
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ),
@@ -264,12 +273,15 @@ class _EmptyRecipes extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
     child: Column(
       children: [
-        Icon(icon, size: 30, color: const Color(0xff658696)),
+        Icon(icon, size: 30, color: appColor(context, const Color(0xff658696))),
         const SizedBox(height: 8),
         Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Color(0xff91a9b5)),
+          style: appTextStyle(
+            context,
+            TextStyle(color: appColor(context, Color(0xff91a9b5))),
+          ),
         ),
       ],
     ),

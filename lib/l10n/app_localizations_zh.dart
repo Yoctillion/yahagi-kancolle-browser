@@ -9,6 +9,15 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get cameraAvoidanceTitle => '摄像头避让';
+
+  @override
+  String get cameraAvoidanceDesc => '调整摄像头一侧的界面留白，翻转屏幕时自动换边。';
+
+  @override
+  String get cameraAvoidanceDistance => '避让距离';
+
+  @override
   String get operationProtectionTitle => '操作保护';
 
   @override
@@ -322,6 +331,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get layoutSettings => '界面与布局';
+
+  @override
+  String get themeColorTitle => '主题色';
+
+  @override
+  String get themeClassicDark => '原版暗色';
+
+  @override
+  String get themeSeaSaltTeal => '海盐青';
+
+  @override
+  String get themeClearSkyBlue => '晴空蓝';
 
   @override
   String get uiDisplaySizeTitle => '界面UI大小';
@@ -685,6 +706,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get viewOnGitHub => '去 GitHub 看看';
+
+  @override
+  String get officialWebsite => '官网';
 
   @override
   String get checkForUpdates => '检查更新';
@@ -3690,11 +3714,62 @@ class AppLocalizationsZh extends AppLocalizations {
   String summaryWarnings(int count) {
     return '警告 $count';
   }
+
+  @override
+  String get questQueryTitle => '搜索与筛选任务';
+
+  @override
+  String questQueryScope(String scope) {
+    return '查询范围：$scope';
+  }
+
+  @override
+  String questApplyQuery(int count) {
+    return '显示 $count 个任务';
+  }
+
+  @override
+  String get questAccepted => '已接取';
+
+  @override
+  String get questConditionsAndProgress => '条件与进度';
+
+  @override
+  String get questSelectTask => '选择任务，查看完成条件';
+
+  @override
+  String get questBackToList => '返回任务列表';
+
+  @override
+  String get questReturnToTarget => '回到目标任务';
+
+  @override
+  String get questNoPrerequisites => '资料未列出直接前置任务';
+
+  @override
+  String get questNoSuccessors => '资料未列出后续任务';
+
+  @override
+  String get japaneseOriginal => '日文原文';
+
+  @override
+  String questQueryActive(int count) {
+    return '$count 项查询条件已生效';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
 class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
+
+  @override
+  String get cameraAvoidanceTitle => '攝影鏡頭避讓';
+
+  @override
+  String get cameraAvoidanceDesc => '調整攝影鏡頭一側的介面留白，翻轉螢幕時自動換邊。';
+
+  @override
+  String get cameraAvoidanceDistance => '避讓距離';
 
   @override
   String get operationProtectionTitle => '操作保護';
@@ -4011,6 +4086,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get layoutSettings => '介面與配置';
+
+  @override
+  String get themeColorTitle => '主題色';
+
+  @override
+  String get themeClassicDark => '原版暗色';
+
+  @override
+  String get themeSeaSaltTeal => '海鹽青';
+
+  @override
+  String get themeClearSkyBlue => '晴空藍';
 
   @override
   String get uiDisplaySizeTitle => '介面UI大小';
@@ -4374,6 +4461,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get viewOnGitHub => '前往 GitHub';
+
+  @override
+  String get officialWebsite => '官網';
 
   @override
   String get checkForUpdates => '檢查更新';
@@ -7379,5 +7469,47 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String summaryWarnings(int count) {
     return '警告 $count';
+  }
+
+  @override
+  String get questQueryTitle => '搜尋與篩選任務';
+
+  @override
+  String questQueryScope(String scope) {
+    return '查詢範圍：$scope';
+  }
+
+  @override
+  String questApplyQuery(int count) {
+    return '顯示 $count 個任務';
+  }
+
+  @override
+  String get questAccepted => '已接取';
+
+  @override
+  String get questConditionsAndProgress => '條件與進度';
+
+  @override
+  String get questSelectTask => '選擇任務，查看完成條件';
+
+  @override
+  String get questBackToList => '返回任務列表';
+
+  @override
+  String get questReturnToTarget => '回到目標任務';
+
+  @override
+  String get questNoPrerequisites => '資料未列出直接前置任務';
+
+  @override
+  String get questNoSuccessors => '資料未列出後續任務';
+
+  @override
+  String get japaneseOriginal => '日文原文';
+
+  @override
+  String questQueryActive(int count) {
+    return '$count 項查詢條件已生效';
   }
 }

@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -26,7 +27,7 @@ class BattlePredictionSettingsSection extends StatelessWidget
             value: controller.enemyPortraitsEnabled,
             onChanged: controller.setEnemyPortraitsEnabled,
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           buildSwitchTile(
             title: l10n.battleLastFormationHint,
             switchKey: const Key('battle-last-formation-hint'),
@@ -34,7 +35,7 @@ class BattlePredictionSettingsSection extends StatelessWidget
             value: controller.lastFormationHintEnabled,
             onChanged: controller.setLastFormationHintEnabled,
           ),
-          const Divider(color: Color(0xff294052), height: 1),
+          Divider(color: appColor(context, Color(0xff294052)), height: 1),
           buildActionTile(
             key: const Key('battle-section-order'),
             title: l10n.battleSectionOrder,
@@ -44,14 +45,20 @@ class BattlePredictionSettingsSection extends StatelessWidget
               children: <Widget>[
                 Text(
                   l10n.battleSectionOrderAdjust,
-                  style: SettingsTileTypography.description.copyWith(
-                    color: const Color(0xffd4a85f),
+                  style: appTextStyle(
+                    context,
+                    SettingsTileTypography.description.copyWith(
+                      fontSize: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.fontSize,
+                      color: const Color(0xffd4a85f),
+                    ),
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right,
                   size: 18,
-                  color: Color(0xffd4a85f),
+                  color: appColor(context, Color(0xffd4a85f)),
                 ),
               ],
             ),
@@ -67,7 +74,7 @@ class BattlePredictionSettingsSection extends StatelessWidget
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: appColor(context, Colors.transparent),
       constraints: const BoxConstraints(maxWidth: 444),
       builder: (sheetContext) => _BattlePredictionOrderSheet(
         controller: controller,
@@ -147,7 +154,7 @@ class _BattlePredictionOrderSheetState
       ),
       child: Material(
         key: const Key('battle-section-order-sheet'),
-        color: const Color(0xff142735),
+        color: appColor(context, Color(0xff142735)),
         borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
         child: SafeArea(
@@ -169,15 +176,15 @@ class _BattlePredictionOrderSheetState
                         height: 4,
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
-                          color: const Color(0xff526776),
+                          color: appColor(context, const Color(0xff526776)),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
                     Text(
                       l10n.battleSectionOrder,
-                      style: const TextStyle(
-                        color: Color(0xffe1eaf0),
+                      style: TextStyle(
+                        color: appColor(context, Color(0xffe1eaf0)),
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -185,11 +192,14 @@ class _BattlePredictionOrderSheetState
                     const SizedBox(height: 4),
                     Text(
                       l10n.battleSectionOrderHint,
-                      style: SettingsTileTypography.description,
+                      style: appTextStyle(
+                        context,
+                        SettingsTileTypography.description,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Material(
-                      color: const Color(0xff10212e),
+                      color: appColor(context, const Color(0xff10212e)),
                       borderRadius: BorderRadius.circular(8),
                       clipBehavior: Clip.antiAlias,
                       child: Column(
@@ -200,8 +210,8 @@ class _BattlePredictionOrderSheetState
                             index++
                           ) ...[
                             if (index > 0)
-                              const Divider(
-                                color: Color(0xff203746),
+                              Divider(
+                                color: appColor(context, Color(0xff203746)),
                                 height: 1,
                               ),
                             _buildRow(l10n, order[index], index, order.length),
@@ -217,8 +227,11 @@ class _BattlePredictionOrderSheetState
                         child: Text(
                           l10n.battleSectionOrderSaveFailed,
                           key: const Key('battle-section-order-error'),
-                          style: SettingsTileTypography.description.copyWith(
-                            color: const Color(0xffff8c78),
+                          style: appTextStyle(
+                            context,
+                            SettingsTileTypography.description.copyWith(
+                              color: const Color(0xffff8c78),
+                            ),
                           ),
                         ),
                       ),
@@ -237,7 +250,10 @@ class _BattlePredictionOrderSheetState
                               : () =>
                                     _save(widget.controller.resetSectionOrder),
                           style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xffd4a85f),
+                            foregroundColor: appColor(
+                              context,
+                              Color(0xffd4a85f),
+                            ),
                             minimumSize: const Size(44, 44),
                             textStyle: SettingsTileTypography.title,
                           ),
@@ -247,8 +263,14 @@ class _BattlePredictionOrderSheetState
                           key: const Key('battle-section-order-done'),
                           onPressed: () => Navigator.pop(context),
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xffd4a85f),
-                            foregroundColor: const Color(0xff332914),
+                            backgroundColor: appColor(
+                              context,
+                              Color(0xffd4a85f),
+                            ),
+                            foregroundColor: appOnAccentColor(
+                              context,
+                              Color(0xff332914),
+                            ),
                             minimumSize: const Size(64, 44),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(7),
@@ -285,15 +307,15 @@ class _BattlePredictionOrderSheetState
             width: 16,
             child: Text(
               '${index + 1}',
-              style: SettingsTileTypography.description,
+              style: appTextStyle(context, SettingsTileTypography.description),
             ),
           ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xffe1eaf0),
+              style: TextStyle(
+                color: appColor(context, Color(0xffe1eaf0)),
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -331,8 +353,8 @@ class _BattlePredictionOrderSheetState
       constraints: const BoxConstraints.tightFor(width: 44, height: 44),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.standard,
-      color: const Color(0xffe1eaf0),
-      disabledColor: const Color(0xff405462),
+      color: appColor(context, Color(0xffe1eaf0)),
+      disabledColor: appColor(context, Color(0xff405462)),
       icon: Icon(
         delta < 0 ? Icons.arrow_upward : Icons.arrow_downward,
         size: 19,

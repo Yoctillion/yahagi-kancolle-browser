@@ -1,3 +1,4 @@
+import '../../theme/app_palette.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
@@ -28,10 +29,10 @@ class ExpCalcShipPicker extends StatelessWidget {
         ? AppLocalizations.of(context)!.expCalcFreeMode
         : '${gameNames(context).shipName(state.masterShips[ship.masterId]?.name ?? 'Ship #${ship.id}', shipId: ship.masterId)} · Lv.${ship.level}';
     return Material(
-      color: const Color(0xff0c202b),
+      color: appColor(context, const Color(0xff0c202b)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(6),
-        side: const BorderSide(color: Color(0xff284553)),
+        side: BorderSide(color: appColor(context, Color(0xff284553))),
       ),
       child: InkWell(
         key: const Key('exp-calc-ship-selector'),
@@ -59,15 +60,18 @@ class ExpCalcShipPicker extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xffecf3f5),
-                      fontSize: 12,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffecf3f5)),
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.expand_more,
-                  color: Color(0xff91aab8),
+                  color: appColor(context, Color(0xff91aab8)),
                   size: 18,
                 ),
               ],
@@ -130,10 +134,10 @@ class _ShipDialogState extends State<_ShipDialog> {
         .toList();
     return Dialog(
       insetPadding: const EdgeInsets.all(12),
-      backgroundColor: const Color(0xff101d27),
+      backgroundColor: appColor(context, Color(0xff101d27)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xff385064)),
+        side: BorderSide(color: appColor(context, Color(0xff385064))),
       ),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
@@ -147,18 +151,21 @@ class _ShipDialogState extends State<_ShipDialog> {
               child: Row(
                 children: [
                   const SizedBox(width: 12),
-                  const Icon(
+                  Icon(
                     Icons.directions_boat_outlined,
                     size: 18,
-                    color: Color(0xffd7b56d),
+                    color: appColor(context, Color(0xffd7b56d)),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     ExpCalcStrings(context).selectShip,
-                    style: const TextStyle(
-                      color: Color(0xffecf3f5),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffecf3f5)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const Spacer(),
@@ -167,16 +174,16 @@ class _ShipDialogState extends State<_ShipDialog> {
                       context,
                     ).closeButtonTooltip,
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close,
                       size: 20,
-                      color: Color(0xffc3d0d7),
+                      color: appColor(context, Color(0xffc3d0d7)),
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xff385064)),
+            Divider(height: 1, color: appColor(context, Color(0xff385064))),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -184,7 +191,7 @@ class _ShipDialogState extends State<_ShipDialog> {
                   SizedBox(
                     width: size.width < 420 ? 76 : 104,
                     child: ColoredBox(
-                      color: const Color(0xff0b1720),
+                      color: appColor(context, Color(0xff0b1720)),
                       child: ListView(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         children: [
@@ -193,9 +200,12 @@ class _ShipDialogState extends State<_ShipDialog> {
                               selected: category == value,
                               button: true,
                               child: Material(
-                                color: category == value
-                                    ? const Color(0xff244b69)
-                                    : Colors.transparent,
+                                color: appColor(
+                                  context,
+                                  category == value
+                                      ? const Color(0xff244b69)
+                                      : Colors.transparent,
+                                ),
                                 child: InkWell(
                                   key: Key(
                                     'exp-calc-ship-category-${value.name}',
@@ -208,13 +218,16 @@ class _ShipDialogState extends State<_ShipDialog> {
                                     ),
                                     child: Text(
                                       categoryLabel(value),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontFamily: fontFamily,
-                                        fontFamilyFallback:
-                                            fontStyle?.fontFamilyFallback,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
+                                      style: appTextStyle(
+                                        context,
+                                        TextStyle(
+                                          color: Colors.white,
+                                          fontFamily: fontFamily,
+                                          fontFamilyFallback:
+                                              fontStyle?.fontFamilyFallback,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -225,7 +238,10 @@ class _ShipDialogState extends State<_ShipDialog> {
                       ),
                     ),
                   ),
-                  const VerticalDivider(width: 1, color: Color(0xff385064)),
+                  VerticalDivider(
+                    width: 1,
+                    color: appColor(context, Color(0xff385064)),
+                  ),
                   Expanded(
                     child: ListView.separated(
                       key: ValueKey(category),
@@ -246,9 +262,12 @@ class _ShipDialogState extends State<_ShipDialog> {
                           selected: selected,
                           button: true,
                           child: Material(
-                            color: selected
-                                ? const Color(0xff1d5f91)
-                                : const Color(0xff172a38),
+                            color: appColor(
+                              context,
+                              selected
+                                  ? const Color(0xff1d5f91)
+                                  : const Color(0xff172a38),
+                            ),
                             borderRadius: BorderRadius.circular(5),
                             child: InkWell(
                               key: Key(
@@ -281,13 +300,16 @@ class _ShipDialogState extends State<_ShipDialog> {
                                           name,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: fontFamily,
-                                            fontFamilyFallback:
-                                                fontStyle?.fontFamilyFallback,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: ship == null ? 12 : 18,
+                                          style: appTextStyle(
+                                            context,
+                                            TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: fontFamily,
+                                              fontFamilyFallback:
+                                                  fontStyle?.fontFamilyFallback,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: ship == null ? 12 : 18,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -295,13 +317,16 @@ class _ShipDialogState extends State<_ShipDialog> {
                                         const SizedBox(width: 6),
                                         Text(
                                           'Lv.${ship.level}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: fontFamily,
-                                            fontFamilyFallback:
-                                                fontStyle?.fontFamilyFallback,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 16.5,
+                                          style: appTextStyle(
+                                            context,
+                                            TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: fontFamily,
+                                              fontFamilyFallback:
+                                                  fontStyle?.fontFamilyFallback,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 16.5,
+                                            ),
                                           ),
                                         ),
                                       ],

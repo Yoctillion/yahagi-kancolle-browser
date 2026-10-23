@@ -9,6 +9,16 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get cameraAvoidanceTitle => 'Camera avoidance';
+
+  @override
+  String get cameraAvoidanceDesc =>
+      'Adjust the interface spacing on the camera side. The spacing switches sides automatically when you flip the screen.';
+
+  @override
+  String get cameraAvoidanceDistance => 'Avoidance distance';
+
+  @override
   String get operationProtectionTitle => 'Accidental action protection';
 
   @override
@@ -340,6 +350,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get layoutSettings => 'Interface and layout';
+
+  @override
+  String get themeColorTitle => 'Theme color';
+
+  @override
+  String get themeClassicDark => 'Classic dark';
+
+  @override
+  String get themeSeaSaltTeal => 'Sea salt teal';
+
+  @override
+  String get themeClearSkyBlue => 'Clear sky blue';
 
   @override
   String get uiDisplaySizeTitle => 'UI size';
@@ -720,6 +742,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewOnGitHub => 'View on GitHub';
+
+  @override
+  String get officialWebsite => 'Official website';
 
   @override
   String get checkForUpdates => 'Check for updates';
@@ -3846,5 +3871,48 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String summaryWarnings(int count) {
     return 'Warnings $count';
+  }
+
+  @override
+  String get questQueryTitle => 'Search and filter quests';
+
+  @override
+  String questQueryScope(String scope) {
+    return 'Search scope: $scope';
+  }
+
+  @override
+  String questApplyQuery(int count) {
+    return 'Show $count quests';
+  }
+
+  @override
+  String get questAccepted => 'Accepted';
+
+  @override
+  String get questConditionsAndProgress => 'Conditions and progress';
+
+  @override
+  String get questSelectTask => 'Select a quest to view completion conditions';
+
+  @override
+  String get questBackToList => 'Back to quest list';
+
+  @override
+  String get questReturnToTarget => 'Return to target quest';
+
+  @override
+  String get questNoPrerequisites =>
+      'No direct prerequisite quests listed in the data';
+
+  @override
+  String get questNoSuccessors => 'No following quests listed in the data';
+
+  @override
+  String get japaneseOriginal => 'Japanese original';
+
+  @override
+  String questQueryActive(int count) {
+    return '$count query conditions applied';
   }
 }

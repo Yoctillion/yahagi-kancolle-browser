@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import 'game_application_restart_port.dart';
@@ -79,9 +80,9 @@ class _GameEnvironmentHostState extends State<GameEnvironmentHost>
   @override
   Widget build(BuildContext context) {
     if (!_showGame) {
-      return const ColoredBox(
+      return ColoredBox(
         key: Key('game-environment-restarting'),
-        color: Color(0xff102431),
+        color: appColor(context, Color(0xff102431)),
         child: Center(child: CircularProgressIndicator()),
       );
     }

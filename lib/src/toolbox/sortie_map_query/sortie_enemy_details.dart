@@ -1,3 +1,4 @@
+import '../../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -39,7 +40,7 @@ Future<void> showSortieEnemyDetails(
   }
   return showDialog<void>(
     context: context,
-    barrierColor: Colors.black54,
+    barrierColor: appColor(context, Colors.black54),
     builder: (context) =>
         _SortieEnemyDetailsDialog(entry: entry, details: details, state: state),
   );
@@ -62,7 +63,7 @@ class _SortieEnemyDetailsDialog extends StatelessWidget {
     final strings = EnemyDetailsStrings.of(context);
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
-      backgroundColor: Colors.transparent,
+      backgroundColor: appColor(context, Colors.transparent),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: math.min(360, viewport.width - 32),
@@ -70,13 +71,13 @@ class _SortieEnemyDetailsDialog extends StatelessWidget {
         ),
         child: Material(
           key: const Key('sortie-enemy-details-card'),
-          color: const Color(0xff192f3d),
+          color: appColor(context, Color(0xff192f3d)),
           elevation: 18,
-          shadowColor: Colors.black87,
+          shadowColor: appColor(context, Colors.black87),
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Color(0x99ff907e)),
+            side: BorderSide(color: appColor(context, Color(0x99ff907e))),
           ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(12),
@@ -93,21 +94,21 @@ class _SortieEnemyDetailsDialog extends StatelessWidget {
                   children: [
                     _InfoChip(
                       label: 'Lv. ${_number(details.level)}',
-                      color: const Color(0xffffc95c),
+                      color: appColor(context, const Color(0xffffc95c)),
                     ),
                     _InfoChip(
                       label: 'ID ${details.id}',
-                      color: const Color(0xffff907e),
+                      color: appColor(context, const Color(0xffff907e)),
                     ),
                     _InfoChip(
                       label: gameNames(
                         context,
                       ).shipTypeName(details.shipType ?? strings.enemyShip),
-                      color: const Color(0xffffc95c),
+                      color: appColor(context, const Color(0xffffc95c)),
                     ),
                     _InfoChip(
                       label: strings.preciseConfiguration,
-                      color: const Color(0xff70c7bc),
+                      color: appColor(context, const Color(0xff70c7bc)),
                     ),
                   ],
                 ),
@@ -125,9 +126,12 @@ class _SortieEnemyDetailsDialog extends StatelessWidget {
                 if (details.equipment.isEmpty)
                   Text(
                     strings.equipmentMissing,
-                    style: const TextStyle(
-                      color: Color(0xff93aab8),
-                      fontSize: 11,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xff93aab8)),
+                        fontSize: 11,
+                      ),
                     ),
                   )
                 else
@@ -181,7 +185,11 @@ class _Header extends StatelessWidget {
         visualDensity: VisualDensity.compact,
         constraints: const BoxConstraints.tightFor(width: 44, height: 44),
         padding: EdgeInsets.zero,
-        icon: const Icon(Icons.close, size: 19, color: Color(0xffa5bac4)),
+        icon: Icon(
+          Icons.close,
+          size: 19,
+          color: appColor(context, Color(0xffa5bac4)),
+        ),
       ),
     ],
   );
@@ -217,7 +225,7 @@ class _StatsGrid extends StatelessWidget {
     ];
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xff10232e),
+        color: appColor(context, Color(0xff10232e)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
@@ -240,9 +248,12 @@ class _StatsGrid extends StatelessWidget {
                     stat.$1,
                     maxLines: english ? 2 : null,
                     textAlign: english ? TextAlign.center : null,
-                    style: const TextStyle(
-                      color: Color(0xff93aab8),
-                      fontSize: 10,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xff93aab8)),
+                        fontSize: 10,
+                      ),
                     ),
                   ),
                   if (english)
@@ -323,18 +334,19 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      color: color.withValues(alpha: .12),
-      border: Border.all(color: color.withValues(alpha: .55)),
+      color: appColor(context, color.withValues(alpha: .12)),
+      border: Border.all(
+        color: appColor(context, color.withValues(alpha: .55)),
+      ),
       borderRadius: BorderRadius.circular(999),
     ),
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
         ),
       ),
     ),

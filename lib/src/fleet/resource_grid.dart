@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../theme/app_palette.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'fleet_ui_strings.dart';
@@ -62,9 +63,9 @@ class _ResourceItem extends StatelessWidget {
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 5),
       decoration: BoxDecoration(
-        color: const Color(0xff142735),
+        color: appColor(context, Color(0xff142735)),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xff315064)),
+        border: Border.all(color: appColor(context, Color(0xff315064))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -85,11 +86,14 @@ class _ResourceItem extends StatelessWidget {
                 value?.toString() ?? '—',
                 maxLines: 1,
                 softWrap: false,
-                style: const TextStyle(
-                  color: Color(0xffdce6eb),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffdce6eb)),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ),
@@ -1068,7 +1072,10 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
         key: const Key('panel-resource-collapsed-reset'),
         tooltip: l10n.panelResourcesCollapsedItemsReset,
         onPressed: () => controller.setCollapsedPanelResourceIds(null),
-        icon: const Icon(Icons.restart_alt_rounded, color: Color(0xffe0b25c)),
+        icon: Icon(
+          Icons.restart_alt_rounded,
+          color: appColor(context, const Color(0xffe0b25c)),
+        ),
       ),
     );
   }
@@ -1089,9 +1096,9 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
       context: context,
       builder: (dialogContext) => Dialog(
         key: key,
-        backgroundColor: const Color(0xff102532),
+        backgroundColor: appColor(context, const Color(0xff102532)),
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Color(0xff315064)),
+          side: BorderSide(color: appColor(context, Color(0xff315064))),
           borderRadius: BorderRadius.circular(14),
         ),
         child: ConstrainedBox(
@@ -1106,8 +1113,8 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                     Expanded(
                       child: Text(
                         title,
-                        style: const TextStyle(
-                          color: Color(0xffe0b25c),
+                        style: TextStyle(
+                          color: appColor(context, const Color(0xffe0b25c)),
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1118,15 +1125,15 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
                       key: const Key('header-resource-filter-done'),
                       tooltip: l10n.editDone,
                       onPressed: () => Navigator.of(dialogContext).pop(),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.check_rounded,
-                        color: Color(0xffe0b25c),
+                        color: appColor(context, Color(0xffe0b25c)),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xff294052)),
+              Divider(height: 1, color: appColor(context, Color(0xff294052))),
               Flexible(
                 child: AnimatedBuilder(
                   animation: controller,
@@ -1319,7 +1326,7 @@ class _HeaderGridValue extends StatelessWidget implements _NaturallySized {
         Icon(
           icon,
           size: _headerGridIconSize,
-          color: color,
+          color: appColor(context, color),
           semanticLabel: label,
         ),
         const SizedBox(width: _iconGap),
@@ -1327,7 +1334,12 @@ class _HeaderGridValue extends StatelessWidget implements _NaturallySized {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(value, maxLines: 1, softWrap: false, style: _style),
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: appTextStyle(context, _style),
+            ),
           ),
         ),
       ],
@@ -1336,12 +1348,16 @@ class _HeaderGridValue extends StatelessWidget implements _NaturallySized {
 }
 
 // 极简档的顶栏要把空间让给数值，所以不画胶囊底色和边框。
-BoxDecoration? _headerPillDecoration(HeaderUiSize uiSize, {bool grid = false}) {
+BoxDecoration? _headerPillDecoration(
+  BuildContext context,
+  HeaderUiSize uiSize, {
+  bool grid = false,
+}) {
   if (grid || uiSize.isMinimal) return null;
   return BoxDecoration(
-    color: const Color(0xff142735),
+    color: appColor(context, const Color(0xff142735)),
     borderRadius: BorderRadius.circular(uiSize.isCompactOrSmaller ? 7 : 8),
-    border: Border.all(color: const Color(0xff315064)),
+    border: Border.all(color: appColor(context, const Color(0xff315064))),
   );
 }
 
@@ -1390,14 +1406,18 @@ class _HeaderFrameRefreshPill extends StatelessWidget
       key: const Key('header-frame-refresh'),
       height: _headerItemHeight(context, _isCompact),
       padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
-      decoration: _headerPillDecoration(uiSize, grid: _inHeaderGrid(context)),
+      decoration: _headerPillDecoration(
+        context,
+        uiSize,
+        grid: _inHeaderGrid(context),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.refresh_rounded,
             size: _iconSize,
-            color: const Color(0xffd4a85f),
+            color: appColor(context, const Color(0xffd4a85f)),
           ),
           SizedBox(width: _iconGap),
           Flexible(
@@ -1406,7 +1426,10 @@ class _HeaderFrameRefreshPill extends StatelessWidget
               child: Text(
                 _label(context),
                 maxLines: 1,
-                style: _style(_headerFontSize(context, _stripFontSize)),
+                style: appTextStyle(
+                  context,
+                  _style(_headerFontSize(context, _stripFontSize)),
+                ),
               ),
             ),
           ),
@@ -1452,12 +1475,17 @@ abstract class _HeaderTextPill extends StatelessWidget
       width: width,
       height: _headerStripItemHeight(_isCompact),
       padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
-      decoration: _headerPillDecoration(uiSize),
+      decoration: _headerPillDecoration(context, uiSize),
       alignment: Alignment.centerLeft,
       child: FittedBox(
         fit: BoxFit.scaleDown,
         alignment: Alignment.centerLeft,
-        child: Text(text(context), maxLines: 1, softWrap: false, style: _style),
+        child: Text(
+          text(context),
+          maxLines: 1,
+          softWrap: false,
+          style: appTextStyle(context, _style),
+        ),
       ),
     );
   }
@@ -1632,7 +1660,7 @@ class _HeaderResourceItem extends StatelessWidget implements _NaturallySized {
     return Container(
       height: _headerItemHeight(context, _isCompact),
       padding: EdgeInsets.symmetric(horizontal: metrics.padding),
-      decoration: _headerPillDecoration(uiSize, grid: grid),
+      decoration: _headerPillDecoration(context, uiSize, grid: grid),
       child: Row(
         children: [
           Image.asset(
@@ -1648,7 +1676,11 @@ class _HeaderResourceItem extends StatelessWidget implements _NaturallySized {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               clipBehavior: Clip.hardEdge,
-              child: Text(_text(context), maxLines: 1, style: _style(context)),
+              child: Text(
+                _text(context),
+                maxLines: 1,
+                style: appTextStyle(context, _style(context)),
+              ),
             ),
           ),
         ],
@@ -1793,7 +1825,7 @@ class _HeaderCapacityFilterRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     key: Key('header-resource-filter-row-$id'),
-    color: Colors.transparent,
+    color: appColor(context, Colors.transparent),
     child: InkWell(
       onTap: onChanged,
       child: SizedBox(
@@ -1806,25 +1838,31 @@ class _HeaderCapacityFilterRow extends StatelessWidget {
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
-            Icon(icon, size: 24, color: const Color(0xff9fb3bf)),
+            Icon(icon, size: 24, color: appColor(context, Color(0xff9fb3bf))),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Color(0xffdce6eb),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffdce6eb)),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             Text(
               value,
-              style: const TextStyle(
-                color: Color(0xffdce6eb),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffdce6eb)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -1851,7 +1889,7 @@ class _HeaderSenkaFilterRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     key: const Key('header-resource-filter-row-senka'),
-    color: Colors.transparent,
+    color: appColor(context, Colors.transparent),
     child: InkWell(
       onTap: onChanged,
       child: SizedBox(
@@ -1864,29 +1902,35 @@ class _HeaderSenkaFilterRow extends StatelessWidget {
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
-            const Icon(
+            Icon(
               Icons.emoji_events_rounded,
               size: 24,
-              color: Color(0xffe0b25c),
+              color: appColor(context, Color(0xffe0b25c)),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 fleetText(context, '战果'),
-                style: TextStyle(
-                  color: Color(0xffdce6eb),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: Color(0xffdce6eb),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             Text(
               '${_formatSenka(senka)}（#${rank ?? '--'}）',
-              style: const TextStyle(
-                color: Color(0xffe0b25c),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffe0b25c)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -1911,7 +1955,7 @@ class _HeaderAnchorageTimerFilterRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     key: const Key('header-resource-filter-row-anchorage-timer'),
-    color: Colors.transparent,
+    color: appColor(context, Colors.transparent),
     child: InkWell(
       onTap: onChanged,
       child: SizedBox(
@@ -1924,29 +1968,35 @@ class _HeaderAnchorageTimerFilterRow extends StatelessWidget {
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
-            const Icon(
+            Icon(
               Icons.anchor_rounded,
               size: 24,
-              color: Color(0xff9fb3bf),
+              color: appColor(context, Color(0xff9fb3bf)),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 fleetText(context, '泊地计时'),
-                style: TextStyle(
-                  color: Color(0xffdce6eb),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: Color(0xffdce6eb),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             Text(
               elapsed,
-              style: const TextStyle(
-                color: Color(0xff9fb3bf),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff9fb3bf)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -1971,7 +2021,7 @@ class _HeaderNosakiTimerFilterRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     key: const Key('header-resource-filter-row-nosaki-timer'),
-    color: Colors.transparent,
+    color: appColor(context, Colors.transparent),
     child: InkWell(
       onTap: onChanged,
       child: SizedBox(
@@ -1984,29 +2034,35 @@ class _HeaderNosakiTimerFilterRow extends StatelessWidget {
               onChanged: onChanged == null ? null : (_) => onChanged!(),
               visualDensity: VisualDensity.compact,
             ),
-            const Icon(
+            Icon(
               Icons.restaurant_rounded,
               size: 24,
-              color: Color(0xff9fb3bf),
+              color: appColor(context, Color(0xff9fb3bf)),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 fleetText(context, '野埼计时'),
-                style: TextStyle(
-                  color: Color(0xffdce6eb),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: Color(0xffdce6eb),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             Text(
               elapsed,
-              style: const TextStyle(
-                color: Color(0xff9fb3bf),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff9fb3bf)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -2033,7 +2089,7 @@ class _HeaderResourceFilterRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     key: Key('header-resource-filter-row-${spec.id}'),
-    color: Colors.transparent,
+    color: appColor(context, Colors.transparent),
     child: InkWell(
       onTap: onChanged,
       child: SizedBox(
@@ -2059,20 +2115,26 @@ class _HeaderResourceFilterRow extends StatelessWidget {
                 fleetText(context, spec.label),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xffdce6eb),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffdce6eb)),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             Text(
               value?.toString() ?? '—',
-              style: const TextStyle(
-                color: Color(0xff9fb3bf),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff9fb3bf)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -2107,7 +2169,11 @@ class _EditButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       tooltip: tooltip,
       onPressed: onPressed,
-      icon: Icon(icon, size: iconSize, color: const Color(0xffe0b25c)),
+      icon: Icon(
+        icon,
+        size: iconSize,
+        color: appColor(context, Color(0xffe0b25c)),
+      ),
     ),
   );
 }

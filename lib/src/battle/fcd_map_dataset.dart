@@ -158,14 +158,19 @@ final class FcdMapDataset
   // geometry support: their retained rawJson remains the source of truth.
   static final _geometryCache = Expando<Map<String, FcdMapGeometry>>();
 
+  Map<String, FcdMapGeometry> get _geometries =>
+      _geometryCache[this] ??= _parseGeometries(rawJson);
+
+  /// Allows revised geometry and new label-only maps, but never loses a map
+  /// that could be drawn from the known-good baseline.
+  bool preservesDrawableMapsFrom(FcdMapDataset baseline) =>
+      baseline._geometries.keys.every(_geometries.containsKey);
+
   @override
   FcdMapGeometry? geometryFor({
     required int mapAreaId,
     required int mapInfoNo,
-  }) {
-    final maps = _geometryCache[this] ??= _parseGeometries(rawJson);
-    return maps['$mapAreaId-$mapInfoNo'];
-  }
+  }) => _geometries['$mapAreaId-$mapInfoNo'];
 
   @override
   String? resolve({
@@ -211,6 +216,10 @@ FcdMapGeometry? _parseGeometry(Map<String, dynamic> value) {
   }
 
   final spots = <String, FcdMapSpot>{};
+  var minX = double.infinity;
+  var maxX = double.negativeInfinity;
+  var minY = double.infinity;
+  var maxY = double.negativeInfinity;
   for (final entry in rawSpots.entries) {
     final name = _spotName(entry.key);
     final position = entry.value;
@@ -227,8 +236,13 @@ FcdMapGeometry? _parseGeometry(Map<String, dynamic> value) {
     final x = rawX.toDouble();
     final y = rawY.toDouble();
     if (!x.isFinite || !y.isFinite) return null;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
     spots[name] = FcdMapSpot(x: x, y: y, type: type);
   }
+  if (!(maxX - minX).isFinite || !(maxY - minY).isFinite) return null;
 
   final routes = <int, FcdMapRoute>{};
   for (final entry in rawRoutes.entries) {

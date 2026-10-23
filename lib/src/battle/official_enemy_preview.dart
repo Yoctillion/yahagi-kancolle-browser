@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -39,7 +40,10 @@ class OfficialEnemyPreview extends StatelessWidget {
       title: Text(
         '敌方部队（战前预测）',
         key: const Key('official-enemy-preview-title'),
-        style: battleFleetTitleStyle.copyWith(color: const Color(0xffff8c78)),
+        style: appTextStyle(
+          context,
+          battleFleetTitleStyle.copyWith(color: const Color(0xffff8c78)),
+        ),
       ),
       rows: <Widget>[
         if (!combined)

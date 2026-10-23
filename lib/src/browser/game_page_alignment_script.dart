@@ -1,6 +1,6 @@
 const String gamePageAlignmentScript = r'''
 (() => {
-  const runtimeVersion = 2;
+  const runtimeVersion = 3;
   if (
     window.__yahagiMobilePresentationRuntimeVersion === runtimeVersion &&
     typeof window.__yahagiMobileSyncPresentation === 'function' &&
@@ -14,6 +14,10 @@ const String gamePageAlignmentScript = r'''
   const ooiBrowserFrameHeight = 800;
   const ooiBrowserGameWidth = 1200;
   const ooiBrowserGameHeight = 720;
+  const ooiBrowserSurfaceSelector =
+    '#ooi-page #ooi-game > iframe#externalswf, ' +
+    '#ooi-page #ooi-game > embed#externalswf, ' +
+    '#flashWrap > iframe#externalswf, #flashWrap > embed#externalswf';
   const fixedCanvasCss = `
     html, body {
       margin: 0 !important;
@@ -71,18 +75,22 @@ const String gamePageAlignmentScript = r'''
     body,
     #ooi-page,
     #ooi-content,
-    #ooi-game {
+    #ooi-game,
+    #flashWrap {
       width: 100vw !important;
       height: 100vh !important;
       min-width: 0 !important;
       min-height: 0 !important;
+      max-width: none !important;
+      max-height: none !important;
       margin: 0 !important;
       padding: 0 !important;
       overflow: hidden !important;
     }
 
     #ooi-content,
-    #ooi-game {
+    #ooi-game,
+    #flashWrap {
       display: block !important;
       position: fixed !important;
       inset: 0 !important;
@@ -90,31 +98,41 @@ const String gamePageAlignmentScript = r'''
 
     #ooi-header,
     #ooi-footer,
-    #ooi-game > :not(iframe#externalswf) {
+    #spacing_top,
+    #ooi-game > :not(iframe#externalswf):not(embed#externalswf):not(#flashWrap),
+    #flashWrap > :not(iframe#externalswf):not(embed#externalswf) {
       display: none !important;
     }
 
-    #ooi-game > iframe#externalswf {
+    #ooi-game > iframe#externalswf,
+    #ooi-game > embed#externalswf,
+    #flashWrap > iframe#externalswf,
+    #flashWrap > embed#externalswf {
       display: block !important;
       position: fixed !important;
       left: var(--yahagi-ooi-left, 0px) !important;
       top: var(--yahagi-ooi-top, 0px) !important;
       width: var(--yahagi-ooi-frame-width, 1280px) !important;
       height: var(--yahagi-ooi-frame-height, 800px) !important;
+      max-width: none !important;
+      max-height: none !important;
       transform: scale(var(--yahagi-ooi-scale, 1)) !important;
       transform-origin: top left !important;
       margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
     }
   `;
 
   const cleanupOoiBrowserPresentation = () => {
     document.getElementById(ooiBrowserStyleId)?.remove();
-    const game = document.getElementById('ooi-game');
-    game?.style.removeProperty('--yahagi-ooi-frame-width');
-    game?.style.removeProperty('--yahagi-ooi-frame-height');
-    game?.style.removeProperty('--yahagi-ooi-scale');
-    game?.style.removeProperty('--yahagi-ooi-left');
-    game?.style.removeProperty('--yahagi-ooi-top');
+    for (const game of [document.getElementById('ooi-game'), document.getElementById('flashWrap')]) {
+      game?.style.removeProperty('--yahagi-ooi-frame-width');
+      game?.style.removeProperty('--yahagi-ooi-frame-height');
+      game?.style.removeProperty('--yahagi-ooi-scale');
+      game?.style.removeProperty('--yahagi-ooi-left');
+      game?.style.removeProperty('--yahagi-ooi-top');
+    }
 
     if (window.__yahagiMobileOoiResize) {
       window.removeEventListener('resize', window.__yahagiMobileOoiResize);
@@ -163,13 +181,17 @@ const String gamePageAlignmentScript = r'''
       host === 'games.dmm.com') &&
     (pathname === '/netgame/social/-/gadgets/=/app_id=854854' ||
       pathname === '/netgame/social/-/gadgets/=/app_id=854854/');
+  const isOoiBrowserPage =
+    host === 'ooi.moe' &&
+    ['/kancolle', '/poi', '/flash', '/kcs2/index.php'].includes(
+      pathname.replace(/\/$/, ''),
+    );
   const isGamePage =
     isCurrentDmmGamePage ||
     isLegacyDmmGamePage ||
     host === 'osapi.dmm.com' ||
-    isKancolleServerPage;
-  const isOoiBrowserPage =
-    location.hostname === 'ooi.moe' && location.pathname === '/kancolle';
+    isKancolleServerPage ||
+    isOoiBrowserPage;
 
   const isVisibleElement = (element) => {
     if (!element || !element.isConnected) return false;
@@ -300,8 +322,8 @@ const String gamePageAlignmentScript = r'''
 
     if (!window.__yahagiMobileOoiAlignGame) {
       window.__yahagiMobileOoiAlignGame = () => {
-        const game = document.getElementById('ooi-game');
-        const frame = game?.querySelector('iframe#externalswf');
+        const frame = document.querySelector(ooiBrowserSurfaceSelector);
+        const game = frame?.parentElement;
         if (!game || !frame || !document.documentElement) return;
 
         const viewportWidth = Math.max(
@@ -313,7 +335,6 @@ const String gamePageAlignmentScript = r'''
           window.visualViewport?.height || document.documentElement.clientHeight,
         );
         const scale = Math.min(
-          1,
           viewportWidth / ooiBrowserGameWidth,
           viewportHeight / ooiBrowserGameHeight,
         );
@@ -377,7 +398,7 @@ const String gamePageAlignmentScript = r'''
       return {state: isGamePage && !isAccountPage ? 'pending' : 'web', unparsed: true};
     }
     const hasOoiBrowserSurface = isOoiBrowserPage && Boolean(
-      document.querySelector('#ooi-page #ooi-game > iframe#externalswf'),
+      document.querySelector(ooiBrowserSurfaceSelector),
     );
     if (isOoiBrowserPage && hasOoiBrowserSurface) {
       return {state: 'web', ooi: true};

@@ -34,10 +34,12 @@ internal class GameFullscreenChannel(
     private var questNotice: TextView? = null
     private var pendingQuestMessage = ""
     private var scale = 1f
+    private var geometryRevision = 0L
     private var minX = 0f
     private var maxX = 0f
     private var minY = 0f
     private var maxY = 0f
+    private var requestedContentBounds: FullscreenOverlayBounds? = null
     private var hintShown = false
     private var hintToast: Toast? = null
     private val gesture = FullscreenExitGesture(ViewConfiguration.get(activity).scaledTouchSlop.toFloat())
@@ -59,13 +61,21 @@ internal class GameFullscreenChannel(
             result.notImplemented()
             return
         }
-        if (call.argument<Boolean>("active") != true) {
-            removeButton()
-            result.success(null)
-            return
-        }
         try {
-            update(call)
+            val requestedRevision = call.argument<Number>("geometryRevision")?.toLong()
+            val nextRevision = requestedRevision ?: geometryRevision
+            val geometryChanged = requestedRevision == null || nextRevision != geometryRevision
+            if (geometryChanged) {
+                gesture.finish(cancelled = true)
+                button?.isPressed = false
+            }
+            geometryRevision = nextRevision
+            updateContentBounds(call)
+            if (call.argument<Boolean>("active") == true) {
+                update(call, geometryChanged)
+            } else {
+                removeButton()
+            }
             result.success(null)
         } catch (error: Exception) {
             removeButton()
@@ -73,7 +83,29 @@ internal class GameFullscreenChannel(
         }
     }
 
-    private fun update(call: MethodCall) {
+    private fun updateContentBounds(call: MethodCall) {
+        fun number(key: String) = call.argument<Number>(key)?.toDouble()?.takeIf { it.isFinite() }
+        val density = number("scale")?.takeIf { it > 0 }
+        val left = number("contentLeft")
+        val top = number("contentTop")
+        val width = number("contentWidth")?.takeIf { it >= 0 }
+        val height = number("contentHeight")?.takeIf { it >= 0 }
+        requestedContentBounds = if (
+            density != null && left != null && top != null && width != null && height != null
+        ) {
+            FullscreenOverlayBounds(
+                (left * density).toInt(),
+                (top * density).toInt(),
+                ((left + width) * density).toInt(),
+                ((top + height) * density).toInt(),
+            )
+        } else {
+            // Older Flutter clients omit the rectangle and use the whole root.
+            null
+        }
+    }
+
+    private fun update(call: MethodCall, geometryChanged: Boolean) {
         fun number(key: String): Float = requireNotNull(call.argument<Number>(key)).toFloat().also {
             require(it.isFinite())
         }
@@ -84,21 +116,24 @@ internal class GameFullscreenChannel(
         maxY = number("maxY") * scale
         require(maxX >= minX && maxY >= minY)
         val root = requireNotNull(activity.findViewById<FrameLayout>(android.R.id.content))
+        val isNewButton = button == null
         val view = button ?: createButton().also {
             button = it
             root.addView(it)
         }
         view.contentDescription = call.argument<String>("description") ?: call.argument<String>("label")
-        view.layoutParams = FrameLayout.LayoutParams(
-            (number("width") * scale).toInt().coerceAtLeast(1),
-            (number("height") * scale).toInt().coerceAtLeast(1),
-            Gravity.TOP or Gravity.LEFT,
-        ).apply {
-            leftMargin = (number("x") * scale).coerceIn(minX, maxX).toInt()
-            topMargin = (number("y") * scale).coerceIn(minY, maxY).toInt()
+        if (geometryChanged || isNewButton) {
+            view.layoutParams = FrameLayout.LayoutParams(
+                (number("width") * scale).toInt().coerceAtLeast(1),
+                (number("height") * scale).toInt().coerceAtLeast(1),
+                Gravity.TOP or Gravity.LEFT,
+            ).apply {
+                leftMargin = (number("x") * scale).coerceIn(minX, maxX).toInt()
+                topMargin = (number("y") * scale).coerceIn(minY, maxY).toInt()
+            }
+            view.translationX = 0f
+            view.translationY = 0f
         }
-        view.translationX = 0f
-        view.translationY = 0f
         view.bringToFront()
         showQuestNotice(pendingQuestMessage)
         val hint = call.argument<String>("hint").orEmpty()
@@ -126,16 +161,26 @@ internal class GameFullscreenChannel(
             isClickable = true
             isFocusable = true
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-            setOnClickListener { channel.invokeMethod("exit", null) }
+            setOnClickListener {
+                channel.invokeMethod("exit", mapOf("geometryRevision" to geometryRevision))
+            }
         }
         var rawDownX = 0f
         var rawDownY = 0f
         var startX = 0f
         var startY = 0f
         var dragging = false
+        var gestureRevision = geometryRevision
         view.setOnTouchListener { _, event ->
+            if (event.actionMasked != MotionEvent.ACTION_DOWN && gestureRevision != geometryRevision) {
+                view.isPressed = false
+                dragging = false
+                gesture.finish(cancelled = true)
+                return@setOnTouchListener true
+            }
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    gestureRevision = geometryRevision
                     rawDownX = event.rawX
                     rawDownY = event.rawY
                     startX = view.x
@@ -156,8 +201,12 @@ internal class GameFullscreenChannel(
                     view.isPressed = false
                     if (gesture.finish(cancelled = event.actionMasked == MotionEvent.ACTION_CANCEL)) {
                         view.performClick()
-                    } else if (dragging) {
-                        channel.invokeMethod("moved", mapOf("x" to view.x / scale, "y" to view.y / scale))
+                    } else if (dragging && event.actionMasked != MotionEvent.ACTION_CANCEL) {
+                        channel.invokeMethod("moved", mapOf(
+                            "x" to view.x / scale,
+                            "y" to view.y / scale,
+                            "geometryRevision" to gestureRevision,
+                        ))
                     }
                     dragging = false
                 }
@@ -191,7 +240,6 @@ internal class GameFullscreenChannel(
             gravity = Gravity.CENTER
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
-            maxWidth = (activity.resources.displayMetrics.widthPixels - 80 * density).toInt().coerceAtLeast((160 * density).toInt())
             isClickable = false
             isFocusable = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -206,11 +254,28 @@ internal class GameFullscreenChannel(
             root.addView(this)
         }
         view.text = message
+        val metrics = activity.resources.displayMetrics
+        val content = fullscreenOverlayContentBounds(
+            root.width.takeIf { it > 0 } ?: metrics.widthPixels,
+            root.height.takeIf { it > 0 } ?: metrics.heightPixels,
+            requestedContentBounds,
+        )
+        val geometry = FullscreenQuestNoticeGeometry(content, density)
+        view.maxWidth = geometry.maxWidth
+        view.maxHeight = geometry.maxHeight
+        view.measure(
+            View.MeasureSpec.makeMeasureSpec(geometry.maxWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(geometry.maxHeight, View.MeasureSpec.AT_MOST),
+        )
+        val bounds = geometry.place(view.measuredWidth, view.measuredHeight)
         view.layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.CENTER_HORIZONTAL,
-        ).apply { topMargin = (8 * density).toInt() }
+            bounds.width,
+            bounds.height,
+            Gravity.TOP or Gravity.LEFT,
+        ).apply {
+            leftMargin = bounds.left
+            topMargin = bounds.top
+        }
         view.bringToFront()
         button?.bringToFront()
     }

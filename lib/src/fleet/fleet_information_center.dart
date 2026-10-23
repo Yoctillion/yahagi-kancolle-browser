@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import '../battle/prophet_hp_bar.dart';
@@ -118,7 +119,7 @@ class _FleetInformationCenterState extends State<FleetInformationCenter> {
       // Other pages own their countdowns; only the fleet view consumes `now`.
       enabled: widget.page == FleetInformationPage.fleet,
       builder: (context, now, _) => ColoredBox(
-        color: const Color(0xff081521),
+        color: appColor(context, Color(0xff081521)),
         child: AnimatedBuilder(
           animation: Listenable.merge([
             widget.controller,
@@ -243,18 +244,23 @@ class _PageHeader extends StatelessWidget {
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: const BoxDecoration(
-        color: Color(0xff0d1a26),
-        border: Border(bottom: BorderSide(color: Color(0xff294052))),
+      decoration: BoxDecoration(
+        color: appColor(context, Color(0xff0d1a26)),
+        border: Border(
+          bottom: BorderSide(color: appColor(context, Color(0xff294052))),
+        ),
       ),
       child: Row(
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xffd4a85f),
-              fontWeight: FontWeight.w800,
-              fontSize: 17,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffd4a85f)),
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+              ),
             ),
           ),
           const Spacer(),
@@ -282,7 +288,11 @@ class _WaitingState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.radar_outlined, color: Color(0xffd4a85f), size: 42),
+          Icon(
+            Icons.radar_outlined,
+            color: appColor(context, Color(0xffd4a85f)),
+            size: 42,
+          ),
           const SizedBox(height: 14),
           Text(
             AppLocalizations.of(context)?.waitingForPortData ?? '等待母港数据',
@@ -292,7 +302,10 @@ class _WaitingState extends StatelessWidget {
           Text(
             AppLocalizations.of(context)?.waitingForPortDataDescription ??
                 fleetText(context, '进入游戏母港或刷新游戏页面后，这里会自动更新'),
-            style: const TextStyle(color: Color(0xff8197a5)),
+            style: appTextStyle(
+              context,
+              TextStyle(color: appColor(context, Color(0xff8197a5))),
+            ),
           ),
         ],
       ),
@@ -457,7 +470,10 @@ class _FleetViewState extends State<_FleetView> {
                 ? Center(
                     child: Text(
                       AppLocalizations.of(context)?.fleetNoShips ?? '当前舰队没有舰娘',
-                      style: const TextStyle(color: Color(0xff8197a5)),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(color: appColor(context, Color(0xff8197a5))),
+                      ),
                     ),
                   )
                 : LayoutBuilder(
@@ -567,9 +583,9 @@ class _FleetWorkspacePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xff0d202d),
+        color: appColor(context, Color(0xff0d202d)),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xff294052)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -733,7 +749,7 @@ class _FleetRosterShipCapsule extends StatelessWidget {
         ? 0.0
         : (ship.currentHp / ship.maxHp).clamp(0.0, 1.0);
     return Material(
-      color: Colors.transparent,
+      color: appColor(context, Colors.transparent),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
@@ -744,12 +760,15 @@ class _FleetRosterShipCapsule extends StatelessWidget {
           child: Container(
             key: Key('fleet-roster-ship-${ship.id}'),
             decoration: BoxDecoration(
-              color: const Color(0xff142735),
+              color: appColor(context, Color(0xff142735)),
               borderRadius: BorderRadius.circular(10),
               boxShadow: selected
                   ? <BoxShadow>[
                       BoxShadow(
-                        color: const Color(0xffd4a85f).withValues(alpha: 0.42),
+                        color: appColor(
+                          context,
+                          const Color(0xffd4a85f).withValues(alpha: 0.42),
+                        ),
                         blurRadius: 8,
                       ),
                     ]
@@ -810,9 +829,15 @@ class _FleetRosterShipCapsule extends StatelessWidget {
                       ? 0
                       : ship.currentHp,
                   maxHp: ship.maxHp,
-                  color: repairStatus == ShipRepairStatus.retreat
-                      ? yahagiStatusZeroHp
-                      : shipHpBarColor(hpRatio, isZeroHp: ship.currentHp <= 0),
+                  color: appColor(
+                    context,
+                    repairStatus == ShipRepairStatus.retreat
+                        ? yahagiStatusZeroHp
+                        : shipHpBarColor(
+                            hpRatio,
+                            isZeroHp: ship.currentHp <= 0,
+                          ),
+                  ),
                   filter: damagePulseMode,
                 ),
                 ShipMoraleMark(
@@ -871,15 +896,18 @@ class _FleetFocusPanel extends StatelessWidget {
             ? const Size(68, 32)
             : const Size(96, 42);
         final sectionGap = narrow ? 4.0 : (compact ? 6.0 : 10.0);
-        final headerHeight = narrow ? 52.0 : (compact ? 58.0 : 66.0);
-        final meterHeight = narrow ? 15.0 : 16.0;
-        final metaHeight = narrow ? 14.0 : 18.0;
+        final textScale = (MediaQuery.textScalerOf(context).scale(14) / 14)
+            .clamp(1.0, double.infinity);
+        final headerHeight =
+            (narrow ? 52.0 : (compact ? 58.0 : 66.0)) * textScale;
+        final meterHeight = (narrow ? 15.0 : 16.0) * textScale;
+        final metaHeight = (narrow ? 14.0 : 18.0) * textScale;
         return _FleetWorkspacePanel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Material(
-                color: const Color(0xff142735),
+                color: appColor(context, Color(0xff142735)),
                 child: InkWell(
                   onTap: onShipDetails,
                   child: Container(
@@ -976,11 +1004,14 @@ class _FleetFocusPanel extends StatelessWidget {
                                                     fleetText(context, '未知舰娘'),
                                                 maxLines: 1,
                                                 softWrap: false,
-                                                style: TextStyle(
-                                                  fontSize: narrow
-                                                      ? 11
-                                                      : (compact ? 14 : 17),
-                                                  fontWeight: FontWeight.w800,
+                                                style: appTextStyle(
+                                                  context,
+                                                  TextStyle(
+                                                    fontSize: narrow
+                                                        ? 11
+                                                        : (compact ? 14 : 17),
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
                                                 ),
                                               ),
                                               const SizedBox(height: 3),
@@ -988,13 +1019,19 @@ class _FleetFocusPanel extends StatelessWidget {
                                                 'Next ${ship.nextExperience}',
                                                 maxLines: 1,
                                                 softWrap: false,
-                                                style: const TextStyle(
-                                                  color: Color(0xffa9bac4),
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
-                                                  fontFeatures: [
-                                                    FontFeature.tabularFigures(),
-                                                  ],
+                                                style: appTextStyle(
+                                                  context,
+                                                  TextStyle(
+                                                    color: appColor(
+                                                      context,
+                                                      Color(0xffa9bac4),
+                                                    ),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontFeatures: [
+                                                      FontFeature.tabularFigures(),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -1010,7 +1047,7 @@ class _FleetFocusPanel extends StatelessWidget {
                                 icon: Icon(
                                   Icons.favorite_rounded,
                                   key: Key('fleet-focus-hp-icon-${ship.id}'),
-                                  color: const Color(0xffef5a5a),
+                                  color: appColor(context, Color(0xffef5a5a)),
                                   size: 14,
                                 ),
                                 value: '${ship.currentHp}/${ship.maxHp}',
@@ -1056,10 +1093,16 @@ class _FleetFocusPanel extends StatelessWidget {
                                       children: [
                                         Text(
                                           'Lv. ${ship.level}',
-                                          style: const TextStyle(
-                                            color: Color(0xffa9bac4),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
+                                          style: appTextStyle(
+                                            context,
+                                            TextStyle(
+                                              color: appColor(
+                                                context,
+                                                Color(0xffa9bac4),
+                                              ),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 4),
@@ -1074,10 +1117,16 @@ class _FleetFocusPanel extends StatelessWidget {
                                                     )) ??
                                               fleetText(context, '未知舰种'),
                                           maxLines: 1,
-                                          style: const TextStyle(
-                                            color: Color(0xffa9bac4),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
+                                          style: appTextStyle(
+                                            context,
+                                            TextStyle(
+                                              color: appColor(
+                                                context,
+                                                Color(0xffa9bac4),
+                                              ),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 4),
@@ -1091,25 +1140,31 @@ class _FleetFocusPanel extends StatelessWidget {
                                               ship.effectiveSpeed(master),
                                             ).label,
                                           ),
-                                          color: ShipSpeedVisual.fromSpeed(
-                                            ship.effectiveSpeed(master),
-                                          ).foreground,
+                                          color: appColor(
+                                            context,
+                                            ShipSpeedVisual.fromSpeed(
+                                              ship.effectiveSpeed(master),
+                                            ).foreground,
+                                          ),
                                         ),
                                         for (final mechanism in mechanisms) ...[
                                           const SizedBox(width: 4),
                                           _MiniBadge(
                                             text: mechanism.detailedShortLabel,
-                                            color: switch (mechanism.tone) {
-                                              MechanismTone.antiAir =>
-                                                const Color(0xffffc861),
-                                              MechanismTone.specialAttack =>
-                                                const Color(0xffff8b88),
-                                              MechanismTone.nightAttack =>
-                                                const Color(0xffbfa4ff),
-                                              MechanismTone.neutral ||
-                                              MechanismTone.antiSubmarine =>
-                                                const Color(0xff8ec6e8),
-                                            },
+                                            color: appColor(
+                                              context,
+                                              switch (mechanism.tone) {
+                                                MechanismTone.antiAir =>
+                                                  const Color(0xffffc861),
+                                                MechanismTone.specialAttack =>
+                                                  const Color(0xffff8b88),
+                                                MechanismTone.nightAttack =>
+                                                  const Color(0xffbfa4ff),
+                                                MechanismTone.neutral ||
+                                                MechanismTone.antiSubmarine =>
+                                                  const Color(0xff8ec6e8),
+                                              },
+                                            ),
                                           ),
                                         ],
                                         if (specialAttack != null) ...[
@@ -1117,7 +1172,10 @@ class _FleetFocusPanel extends StatelessWidget {
                                           _MiniBadge(
                                             text: specialAttack!
                                                 .detailedShortLabel,
-                                            color: const Color(0xffff8b88),
+                                            color: appColor(
+                                              context,
+                                              Color(0xffff8b88),
+                                            ),
                                           ),
                                         ],
                                         const SizedBox(width: 4),
@@ -1126,8 +1184,9 @@ class _FleetFocusPanel extends StatelessWidget {
                                             context,
                                             '疲劳 ${ship.condition}',
                                           ),
-                                          color: shipFatigueColor(
-                                            ship.condition,
+                                          color: appColor(
+                                            context,
+                                            shipFatigueColor(ship.condition),
                                           ),
                                         ),
                                       ],
@@ -1182,14 +1241,19 @@ class _FleetFocusPanel extends StatelessWidget {
                   ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xff294052)),
+              Divider(height: 1, color: appColor(context, Color(0xff294052))),
               Expanded(
                 key: const Key('fleet-equipment-list'),
                 child: equipment.isEmpty
                     ? Center(
                         child: Text(
                           _fleetL10n(context).equipmentDataWaiting,
-                          style: const TextStyle(color: Color(0xff8197a5)),
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, Color(0xff8197a5)),
+                            ),
+                          ),
                         ),
                       )
                     : ListView.separated(
@@ -1224,17 +1288,18 @@ class _MiniBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        border: Border.all(color: color.withValues(alpha: 0.42)),
+        color: appColor(context, color.withValues(alpha: 0.16)),
+        border: Border.all(
+          color: appColor(context, color.withValues(alpha: 0.42)),
+        ),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         text,
         maxLines: 1,
-        style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
+        style: appTextStyle(
+          context,
+          TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -1279,11 +1344,14 @@ class _CompactStatusMeter extends StatelessWidget {
               key: valueKey,
               maxLines: 1,
               softWrap: false,
-              style: TextStyle(
-                color: valueColor,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                fontFeatures: const [FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: valueColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ),
           ),
@@ -1295,14 +1363,14 @@ class _CompactStatusMeter extends StatelessWidget {
               child: showHpThresholds
                   ? ProphetHpBar(
                       value: ratio,
-                      color: barColor,
-                      backgroundColor: const Color(0xff263f4d),
+                      color: appColor(context, barColor),
+                      backgroundColor: appColor(context, Color(0xff263f4d)),
                     )
                   : LinearProgressIndicator(
                       minHeight: 6,
                       value: ratio.clamp(0, 1),
-                      color: barColor,
-                      backgroundColor: const Color(0xff263f4d),
+                      color: appColor(context, barColor),
+                      backgroundColor: appColor(context, Color(0xff263f4d)),
                     ),
             ),
           ),
@@ -1335,7 +1403,10 @@ class _CompactEquipmentRow extends StatelessWidget {
         ? ship.onSlot[index]
         : null;
     return Material(
-      color: selected ? const Color(0xff1a303d) : const Color(0xff102331),
+      color: appColor(
+        context,
+        selected ? const Color(0xff1a303d) : const Color(0xff102331),
+      ),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -1347,9 +1418,10 @@ class _CompactEquipmentRow extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: selected
-                  ? const Color(0xff8d7040)
-                  : const Color(0xff294052),
+              color: appColor(
+                context,
+                selected ? const Color(0xff8d7040) : const Color(0xff294052),
+              ),
             ),
           ),
           child: Row(
@@ -1378,17 +1450,20 @@ class _CompactEquipmentRow extends StatelessWidget {
                                 ).equipmentName(master.name)) ??
                           fleetText(context, '未知装备'),
                       key: Key('fleet-equipment-name-${ship.id}-$index'),
-                      style: const TextStyle(
-                        color: Color(0xffe1e9ed),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffe1e9ed)),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     if (equipment.owned.id == ship.extraSlotId)
                       _MiniBadge(
                         key: Key('fleet-equipment-expansion-${ship.id}-$index'),
                         text: fleetText(context, '增设'),
-                        color: const Color(0xffffc85a),
+                        color: appColor(context, Color(0xffffc85a)),
                       ),
                     if (equipment.owned.level > 0) ...[
                       Text(
@@ -1396,10 +1471,13 @@ class _CompactEquipmentRow extends StatelessWidget {
                         key: Key(
                           'fleet-equipment-improvement-${ship.id}-$index',
                         ),
-                        style: const TextStyle(
-                          color: Color(0xff5daea6),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xff5daea6)),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],
@@ -1416,9 +1494,9 @@ class _CompactEquipmentRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: Color(0xffd4a85f),
+                color: appColor(context, Color(0xffd4a85f)),
                 size: 18,
               ),
             ],
@@ -1529,17 +1607,20 @@ class _ShipParameterDetails extends StatelessWidget {
                       if (index < stats.length) {
                         final value = Text(
                           fleetText(context, stats[index].$2),
-                          style: const TextStyle(
-                            color: Color(0xffe1e9ed),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: [FontFeature.tabularFigures()],
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, Color(0xffe1e9ed)),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
                           ),
                         );
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xff102331),
+                            color: appColor(context, Color(0xff102331)),
                             borderRadius: BorderRadius.circular(7),
                           ),
                           child: Row(
@@ -1547,10 +1628,16 @@ class _ShipParameterDetails extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   fleetText(context, stats[index].$1),
-                                  style: const TextStyle(
-                                    color: Color(0xffa9bac4),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      color: appColor(
+                                        context,
+                                        Color(0xffa9bac4),
+                                      ),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1587,7 +1674,7 @@ class _ShipParameterDetails extends StatelessWidget {
                       };
 
                       return Material(
-                        color: const Color(0xff102331),
+                        color: appColor(context, Color(0xff102331)),
                         borderRadius: BorderRadius.circular(7),
                         child: InkWell(
                           onTap: () => _showMechanismDetails(context, mech),
@@ -1604,22 +1691,31 @@ class _ShipParameterDetails extends StatelessWidget {
                                         mech.shortLabel ?? mech.label,
                                       ),
                                     ),
-                                    style: TextStyle(
-                                      color: labelColor,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
+                                    style: appTextStyle(
+                                      context,
+                                      TextStyle(
+                                        color: labelColor,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
                                 ),
                                 Text(
                                   valueText,
-                                  style: const TextStyle(
-                                    color: Color(0xffe1e9ed),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    fontFeatures: [
-                                      FontFeature.tabularFigures(),
-                                    ],
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      color: appColor(
+                                        context,
+                                        Color(0xffe1e9ed),
+                                      ),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      fontFeatures: [
+                                        FontFeature.tabularFigures(),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1653,14 +1749,20 @@ class _ShipParameterDetails extends StatelessWidget {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xff142735),
+        backgroundColor: appColor(context, Color(0xff142735)),
         title: Text(
           gameNames(context).entityText(fleetText(context, mechanism.label)),
-          style: TextStyle(color: foregroundColor, fontWeight: FontWeight.bold),
+          style: appTextStyle(
+            context,
+            TextStyle(color: foregroundColor, fontWeight: FontWeight.bold),
+          ),
         ),
         content: Text(
           fleetMechanismDescription(context, mechanism.description),
-          style: const TextStyle(color: Color(0xffe1e9ed), height: 1.5),
+          style: TextStyle(
+            color: appColor(context, Color(0xffe1e9ed)),
+            height: 1.5,
+          ),
         ),
         actions: [
           TextButton(
@@ -1769,9 +1871,12 @@ class _SelectedEquipmentDetails extends StatelessWidget {
                         key: Key(
                           'fleet-detail-equipment-improvement-${ship.id}-$index',
                         ),
-                        style: const TextStyle(
-                          color: Color(0xff5daea6),
-                          fontWeight: FontWeight.w800,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xff5daea6)),
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     if (aircraft && equipment.owned.proficiency > 0)
@@ -1807,7 +1912,7 @@ class _SelectedEquipmentDetails extends StatelessWidget {
               itemBuilder: (context, index) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xff102331),
+                  color: appColor(context, Color(0xff102331)),
                   borderRadius: BorderRadius.circular(7),
                 ),
                 child: Row(
@@ -1815,20 +1920,26 @@ class _SelectedEquipmentDetails extends StatelessWidget {
                     Expanded(
                       child: Text(
                         fleetText(context, stats[index].label),
-                        style: const TextStyle(
-                          color: Color(0xffa9bac4),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xffa9bac4)),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                     if (stats[index].value.isNotEmpty)
                       Text(
                         fleetText(context, stats[index].value),
-                        style: const TextStyle(
-                          color: Color(0xffe1e9ed),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xffe1e9ed)),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     if (kShowEquipmentVisibleBonuses &&
@@ -1837,10 +1948,13 @@ class _SelectedEquipmentDetails extends StatelessWidget {
                       Text(
                         '↑+${stats[index].bonus}',
                         key: Key('fleet-equipment-bonus-$index'),
-                        style: const TextStyle(
-                          color: Color(0xff63b8ff),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xff63b8ff)),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ],
@@ -1981,7 +2095,7 @@ class _MetricsBar extends StatelessWidget {
   }) {
     return Material(
       key: key,
-      color: const Color(0xff102331),
+      color: appColor(context, Color(0xff102331)),
       borderRadius: BorderRadius.circular(8),
       child: Semantics(
         button: onTap != null,
@@ -1999,11 +2113,14 @@ class _MetricsBar extends StatelessWidget {
                   child: Text(
                     fleetText(context, label),
                     maxLines: 1,
-                    style: TextStyle(
-                      color: const Color(0xffa9bac4),
-                      fontSize: compact ? 9 : 11,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: const Color(0xffa9bac4),
+                        fontSize: compact ? 9 : 11,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ),
@@ -2013,14 +2130,17 @@ class _MetricsBar extends StatelessWidget {
                   child: Text(
                     value,
                     maxLines: 1,
-                    style: TextStyle(
-                      color: const Color(0xffdce6eb),
-                      fontSize: compact ? 12 : 14,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: const <FontFeature>[
-                        FontFeature.tabularFigures(),
-                      ],
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: const Color(0xffdce6eb),
+                        fontSize: compact ? 12 : 14,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -2088,7 +2208,7 @@ class _ShipRow extends StatelessWidget {
         MediaQuery.sizeOf(context).shortestSide < 700) {
       return Material(
         key: Key('ship-row-${ship.id}'),
-        color: const Color(0xff142735),
+        color: appColor(context, Color(0xff142735)),
         borderRadius: BorderRadius.circular(10),
         clipBehavior: Clip.antiAlias,
         child: MediaQuery.removePadding(
@@ -2098,14 +2218,14 @@ class _ShipRow extends StatelessWidget {
           child: ExpansionTile(
             tilePadding: const EdgeInsets.fromLTRB(0, 2, 10, 2),
             childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-            collapsedIconColor: const Color(0xff8197a5),
-            iconColor: const Color(0xffd4a85f),
-            trailing: const SizedBox(
+            collapsedIconColor: appColor(context, Color(0xff8197a5)),
+            iconColor: appColor(context, Color(0xffd4a85f)),
+            trailing: SizedBox(
               width: 18,
               child: Icon(
                 Icons.expand_more,
                 size: 16,
-                color: Color(0xff8197a5),
+                color: appColor(context, Color(0xff8197a5)),
               ),
             ),
             title: LayoutBuilder(
@@ -2176,13 +2296,16 @@ class _ShipRow extends StatelessWidget {
                               key: Key('ship-identity-next-${ship.id}'),
                               maxLines: 1,
                               softWrap: false,
-                              style: const TextStyle(
-                                color: Color(0xff8197a5),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                fontFeatures: <FontFeature>[
-                                  FontFeature.tabularFigures(),
-                                ],
+                              style: appTextStyle(
+                                context,
+                                TextStyle(
+                                  color: appColor(context, Color(0xff8197a5)),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: <FontFeature>[
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -2204,8 +2327,11 @@ class _ShipRow extends StatelessWidget {
                                   'Lv. ${ship.level}',
                                   maxLines: 1,
                                   softWrap: false,
-                                  style: _phoneStatusValueStyle.copyWith(
-                                    color: const Color(0xffa9bac4),
+                                  style: appTextStyle(
+                                    context,
+                                    _phoneStatusValueStyle.copyWith(
+                                      color: const Color(0xffa9bac4),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 5),
@@ -2222,7 +2348,10 @@ class _ShipRow extends StatelessWidget {
                                             vertical: 1,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: speedVisual.background,
+                                            color: appColor(
+                                              context,
+                                              speedVisual.background,
+                                            ),
                                             borderRadius: BorderRadius.circular(
                                               4,
                                             ),
@@ -2234,10 +2363,13 @@ class _ShipRow extends StatelessWidget {
                                             ),
                                             maxLines: 1,
                                             softWrap: false,
-                                            style: TextStyle(
-                                              color: speedVisual.foreground,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w800,
+                                            style: appTextStyle(
+                                              context,
+                                              TextStyle(
+                                                color: speedVisual.foreground,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -2246,12 +2378,14 @@ class _ShipRow extends StatelessWidget {
                                               in mechanisms) ...[
                                             const SizedBox(width: 5),
                                             _phoneMechanismChip(
+                                              context,
                                               mechanism: mechanism,
                                             ),
                                           ],
                                           if (specialMechanism != null) ...[
                                             const SizedBox(width: 5),
                                             _phoneMechanismChip(
+                                              context,
                                               mechanism: specialMechanism,
                                               special: true,
                                             ),
@@ -2265,9 +2399,12 @@ class _ShipRow extends StatelessWidget {
                                             vertical: 1,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: shipFatigueColor(
-                                              ship.condition,
-                                            ).withValues(alpha: 0.12),
+                                            color: appColor(
+                                              context,
+                                              shipFatigueColor(
+                                                ship.condition,
+                                              ).withValues(alpha: 0.12),
+                                            ),
                                             borderRadius: BorderRadius.circular(
                                               4,
                                             ),
@@ -2278,12 +2415,15 @@ class _ShipRow extends StatelessWidget {
                                             ).fatigueValue(ship.condition),
                                             maxLines: 1,
                                             softWrap: false,
-                                            style: TextStyle(
-                                              color: shipFatigueColor(
-                                                ship.condition,
+                                            style: appTextStyle(
+                                              context,
+                                              TextStyle(
+                                                color: shipFatigueColor(
+                                                  ship.condition,
+                                                ),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
                                               ),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
                                             ),
                                           ),
                                         ),
@@ -2302,7 +2442,7 @@ class _ShipRow extends StatelessWidget {
                                 Icon(
                                   Icons.favorite_rounded,
                                   key: Key('ship-status-hp-icon-${ship.id}'),
-                                  color: const Color(0xffdd514c),
+                                  color: appColor(context, Color(0xffdd514c)),
                                   size: 12,
                                 ),
                                 const SizedBox(width: 2),
@@ -2318,10 +2458,13 @@ class _ShipRow extends StatelessWidget {
                                       maxLines: 1,
                                       softWrap: false,
                                       overflow: TextOverflow.clip,
-                                      style: _phoneStatusValueStyle.copyWith(
-                                        color: shipHpValueColor(
-                                          hpRatio,
-                                          isZeroHp: ship.currentHp <= 0,
+                                      style: appTextStyle(
+                                        context,
+                                        _phoneStatusValueStyle.copyWith(
+                                          color: shipHpValueColor(
+                                            hpRatio,
+                                            isZeroHp: ship.currentHp <= 0,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -2335,11 +2478,17 @@ class _ShipRow extends StatelessWidget {
                                       key: Key('ship-status-hp-${ship.id}'),
                                       minHeight: 5,
                                       value: hpRatio,
-                                      color: shipHpBarColor(
-                                        hpRatio,
-                                        isZeroHp: ship.currentHp <= 0,
+                                      color: appColor(
+                                        context,
+                                        shipHpBarColor(
+                                          hpRatio,
+                                          isZeroHp: ship.currentHp <= 0,
+                                        ),
                                       ),
-                                      backgroundColor: const Color(0xff263e4d),
+                                      backgroundColor: appColor(
+                                        context,
+                                        Color(0xff263e4d),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -2358,6 +2507,7 @@ class _ShipRow extends StatelessWidget {
                           SizedBox(
                             height: 20,
                             child: _phoneResourceBar(
+                              context,
                               icon: Image.asset(
                                 'assets/images/material/01.png',
                                 key: Key('ship-status-fuel-icon-${ship.id}'),
@@ -2380,6 +2530,7 @@ class _ShipRow extends StatelessWidget {
                           SizedBox(
                             height: 20,
                             child: _phoneResourceBar(
+                              context,
                               icon: Image.asset(
                                 'assets/images/material/02.png',
                                 key: Key('ship-status-ammo-icon-${ship.id}'),
@@ -2412,7 +2563,10 @@ class _ShipRow extends StatelessWidget {
                   child: Text(
                     AppLocalizations.of(context)?.equipmentDataWaiting ??
                         fleetText(context, '装备数据等待更新'),
-                    style: const TextStyle(color: Color(0xff8197a5)),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, Color(0xff8197a5))),
+                    ),
                   ),
                 )
               else
@@ -2425,7 +2579,7 @@ class _ShipRow extends StatelessWidget {
 
     return Material(
       key: Key('ship-row-${ship.id}'),
-      color: const Color(0xff142735),
+      color: appColor(context, Color(0xff142735)),
       borderRadius: BorderRadius.circular(10),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
@@ -2436,8 +2590,8 @@ class _ShipRow extends StatelessWidget {
           14,
           10,
         ),
-        collapsedIconColor: const Color(0xff8197a5),
-        iconColor: const Color(0xffd4a85f),
+        collapsedIconColor: appColor(context, Color(0xff8197a5)),
+        iconColor: appColor(context, Color(0xffd4a85f)),
         title: Row(
           children: [
             ShipPortrait(
@@ -2489,13 +2643,16 @@ class _ShipRow extends StatelessWidget {
                               maxLines: 1,
                               softWrap: false,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xff8197a5),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                fontFeatures: <FontFeature>[
-                                  FontFeature.tabularFigures(),
-                                ],
+                              style: appTextStyle(
+                                context,
+                                TextStyle(
+                                  color: appColor(context, Color(0xff8197a5)),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: <FontFeature>[
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -2530,10 +2687,16 @@ class _ShipRow extends StatelessWidget {
                                             maxLines: 1,
                                             softWrap: false,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: Color(0xffa9bac4),
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
+                                            style: appTextStyle(
+                                              context,
+                                              TextStyle(
+                                                color: appColor(
+                                                  context,
+                                                  Color(0xffa9bac4),
+                                                ),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 6),
@@ -2557,10 +2720,16 @@ class _ShipRow extends StatelessWidget {
                                               maxLines: 1,
                                               softWrap: false,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                color: Color(0xffa9bac4),
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w700,
+                                              style: appTextStyle(
+                                                context,
+                                                TextStyle(
+                                                  color: appColor(
+                                                    context,
+                                                    Color(0xffa9bac4),
+                                                  ),
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -2601,7 +2770,10 @@ class _ShipRow extends StatelessWidget {
                                       key: Key(
                                         'ship-supply-warning-${ship.id}',
                                       ),
-                                      color: const Color(0xffd79b45),
+                                      color: appColor(
+                                        context,
+                                        Color(0xffd79b45),
+                                      ),
                                       size: 17,
                                     ),
                                   ),
@@ -2660,7 +2832,10 @@ class _ShipRow extends StatelessWidget {
                                         'ship-status-hp-icon-${ship.id}',
                                       ),
                                       Icons.favorite_rounded,
-                                      color: const Color(0xffdd514c),
+                                      color: appColor(
+                                        context,
+                                        Color(0xffdd514c),
+                                      ),
                                       size: 16,
                                     ),
                                     valueKey: Key(
@@ -2725,7 +2900,10 @@ class _ShipRow extends StatelessWidget {
               child: Text(
                 AppLocalizations.of(context)?.equipmentDataWaiting ??
                     fleetText(context, '装备数据等待更新'),
-                style: const TextStyle(color: Color(0xff8197a5)),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, Color(0xff8197a5))),
+                ),
               ),
             )
           else
@@ -2735,7 +2913,8 @@ class _ShipRow extends StatelessWidget {
     );
   }
 
-  Widget _phoneMechanismChip({
+  Widget _phoneMechanismChip(
+    BuildContext context, {
     required EquipmentMechanismDisplay mechanism,
     bool special = false,
   }) {
@@ -2763,23 +2942,27 @@ class _ShipRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: appColor(context, backgroundColor),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         mechanism.detailedShortLabel,
         maxLines: 1,
         softWrap: false,
-        style: TextStyle(
-          color: foregroundColor,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: foregroundColor,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
   }
 
-  Widget _phoneResourceBar({
+  Widget _phoneResourceBar(
+    BuildContext context, {
     required Widget icon,
     required Key valueKey,
     required Key barKey,
@@ -2802,7 +2985,10 @@ class _ShipRow extends StatelessWidget {
               maxLines: 1,
               softWrap: false,
               overflow: TextOverflow.clip,
-              style: _phoneStatusValueStyle.copyWith(color: valueColor),
+              style: appTextStyle(
+                context,
+                _phoneStatusValueStyle.copyWith(color: valueColor),
+              ),
             ),
           ),
         ),
@@ -2814,8 +3000,8 @@ class _ShipRow extends StatelessWidget {
               key: barKey,
               minHeight: 5,
               value: ratio,
-              color: barColor,
-              backgroundColor: const Color(0xff263e4d),
+              color: appColor(context, barColor),
+              backgroundColor: appColor(context, Color(0xff263e4d)),
             ),
           ),
         ),
@@ -2858,17 +3044,20 @@ class _SpeedBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
-        color: visual.background,
+        color: appColor(context, visual.background),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         fleetText(context, visual.label),
         maxLines: 1,
         softWrap: false,
-        style: TextStyle(
-          color: visual.foreground,
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: visual.foreground,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );
@@ -2945,7 +3134,10 @@ class _MechanismChip extends StatelessWidget {
     };
     final label = mechanism.detailedShortLabel;
     return Material(
-      color: isSpecialAttack ? const Color(0xff5a2528) : backgroundColor,
+      color: appColor(
+        context,
+        isSpecialAttack ? const Color(0xff5a2528) : backgroundColor,
+      ),
       borderRadius: BorderRadius.circular(5),
       child: InkWell(
         onTap: () => _showDetails(context),
@@ -2954,12 +3146,15 @@ class _MechanismChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           child: Text(
             gameNames(context).entityText(fleetText(context, label)),
-            style: TextStyle(
-              color: isSpecialAttack
-                  ? const Color(0xffff8b88)
-                  : foregroundColor,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: isSpecialAttack
+                    ? const Color(0xffff8b88)
+                    : foregroundColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
@@ -2971,25 +3166,31 @@ class _MechanismChip extends StatelessWidget {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xff142735),
+        backgroundColor: appColor(context, Color(0xff142735)),
         title: Text(
           gameNames(context).entityText(fleetText(context, mechanism.label)),
-          style: TextStyle(
-            color: isSpecialAttack
-                ? const Color(0xffff8b88)
-                : switch (mechanism.tone) {
-                    MechanismTone.antiAir => const Color(0xffffc861),
-                    MechanismTone.specialAttack => const Color(0xffff8b88),
-                    MechanismTone.nightAttack => const Color(0xffbfa4ff),
-                    MechanismTone.neutral ||
-                    MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-                  },
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: isSpecialAttack
+                  ? const Color(0xffff8b88)
+                  : switch (mechanism.tone) {
+                      MechanismTone.antiAir => const Color(0xffffc861),
+                      MechanismTone.specialAttack => const Color(0xffff8b88),
+                      MechanismTone.nightAttack => const Color(0xffbfa4ff),
+                      MechanismTone.neutral ||
+                      MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
+                    },
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         content: Text(
           fleetMechanismDescription(context, mechanism.description),
-          style: const TextStyle(color: Color(0xffc2d0d7), height: 1.5),
+          style: appTextStyle(
+            context,
+            TextStyle(color: appColor(context, Color(0xffc2d0d7)), height: 1.5),
+          ),
         ),
         actions: [
           TextButton(
@@ -3028,9 +3229,9 @@ class _EquipmentCard extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 68),
       padding: const EdgeInsets.fromLTRB(9, 6, 9, 6),
       decoration: BoxDecoration(
-        color: const Color(0xff102331),
+        color: appColor(context, Color(0xff102331)),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xff294052)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3056,10 +3257,13 @@ class _EquipmentCard extends StatelessWidget {
                   maxLines: 1,
                   softWrap: false,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xffe1e9ed),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xffe1e9ed)),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -3069,21 +3273,24 @@ class _EquipmentCard extends StatelessWidget {
                   key: Key('equipment-improvement-${ship.id}-$index'),
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.star_rounded,
-                      color: Color(0xff5daea6),
+                      color: appColor(context, Color(0xff5daea6)),
                       size: 15,
                     ),
                     const SizedBox(width: 1),
                     Text(
                       '${equipment.owned.level}',
-                      style: const TextStyle(
-                        color: Color(0xff5daea6),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: <FontFeature>[
-                          FontFeature.tabularFigures(),
-                        ],
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xff5daea6)),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: <FontFeature>[
+                            FontFeature.tabularFigures(),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -3108,7 +3315,13 @@ class _EquipmentCard extends StatelessWidget {
           if (stats.isEmpty)
             Text(
               AppLocalizations.of(context)?.noAdditionalStats ?? '暂无装备属性',
-              style: const TextStyle(color: Color(0xff6f8795), fontSize: 11),
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff6f8795)),
+                  fontSize: 11,
+                ),
+              ),
             )
           else
             Wrap(
@@ -3118,11 +3331,16 @@ class _EquipmentCard extends StatelessWidget {
                 for (final stat in stats)
                   Text(
                     '${fleetText(context, stat.label)} ${fleetText(context, stat.value)}',
-                    style: const TextStyle(
-                      color: Color(0xff9fb2bd),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xff9fb2bd)),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -3173,20 +3391,26 @@ class _EquipmentTypeIcon extends StatelessWidget {
             top: 0,
             child: Text(
               '$onSlot',
-              style: const TextStyle(
-                color: Color(0xffe7f0f4),
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                height: 1,
-                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
-                shadows: <Shadow>[
-                  Shadow(color: Color(0xff081521), blurRadius: 3),
-                  Shadow(
-                    color: Color(0xff081521),
-                    blurRadius: 1,
-                    offset: Offset(1, 1),
-                  ),
-                ],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffe7f0f4)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                  fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                  shadows: <Shadow>[
+                    Shadow(
+                      color: appColor(context, Color(0xff081521)),
+                      blurRadius: 3,
+                    ),
+                    Shadow(
+                      color: appColor(context, Color(0xff081521)),
+                      blurRadius: 1,
+                      offset: Offset(1, 1),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -3208,7 +3432,7 @@ class _ConditionBadge extends StatelessWidget {
       width: 62,
       padding: const EdgeInsets.symmetric(vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: appColor(context, color.withValues(alpha: 0.12)),
         borderRadius: BorderRadius.circular(5),
       ),
       alignment: Alignment.center,
@@ -3216,10 +3440,9 @@ class _ConditionBadge extends StatelessWidget {
         '${AppLocalizations.of(context)?.fatigue ?? '疲劳'} $value',
         maxLines: 1,
         softWrap: false,
-        style: TextStyle(
-          color: color,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -3263,11 +3486,16 @@ class _ShipStatusBar extends StatelessWidget {
               value,
               maxLines: 1,
               textAlign: TextAlign.right,
-              style: TextStyle(
-                color: valueColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: valueColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const <FontFeature>[
+                    FontFeature.tabularFigures(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -3277,8 +3505,8 @@ class _ShipStatusBar extends StatelessWidget {
               value: ratio.clamp(0, 1),
               minHeight: 6,
               borderRadius: BorderRadius.circular(4),
-              color: barColor,
-              backgroundColor: const Color(0xff263f4d),
+              color: appColor(context, barColor),
+              backgroundColor: appColor(context, Color(0xff263f4d)),
             ),
           ),
         ],

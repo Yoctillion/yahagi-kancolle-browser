@@ -54,6 +54,37 @@ void main() {
     expect(restored.masterSlotItemTypes[1], '小口径主炮');
   });
 
+  test('ship voice resource mapping survives cache serialization', () {
+    const state = GameState(
+      masterShips: {
+        1: MasterShip(
+          id: 1,
+          name: '睦月',
+          shipTypeId: 2,
+          portraitFileName: 'ship1',
+          portraitVersion: '7',
+        ),
+      },
+    );
+
+    final restored = GameStateSerializer.deserialize(
+      GameStateSerializer.serialize(state),
+    );
+
+    expect(restored.masterShips[1]?.portraitFileName, 'ship1');
+    expect(restored.masterShips[1]?.portraitVersion, '7');
+  });
+
+  test('old ship cache keeps unavailable resource mapping null', () {
+    final restored = GameStateSerializer.deserialize(
+      '{"masterShips":{"1":{"id":1,"name":"睦月","shipTypeId":2}}}',
+    );
+
+    expect(restored.masterShips[1]?.name, '睦月');
+    expect(restored.masterShips[1]?.portraitFileName, isNull);
+    expect(restored.masterShips[1]?.portraitVersion, isNull);
+  });
+
   test('equipment compatibility master data survives cache serialization', () {
     const state = GameState(
       masterShipTypes: <int, MasterShipType>{

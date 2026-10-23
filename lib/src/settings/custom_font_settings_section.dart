@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -89,16 +90,16 @@ class _CustomFontSettingsSectionState extends State<CustomFontSettingsSection> {
         final currentFont =
             widget.controller.selectedFont?.name ?? l10n.customFontDefault;
         final importIcon = widget.controller.busy
-            ? const SizedBox.square(
+            ? SizedBox.square(
                 dimension: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xff332914),
+                  color: appOnAccentColor(context, Color(0xff332914)),
                 ),
               )
             : const Icon(Icons.file_upload_outlined, size: 18);
         final restoreStyle = OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xffd4a85f),
+          foregroundColor: appColor(context, const Color(0xffd4a85f)),
           minimumSize: const Size(36, 36),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -106,8 +107,8 @@ class _CustomFontSettingsSectionState extends State<CustomFontSettingsSection> {
           textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         );
         final importStyle = FilledButton.styleFrom(
-          backgroundColor: const Color(0xffd4a85f),
-          foregroundColor: const Color(0xff332914),
+          backgroundColor: appColor(context, const Color(0xffd4a85f)),
+          foregroundColor: appOnAccentColor(context, const Color(0xff332914)),
           minimumSize: const Size(36, 36),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -131,7 +132,10 @@ class _CustomFontSettingsSectionState extends State<CustomFontSettingsSection> {
                         children: [
                           Text(
                             l10n.customFontTitle,
-                            style: SettingsTileTypography.title,
+                            style: appTextStyle(
+                              context,
+                              SettingsTileTypography.title,
+                            ),
                           ),
                           const SizedBox(height: 3),
                           Tooltip(
@@ -141,7 +145,10 @@ class _CustomFontSettingsSectionState extends State<CustomFontSettingsSection> {
                               key: const Key('settings-custom-font-current'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: SettingsTileTypography.description,
+                              style: appTextStyle(
+                                context,
+                                SettingsTileTypography.description,
+                              ),
                             ),
                           ),
                         ],
@@ -191,8 +198,9 @@ class _CustomFontSettingsSectionState extends State<CustomFontSettingsSection> {
                   Text(
                     error,
                     key: const Key('settings-custom-font-error'),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
                   ),
                 ],
@@ -370,7 +378,10 @@ class _FontPreviewDialogState extends State<_FontPreviewDialog> {
               Text(
                 l10n.customFontPreviewFailed,
                 key: const Key('custom-font-preview-render-error'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
               TextButton(
                 key: const Key('custom-font-preview-retry'),
@@ -385,7 +396,7 @@ class _FontPreviewDialogState extends State<_FontPreviewDialog> {
             const SizedBox(height: 16),
             Text(
               l10n.customFontPreviewNote,
-              style: SettingsTileTypography.description,
+              style: appTextStyle(context, SettingsTileTypography.description),
             ),
             if (_saveFailed || _limitReached) ...[
               const SizedBox(height: 8),
@@ -394,7 +405,10 @@ class _FontPreviewDialogState extends State<_FontPreviewDialog> {
                     ? l10n.customFontLoadLimit
                     : l10n.customFontSaveFailed,
                 key: const Key('custom-font-preview-error'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             ],
           ],

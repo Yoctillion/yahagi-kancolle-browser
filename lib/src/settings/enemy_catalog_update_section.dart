@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -53,7 +54,10 @@ final class EnemyCatalogUpdateSection extends StatelessWidget {
                       dimension: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.sync, color: Color(0xffd4a85f)),
+                  : Icon(
+                      Icons.sync,
+                      color: appColor(context, Color(0xffd4a85f)),
+                    ),
             ),
           ],
         ),

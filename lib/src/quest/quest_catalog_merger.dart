@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../game_state/quest_text_normalizer.dart';
+import 'quest_catalog_relation_aliases.dart';
 
 String mergeQuestCatalogJson({
   required String japaneseJson,
@@ -14,6 +15,54 @@ String mergeQuestCatalogJson({
   }
   final sortedIds = gameIds.cast<int>()..sort();
   final merged = <String, Object?>{};
+  final displayCodes = <String>{};
+  final displayCodeByGameId = <String, String>{};
+  final relationCodes = <String, Set<String>>{};
+  for (final gameId in sortedIds) {
+    final key = '$gameId';
+    final display = _decodeEntry(japanese[key], 'Japanese quest entry');
+    final code = _requiredString(display, 'code').trim();
+    displayCodes.add(code);
+    displayCodeByGameId[key] = code;
+  }
+  // Include owners missing from the Japanese source. Discarding them could
+  // falsely make a shared code unique or attach it to another Japanese task.
+  for (final item in relations.entries) {
+    final relation = _decodeEntry(item.value, 'Quest relation entry');
+    final relationCode = _optionalString(relation, 'code')?.trim();
+    if (relationCode != null && relationCode.isNotEmpty) {
+      (relationCodes[relationCode] ??= <String>{}).add(item.key);
+    }
+  }
+
+  String canonicalPrerequisite(String reference) {
+    final candidates = relationCodes[reference];
+    final canonical = candidates != null && candidates.length == 1
+        ? displayCodeByGameId[candidates.single]
+        : null;
+    if (canonical == null) {
+      final alias = questCatalogRelationAliases[reference];
+      final hasLegacyAlias =
+          !displayCodes.contains(reference) &&
+          alias != null &&
+          displayCodeByGameId['${alias.gameId}'] == alias.code;
+      // An unresolved source reference must not become a definite parent when
+      // QuestCatalog later registers compatibility aliases for old bundles.
+      if ((candidates != null && displayCodes.contains(reference)) ||
+          hasLegacyAlias) {
+        throw FormatException(
+          'Quest code is ambiguous across sources: $reference',
+        );
+      }
+      return reference;
+    }
+    if (displayCodes.contains(reference) && reference != canonical) {
+      throw FormatException(
+        'Quest code is ambiguous across sources: $reference',
+      );
+    }
+    return canonical;
+  }
 
   for (final gameId in sortedIds) {
     final key = '$gameId';
@@ -44,7 +93,8 @@ String mergeQuestCatalogJson({
       if (display['rewards'] case final String rewards) 'rewards': rewards,
       if (display['resources'] case final List resources)
         'resources': resources,
-      if (prerequisites case final List pre) 'pre': pre,
+      if (prerequisites case final List pre)
+        'pre': pre.cast<String>().map(canonicalPrerequisite).toList(),
       if (translatedName != null && translatedName.trim().isNotEmpty)
         'nameZh': _normalizeTranslation(translatedName),
       if (translatedDescription != null &&

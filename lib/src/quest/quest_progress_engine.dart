@@ -42,6 +42,7 @@ class QuestProgressEngine {
   int _account = 0;
   int _generation = 0;
   final Map<int, _Record> _records = {};
+  final Map<int, int> _ruleTypes = {};
   Map<int, GameQuest> _active = {};
   final Set<String> _seen = {};
   String _nodeToken = '';
@@ -89,14 +90,21 @@ class QuestProgressEngine {
   }
 
   String periodFor(GameQuest quest, DateTime now) => questPeriodKey(
-    _records[quest.id]?.ruleType ?? goals[quest.id]?.type ?? 0,
+    _records[quest.id]?.ruleType ??
+        _ruleTypes[quest.id] ??
+        goals[quest.id]?.type ??
+        0,
     quest.type,
     now,
   );
 
   bool _expired(int id, _Record r, DateTime now) =>
       r.period !=
-      questPeriodKey(r.ruleType ?? goals[id]?.type ?? 0, r.apiType, now);
+      questPeriodKey(
+        r.ruleType ?? _ruleTypes[id] ?? goals[id]?.type ?? 0,
+        r.apiType,
+        now,
+      );
 
   Future<GameState> restore(
     GameState state,
@@ -128,13 +136,34 @@ class QuestProgressEngine {
         final data = jsonDecode(raw) as Map;
         if (_int(data['account']) == _account) {
           found = true;
+          for (final e in (data['ruleTypes'] as Map? ?? {}).entries) {
+            final id = int.tryParse(e.key.toString()), type = _int(e.value);
+            if (id != null && type >= 101 && type <= 112) {
+              _ruleTypes[id] = type;
+            }
+          }
           for (final e in (data['records'] as Map? ?? {}).entries) {
             final id = int.tryParse(e.key.toString());
             if (id == null || e.value is! Map) continue;
             final r = _Record.fromJson(Map<String, dynamic>.from(e.value));
+            // Read older caches whose annual reset month lived only on the
+            // expiring counter. Rule metadata must outlive that period.
+            final label = r.ruleType;
+            if (label != null && label >= 101 && label <= 112) {
+              _ruleTypes[id] = label;
+            }
             if (_expired(id, r, now)) {
               expiredIds.add(id);
             } else {
+              final revision = goals[id]?.revision ?? 0;
+              if (r.ruleRevision < revision) {
+                // Counts observed under a weaker rule are useful reference
+                // progress, but require server confirmation after migration.
+                if (!r.claimed && r.counts.values.any((count) => count > 0)) {
+                  r.blocked = true;
+                }
+                r.ruleRevision = revision;
+              }
               _records[id] = r;
             }
           }
@@ -165,6 +194,7 @@ class QuestProgressEngine {
       persistenceError = error.toString();
       found = false;
       _records.clear();
+      _ruleTypes.clear();
       _active.clear();
     }
     if (!found && allowLegacy) {
@@ -175,7 +205,12 @@ class QuestProgressEngine {
     }
     final restored = state.copyWith(
       quests: Map.of(_active),
-      availableQuests: allowLegacy ? state.availableQuests : {},
+      availableQuests: {
+        if (allowLegacy)
+          for (final e in state.availableQuests.entries)
+            if (!e.value.isExpired(now) && !_expiredQuest(e.value, now))
+              e.key: e.value,
+      },
       hasCompleteQuestData: false,
     );
     return expire(restored, now);
@@ -198,6 +233,80 @@ class QuestProgressEngine {
       return next;
     }
     final now = event.capturedAt.toUtc();
+    final expiredPreviousIds = {
+      if (previous.memberId == next.memberId)
+        for (final q in {
+          ...previous.availableQuests,
+          ...previous.quests,
+        }.values)
+          if (q.isExpired(now) || _expiredQuest(q, now)) q.id,
+    };
+    final authoritativeSnapshot =
+        event.path.endsWith('/questlist') ||
+        event.path.endsWith('/api_req_quest/start');
+    if (!authoritativeSnapshot && expiredPreviousIds.isNotEmpty) {
+      // Reducers can update an exact count or its verification timestamp.
+      // Retain the original period evidence before importing that new state.
+      next = next.copyWith(
+        quests: {
+          for (final e in next.quests.entries)
+            if (!expiredPreviousIds.contains(e.key)) e.key: e.value,
+        },
+        availableQuests: {
+          for (final e in next.availableQuests.entries)
+            if (!expiredPreviousIds.contains(e.key)) e.key: e.value,
+        },
+        hasCompleteQuestData: false,
+      );
+    } else if (authoritativeSnapshot && expiredPreviousIds.isNotEmpty) {
+      final startedId = event.path.endsWith('/api_req_quest/start')
+          ? _int(event.requestParams['api_quest_id'])
+          : 0;
+      GameQuest currentPeriodQuest(GameQuest q) {
+        // A successful start or a freshly returned server row establishes a
+        // new-period task, but cannot carry an exact count from the old period.
+        if (!expiredPreviousIds.contains(q.id) ||
+            (q.id != startedId && q.updatedAt?.toUtc() != now)) {
+          return q;
+        }
+        final newlyAccepted = q.id == startedId;
+        final serverCompleted = !newlyAccepted && q.isServerCompleted;
+        return GameQuest(
+          id: q.id,
+          title: q.title,
+          detail: q.detail,
+          category: q.category,
+          type: q.type,
+          state: newlyAccepted ? 2 : q.state,
+          progressFlag: newlyAccepted ? 0 : q.progressFlag,
+          materials: q.materials,
+          progressCurrent: serverCompleted ? q.progressRequired : null,
+          progressRequired: q.progressRequired,
+          localCompletionVerified: serverCompleted
+              ? q.localCompletionVerified
+              : false,
+          updatedAt: now,
+        );
+      }
+
+      final quests = {
+        for (final e in next.quests.entries) e.key: currentPeriodQuest(e.value),
+      };
+      final availableQuests = {
+        for (final e in next.availableQuests.entries)
+          e.key: currentPeriodQuest(e.value),
+      };
+      if (expiredPreviousIds.contains(startedId)) {
+        // A stale completed row can exist only in the available snapshot. The
+        // successful start still establishes an accepted task in this period.
+        final accepted = quests[startedId] ?? availableQuests[startedId];
+        if (accepted != null) {
+          quests[startedId] = accepted;
+          availableQuests[startedId] = accepted;
+        }
+      }
+      next = next.copyWith(quests: quests, availableQuests: availableQuests);
+    }
     if (_account != next.memberId || previous.memberId <= 0) {
       final restoring = restore(
         next,
@@ -252,6 +361,7 @@ class QuestProgressEngine {
         r.claimed = false;
         final label = _int(raw['api_label_type']);
         if (label >= 101 && label <= 112 && goals[id] == null) {
+          _ruleTypes[id] = label;
           r.ruleType = label;
           r.period = questPeriodKey(label, q.type, now);
         }
@@ -351,11 +461,19 @@ class QuestProgressEngine {
 
   _Record _record(GameQuest q, DateTime now) => _records.putIfAbsent(q.id, () {
     final r = _Record(
-      questPeriodKey(goals[q.id]?.type ?? 0, q.type, now),
+      questPeriodKey(_ruleTypes[q.id] ?? goals[q.id]?.type ?? 0, q.type, now),
       q.type,
     );
+    r.ruleType = _ruleTypes[q.id];
     final goal = goals[q.id];
     if (goal != null) {
+      r.ruleRevision = goal.revision;
+      // Legacy quest-only caches have no ledger revision to establish which
+      // fleet rules produced their exact count.
+      r.blocked =
+          goal.revision > 0 &&
+          !q.isServerCompleted &&
+          (q.progressCurrent ?? 0) > 0;
       r.countPeriod = questPeriodKey(
         _int(goal.raw['resetInterval']),
         q.type,
@@ -375,6 +493,11 @@ class QuestProgressEngine {
   GameState expire(GameState state, DateTime now, {bool project = true}) {
     final valid = {
       for (final e in state.quests.entries)
+        if (!e.value.isExpired(now) && !_expiredQuest(e.value, now))
+          e.key: e.value,
+    };
+    final available = {
+      for (final e in state.availableQuests.entries)
         if (!e.value.isExpired(now) && !_expiredQuest(e.value, now))
           e.key: e.value,
     };
@@ -399,8 +522,13 @@ class QuestProgressEngine {
       record.countPeriod = period;
     }
     changed |= valid.length != state.quests.length;
+    changed |= available.length != state.availableQuests.length;
     final expired = changed
-        ? state.copyWith(quests: valid, hasCompleteQuestData: false)
+        ? state.copyWith(
+            quests: valid,
+            availableQuests: available,
+            hasCompleteQuestData: false,
+          )
         : state;
     return project ? _project(expired, now) : expired;
   }
@@ -622,6 +750,7 @@ class QuestProgressEngine {
     _generation++;
     _account = 0;
     _records.clear();
+    _ruleTypes.clear();
     _active.clear();
     _seen.clear();
     _nodeToken = '';
@@ -635,6 +764,7 @@ class QuestProgressEngine {
 
   Future<void> clear() async {
     _records.clear();
+    _ruleTypes.clear();
     _active.clear();
     _seen.clear();
     _nodeToken = '';
@@ -653,6 +783,9 @@ class QuestProgressEngine {
       'account': _account,
       'records': {
         for (final e in _records.entries) e.key.toString(): e.value.toJson(),
+      },
+      'ruleTypes': {
+        for (final e in _ruleTypes.entries) e.key.toString(): e.value,
       },
       'active': _active.values.map(_questToJson).toList(),
       'seen': _seen.toList(),
@@ -683,6 +816,7 @@ class _Record {
   String period;
   String? countPeriod;
   int? ruleType;
+  int ruleRevision = 0;
   final int apiType;
   final Map<String, int> counts = {};
   bool claimed = false, blocked = false;
@@ -690,6 +824,7 @@ class _Record {
     'period': period,
     'countPeriod': countPeriod,
     'ruleType': ruleType,
+    'ruleRevision': ruleRevision,
     'type': apiType,
     'counts': counts,
     'claimed': claimed,
@@ -699,6 +834,7 @@ class _Record {
     final r = _Record(json['period'] as String, _int(json['type']));
     r.countPeriod = json['countPeriod'] as String?;
     r.ruleType = json['ruleType'] as int?;
+    r.ruleRevision = _int(json['ruleRevision']);
     r.claimed = json['claimed'] == true;
     r.blocked = json['blocked'] == true;
     for (final e in (json['counts'] as Map? ?? {}).entries) {

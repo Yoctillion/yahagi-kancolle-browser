@@ -1,3 +1,4 @@
+import 'theme/app_palette.dart';
 import 'localization/runtime_message_text.dart';
 import 'dart:async';
 
@@ -1730,7 +1731,7 @@ final class _NativeActivityGameSurfaceState
         if (_startupState != GameStartupState.ready)
           Positioned.fill(
             child: ColoredBox(
-              color: const Color(0xff102431),
+              color: appColor(context, Color(0xff102431)),
               child: Center(child: _buildStartupOverlay()),
             ),
           ),
@@ -1752,14 +1753,14 @@ final class _NativeActivityGameSurfaceState
               runtimeMessageText(context, _startupErrorMessage),
               key: const Key('native-game-surface-error'),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.redAccent),
+              style: TextStyle(color: appColor(context, Colors.redAccent)),
             ),
             const SizedBox(height: 12),
             Text(
               l10n.nativeGameSurfaceSwitchRenderingModeHint,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.redAccent,
+              style: TextStyle(
+                color: appColor(context, Colors.redAccent),
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -1790,17 +1791,21 @@ final class _NativeActivityGameSurfaceState
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const CircularProgressIndicator(color: Color(0xffd4a85f)),
+          CircularProgressIndicator(
+            color: appColor(context, Color(0xffd4a85f)),
+          ),
           const SizedBox(height: 16),
           Text(
             runtimeMessageText(context, '正在等待游戏本体...'),
             key: const Key('native-game-surface-body-waiting'),
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: appColor(context, Colors.white70)),
           ),
         ],
       );
     }
-    return const CircularProgressIndicator(color: Color(0xffd4a85f));
+    return CircularProgressIndicator(
+      color: appColor(context, Color(0xffd4a85f)),
+    );
   }
 
   void _reloadAfterRenderProcessGone() {

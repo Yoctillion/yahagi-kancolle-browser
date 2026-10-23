@@ -24,6 +24,19 @@ void main() {
   });
 
   test(
+    'support check preserves channel failures instead of reporting unsupported',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw PlatformException(code: 'temporary_failure');
+          });
+      final port = MethodChannelShipSubtitlePort(channel: channel);
+      addTearDown(port.dispose);
+      await expectLater(port.isSupported(), throwsA(isA<PlatformException>()));
+    },
+  );
+
+  test(
     'sends lightweight configuration separately from complete data',
     () async {
       final port = MethodChannelShipSubtitlePort(channel: channel);

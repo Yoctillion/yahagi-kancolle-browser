@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 import '../game_state/game_state_controller.dart';
@@ -88,8 +89,8 @@ class PinnedQuestsSummary extends StatelessWidget {
                             state.hasQuestData
                                 ? l10n.noPinnedQuests
                                 : l10n.questsNeedSync,
-                            style: const TextStyle(
-                              color: Color(0xff8197a5),
+                            style: TextStyle(
+                              color: appColor(context, const Color(0xff8197a5)),
                               fontSize: 13,
                             ),
                           ),
@@ -116,16 +117,28 @@ class PinnedQuestsSummary extends StatelessWidget {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xff0d1a26),
+                                        color: appColor(
+                                          context,
+                                          const Color(0xff0d1a26),
+                                        ),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: Builder(
-                                        builder: (context) {
+                                      child: LayoutBuilder(
+                                        builder: (context, constraints) {
                                           final english =
                                               Localizations.maybeLocaleOf(
                                                 context,
                                               )?.languageCode ==
                                               'en';
+                                          // Narrow cards and enlarged text need room
+                                          // for the name and confirmation label.
+                                          final wrapping =
+                                              english ||
+                                              constraints.maxWidth < 320 ||
+                                              MediaQuery.textScalerOf(
+                                                    context,
+                                                  ).scale(12) >
+                                                  12;
                                           final children = <Widget>[
                                             if (visible.contains('type')) ...[
                                               Container(
@@ -135,15 +148,22 @@ class PinnedQuestsSummary extends StatelessWidget {
                                                       vertical: 2,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: q.categoryColor
-                                                      .withValues(alpha: 0.2),
+                                                  color: appColor(
+                                                    context,
+                                                    q.categoryColor.withValues(
+                                                      alpha: 0.2,
+                                                    ),
+                                                  ),
                                                   borderRadius:
                                                       BorderRadius.circular(4),
                                                 ),
                                                 child: Text(
                                                   _categoryLabel(l10n, q),
                                                   style: TextStyle(
-                                                    color: q.categoryColor,
+                                                    color: appColor(
+                                                      context,
+                                                      q.categoryColor,
+                                                    ),
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.w700,
                                                   ),
@@ -162,8 +182,12 @@ class PinnedQuestsSummary extends StatelessWidget {
                                                       vertical: 2,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: q.categoryColor
-                                                      .withValues(alpha: 0.2),
+                                                  color: appColor(
+                                                    context,
+                                                    q.categoryColor.withValues(
+                                                      alpha: 0.2,
+                                                    ),
+                                                  ),
                                                   borderRadius:
                                                       BorderRadius.circular(4),
                                                 ),
@@ -173,7 +197,10 @@ class PinnedQuestsSummary extends StatelessWidget {
                                                           ?.code ??
                                                       '#${q.id}',
                                                   style: TextStyle(
-                                                    color: q.categoryColor,
+                                                    color: appColor(
+                                                      context,
+                                                      q.categoryColor,
+                                                    ),
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.w700,
                                                   ),
@@ -182,13 +209,16 @@ class PinnedQuestsSummary extends StatelessWidget {
                                               const SizedBox(width: 8),
                                             ],
                                             if (visible.contains('name'))
-                                              if (english)
+                                              if (wrapping)
                                                 Text(
                                                   gameNames(
                                                     context,
                                                   ).entityText(q.title),
-                                                  style: const TextStyle(
-                                                    color: Color(0xffecf3f5),
+                                                  style: TextStyle(
+                                                    color: appColor(
+                                                      context,
+                                                      const Color(0xffecf3f5),
+                                                    ),
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w700,
                                                   ),
@@ -202,8 +232,11 @@ class PinnedQuestsSummary extends StatelessWidget {
                                                     gameNames(
                                                       context,
                                                     ).entityText(q.title),
-                                                    style: const TextStyle(
-                                                      color: Color(0xffecf3f5),
+                                                    style: TextStyle(
+                                                      color: appColor(
+                                                        context,
+                                                        const Color(0xffecf3f5),
+                                                      ),
                                                       fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w700,
@@ -214,7 +247,7 @@ class PinnedQuestsSummary extends StatelessWidget {
                                                   ),
                                                 ),
                                             if (!visible.contains('name') &&
-                                                !english)
+                                                !wrapping)
                                               const Spacer(),
                                             if (visible.contains(
                                               'progress',
@@ -225,12 +258,15 @@ class PinnedQuestsSummary extends StatelessWidget {
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.bold,
-                                                  color: _getProgressColor(q),
+                                                  color: appColor(
+                                                    context,
+                                                    _getProgressColor(q),
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ];
-                                          return english
+                                          return wrapping
                                               ? Wrap(
                                                   runSpacing: 4,
                                                   crossAxisAlignment:
@@ -254,8 +290,8 @@ class PinnedQuestsSummary extends StatelessWidget {
                           child: Text(
                             l10n.questsNeedSync,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xff8197a5),
+                            style: TextStyle(
+                              color: appColor(context, const Color(0xff8197a5)),
                               fontSize: 12,
                             ),
                           ),
@@ -283,7 +319,7 @@ class PinnedQuestsSummary extends StatelessWidget {
 
   Widget _flatRow(BuildContext context, AppLocalizations l10n, GameQuest q) {
     Widget tag(Key? key, String text) =>
-        flatRowText(text, key: key, color: q.categoryColor);
+        flatRowText(context, text, key: key, color: q.categoryColor);
     final showType = visible.contains('type');
     final showNumber = visible.contains('number');
     final progress = visible.contains('progress')
@@ -303,6 +339,7 @@ class PinnedQuestsSummary extends StatelessWidget {
         ],
         name: visible.contains('name')
             ? flatRowText(
+                context,
                 gameNames(context).entityText(q.title),
                 color: const Color(0xffecf3f5),
               )
@@ -310,6 +347,7 @@ class PinnedQuestsSummary extends StatelessWidget {
         trailing: progress.isEmpty
             ? null
             : flatRowText(
+                context,
                 progress,
                 color: q.isCompleted ? flatDoneColor : _getProgressColor(q),
               ),

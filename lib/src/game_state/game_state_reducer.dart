@@ -1124,6 +1124,12 @@ class GameStateReducer {
     for (final entry in state.quests.entries) {
       final goal = _knownQuestGoals[entry.key];
       final quest = entry.value;
+      // Check the original timestamp before an action can replace it. Otherwise
+      // the first action after reset imports yesterday's count into today.
+      if (quest.isExpired(event.capturedAt)) {
+        changed = true;
+        continue;
+      }
       if (goal != null && quest.isAccepted && events.contains(goal.event)) {
         final next = quest.incrementExactProgress(
           1,
@@ -1172,7 +1178,23 @@ class GameStateReducer {
     if (quest == null || quest.isAccepted) {
       return state.copyWith(hasCompleteQuestData: false);
     }
-    final accepted = quest.withState(2);
+    final expired = quest.isExpired(event.capturedAt);
+    final accepted = GameQuest(
+      id: quest.id,
+      title: quest.title,
+      detail: quest.detail,
+      category: quest.category,
+      type: quest.type,
+      state: 2,
+      progressFlag: expired ? 0 : quest.progressFlag,
+      materials: quest.materials,
+      progressCurrent: expired
+          ? _knownQuestGoals[id]?.initial
+          : quest.progressCurrent,
+      progressRequired: quest.progressRequired,
+      localCompletionVerified: expired ? false : quest.localCompletionVerified,
+      updatedAt: event.capturedAt,
+    );
     return state.copyWith(
       quests: {...state.quests, id: accepted},
       availableQuests: {...state.availableQuests, id: accepted},

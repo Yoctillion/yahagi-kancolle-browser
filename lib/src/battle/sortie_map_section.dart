@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -60,10 +61,13 @@ class _SortieMapSectionState extends State<SortieMapSection> {
     final summary = widget.showCurrentNode ? scene.summary : progress.mapKey;
     final title = BattleUiText(
       scene.strings.sortieMapTitle,
-      style: const TextStyle(
-        color: _teal,
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, _teal),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
     final content = Column(
@@ -75,7 +79,7 @@ class _SortieMapSectionState extends State<SortieMapSection> {
             key: const Key('sortie-map-toggle'),
             onPressed: widget.onToggleExpanded,
             style: TextButton.styleFrom(
-              foregroundColor: _teal,
+              foregroundColor: appColor(context, _teal),
               minimumSize: Size(0, flat ? 22 : 44),
               padding: flat
                   ? const EdgeInsets.symmetric(vertical: 2)
@@ -83,49 +87,70 @@ class _SortieMapSectionState extends State<SortieMapSection> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: const RoundedRectangleBorder(),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.map_outlined, size: flat ? 13 : 14),
-                const SizedBox(width: 6),
-                if (english) Flexible(flex: 3, child: title) else title,
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: english ? 2 : 1,
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        BattleUiText(
-                          summary,
-                          textAlign: TextAlign.end,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: _muted,
-                            fontSize: flat ? flatSmallFontSize : 10,
-                          ),
-                        ),
-                        if (!expanded && scene.needsUpdate)
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                children: [
+                  Icon(Icons.map_outlined, size: flat ? 13 : 14),
+                  const SizedBox(width: 6),
+                  if (english)
+                    Flexible(flex: 3, child: title)
+                  else
+                    ConstrainedBox(
+                      // Keep short titles intrinsic, but leave summary space
+                      // when accessibility text sizes enlarge the title.
+                      constraints: BoxConstraints(
+                        maxWidth: math.max(0, constraints.maxWidth - 50) * .6,
+                      ),
+                      child: title,
+                    ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: english ? 2 : 1,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           BattleUiText(
-                            scene.strings.mapUnavailable,
+                            summary,
                             textAlign: TextAlign.end,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: _gold, fontSize: 10),
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _muted),
+                                fontSize: flat ? flatSmallFontSize : 10,
+                              ),
+                            ),
                           ),
-                      ],
+                          if (!expanded && scene.needsUpdate)
+                            BattleUiText(
+                              scene.strings.mapUnavailable,
+                              textAlign: TextAlign.end,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: appTextStyle(
+                                context,
+                                TextStyle(
+                                  color: appColor(context, _gold),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  expanded ? Icons.expand_less : Icons.expand_more,
-                  color: _muted,
-                  size: flat ? 15 : 18,
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    color: appColor(context, _muted),
+                    size: flat ? 15 : 18,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -137,8 +162,12 @@ class _SortieMapSectionState extends State<SortieMapSection> {
                 : const EdgeInsets.fromLTRB(9, 2, 9, 8),
             decoration: flat
                 ? null
-                : const BoxDecoration(
-                    border: Border(top: BorderSide(color: Color(0xff203746))),
+                : BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: appColor(context, const Color(0xff203746)),
+                      ),
+                    ),
                   ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,7 +199,13 @@ class _SortieMapSectionState extends State<SortieMapSection> {
                     child: BattleUiText(
                       scene.strings.mapUnavailable,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: _muted, fontSize: 11),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, _muted),
+                          fontSize: 11,
+                        ),
+                      ),
                     ),
                   ),
                 if (scene.hasGeometry && scene.needsUpdate)
@@ -178,7 +213,13 @@ class _SortieMapSectionState extends State<SortieMapSection> {
                     padding: const EdgeInsets.only(top: 4, bottom: 5),
                     child: BattleUiText(
                       scene.strings.mapUnavailable,
-                      style: const TextStyle(color: _gold, fontSize: 10),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, _gold),
+                          fontSize: 10,
+                        ),
+                      ),
                     ),
                   ),
                 if (progress.isPartial)
@@ -186,7 +227,13 @@ class _SortieMapSectionState extends State<SortieMapSection> {
                     padding: const EdgeInsets.only(bottom: 5),
                     child: BattleUiText(
                       scene.strings.mapPartial,
-                      style: const TextStyle(color: _muted, fontSize: 10),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, _muted),
+                          fontSize: 10,
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -204,7 +251,7 @@ class _SortieMapSectionState extends State<SortieMapSection> {
     }
     return Material(
       key: const Key('sortie-map-section'),
-      color: _background,
+      color: appColor(context, _background),
       borderRadius: BorderRadius.circular(8),
       clipBehavior: Clip.antiAlias,
       child: content,
@@ -297,7 +344,9 @@ class _MapCanvas extends StatelessWidget {
       return Stack(
         fit: StackFit.expand,
         children: [
-          CustomPaint(painter: _MapPainter(scene, projection)),
+          CustomPaint(
+            painter: _MapPainter(scene, projection, AppPalette.of(context)),
+          ),
           for (final entry in scene.geometry!.routes.entries)
             if (projection.points[entry.value.from] case final from?)
               if (projection.points[entry.value.to] case final to?)
@@ -356,9 +405,10 @@ class _MapProjection {
 }
 
 class _MapPainter extends CustomPainter {
-  _MapPainter(this.scene, this.projection);
+  _MapPainter(this.scene, this.projection, this.palette);
   final _MapScene scene;
   final _MapProjection projection;
+  final AppPalette palette;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -372,7 +422,7 @@ class _MapPainter extends CustomPainter {
           from,
           to,
           paint
-            ..color = _edge.withValues(alpha: .55)
+            ..color = palette.color(_edge.withValues(alpha: .55))
             ..strokeWidth = 1.1,
         );
       }
@@ -386,7 +436,7 @@ class _MapPainter extends CustomPainter {
           from,
           to,
           paint
-            ..color = _teal
+            ..color = palette.color(_teal)
             ..strokeWidth = 2.8,
         );
       }
@@ -412,10 +462,10 @@ class _MapPainter extends CustomPainter {
         text: TextSpan(
           text: entry.key,
           style: TextStyle(
-            color: at ? _gold : color,
+            color: palette.color(at ? _gold : color),
             fontSize: 10,
             fontWeight: at ? FontWeight.w800 : FontWeight.w600,
-            shadows: const [Shadow(color: _background, blurRadius: 3)],
+            shadows: [Shadow(color: palette.color(_background), blurRadius: 3)],
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -455,7 +505,7 @@ class _MapPainter extends CustomPainter {
         point + direction * (at ? 9 : 5),
         nearest - direction * 2,
         Paint()
-          ..color = (at ? _gold : _muted).withValues(alpha: .4)
+          ..color = palette.color((at ? _gold : _muted).withValues(alpha: .4))
           ..strokeWidth = .6,
       );
     }
@@ -481,18 +531,18 @@ class _MapPainter extends CustomPainter {
         canvas.drawCircle(
           point,
           8,
-          Paint()..color = _gold.withValues(alpha: .13),
+          Paint()..color = palette.color(_gold.withValues(alpha: .13)),
         );
         canvas.drawCircle(
           point,
           8,
           Paint()
-            ..color = _gold
+            ..color = palette.color(_gold)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.4,
         );
       }
-      final fill = Paint()..color = color;
+      final fill = Paint()..color = palette.color(color);
       if (boss) {
         canvas.drawPath(
           Path()
@@ -574,6 +624,7 @@ class _MapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MapPainter oldDelegate) =>
+      oldDelegate.palette.mode != palette.mode ||
       oldDelegate.scene.geometry != scene.geometry ||
       oldDelegate.scene.progress != scene.progress ||
       oldDelegate.scene.current != scene.current;

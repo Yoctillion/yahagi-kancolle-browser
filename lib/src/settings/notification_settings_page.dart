@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../notification/method_channel_notification_port.dart';
@@ -69,7 +70,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
         lookupAppLocalizations(const Locale('zh'));
 
     return Container(
-      color: const Color(0xff0d1a26),
+      color: appColor(context, const Color(0xff0d1a26)),
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {
@@ -107,8 +108,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                                           .openSystemNotificationSettings
                                     : _requestNotificationPermission,
                               ),
-                              const Divider(
-                                color: Color(0xff294052),
+                              Divider(
+                                color: appColor(context, Color(0xff294052)),
                                 height: 1,
                               ),
                               buildActionTile(
@@ -122,8 +123,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                                 ),
                                 onTap: _requestExactAlarmPermission,
                               ),
-                              const Divider(
-                                color: Color(0xff294052),
+                              Divider(
+                                color: appColor(context, Color(0xff294052)),
                                 height: 1,
                               ),
                               buildActionTile(
@@ -150,9 +151,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                           ),
                           child: Text(
                             l10n.notificationSectionSystemDesc,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xff8197a5),
+                              color: appColor(context, Color(0xff8197a5)),
                               height: 1.4,
                             ),
                           ),
@@ -173,7 +174,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                         value: settings.master,
                         onChanged: (v) => controller.setMaster(v),
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
                       buildSwitchTile(
                         title: l10n.notificationSound,
                         value: settings.sound,
@@ -181,7 +185,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                             ? (v) => controller.setSound(v)
                             : null,
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
                       buildSwitchTile(
                         title: l10n.notificationVibration,
                         value: settings.vibration,
@@ -206,7 +213,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                             ? (v) => controller.setOngoingLive(v)
                             : null,
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -279,7 +289,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                             ? controller.setExpedition
                             : null,
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
 
                       // 3.2 入渠修复
                       _buildNotificationTypeRow<int>(
@@ -309,7 +322,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                             ? controller.setRepair
                             : null,
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
 
                       // 3.3 泊地
                       _buildNotificationTypeRow<AnchorageNotificationMode>(
@@ -341,7 +357,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                             ? controller.setAnchorage
                             : null,
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
 
                       // 3.4 建造
                       _buildNotificationTypeRow<int>(
@@ -375,7 +394,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                             ? controller.setConstruction
                             : null,
                       ),
-                      const Divider(color: Color(0xff294052), height: 1),
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
 
                       // 3.5 疲劳 / 刷闪
                       _buildNotificationTypeRow<int>(
@@ -437,7 +459,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
               child: Checkbox(
                 value: value,
                 onChanged: enabled ? onChanged : null,
-                activeColor: const Color(0xffd4a85f),
+                activeColor: appColor(context, Color(0xffd4a85f)),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
               ),
@@ -445,12 +467,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: enabled
-                    ? const Color(0xffc7d5dc)
-                    : const Color(0xff526776),
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: enabled
+                      ? const Color(0xffc7d5dc)
+                      : const Color(0xff526776),
+                ),
               ),
             ),
           ],
@@ -491,9 +516,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: menuEnabled
-                      ? const Color(0xffd4a85f)
-                      : const Color(0xff526776),
+                  color: appColor(
+                    context,
+                    menuEnabled
+                        ? const Color(0xffd4a85f)
+                        : const Color(0xff526776),
+                  ),
                 ),
                 items: items,
                 onChanged: menuEnabled
@@ -509,7 +537,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
             key: switchKey,
             value: switchedOn,
             onChanged: onSwitchChanged,
-            activeThumbColor: const Color(0xffd4a85f),
+            activeThumbColor: appColor(context, const Color(0xffd4a85f)),
           ),
         ],
       ),
@@ -528,19 +556,22 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
         ),
         if (isNew) ...[
           const SizedBox(width: 6),
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(
-              color: Color(0xffd4a85f),
+              color: appColor(context, Color(0xffd4a85f)),
               borderRadius: BorderRadius.all(Radius.circular(3)),
             ),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               child: Text(
                 'NEW',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appOnAccentColor(context, Colors.black),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),

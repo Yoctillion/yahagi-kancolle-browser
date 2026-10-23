@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -66,7 +67,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
               title: l10n.gameResourceCacheNone,
               subtitle: l10n.gameResourceCacheNoneDesc,
             ),
-            const Divider(color: Color(0xff294052), height: 1),
+            Divider(color: appColor(context, Color(0xff294052)), height: 1),
             _modeTile(
               mode: GameResourceCacheMode.full,
               title: l10n.gameResourceCacheFull,
@@ -80,7 +81,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheUnsupported,
-                  style: const TextStyle(color: Color(0xffffb4a9)),
+                  style: TextStyle(color: appColor(context, Color(0xffffb4a9))),
                 ),
               ),
             if (!isIOS && (!controller.initialized || status.policyError))
@@ -88,7 +89,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheUnavailable,
-                  style: const TextStyle(color: Color(0xffffb4a9)),
+                  style: TextStyle(color: appColor(context, Color(0xffffb4a9))),
                 ),
               ),
             if (!isIOS && isFullCache && controller.manifestError)
@@ -96,7 +97,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   l10n.gameResourceCacheManifestFailed,
-                  style: const TextStyle(color: Color(0xffffb4a9)),
+                  style: TextStyle(color: appColor(context, Color(0xffffb4a9))),
                 ),
               ),
             if (!isIOS) ...<Widget>[

@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../game_state/game_state.dart';
@@ -58,7 +59,7 @@ class SlotItemPortrait extends StatelessWidget {
           );
     final iconId = item != null && item!.type.length > 3 ? item!.type[3] : -1;
     final fallback = ColoredBox(
-      color: const Color(0xff162a35),
+      color: appColor(context, Color(0xff162a35)),
       child: Center(
         child: EquipmentTypeIconImage(
           iconId: iconId,

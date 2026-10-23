@@ -11,6 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account/account_session.dart';
 import '../logbook/logbook_database.dart';
+import '../senka/senka_controller.dart';
+import '../senka/senka_store.dart';
 import '../toolbox/composition_record_snapshot.dart';
 import '../toolbox/composition_record_store.dart';
 
@@ -212,10 +214,17 @@ final class BackupArchive {
     required this.compositions,
     this.writerId = '',
     this.rowIds = const {},
+    this.senkaRaw,
+    this.senkaSources = const {},
   });
   final int memberId;
   final Map<String, List<Map<String, Object?>>> tables;
   final List<CompositionRecord> compositions;
+
+  /// Exact JSON from the owning account; retain unknown future state fields.
+  /// A missing value in a v1 archive means preserve the live senka on restore.
+  final String? senkaRaw;
+  final Map<String, String> senkaSources;
 
   /// The app installation that last merged database rows into this archive.
   final String writerId;
@@ -228,6 +237,7 @@ final class BackupArchive {
     List<CompositionRecord> currentCompositions, {
     required String writerId,
     Set<String> deletedCompositions = const {},
+    String? senkaRaw,
   }) {
     final mergedTables = <String, List<Map<String, Object?>>>{};
     final mergedRowIds = <String, Map<String, int>>{};
@@ -300,12 +310,23 @@ final class BackupArchive {
     for (final id in deletedCompositions) {
       records.remove(id);
     }
+    final sources = Map<String, String>.of(senkaSources);
+    if (senkaRaw != null &&
+        this.senkaRaw != null &&
+        senkaRaw != this.senkaRaw &&
+        this.writerId != writerId) {
+      final sourceKey =
+          '${this.writerId}:${sha256.convert(utf8.encode(this.senkaRaw!))}';
+      sources[sourceKey] = this.senkaRaw!;
+    }
     return BackupArchive(
       memberId: memberId,
       tables: mergedTables,
       compositions: records.values.toList(),
       writerId: writerId,
       rowIds: mergedRowIds,
+      senkaRaw: senkaRaw ?? this.senkaRaw,
+      senkaSources: sources,
     );
   }
 
@@ -322,6 +343,18 @@ final class BackupArchive {
     int maxPlainBytes = 250 * 1024 * 1024,
     int maxEncodedBytes = 100 * 1024 * 1024,
   }) {
+    if (senkaRaw != null) validateSenkaArchiveRaw(senkaRaw!, memberId);
+    if (senkaRaw == null && senkaSources.isNotEmpty) {
+      throw const FormatException(
+        'Senka source snapshots need a primary archive',
+      );
+    }
+    for (final entry in senkaSources.entries) {
+      if (entry.key.isEmpty || entry.key.length > 200) {
+        throw const FormatException('Invalid senka source key');
+      }
+      validateSenkaArchiveRaw(entry.value, memberId);
+    }
     // Compress JSON as it is produced. A complete plain JSON String and its
     // UTF-8 copy can otherwise coexist with the database snapshot and gzip.
     final output = _BackupByteSink();
@@ -341,6 +374,8 @@ final class BackupArchive {
         'compositions': compositions.map((record) => record.toJson()).toList(),
         'writerId': writerId,
         'rowIds': rowIds,
+        if (senkaRaw != null) ...{'senkaSchema': 1, 'senkaRaw': senkaRaw},
+        if (senkaSources.isNotEmpty) 'senkaSources': senkaSources,
       });
       encoder.close();
     } catch (error, stack) {
@@ -358,7 +393,7 @@ final class BackupArchive {
     );
     envelopeEncoder.add({
       'format': 'yahagi-record-backup',
-      'version': 1,
+      'version': senkaRaw == null ? 1 : 2,
       'sha256': sha256.convert(compressed).toString(),
       'payload': base64Encode(compressed),
     });
@@ -377,7 +412,7 @@ final class BackupArchive {
     final outer = jsonUtf8.convert(bytes);
     if (outer is! Map ||
         outer['format'] != 'yahagi-record-backup' ||
-        outer['version'] != 1 ||
+        (outer['version'] != 1 && outer['version'] != 2) ||
         outer['payload'] is! String ||
         outer['sha256'] is! String) {
       throw const FormatException('Unsupported backup format');
@@ -438,6 +473,38 @@ final class BackupArchive {
       }
     }
     final memberId = value['memberId'] as int;
+    final String? senkaRaw;
+    final senkaSources = <String, String>{};
+    if (outer['version'] == 2) {
+      if (value['senkaSchema'] != 1 || value['senkaRaw'] is! String) {
+        throw const FormatException('Invalid senka backup content');
+      }
+      senkaRaw = value['senkaRaw'] as String;
+      validateSenkaArchiveRaw(senkaRaw, memberId);
+      final sources = value['senkaSources'];
+      if (sources != null && sources is! Map) {
+        throw const FormatException('Invalid senka source snapshots');
+      }
+      if (sources is Map) {
+        for (final entry in sources.entries) {
+          if (entry.key is! String ||
+              (entry.key as String).isEmpty ||
+              (entry.key as String).length > 200 ||
+              entry.value is! String) {
+            throw const FormatException('Invalid senka source snapshot');
+          }
+          validateSenkaArchiveRaw(entry.value as String, memberId);
+          senkaSources[entry.key as String] = entry.value as String;
+        }
+      }
+    } else {
+      if (value.containsKey('senkaRaw') ||
+          value.containsKey('senkaSchema') ||
+          value.containsKey('senkaSources')) {
+        throw const FormatException('Senka backups require format version 2');
+      }
+      senkaRaw = null;
+    }
     final writerId = value['writerId'];
     if (writerId != null && (writerId is! String || writerId.length > 100)) {
       throw const FormatException('Invalid backup writer');
@@ -505,6 +572,8 @@ final class BackupArchive {
       compositions: records,
       writerId: writerId as String? ?? '',
       rowIds: rowIds,
+      senkaRaw: senkaRaw,
+      senkaSources: senkaSources,
     );
   }
 }
@@ -616,6 +685,7 @@ typedef _BackupMergeInput = ({
   List<CompositionRecord> compositions,
   String writerId,
   Set<String> deletedCompositions,
+  String? senkaRaw,
 });
 
 /// Only detached archive values cross this boundary. Database connections,
@@ -651,6 +721,25 @@ class BackupArchiveWorker {
     compositions: compositions,
     writerId: writerId,
     deletedCompositions: deletedCompositions,
+    senkaRaw: null,
+  ));
+
+  Future<BackupArchiveResult> mergeAndEncodeWithSenka({
+    required int memberId,
+    required Uint8List? existing,
+    required Map<String, List<Map<String, Object?>>> tables,
+    required List<CompositionRecord> compositions,
+    required String writerId,
+    required Set<String> deletedCompositions,
+    required String senkaRaw,
+  }) => compute(_mergeArchive, (
+    memberId: memberId,
+    existing: existing,
+    tables: tables,
+    compositions: compositions,
+    writerId: writerId,
+    deletedCompositions: deletedCompositions,
+    senkaRaw: senkaRaw,
   ));
 
   Future<bool> verify(int memberId, Uint8List expected, Uint8List actual) =>
@@ -702,6 +791,7 @@ BackupArchiveResult _mergeArchive(_BackupMergeInput input) {
             input.compositions,
             writerId: input.writerId,
             deletedCompositions: input.deletedCompositions,
+            senkaRaw: input.senkaRaw,
           );
   return (archive: archive, bytes: archive.encode());
 }
@@ -728,6 +818,8 @@ final class RecordBackupService extends ChangeNotifier {
     this.deleteAdoptedBaseline,
     this.afterJournalWritten,
     this.afterRestoreStage,
+    this.senkaStore,
+    this.senkaController,
     this.worker = const BackupArchiveWorker(),
     this.autoSyncDelay = const Duration(seconds: 3),
   }) : compositionStore = compositionStore ?? FileCompositionRecordStore(),
@@ -751,8 +843,11 @@ final class RecordBackupService extends ChangeNotifier {
   final Future<void> Function(File file)? deleteAdoptedBaseline;
   final Future<void> Function(File file)? afterJournalWritten;
   final Future<void> Function(String stage)? afterRestoreStage;
+  final SenkaBackupStore? senkaStore;
+  final SenkaController? senkaController;
   Future<void> _queue = Future<void>.value();
   StreamSubscription<CompositionRecordChange>? _compositionSubscription;
+  StreamSubscription<int>? _senkaSubscription;
   Future<void>? _subscriptionCancellation;
   final Map<int, LogbookDatabase> _observedDatabases = {};
   final Map<int, VoidCallback> _databaseListeners = {};
@@ -802,6 +897,7 @@ final class RecordBackupService extends ChangeNotifier {
     await compositionStore.enterMaintenance(memberId);
     _maintenanceMemberId = memberId;
     try {
+      await senkaController?.beginArchiveRestore(memberId);
       await onMaintenanceBegin?.call();
     } catch (_) {
       await _endMaintenance();
@@ -812,6 +908,7 @@ final class RecordBackupService extends ChangeNotifier {
   Future<void> _endMaintenance() async {
     final memberId = _maintenanceMemberId;
     if (memberId == null) return;
+    await senkaController?.endArchiveRestore(memberId);
     _maintenanceMemberId = null;
     await compositionStore.leaveMaintenance(memberId);
     onMaintenanceEnd?.call();
@@ -866,6 +963,9 @@ final class RecordBackupService extends ChangeNotifier {
       }
       _schedule(change.memberId);
     });
+    _senkaSubscription = senkaStore?.archiveChanges.listen(
+      (memberId) => _schedule(memberId),
+    );
     _accountChanged();
   }
 
@@ -1306,6 +1406,9 @@ final class RecordBackupService extends ChangeNotifier {
 
   Future<void> _applyRestoredArchive(BackupArchive archive) async {
     final memberId = archive.memberId;
+    if (archive.senkaRaw != null && senkaStore == null) {
+      throw StateError('Senka backup storage is unavailable');
+    }
     final database = databaseFor(memberId);
     await database.restoreSnapshot(archive.tables);
     if (!_sameTables(await database.backupSnapshot(), archive.tables)) {
@@ -1324,6 +1427,14 @@ final class RecordBackupService extends ChangeNotifier {
       throw StateError('Restored composition verification failed');
     }
     await afterRestoreStage?.call('compositions');
+    if (archive.senkaRaw case final raw?) {
+      await senkaStore!.restoreArchiveForAccount(memberId, raw);
+      if (await senkaStore!.readArchiveForAccount(memberId) != raw) {
+        throw StateError('Restored senka verification failed');
+      }
+      await senkaController?.reloadForAccount(memberId);
+      await afterRestoreStage?.call('senka');
+    }
     final name = '${_name(memberId)}.yhb';
     await _writePendingBaseline(memberId, await worker.encode(archive));
     if (_hasDirectory) await _adoptPendingBaseline(memberId, name);
@@ -1336,6 +1447,9 @@ final class RecordBackupService extends ChangeNotifier {
     if (await _isRestoreCommitted(file)) {
       await _clearRestoredDeletionIntent(file, memberId);
       await _cleanCompletedRestore(file);
+      if (_maintenanceMemberId != memberId) {
+        await senkaController?.endArchiveRestore(memberId);
+      }
       return;
     }
     final journal = await worker.decodeJournal(await file.readAsBytes());
@@ -1347,6 +1461,10 @@ final class RecordBackupService extends ChangeNotifier {
         'Backup folder permission is required to finish restore',
       );
     }
+    if (senkaController != null &&
+        !senkaController!.isArchiveRestoreActive(memberId)) {
+      await senkaController!.beginArchiveRestore(memberId);
+    }
     await _applyRestoredArchive(journal.archive);
     await _markRestoreCommitted(file);
     await _clearRestoredDeletionIntent(file, memberId);
@@ -1357,6 +1475,9 @@ final class RecordBackupService extends ChangeNotifier {
       debugPrint('Old composition image cleanup failed: $error');
     }
     _acknowledgeRestoredArchive(memberId);
+    if (_maintenanceMemberId != memberId) {
+      await senkaController?.endArchiveRestore(memberId);
+    }
   }
 
   void _acknowledgeRestoredArchive(int memberId) {
@@ -1434,21 +1555,37 @@ final class RecordBackupService extends ChangeNotifier {
     final currentRecords = allRecords
         .where((record) => record.snapshotJson != null)
         .toList();
+    await senkaController?.idle;
+    if (senkaController?.state.memberId == memberId &&
+        senkaController!.hasPersistenceError) {
+      throw StateError('Senka must be saved before backing up this account');
+    }
+    final senkaRaw = await senkaStore?.readArchiveForAccount(memberId);
     sourceSnapshot?.tables = currentTables;
     sourceSnapshot?.compositions = allRecords;
     // These are owned snapshots returned by the database/file stores. The
     // compute message copies them before control returns to the event loop.
-    final result = await worker.mergeAndEncode(
-      memberId: memberId,
-      existing: existing,
-      tables: currentTables,
-      compositions: currentRecords,
-      writerId: installationId ?? await databaseFor(memberId).backupSourceId(),
-      deletedCompositions: {
-        ...offlineDeletions,
-        ...?_deletedCompositions[memberId],
-      },
-    );
+    final writerId =
+        installationId ?? await databaseFor(memberId).backupSourceId();
+    final deleted = {...offlineDeletions, ...?_deletedCompositions[memberId]};
+    final result = senkaRaw == null
+        ? await worker.mergeAndEncode(
+            memberId: memberId,
+            existing: existing,
+            tables: currentTables,
+            compositions: currentRecords,
+            writerId: writerId,
+            deletedCompositions: deleted,
+          )
+        : await worker.mergeAndEncodeWithSenka(
+            memberId: memberId,
+            existing: existing,
+            tables: currentTables,
+            compositions: currentRecords,
+            writerId: writerId,
+            deletedCompositions: deleted,
+            senkaRaw: senkaRaw,
+          );
     final bytes = result.bytes;
     if (existing == null || !listEquals(existing, bytes)) {
       await port.writeLive(memberId, '$name.yhb', bytes);
@@ -1747,6 +1884,10 @@ final class RecordBackupService extends ChangeNotifier {
         final database = databaseFor(scope.memberId);
         final previousTables = await database.backupSnapshot();
         final previousRecords = await compositionStore.load(scope.memberId);
+        await senkaController?.idle;
+        final previousSenka = await senkaStore?.readArchiveForAccount(
+          scope.memberId,
+        );
         final previousBaseline = await _readPendingBaseline(scope.memberId);
         final liveName = '${_name(scope.memberId)}.yhb';
         final previousLive = _hasDirectory
@@ -1756,6 +1897,8 @@ final class RecordBackupService extends ChangeNotifier {
           memberId: archive.memberId,
           tables: archive.tables,
           compositions: archive.compositions,
+          senkaRaw: archive.senkaRaw,
+          senkaSources: archive.senkaSources,
           writerId: installationId ?? await database.backupSourceId(),
           rowIds: {
             for (final table in LogbookDatabase.backupTables)
@@ -1792,6 +1935,17 @@ final class RecordBackupService extends ChangeNotifier {
               allowLegacy: true,
               removeImages: false,
             );
+            if (archive.senkaRaw != null && senkaStore != null) {
+              await senkaStore!.restoreArchiveForAccount(
+                scope.memberId,
+                previousSenka,
+              );
+              if (await senkaStore!.readArchiveForAccount(scope.memberId) !=
+                  previousSenka) {
+                throw StateError('Senka rollback verification failed');
+              }
+              await senkaController?.reloadForAccount(scope.memberId);
+            }
             if (!_sameTables(await database.backupSnapshot(), previousTables) ||
                 !_sameCompositions(
                   await compositionStore.load(scope.memberId),
@@ -1902,7 +2056,11 @@ final class RecordBackupService extends ChangeNotifier {
     for (final entry in _observedDatabases.entries) {
       entry.value.backupWrites.removeListener(_databaseListeners[entry.key]!);
     }
-    _subscriptionCancellation ??= _compositionSubscription?.cancel();
+    _subscriptionCancellation ??= Future.wait<void>([
+      if (_compositionSubscription case final subscription?)
+        subscription.cancel(),
+      if (_senkaSubscription case final subscription?) subscription.cancel(),
+    ]).then<void>((_) {});
     if (_subscriptionCancellation case final cancellation?) {
       unawaited(cancellation);
     }

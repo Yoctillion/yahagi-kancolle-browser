@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -219,13 +220,13 @@ class ShipPortrait extends StatelessWidget {
             resourceType: resourceType,
           );
     final placeholder = ColoredBox(
-      color: const Color(0xff1b3240),
+      color: appColor(context, Color(0xff1b3240)),
       child: SizedBox(
         width: width,
         height: height,
-        child: const Icon(
+        child: Icon(
           Icons.directions_boat_outlined,
-          color: Color(0xff8197a5),
+          color: appColor(context, Color(0xff8197a5)),
         ),
       ),
     );
@@ -251,9 +252,12 @@ class ShipPortrait extends StatelessWidget {
           width: width,
           height: height,
           child: DecoratedBox(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: <Color>[Color(0xff385064), Color(0xff1b3240)],
+                colors: appColors(context, <Color>[
+                  Color(0xff385064),
+                  Color(0xff1b3240),
+                ]),
               ),
             ),
             child: Stack(
@@ -345,9 +349,12 @@ class _ModPortraitImageState extends State<_ModPortraitImage> {
           width: width,
           height: height,
           child: DecoratedBox(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xff385064), Color(0xff1b3240)],
+                colors: appColors(context, [
+                  Color(0xff385064),
+                  Color(0xff1b3240),
+                ]),
               ),
             ),
             child: Stack(

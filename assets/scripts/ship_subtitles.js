@@ -173,18 +173,21 @@
     var pages = active.pages;
     var total = active.totalWeight;
     var elapsed = Math.max(0, performance.now() - active.startedAt);
-    var progressed = elapsed / active.duration * total;
+    // Reserve reading time for short tail pages, within the actual audio budget.
+    // When there are too many pages, share that budget equally instead.
+    var minimumPageTime = Math.min(600, active.duration / pages.length);
+    var weightedTime = Math.max(0, active.duration - minimumPageTime * pages.length);
     var through = 0;
     var pageIndex = pages.length - 1;
     for (var i = 0; i < pages.length; i++) {
-      through += pages[i].weight;
-      if (progressed < through) { pageIndex = i; break; }
+      through += minimumPageTime + weightedTime * pages[i].weight / total;
+      if (elapsed < through) { pageIndex = i; break; }
     }
     if (text.textContent !== pages[pageIndex].text) text.textContent = pages[pageIndex].text;
     if (text.style.display !== 'block') text.style.display = 'block';
     if (pageIndex < pages.length - 1) {
       var token = active.sequence;
-      var delay = Math.max(16, active.startedAt + active.duration * through / total - performance.now());
+      var delay = Math.max(16, active.startedAt + through - performance.now());
       pageTimer = setTimeout(function () {
         if (active && active.sequence === token && config.enabled && !document.hidden) { renderPage(); positionOverlay(); }
       }, delay);
@@ -290,11 +293,13 @@
     if (!text) return;
     var seconds = 0;
     try { seconds = howl.duration(id); } catch (_) { /* Older Howler builds. */ }
-    var duration = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 + 300 : Math.max(2500, Math.min(20000, quote.line.length * 180));
+    var knownDuration = Number.isFinite(seconds) && seconds > 0;
+    var duration = knownDuration ? seconds * 1000 : Math.max(2500, Math.min(20000, quote.line.length * 180));
     active = { howl: howl, id: id, sequence: sequence, line: quote.line,
       prefix: quote.ship.name ? quote.ship.name + '：' : '', duration: duration, startedAt: performance.now() };
     var thisSequence = sequence;
-    timeout = setTimeout(function () { if (sequence === thisSequence) clearLine(); }, duration);
+    // Keep grace only for missing end events; it must not postpone page changes.
+    timeout = setTimeout(function () { if (sequence === thisSequence) clearLine(); }, duration + (knownDuration ? 300 : 0));
     layout();
   }
   function onFinish(howl, id) {

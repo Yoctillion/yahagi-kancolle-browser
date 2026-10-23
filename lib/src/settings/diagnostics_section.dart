@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/runtime_message_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -55,8 +56,8 @@ class DiagnosticsSection extends StatelessWidget {
           children: [
             Text(
               l10n.diagnosticsAndAbout,
-              style: const TextStyle(
-                color: Color(0xffd4a85f),
+              style: TextStyle(
+                color: appColor(context, Color(0xffd4a85f)),
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -115,8 +116,8 @@ class DiagnosticsSection extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               l10n.safetyBoundary,
-              style: const TextStyle(
-                color: Color(0xffd4a85f),
+              style: TextStyle(
+                color: appColor(context, Color(0xffd4a85f)),
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -216,10 +217,16 @@ class _DiagnosticCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: warning ? const Color(0xff3a292b) : const Color(0xff142735),
+        color: appColor(
+          context,
+          warning ? const Color(0xff3a292b) : const Color(0xff142735),
+        ),
         borderRadius: BorderRadius.circular(9),
         border: Border.all(
-          color: warning ? const Color(0xff75484a) : Colors.transparent,
+          color: appColor(
+            context,
+            warning ? const Color(0xff75484a) : Colors.transparent,
+          ),
         ),
       ),
       child: Column(
@@ -229,7 +236,10 @@ class _DiagnosticCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xff8197a5), height: 1.35),
+            style: TextStyle(
+              color: appColor(context, Color(0xff8197a5)),
+              height: 1.35,
+            ),
           ),
         ],
       ),

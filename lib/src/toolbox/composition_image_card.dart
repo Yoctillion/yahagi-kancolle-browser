@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -54,26 +55,29 @@ class CompositionImageCard extends StatelessWidget {
           ..sort((a, b) => a.baseId.compareTo(b.baseId));
     return MediaQuery.withNoTextScaling(
       child: DefaultTextStyle(
-        style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-            .copyWith(color: _ink, fontSize: 14, height: 1.35),
+        style: appTextStyle(
+          context,
+          (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+              .copyWith(color: _ink, fontSize: 14, height: 1.35),
+        ),
         child: Container(
           key: const Key('composition-image-card'),
           width: recordMode ? 1000 : 1200,
           decoration: recordMode
-              ? const BoxDecoration(color: Color(0xff112a37))
-              : const BoxDecoration(
+              ? BoxDecoration(color: appColor(context, Color(0xff112a37)))
+              : BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
+                    colors: appColors(context, [
                       Color(0xff122c3e),
                       Color(0xff081a28),
                       Color(0xff102739),
-                    ],
+                    ]),
                   ),
                 ),
           child: CustomPaint(
-            painter: recordMode ? null : const _PaperLines(),
+            painter: recordMode ? null : _PaperLines(AppPalette.of(context)),
             child: Padding(
               padding: EdgeInsets.all(recordMode ? 0 : 24),
               child: Column(
@@ -88,14 +92,17 @@ class CompositionImageCard extends StatelessWidget {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: _gold.withValues(alpha: .6),
+                              color: appColor(
+                                context,
+                                _gold.withValues(alpha: .6),
+                              ),
                             ),
                             borderRadius: BorderRadius.circular(12),
-                            color: const Color(0xff203747),
+                            color: appColor(context, Color(0xff203747)),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.explore_outlined,
-                            color: _gold,
+                            color: appColor(context, _gold),
                             size: 24,
                           ),
                         ),
@@ -117,7 +124,7 @@ class CompositionImageCard extends StatelessWidget {
                           ).format(generatedAt.toLocal()),
                           textKey: const Key('composition-generated-at'),
                           icon: Icons.schedule_rounded,
-                          color: _muted,
+                          color: appColor(context, _muted),
                         ),
                       ],
                     ),
@@ -125,9 +132,12 @@ class CompositionImageCard extends StatelessWidget {
                     Container(
                       height: 1,
                       margin: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [_gold, Color(0x1069c9c1)],
+                          colors: appColors(context, [
+                            _gold,
+                            Color(0x1069c9c1),
+                          ]),
                         ),
                       ),
                     ),
@@ -209,22 +219,31 @@ class CompositionImageCard extends StatelessWidget {
                   if (!recordMode)
                     Row(
                       children: [
-                        const Expanded(
-                          child: Divider(color: Color(0xff315064), height: 1),
+                        Expanded(
+                          child: Divider(
+                            color: appColor(context, Color(0xff315064)),
+                            height: 1,
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             strings.footer,
-                            style: const TextStyle(
-                              color: _muted,
-                              fontSize: 12,
-                              letterSpacing: 1.5,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _muted),
+                                fontSize: 12,
+                                letterSpacing: 1.5,
+                              ),
                             ),
                           ),
                         ),
-                        const Expanded(
-                          child: Divider(color: Color(0xff315064), height: 1),
+                        Expanded(
+                          child: Divider(
+                            color: appColor(context, Color(0xff315064)),
+                            height: 1,
+                          ),
                         ),
                       ],
                     ),
@@ -327,35 +346,35 @@ class _FleetMetricsStrip extends StatelessWidget {
                 vertical: recordMode ? 3 : 5,
               ),
               decoration: BoxDecoration(
-                color: const Color(0xff142c3c),
+                color: appColor(context, Color(0xff142c3c)),
                 borderRadius: recordMode ? null : BorderRadius.circular(8),
                 border: recordMode
                     ? Border(
-                        top: const BorderSide(
-                          color: _recordGridLine,
+                        top: BorderSide(
+                          color: appColor(context, _recordGridLine),
                           width: 1.2,
                         ),
-                        bottom: const BorderSide(
-                          color: _recordGridLine,
+                        bottom: BorderSide(
+                          color: appColor(context, _recordGridLine),
                           width: 1.2,
                         ),
-                        left: const BorderSide(
-                          color: _recordGridLine,
+                        left: BorderSide(
+                          color: appColor(context, _recordGridLine),
                           width: 1.2,
                         ),
                         right: index == values.length - 1
-                            ? const BorderSide(
-                                color: _recordGridLine,
+                            ? BorderSide(
+                                color: appColor(context, _recordGridLine),
                                 width: 1.2,
                               )
                             : BorderSide.none,
                       )
-                    : Border.all(color: const Color(0xff4b6b7d)),
+                    : Border.all(color: appColor(context, Color(0xff4b6b7d))),
                 boxShadow: recordMode
                     ? null
-                    : const [
+                    : [
                         BoxShadow(
-                          color: Color(0x40000000),
+                          color: appColor(context, Color(0x40000000)),
                           blurRadius: 5,
                           offset: Offset(0, 2),
                         ),
@@ -366,10 +385,13 @@ class _FleetMetricsStrip extends StatelessWidget {
                 children: [
                   Text(
                     values[index].$2,
-                    style: const TextStyle(
-                      color: _muted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, _muted),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   Text(
@@ -410,11 +432,15 @@ class _SectionTitle extends StatelessWidget {
           height: 48,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xff203b4b),
+            color: appColor(context, Color(0xff203b4b)),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xff45606d)),
+            border: Border.all(color: appColor(context, Color(0xff45606d))),
           ),
-          child: const Icon(Icons.flight_takeoff, color: _gold, size: 26),
+          child: Icon(
+            Icons.flight_takeoff,
+            color: appColor(context, _gold),
+            size: 26,
+          ),
         ),
       if (!recordMode) const SizedBox(width: 13),
       Expanded(
@@ -423,10 +449,13 @@ class _SectionTitle extends StatelessWidget {
           children: [
             Text(
               subtitle,
-              style: const TextStyle(
-                color: _cyan,
-                fontSize: 11,
-                letterSpacing: 1.3,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, _cyan),
+                  fontSize: 11,
+                  letterSpacing: 1.3,
+                ),
               ),
             ),
             const SizedBox(height: 2),
@@ -438,7 +467,7 @@ class _SectionTitle extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 14),
-      Text(detail, style: _mutedStyle),
+      Text(detail, style: appTextStyle(context, _mutedStyle)),
     ],
   );
 }
@@ -627,8 +656,10 @@ class _LandBaseCard extends StatelessWidget {
                     width: recordMode ? 92 : 112,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: const Color(0xff1b3d43),
-                      border: Border.all(color: const Color(0xff547485)),
+                      color: appColor(context, Color(0xff1b3d43)),
+                      border: Border.all(
+                        color: appColor(context, const Color(0xff547485)),
+                      ),
                       borderRadius: BorderRadius.circular(7),
                     ),
                     child: SlotItemPortrait(
@@ -644,32 +675,38 @@ class _LandBaseCard extends StatelessWidget {
                       if (recordMode)
                         Text(
                           strings.baseMode(base.actionKind),
-                          style: const TextStyle(
-                            color: _cyan,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, _cyan),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         )
                       else
                         _Pill(
                           text: strings.baseMode(base.actionKind),
-                          color: _cyan,
+                          color: appColor(context, _cyan),
                           bold: true,
                         ),
                       const SizedBox(width: 4),
                       if (recordMode)
                         Text(
                           strings.range(base.effectiveDistance),
-                          style: const TextStyle(
-                            color: _muted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, _muted),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         )
                       else
                         _Pill(
                           text: strings.range(base.effectiveDistance),
-                          color: _muted,
+                          color: appColor(context, _muted),
                           bold: true,
                         ),
                     ],
@@ -725,7 +762,7 @@ class _UnitHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: const Color(0xff203b49),
+      color: appColor(context, const Color(0xff203b49)),
       borderRadius: recordMode ? null : BorderRadius.circular(8),
       border: null,
     ),
@@ -742,7 +779,11 @@ class _UnitHeading extends StatelessWidget {
           SizedBox(
             width: recordMode ? 92 : 112,
             height: 60,
-            child: const Icon(Icons.sailing_outlined, color: _muted, size: 32),
+            child: Icon(
+              Icons.sailing_outlined,
+              color: appColor(context, _muted),
+              size: 32,
+            ),
           ),
         const SizedBox(width: 8),
         Expanded(
@@ -757,10 +798,13 @@ class _UnitHeading extends StatelessWidget {
                     type!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _muted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, _muted),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -787,10 +831,13 @@ class _UnitHeading extends StatelessWidget {
                         if (recordMode)
                           Text(
                             CompositionImageStrings.of(context).level(level!),
-                            style: const TextStyle(
-                              color: _gold,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _gold),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           )
                         else
@@ -798,24 +845,27 @@ class _UnitHeading extends StatelessWidget {
                             text: CompositionImageStrings.of(
                               context,
                             ).level(level!),
-                            color: _gold,
+                            color: appColor(context, _gold),
                             compact: true,
                           ),
                         const SizedBox(width: 3),
                         if (recordMode)
                           Text(
                             '${CompositionImageStrings.of(context).luck} ${luck ?? 0}',
-                            style: const TextStyle(
-                              color: _cyan,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _cyan),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           )
                         else
                           _Pill(
                             text:
                                 '${CompositionImageStrings.of(context).luck} ${luck ?? 0}',
-                            color: _cyan,
+                            color: appColor(context, _cyan),
                             compact: true,
                           ),
                       ],
@@ -873,20 +923,27 @@ class _EquipmentRow extends StatelessWidget {
         vertical: recordMode ? 1 : 3,
       ),
       decoration: BoxDecoration(
-        color: isExpansion ? const Color(0xff202e36) : const Color(0xff102b39),
+        color: appColor(
+          context,
+          isExpansion ? const Color(0xff202e36) : const Color(0xff102b39),
+        ),
         border: recordMode
             ? Border(
                 left: BorderSide(
-                  color: isExpansion
-                      ? const Color(0xff9b7e4d)
-                      : _recordColumnLine,
+                  color: appColor(
+                    context,
+                    isExpansion ? const Color(0xff9b7e4d) : _recordColumnLine,
+                  ),
                   width: 1.2,
                 ),
               )
             : Border.all(
-                color: isExpansion
-                    ? const Color(0xff786643)
-                    : const Color(0xff32515e),
+                color: appColor(
+                  context,
+                  isExpansion
+                      ? const Color(0xff786643)
+                      : const Color(0xff32515e),
+                ),
               ),
         borderRadius: recordMode ? null : BorderRadius.circular(7),
       ),
@@ -896,10 +953,13 @@ class _EquipmentRow extends StatelessWidget {
           if (showLabel) ...[
             Text(
               label,
-              style: TextStyle(
-                color: isExpansion ? _gold : const Color(0xff83a4b3),
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: isExpansion ? _gold : const Color(0xff83a4b3),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(height: 3),
@@ -921,7 +981,7 @@ class _EquipmentRow extends StatelessWidget {
                     itemId == 0 && isExpansion
                         ? Icons.lock_outline
                         : Icons.remove,
-                    color: const Color(0xff496477),
+                    color: appColor(context, Color(0xff496477)),
                     size: 24,
                   ),
                 const SizedBox(width: 5),
@@ -949,10 +1009,13 @@ class _EquipmentRow extends StatelessWidget {
                             if (item.level > 0) ...[
                               Text(
                                 '★${item.level}',
-                                style: const TextStyle(
-                                  color: _cyan,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
+                                style: appTextStyle(
+                                  context,
+                                  TextStyle(
+                                    color: appColor(context, _cyan),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 3),
@@ -973,20 +1036,23 @@ class _EquipmentRow extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xff16373e),
+                                  color: appColor(context, Color(0xff16373e)),
                                   border: Border.all(
-                                    color: const Color(0xff315b60),
+                                    color: appColor(context, Color(0xff315b60)),
                                   ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
                                   planeCount?.toString() ?? '—',
                                   key: Key('composition-plane-count-$suffix'),
-                                  style: const TextStyle(
-                                    color: _cyan,
-                                    fontSize: 9,
-                                    height: 1,
-                                    fontWeight: FontWeight.w800,
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      color: appColor(context, _cyan),
+                                      fontSize: 9,
+                                      height: 1,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1025,11 +1091,14 @@ class _EquipmentName extends StatelessWidget {
       key: textKey,
       maxLines: 1,
       softWrap: false,
-      style: TextStyle(
-        color: empty ? const Color(0xff708c9e) : _ink,
-        fontSize: 13,
-        height: 1.2,
-        fontWeight: empty ? FontWeight.w400 : FontWeight.w700,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: empty ? const Color(0xff708c9e) : _ink,
+          fontSize: 13,
+          height: 1.2,
+          fontWeight: empty ? FontWeight.w400 : FontWeight.w700,
+        ),
       ),
     ),
   );
@@ -1053,20 +1122,29 @@ class _RosterPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: const Color(0xff142c3c),
+      color: appColor(context, Color(0xff142c3c)),
       borderRadius: recordMode ? null : BorderRadius.circular(13),
       border: recordMode
-          ? const Border(
-              left: BorderSide(color: _recordGridLine, width: 1.2),
-              right: BorderSide(color: _recordGridLine, width: 1.2),
-              bottom: BorderSide(color: _recordGridLine, width: 1.2),
+          ? Border(
+              left: BorderSide(
+                color: appColor(context, _recordGridLine),
+                width: 1.2,
+              ),
+              right: BorderSide(
+                color: appColor(context, _recordGridLine),
+                width: 1.2,
+              ),
+              bottom: BorderSide(
+                color: appColor(context, _recordGridLine),
+                width: 1.2,
+              ),
             )
-          : Border.all(color: const Color(0xff355063)),
+          : Border.all(color: appColor(context, Color(0xff355063))),
       boxShadow: recordMode
           ? null
-          : const [
+          : [
               BoxShadow(
-                color: Color(0x18000000),
+                color: appColor(context, Color(0x18000000)),
                 blurRadius: 8,
                 offset: Offset(0, 4),
               ),
@@ -1099,24 +1177,29 @@ class _Pill extends StatelessWidget {
       vertical: compact ? 2 : 4,
     ),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: .08),
+      color: appColor(context, color.withValues(alpha: .08)),
       borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: color.withValues(alpha: .23)),
+      border: Border.all(
+        color: appColor(context, color.withValues(alpha: .23)),
+      ),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
-          Icon(icon, color: color, size: 13),
+          Icon(icon, color: appColor(context, color), size: 13),
           const SizedBox(width: 5),
         ],
         Text(
           text,
           key: textKey,
-          style: TextStyle(
-            color: color,
-            fontSize: compact ? 9 : 11,
-            fontWeight: compact || bold ? FontWeight.w800 : FontWeight.w600,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: color,
+              fontSize: compact ? 9 : 11,
+              fontWeight: compact || bold ? FontWeight.w800 : FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -1131,17 +1214,22 @@ class _EmptyPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 34),
-    child: Text(text, textAlign: TextAlign.center, style: _mutedStyle),
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: appTextStyle(context, _mutedStyle),
+    ),
   );
 }
 
 class _PaperLines extends CustomPainter {
-  const _PaperLines();
+  const _PaperLines(this.palette);
+  final AppPalette palette;
 
   @override
   void paint(Canvas canvas, Size size) {
     final line = Paint()
-      ..color = const Color(0x0669c9c1)
+      ..color = palette.color(const Color(0x0669c9c1))
       ..strokeWidth = .5;
     for (var y = 0.0; y < size.height; y += 32) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
@@ -1152,5 +1240,6 @@ class _PaperLines extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PaperLines oldDelegate) => false;
+  bool shouldRepaint(_PaperLines oldDelegate) =>
+      oldDelegate.palette.mode != palette.mode;
 }

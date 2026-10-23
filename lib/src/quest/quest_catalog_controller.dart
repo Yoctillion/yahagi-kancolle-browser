@@ -47,8 +47,11 @@ final class QuestCatalogController extends ChangeNotifier {
 
   Future<QuestCatalogUpdateResult> _performCheck() async {
     try {
-      final result = await _updater.checkAndUpdate(current: _dataset);
-      if (result is QuestCatalogUpdated) _dataset = result.dataset;
+      var result = await _updater.checkAndUpdate(current: _dataset);
+      if (result is QuestCatalogUpdated) {
+        _dataset = result.dataset.withDisplayFallbackFrom(_dataset);
+        result = QuestCatalogUpdated(_dataset, sourceHost: result.sourceHost);
+      }
       _lastResult = result;
       _lastCheckedAt = _now().toUtc();
       if (result is! QuestCatalogUpdateFailed) {

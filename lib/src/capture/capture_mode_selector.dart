@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/runtime_message_text.dart';
 import 'package:flutter/material.dart';
 
@@ -53,17 +54,26 @@ class CaptureModeSelector extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               runtimeMessageText(context, mode.description),
-              style: const TextStyle(
-                color: Color(0xff8197a5),
-                fontSize: 12,
-                height: 1.35,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff8197a5)),
+                  fontSize: 12,
+                  height: 1.35,
+                ),
               ),
             ),
             if (controller.errorMessage case final error?) ...[
               const SizedBox(height: 6),
               Text(
                 runtimeMessageText(context, error),
-                style: const TextStyle(color: Color(0xffffaaa4), fontSize: 12),
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffffaaa4)),
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ],
           ],

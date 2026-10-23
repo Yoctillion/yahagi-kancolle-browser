@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// 立绘铺在文字底下时，深色描边保证文字在亮色图上仍可读。
-const flatOnImageShadows = <Shadow>[Shadow(color: Colors.black, blurRadius: 3)];
+import '../theme/app_palette.dart';
+
+/// 立绘铺在文字底下时，用与文字反差的描边保证可读：深色主题是黑边，
+/// 浅色主题的文字是深色，描边改成面板底色。
+List<Shadow> flatOnImageShadows(BuildContext context) => <Shadow>[
+  Shadow(
+    color: AppPalette.of(context).isDark
+        ? Colors.black
+        : AppPalette.of(context).surface,
+    blurRadius: 3,
+  ),
+];
 
 /// 极简档行底下的立绘：靠左占 60% 宽，不接收点按。
 class FlatPortraitBackdrop extends StatelessWidget {

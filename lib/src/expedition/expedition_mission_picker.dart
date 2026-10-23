@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -95,7 +96,7 @@ class ExpeditionMissionPicker extends StatelessWidget {
         '${expeditionDisplayId(selectedMissionId, mission)} · ${mission?.name ?? ExpeditionStrings.of(context).expeditionFallbackName}';
     return Material(
       key: const Key('expedition-mission-picker'),
-      color: Colors.transparent,
+      color: appColor(context, Colors.transparent),
       child: InkWell(
         borderRadius: BorderRadius.circular(5),
         onTap: () => _showPicker(context),
@@ -111,7 +112,9 @@ class ExpeditionMissionPicker extends StatelessWidget {
           decoration: flat
               ? null
               : BoxDecoration(
-                  border: Border.all(color: const Color(0xff536772)),
+                  border: Border.all(
+                    color: appColor(context, const Color(0xff536772)),
+                  ),
                   borderRadius: BorderRadius.circular(5),
                 ),
           child: Row(
@@ -209,24 +212,28 @@ class _ExpeditionMissionPickerDialogState
     final group = widget.groups.firstWhere((value) => value.areaId == areaId);
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
-      backgroundColor: Colors.transparent,
+      backgroundColor: appColor(context, Colors.transparent),
       child: Container(
         key: const Key('expedition-mission-picker-dialog'),
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xff101d27),
-          border: Border.all(color: const Color(0xff385064)),
+          color: appColor(context, Color(0xff101d27)),
+          border: Border.all(color: appColor(context, Color(0xff385064))),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 22, spreadRadius: 2),
+          boxShadow: [
+            BoxShadow(
+              color: appColor(context, Colors.black54),
+              blurRadius: 22,
+              spreadRadius: 2,
+            ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             _DialogHeader(strings: strings),
-            const Divider(height: 1, color: Color(0xff385064)),
+            Divider(height: 1, color: appColor(context, Color(0xff385064))),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -240,7 +247,10 @@ class _ExpeditionMissionPickerDialogState
                       onSelected: (value) => setState(() => areaId = value),
                     ),
                   ),
-                  const VerticalDivider(width: 1, color: Color(0xff385064)),
+                  VerticalDivider(
+                    width: 1,
+                    color: appColor(context, Color(0xff385064)),
+                  ),
                   Expanded(
                     child: _MissionList(
                       missionIds: group.missionIds,
@@ -265,18 +275,23 @@ class _DialogHeader extends StatelessWidget {
   final ExpeditionStrings strings;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 52,
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: 52),
     child: Row(
       children: [
         const SizedBox(width: 16),
-        const Icon(Icons.public_rounded, size: 20, color: Color(0xffd4a85f)),
-        const SizedBox(width: 8),
-        Text(
-          strings.selectExpedition,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        Icon(
+          Icons.public_rounded,
+          size: 20,
+          color: appColor(context, Color(0xffd4a85f)),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            strings.selectExpedition,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+        ),
         IconButton(
           tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
           onPressed: () => Navigator.of(context).pop(),
@@ -303,7 +318,7 @@ class _AreaList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: const Color(0xff0b1720),
+    color: appColor(context, Color(0xff0b1720)),
     child: ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: groups.length,
@@ -311,7 +326,10 @@ class _AreaList extends StatelessWidget {
         final group = groups[index];
         final selected = group.areaId == selectedAreaId;
         return Material(
-          color: selected ? const Color(0xff244b69) : Colors.transparent,
+          color: appColor(
+            context,
+            selected ? const Color(0xff244b69) : Colors.transparent,
+          ),
           child: InkWell(
             key: Key('expedition-area-${group.areaId}'),
             onTap: () => onSelected(group.areaId),
@@ -321,10 +339,13 @@ class _AreaList extends StatelessWidget {
                 strings.expeditionAreaName(group.areaId),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xffc3d0d7),
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: selected ? Colors.white : const Color(0xffc3d0d7),
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -358,7 +379,10 @@ class _MissionList extends StatelessWidget {
       final mission = missions[missionId];
       final selected = missionId == selectedMissionId;
       return Material(
-        color: selected ? const Color(0xff1d5f91) : const Color(0xff172a38),
+        color: appColor(
+          context,
+          selected ? const Color(0xff1d5f91) : const Color(0xff172a38),
+        ),
         borderRadius: BorderRadius.circular(7),
         child: InkWell(
           key: Key('expedition-mission-option-$missionId'),
@@ -375,19 +399,25 @@ class _MissionList extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xff68b7ef)
-                        : const Color(0xff263e4e),
+                    color: appColor(
+                      context,
+                      selected
+                          ? const Color(0xff68b7ef)
+                          : const Color(0xff263e4e),
+                    ),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Text(
                     expeditionDisplayId(missionId, mission),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: selected
-                          ? const Color(0xff071722)
-                          : const Color(0xffdce6eb),
-                      fontWeight: FontWeight.w900,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: selected
+                            ? const Color(0xff071722)
+                            : const Color(0xffdce6eb),
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
@@ -397,17 +427,22 @@ class _MissionList extends StatelessWidget {
                     mission?.name ?? fallbackName,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        fontSize: 14,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
                 if (selected)
-                  const Icon(
+                  Icon(
                     Icons.check_circle_rounded,
                     size: 19,
-                    color: Color(0xff7fd6ff),
+                    color: appColor(context, Color(0xff7fd6ff)),
                   ),
               ],
             ),
