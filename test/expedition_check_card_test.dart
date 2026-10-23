@@ -744,6 +744,47 @@ void main() {
         .widget<Text>(find.byKey(const Key('expedition-mission-name')))
         .data!;
 
+    testWidgets('keyed content keeps a manual pick across remounts', (
+      tester,
+    ) async {
+      final bucket = PageStorageBucket();
+      Future<void> mount(ExpeditionFleetRequest request) => tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PageStorage(
+            bucket: bucket,
+            child: Scaffold(
+              body: ExpeditionCheckContent(
+                key: const PageStorageKey('smart-expedition-check'),
+                controller: controller,
+                onOpenDetails: (_) {},
+                selectionStore: store,
+                fleetRequest: request,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await mount(const ExpeditionFleetRequest(3, 1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('expedition-fleet-2')));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('A6'));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mount(const ExpeditionFleetRequest(3, 1));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('A6'));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mount(const ExpeditionFleetRequest(3, 2));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('B3'));
+    });
+
     testWidgets('initial request selects that fleet', (tester) async {
       await pump(tester, const ExpeditionFleetRequest(3, 1));
       await tester.pumpAndSettle();

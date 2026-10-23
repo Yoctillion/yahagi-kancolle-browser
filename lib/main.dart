@@ -4042,6 +4042,7 @@ class _InformationPanelState extends State<_InformationPanel> {
         onToggleCollapse: noop,
       ),
       SmartPanelState.expeditionCheck => ExpeditionCheckContent(
+        key: const PageStorageKey('smart-expedition-check'),
         controller: widget.gameStateController,
         onOpenDetails: widget.onOpenExpeditionCheck,
         fleetRequest: widget.smartPanelController?.expeditionFleetRequest,
