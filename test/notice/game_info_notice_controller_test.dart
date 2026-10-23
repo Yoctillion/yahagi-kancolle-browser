@@ -3,6 +3,7 @@ import 'package:yahagi_kancolle_browser/src/account/account_session.dart';
 import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/notice/game_info_notice_controller.dart';
+import 'package:yahagi_kancolle_browser/src/practice/practice_exp.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
@@ -66,6 +67,9 @@ class TestTopNoticeSettingsStore
   @override
   Future<void> saveLocaleCode(String? value) async => localeCode = value;
 }
+
+double ctPercent(GameState state) =>
+    ((practiceCtBonus(state).modifier - 1) * 10000).round() / 100;
 
 OwnedShip makeShip({
   int id = 1,
@@ -293,15 +297,9 @@ void main() {
     test(
       'high-level second ship and out-of-range levels use shared limits',
       () {
-        expect(GameInfoNoticeController.calculatePracticeBaseExp(1, 99), 553);
-        expect(
-          GameInfoNoticeController.calculatePracticeBaseExp(188, 188),
-          1018,
-        );
-        expect(
-          GameInfoNoticeController.calculatePracticeBaseExp(999, 999),
-          1018,
-        );
+        expect(practiceBaseExp(1, 99), 553);
+        expect(practiceBaseExp(188, 188), 1018);
+        expect(practiceBaseExp(999, 999), 1018);
       },
     );
     test('uses canonical cumulative experience at level boundaries', () {
@@ -313,7 +311,7 @@ void main() {
         (188, 948),
       ]) {
         expect(
-          GameInfoNoticeController.calculatePracticeBaseExp(sample.$1, 0),
+          practiceBaseExp(sample.$1, 0),
           sample.$2,
           reason: 'single opponent level ${sample.$1}',
         );
@@ -323,57 +321,30 @@ void main() {
       'Calculates exact theoretical values with sqrt decay when total > 500',
       () {
         // 383000 / 100 + 181500 / 300 = 4435.
-        expect(
-          GameInfoNoticeController.calculatePracticeBaseExp(80, 60),
-          equals(562),
-        );
+        expect(practiceBaseExp(80, 60), equals(562));
 
         // Benchmark 2: L1=50, L2=0 (single ship) -> total=1225 -> 500 + sqrt(725) = 526
-        expect(
-          GameInfoNoticeController.calculatePracticeBaseExp(50, 0),
-          equals(526),
-        );
+        expect(practiceBaseExp(50, 0), equals(526));
 
         // 1255000 / 100 + 1255000 / 300 -> 627.
-        expect(
-          GameInfoNoticeController.calculatePracticeBaseExp(120, 120),
-          equals(627),
-        );
+        expect(practiceBaseExp(120, 120), equals(627));
       },
     );
 
     test('Calculates small totals without decay when total <= 500', () {
-      // L1=10, L2=10 -> total=60
-      expect(
-        GameInfoNoticeController.calculatePracticeBaseExp(10, 10),
-        equals(60),
-      );
+      // L1=10, L2=10 -> total=60, +3
+      expect(practiceBaseExp(10, 10), equals(63));
 
-      // L1=1, L2=1 -> total=0 -> floor limit 10
-      expect(
-        GameInfoNoticeController.calculatePracticeBaseExp(1, 1),
-        equals(10),
-      );
+      // L1=1, L2=1 -> total=0, +3
+      expect(practiceBaseExp(1, 1), equals(3));
     });
 
     test('Handles 0-ship and abnormal inputs safely', () {
       // Opponent first ship level <= 0 means empty/missing deck
-      expect(
-        GameInfoNoticeController.calculatePracticeBaseExp(0, 0),
-        equals(0),
-      );
-      expect(
-        GameInfoNoticeController.calculatePracticeBaseExp(0, 80),
-        equals(0),
-      );
-      expect(
-        GameInfoNoticeController.calculatePracticeBaseExp(-1, 80),
-        equals(0),
-      );
-      expect(
-        GameInfoNoticeController.calculatePracticeBaseExp(80, -5),
-        equals(557),
-      );
+      expect(practiceBaseExp(0, 0), equals(0));
+      expect(practiceBaseExp(0, 80), equals(0));
+      expect(practiceBaseExp(-1, 80), equals(0));
+      expect(practiceBaseExp(80, -5), equals(557));
     });
 
     test(
@@ -469,7 +440,7 @@ void main() {
 
     test('Mode 1: CT Flagship only', () {
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 5,
@@ -480,7 +451,7 @@ void main() {
         equals(5.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 25,
@@ -491,7 +462,7 @@ void main() {
         equals(8.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 45,
@@ -502,7 +473,7 @@ void main() {
         equals(12.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 75,
@@ -513,7 +484,7 @@ void main() {
         equals(15.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 120,
@@ -527,7 +498,7 @@ void main() {
 
     test('Mode 2: CT Flagship + Companion', () {
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 5,
@@ -538,7 +509,7 @@ void main() {
         equals(10.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 25,
@@ -549,7 +520,7 @@ void main() {
         equals(13.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 45,
@@ -560,7 +531,7 @@ void main() {
         equals(16.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 75,
@@ -571,7 +542,7 @@ void main() {
         equals(20.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: true,
             flagshipLevel: 120,
@@ -585,7 +556,7 @@ void main() {
 
     test('Mode 3: Companion 1 only (no CT flagship)', () {
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -596,7 +567,7 @@ void main() {
         equals(3.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -607,7 +578,7 @@ void main() {
         equals(5.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -618,7 +589,7 @@ void main() {
         equals(7.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -629,7 +600,7 @@ void main() {
         equals(10.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -643,7 +614,7 @@ void main() {
 
     test('Mode 4: Companion 2 only (no CT flagship)', () {
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -654,7 +625,7 @@ void main() {
         equals(4.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -665,7 +636,7 @@ void main() {
         equals(6.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -676,7 +647,7 @@ void main() {
         equals(8.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -687,7 +658,7 @@ void main() {
         equals(12.0),
       );
       expect(
-        GameInfoNoticeController.calculateFleetTrainingCruiserBonus(
+        ctPercent(
           makeFleetWithCt(
             flagshipIsCt: false,
             flagshipLevel: 50,
@@ -724,10 +695,10 @@ void main() {
 
         await controller.idle;
         expect(topNoticeController.current, isNotNull);
-        // baseExp=562, boostedSExp=792, boostedAExp=660, bonus=17.5%
+        // baseExp=562, S=floor(674*1.175)=791, A=floor(562*1.175)=660, bonus=17.5%
         expect(
           topNoticeController.current!.message,
-          equals('演习经验（约）：S胜 792 · A胜 660 (练巡 +17.5%)'),
+          equals('演习经验（约）：S胜 791 · A胜 660 (练巡 +17.5%)'),
         );
         expect(topNoticeController.current!.tone, equals(TopNoticeTone.info));
       },

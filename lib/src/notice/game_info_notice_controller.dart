@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -11,7 +10,7 @@ import '../game_state/game_api_event_pipeline.dart';
 import '../game_state/game_state.dart';
 import '../localization/game_name_catalog.dart';
 import '../settings/layout_settings_controller.dart';
-import '../toolbox/exp_calc/ship_exp_table.dart';
+import '../practice/practice_exp.dart';
 import '../widgets/top_notice.dart';
 
 /// Intercepts game events and dispatches unified top bar notices for:
@@ -516,28 +515,22 @@ class GameInfoNoticeController implements GameApiEventConsumer {
       return;
     }
 
-    final baseExp = calculatePracticeBaseExp(l1, l2);
+    final baseExp = practiceBaseExp(l1, l2);
     if (baseExp <= 0) {
       topNoticeController.removeByKey(noticeKey);
       return;
     }
 
-    final sExp = (baseExp * 1.2).round();
-    final aExp = baseExp;
-
-    // Check if player's fleet 1 contains Training Cruiser(s) (Katori / Kashima)
-    final ctBonus = calculateFleetTrainingCruiserBonus(state);
-    if (ctBonus > 0) {
-      final multiplier = 1.0 + (ctBonus / 100.0);
-      final boostedSExp = ((baseExp * 1.2) * multiplier).round();
-      final boostedAExp = (baseExp * multiplier).round();
-      final bonusStr = ctBonus % 1 == 0 ? '${ctBonus.toInt()}%' : '$ctBonus%';
+    final bonus = practiceCtBonus(state);
+    final sExp = practiceRankExp(baseExp, PracticeRank.s, bonus);
+    final aExp = practiceRankExp(baseExp, PracticeRank.a, bonus);
+    if (bonus.modifier != 1) {
+      final percent = ((bonus.modifier - 1) * 10000).round() / 100;
+      final bonusStr = percent % 1 == 0
+          ? '${percent.toInt()}%'
+          : '${percent.toString()}%';
       postNotice(
-        message: l10n.noticePracticeExpCtBonus(
-          boostedSExp,
-          boostedAExp,
-          bonusStr,
-        ),
+        message: l10n.noticePracticeExpCtBonus(sExp, aExp, bonusStr),
         tone: TopNoticeTone.info,
         replacementKey: noticeKey,
       );
@@ -548,103 +541,5 @@ class GameInfoNoticeController implements GameApiEventConsumer {
         replacementKey: noticeKey,
       );
     }
-  }
-
-  /// Calculates training cruiser bonus according to official 4-mode matrix:
-  /// 1. CT Flagship only:
-  ///    Lv 1~9: +5%, Lv 10~29: +8%, Lv 30~59: +12%, Lv 60~99: +15%, Lv 100+: +20%
-  /// 2. CT Flagship + Companion:
-  ///    Lv 1~9: +10%, Lv 10~29: +13%, Lv 30~59: +16%, Lv 60~99: +20%, Lv 100+: +25%
-  /// 3. Companion 1 only (no CT flagship):
-  ///    Lv 1~9: +3%, Lv 10~29: +5%, Lv 30~59: +7%, Lv 60~99: +10%, Lv 100+: +15%
-  /// 4. Companion 2 only (no CT flagship):
-  ///    Lv 1~9: +4%, Lv 10~29: +6%, Lv 30~59: +8%, Lv 60~99: +12%, Lv 100+: +17.5%
-  static double calculateFleetTrainingCruiserBonus(GameState state) {
-    if (state.fleets.isEmpty) return 0.0;
-    final firstFleet = state.fleets[0];
-    var isFlagshipCt = false;
-    var accompanyingCtCount = 0;
-    var flagshipLevel = 1;
-    var maxAccompanyingCtLevel = 1;
-
-    for (var i = 0; i < firstFleet.shipIds.length; i++) {
-      final shipId = firstFleet.shipIds[i];
-      final ship = state.ships[shipId];
-      if (ship == null) continue;
-      final master = state.masterShips[ship.masterId];
-      final isCt =
-          master?.shipTypeId == 21 ||
-          (master?.name.contains('香取') ?? false) ||
-          (master?.name.contains('鹿島') ?? false);
-
-      if (isCt) {
-        if (i == 0) {
-          isFlagshipCt = true;
-          flagshipLevel = ship.level;
-        } else {
-          accompanyingCtCount++;
-          if (ship.level > maxAccompanyingCtLevel) {
-            maxAccompanyingCtLevel = ship.level;
-          }
-        }
-      }
-    }
-
-    if (!isFlagshipCt && accompanyingCtCount == 0) return 0.0;
-
-    // 1. CT Flagship only
-    if (isFlagshipCt && accompanyingCtCount == 0) {
-      if (flagshipLevel >= 100) return 20.0;
-      if (flagshipLevel >= 60) return 15.0;
-      if (flagshipLevel >= 30) return 12.0;
-      if (flagshipLevel >= 10) return 8.0;
-      return 5.0;
-    }
-
-    // 2. CT Flagship + Companion
-    if (isFlagshipCt && accompanyingCtCount > 0) {
-      if (flagshipLevel >= 100) return 25.0;
-      if (flagshipLevel >= 60) return 20.0;
-      if (flagshipLevel >= 30) return 16.0;
-      if (flagshipLevel >= 10) return 13.0;
-      return 10.0;
-    }
-
-    // 3. Companion 1 only (no CT flagship)
-    if (!isFlagshipCt && accompanyingCtCount == 1) {
-      if (maxAccompanyingCtLevel >= 100) return 15.0;
-      if (maxAccompanyingCtLevel >= 60) return 10.0;
-      if (maxAccompanyingCtLevel >= 30) return 7.0;
-      if (maxAccompanyingCtLevel >= 10) return 5.0;
-      return 3.0;
-    }
-
-    // 4. Companion 2 only (no CT flagship)
-    if (!isFlagshipCt && accompanyingCtCount >= 2) {
-      if (maxAccompanyingCtLevel >= 100) return 17.5;
-      if (maxAccompanyingCtLevel >= 60) return 12.0;
-      if (maxAccompanyingCtLevel >= 30) return 8.0;
-      if (maxAccompanyingCtLevel >= 10) return 6.0;
-      return 4.0;
-    }
-
-    return 0.0;
-  }
-
-  /// Practice opponent base experience formula:
-  /// - Base exp = floor(exp(L1) / 100 + exp(L2) / 300)
-  /// - When total > 500: floor(500 + sqrt(total - 500))
-  /// - Minimum exp for valid non-empty opponent is 10.
-  /// - Returns 0 for 0-ship/empty opponent (L1 <= 0).
-  static int calculatePracticeBaseExp(int l1, int l2) {
-    if (l1 <= 0) return 0;
-    final exp1 = shipCumulativeExp(l1);
-    final exp2 = l2 > 0 ? shipCumulativeExp(l2) : 0;
-    final total = (exp1 / 100.0) + (exp2 / 300.0);
-    if (total <= 0) return 10;
-    if (total > 500) {
-      return (500.0 + math.sqrt(total - 500.0)).floor();
-    }
-    return total.floor();
   }
 }
