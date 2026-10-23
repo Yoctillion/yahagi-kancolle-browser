@@ -116,7 +116,7 @@
   "themeSeaSaltTeal": "海鹽青",
   "themeClearSkyBlue": "晴空藍",
   "uiDisplaySizeTitle": "介面UI大小",
-  "uiDisplaySizeDesc": "調整頂欄、導航欄與資訊欄的顯示密度；極簡檔在手機橫屏時預設隱藏遊戲頁頂欄",
+  "uiDisplaySizeDesc": "調整頂欄、導航欄與資訊欄的顯示密度；極簡檔保留頂部 Yahagi 入口與功能列，資訊欄採用扁平佈局",
   "uiDisplaySizeNormal": "標準",
   "uiDisplaySizeCompact": "緊湊",
   "uiDisplaySizeMinimal": "極簡",

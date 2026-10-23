@@ -116,7 +116,7 @@
   "themeSeaSaltTeal": "シーソルト",
   "themeClearSkyBlue": "スカイブルー",
   "uiDisplaySizeTitle": "UIの表示サイズ",
-  "uiDisplaySizeDesc": "上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでは、スマートフォンの横向き時にゲームページの上部バーを既定で非表示にします",
+  "uiDisplaySizeDesc": "上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでも上部のYahagiボタンとツールバーを維持し、情報バーをフラットに表示します",
   "uiDisplaySizeNormal": "標準",
   "uiDisplaySizeCompact": "コンパクト",
   "uiDisplaySizeMinimal": "ミニマル",

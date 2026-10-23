@@ -272,7 +272,7 @@ class FleetShipMinimalRow extends StatelessWidget {
     final mechanisms = [
       ...detectShipCombatMechanisms(state, ship),
       ?specialAttack,
-    ].where((m) => showsMechanism(visible, m)).toList();
+    ].where((_) => _show('mechanisms')).toList();
     final speed = ShipSpeedVisual.fromSpeed(ship.effectiveSpeed(master));
     final meta = <Widget>[
       if (!_show('morale') && _moraleWarns) _moraleChip(),

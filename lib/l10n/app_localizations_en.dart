@@ -368,7 +368,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uiDisplaySizeDesc =>
-      'Adjust the density of the top bar, navigation bar and info panel; Minimal hides the game page top bar by default on phones in landscape';
+      'Adjust the density of the top bar, navigation bar and info panel; Minimal keeps the top Yahagi button and toolbar and uses a flat info panel';
 
   @override
   String get uiDisplaySizeNormal => 'Normal';

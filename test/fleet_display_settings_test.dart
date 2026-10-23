@@ -11,6 +11,55 @@ import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 
 void main() {
+  test(
+    'mechanism preferences keep the original field when saved again',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'fleet_brief_display_fields_v2': ['hp', 'mechanisms'],
+      });
+      final store = SharedPreferencesLayoutSettingsStore();
+      final controller = await LayoutSettingsController.load(store);
+      addTearDown(controller.dispose);
+      expect(controller.fleetDisplayFields, {'hp', 'mechanisms'});
+      expect(controller.hdFleetDisplayFields, contains('mechanisms'));
+
+      await controller.setFleetDisplayFields(controller.fleetDisplayFields);
+      expect((await store.loadFleetDisplayFields())!.toSet(), {
+        'hp',
+        'mechanisms',
+      });
+      final restored = await LayoutSettingsController.load(store);
+      addTearDown(restored.dispose);
+      expect(restored.fleetDisplayFields, {'hp', 'mechanisms'});
+    },
+  );
+
+  test(
+    'ordinary and HD settings share the combined mechanism switch',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = SharedPreferencesLayoutSettingsStore();
+      final controller = await LayoutSettingsController.load(store);
+      addTearDown(controller.dispose);
+      expect(controller.fleetDisplayFields, contains('mechanisms'));
+      expect(controller.hdFleetDisplayFields, contains('mechanisms'));
+
+      await controller.setHdFleetDisplayFields(
+        controller.hdFleetDisplayFields.difference({'mechanisms'}),
+      );
+      expect(controller.fleetDisplayFields, isNot(contains('mechanisms')));
+      await controller.setFleetDisplayFields({
+        ...controller.fleetDisplayFields,
+        'mechanisms',
+      });
+      expect(controller.hdFleetDisplayFields, contains('mechanisms'));
+      final restored = await LayoutSettingsController.load(store);
+      addTearDown(restored.dispose);
+      expect(restored.fleetDisplayFields, contains('mechanisms'));
+      expect(restored.hdFleetDisplayFields, contains('mechanisms'));
+    },
+  );
+
   testWidgets('two-column editor allows seven persisted summary choices', (
     tester,
   ) async {
@@ -221,13 +270,20 @@ void main() {
         5,
       );
       expect(checkbox('torpedo').onSelected, isNull);
-      final antiAirCutIn = tester.widget<FilterChip>(
-        find.byKey(const Key('fleet-display-aaci')),
+      final mechanisms = tester.widget<FilterChip>(
+        find.byKey(const Key('fleet-display-mechanisms')),
       );
-      antiAirCutIn.onSelected!(false);
+      expect(
+        mechanisms.label,
+        isA<Text>().having((text) => text.data, 'text', '特殊机制'),
+      );
+      expect(mechanisms.tooltip, '先制对潜、对空 CI、喷进弹幕、空母夜袭与旗舰特殊攻击');
+      for (final field in ['asw', 'aaci', 'rocket', 'night', 'special']) {
+        expect(find.byKey(Key('fleet-display-$field')), findsNothing);
+      }
+      mechanisms.onSelected!(false);
       await tester.pump();
-      expect(controller.fleetDisplayFields, isNot(contains('aaci')));
-      expect(controller.fleetDisplayFields, contains('asw'));
+      expect(controller.fleetDisplayFields, isNot(contains('mechanisms')));
       expect(tester.takeException(), isNull);
 
       expect(

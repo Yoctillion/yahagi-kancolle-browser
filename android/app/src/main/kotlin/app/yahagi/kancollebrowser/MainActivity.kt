@@ -46,6 +46,7 @@ import app.yahagi.kancollebrowser.browser.WebViewProxyManager
 import app.yahagi.kancollebrowser.browser.GadgetBypassManager
 import app.yahagi.kancollebrowser.browser.GadgetBypassWebViewClient
 import app.yahagi.kancollebrowser.browser.FixedCanvasScalePolicy
+import app.yahagi.kancollebrowser.browser.FixedCanvasScaleApplier
 import app.yahagi.kancollebrowser.browser.GameFrameRateManager
 import app.yahagi.kancollebrowser.browser.GameMouseWheelChannel
 import app.yahagi.kancollebrowser.browser.GameFullscreenChannel
@@ -274,6 +275,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     private var boundWebView: WebView? = null
     private var fixedCanvasLayoutListener: View.OnLayoutChangeListener? = null
     private val fixedCanvasScalePolicy = FixedCanvasScalePolicy()
+    private val fixedCanvasScaleApplier = FixedCanvasScaleApplier()
     private var fixedCanvasContentWidth: Int = 1200
     private var fixedCanvasContentHeight: Int = 720
     private var pendingScreenshotResult: MethodChannel.Result? = null
@@ -786,6 +788,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     }
 
     override fun onDestroy() {
+        fixedCanvasScaleApplier.cancel()
         disposeCustomFonts()
         disposeGameMods()
         appNavigationChannel?.setMethodCallHandler(null)
@@ -853,6 +856,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        fixedCanvasScaleApplier.cancel()
         disposeCustomFonts()
         disposeGameMods()
         appNavigationChannel?.setMethodCallHandler(null)
@@ -1687,6 +1691,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
                                 webView,
                                 right - left,
                                 bottom - top,
+                                force = true,
                             )
                         }
                         fixedCanvasLayoutListener = listener
@@ -1708,8 +1713,18 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
                                 webView.width,
                                 webView.height,
                                 force = true,
-                            )
-                            result.success(null)
+                            ) { outcome ->
+                                outcome.fold(
+                                    onSuccess = { result.success(null) },
+                                    onFailure = { error ->
+                                        result.error(
+                                            "scaling_failed",
+                                            error.message ?: "Unable to set WebView scaling.",
+                                            null,
+                                        )
+                                    },
+                                )
+                            }
                         } catch (error: RuntimeException) {
                             result.error(
                                 "scaling_failed",
@@ -1739,6 +1754,11 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         viewportWidth: Int,
         viewportHeight: Int,
         force: Boolean = false,
+        onComplete: (Result<Boolean>) -> Unit = { outcome ->
+            outcome.exceptionOrNull()?.let { error ->
+                Log.d("NativeGamePresentation", "Unable to set WebView scaling.", error)
+            }
+        },
     ) {
         val scalePercent = fixedCanvasScalePolicy.nextScalePercent(
             viewportWidth,
@@ -1748,9 +1768,31 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             force,
             imeVisible = ViewCompat.getRootWindowInsets(webView)
                 ?.isVisible(WindowInsetsCompat.Type.ime()) == true,
-        ) ?: return
-        webView.setInitialScale(scalePercent)
-        shipSubtitleBridge?.refreshDisplayScale(scalePercent / 100.0)
+        ) ?: run {
+            onComplete(Result.success(false))
+            return
+        }
+        fixedCanvasScaleApplier.apply(
+            webView,
+            viewportWidth,
+            scalePercent,
+            fixedCanvasContentWidth,
+            isCurrent = {
+                !isFinishing && !isDestroyed && boundWebView === webView &&
+                    webView.isAttachedToWindow && webView.width == viewportWidth &&
+                    webView.height == viewportHeight
+            },
+        ) { outcome ->
+            val completed = try {
+                if (outcome.getOrThrow()) {
+                    shipSubtitleBridge?.refreshDisplayScale(scalePercent / 100.0)
+                }
+                outcome
+            } catch (error: RuntimeException) {
+                Result.failure<Boolean>(error)
+            }
+            onComplete(completed)
+        }
     }
 
     private val nativePresentationMethodResult = object : MethodChannel.Result {
@@ -1784,6 +1826,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
 
     private fun releaseFixedCanvasScaling(result: MethodChannel.Result) {
         try {
+            fixedCanvasScaleApplier.cancel()
             val webView = boundWebView
             fixedCanvasLayoutListener?.let { listener ->
                 webView?.removeOnLayoutChangeListener(listener)

@@ -158,7 +158,9 @@ void main() {
     expect(moraleBandOf(19), MoraleBand.exhausted);
   });
 
-  testWidgets('each mechanism follows its own display toggle', (tester) async {
+  testWidgets('mechanism tags follow the shared display toggle', (
+    tester,
+  ) async {
     final state = _mechanismState();
     Future<void> pumpRows(Set<String> visible) async {
       await tester.pumpWidget(
@@ -185,17 +187,11 @@ void main() {
       findsOneWidget,
     );
 
-    await pumpRows(defaultFields.difference({'night'}));
-    expect(
-      find.byKey(const Key('minimal-mechanism-1-openingAsw')),
-      findsOneWidget,
-    );
+    await pumpRows(defaultFields.difference({'mechanisms'}));
     expect(
       find.byKey(const Key('minimal-mechanism-2-nightCarrierAttack')),
       findsNothing,
     );
-
-    await pumpRows(defaultFields.difference({'asw'}));
     expect(
       find.byKey(const Key('minimal-mechanism-1-openingAsw')),
       findsNothing,
@@ -223,13 +219,13 @@ void main() {
         _row(
           state,
           1,
-          visible: defaultFields.difference({'special'}),
+          visible: defaultFields.difference({'mechanisms'}),
           specialAttack: specialAttack,
         ),
       ),
     );
     await tester.pump();
-    expect(find.text('先反'), findsOneWidget);
+    expect(find.text('先反'), findsNothing);
     expect(find.text('特攻'), findsNothing);
   });
 

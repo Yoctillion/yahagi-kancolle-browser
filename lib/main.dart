@@ -1825,10 +1825,6 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     );
   }
 
-  void _openBrowserMenu() {
-    unawaited(showGameBrowserMenu(context, _browserActions(context)));
-  }
-
   GameBrowserActions _browserActions(BuildContext context) =>
       GameBrowserActions(
         mode: widget.browserController.mode,
@@ -1855,8 +1851,16 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         onToggleMuted: () async {
           await widget.audioController.toggleMuted();
         },
-        onFitScreen: () {
-          widget.browserController.fitGameScreen();
+        onFitScreen: () async {
+          try {
+            await widget.browserController.fitGameScreen();
+          } catch (_) {
+            if (!context.mounted) return;
+            TopNotice.show(
+              context,
+              message: AppLocalizations.of(context)!.gameStatusErrorDesc,
+            );
+          }
         },
         onEnterFullscreen: () => _setGameFullscreen(true),
         onScreenshot: widget.gameScreenshotController == null
@@ -1908,43 +1912,41 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     );
   }
 
-  /// 极简游戏页没有顶栏时的资源条，任务完成等通知临时占用它的位置。
+  /// 极简游戏页的面板和底栏只展示资源，通知统一使用原顶栏插槽。
   Widget _buildGameResourceBar({
     required ResourceBarLayout layout,
     EdgeInsets gridPadding = EdgeInsets.zero,
     ({double left, double right}) gridCornerRadii = (left: 0, right: 0),
   }) {
     final senkaController = widget.senkaController;
-    return QuestCompletionHeaderSlot(
-      child: AnimatedBuilder(
-        animation: Listenable.merge([
-          widget.gameStateController,
-          ?senkaController,
-        ]),
-        builder: (context, _) {
-          final gameState = widget.gameStateController;
-          final playerRanking = senkaController?.state.playerRankingRow;
-          return CompactResourceBar(
-            layout: layout,
-            gridPadding: gridPadding,
-            gridCornerRadii: gridCornerRadii,
-            state: gameState.state,
-            senka: playerRanking?.senka,
-            rank: playerRanking?.rank,
-            onSenkaTap: senkaController == null
-                ? null
-                : () => _selectWorkspace(9),
-            anchorageRepairStartedAt: gameState.anchorageRepairStartedAt,
-            onAnchorageTimerTap: _openAnchorageRepairCenter,
-            nosakiSparkleStartedAt: gameState.nosakiSparkleStartedAt,
-            onNosakiTimerTap: _openNosakiRepairCenter,
-            onFrameRefreshTap: widget.gameFrameRefreshShortcutSettings == null
-                ? null
-                : _refreshGameFrameFromHeader,
-            settingsController: widget.layoutSettingsController,
-          );
-        },
-      ),
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        widget.gameStateController,
+        ?senkaController,
+      ]),
+      builder: (context, _) {
+        final gameState = widget.gameStateController;
+        final playerRanking = senkaController?.state.playerRankingRow;
+        return CompactResourceBar(
+          layout: layout,
+          gridPadding: gridPadding,
+          gridCornerRadii: gridCornerRadii,
+          state: gameState.state,
+          senka: playerRanking?.senka,
+          rank: playerRanking?.rank,
+          onSenkaTap: senkaController == null
+              ? null
+              : () => _selectWorkspace(9),
+          anchorageRepairStartedAt: gameState.anchorageRepairStartedAt,
+          onAnchorageTimerTap: _openAnchorageRepairCenter,
+          nosakiSparkleStartedAt: gameState.nosakiSparkleStartedAt,
+          onNosakiTimerTap: _openNosakiRepairCenter,
+          onFrameRefreshTap: widget.gameFrameRefreshShortcutSettings == null
+              ? null
+              : _refreshGameFrameFromHeader,
+          settingsController: widget.layoutSettingsController,
+        );
+      },
     );
   }
 
@@ -2050,6 +2052,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       widget.layoutSettingsController.uiDisplaySize,
       hd: hd,
     );
+    // The existing toolbar is 30dp and a quest notice is 34dp tall. Keep the
+    // compact header height in minimal mode so both retain their animations
+    // and fit in the same persistent header.
+    final shellHeaderHeight = topHeaderHeight(
+      uiSize.isMinimal ? UiDisplaySize.compact : uiSize,
+    );
     final flatPanel = usesFlatPanel(size: uiSize, hd: hd);
     final minimalTopBar =
         uiSize.isMinimal &&
@@ -2077,15 +2085,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         ? bottomSafeArea
         : 0.0;
     final contentTouchesBottom = !(menuHorizontal && !menuTop);
-    // Judged on the workspace the game would get without the header: a
-    // stacked workspace leaves the panel too short for the resource grid, so
-    // the header must keep the resources. The header is left out because
-    // hiding it makes the workspace taller and would flip the answer back.
-    // The top bar sits inside the game workspace, so only side and bottom
-    // bars are subtracted. A resource top bar stays in both outcomes, so it
-    // cannot flip the answer and is subtracted. The inline bottom bar is also
-    // safe: whether it exists depends only on the window size and settings, not
-    // on the layout computed here.
+    // The header is present in every workspace and resource position. Judge
+    // the side rail against the same remaining space the game receives.
     final shellNavigationExtent = workspaceNavigationExtent(uiSize);
     final minimalShellWorkspace = Size(
       windowSize.width - (menuHorizontal ? 0 : shellNavigationExtent),
@@ -2093,7 +2094,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           (menuHorizontal && !menuTop
               ? shellNavigationExtent + navigationGestureInset
               : 0) -
-          (minimalTopBar ? topHeaderHeight(uiSize) : 0) -
+          shellHeaderHeight -
           minimalBottomBarReserve,
     );
     final minimalGameLayout = usesMinimalShell(
@@ -2104,7 +2105,6 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       ),
       hd: hd,
     );
-    final minimalShell = minimalGameLayout && _workspaceIndex == 0;
     // 竖向导航栏在所有页面都占满整高，切页时导航项不跳；顶栏只排在内容一侧。
     final minimalSideRail = minimalGameLayout && !menuHorizontal;
     // 与工作区序号无关，游戏转到后台时尺寸仍按游戏页冻结。
@@ -2127,14 +2127,6 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       completedQuestCount: completedCount,
       gameStateController: widget.gameStateController,
       hd: hd,
-      leading: minimalGameLayout
-          ? _MinimalMenuButton(
-              horizontal: menuHorizontal,
-              onTap: _workspaceIndex == 0
-                  ? _openBrowserMenu
-                  : () => _selectWorkspace(0),
-            )
-          : null,
       endInsets:
           // 顶部横向导航栏在非游戏页排在顶栏下面，碰不到屏幕角。
           (minimalGameLayout && atScreenBottom
@@ -2204,6 +2196,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         : EdgeInsets.only(left: logbookMenuExtent);
     final panelAlignedNavigation =
         _workspaceIndex == 0 &&
+        // The outer minimal rail already owns navigation. Near the aspect
+        // ratio boundary the whole window can still look portrait-oriented.
+        !minimalSideRail &&
         (menuTop ||
             (!menuHorizontal &&
                 !hdWindow &&
@@ -2247,8 +2242,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                   railOnRight: menuOnRight,
                   children: [
                     Visibility(
-                      visible:
-                          !_gameFullscreen && (!minimalShell || minimalTopBar),
+                      visible: !_gameFullscreen,
                       maintainState: true,
                       maintainFocusability: true,
                       child: AnimatedBuilder(
@@ -2258,15 +2252,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                         ]),
                         builder: (context, _) {
                           final isCompact = uiSize.isCompactOrSmaller;
-                          final headerHeight = topHeaderHeight(uiSize);
+                          final headerHeight = shellHeaderHeight;
                           final isGameWorkspace = _workspaceIndex == 0;
-                          // The minimal shell opens the toolbar actions from
-                          // the navigation menu button, so a toolbar left open
-                          // before switching would cover the resource bar with
-                          // no brand button to close it.
                           final isToolbarVisible =
                               isGameWorkspace &&
-                              !minimalShell &&
                               widget.toolbarController.isVisible;
                           final corners = DisplayCorners.of(context);
                           final sidePadding = isCompact ? 8.0 : 10.0;
@@ -2312,7 +2301,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               visible: false,
                               child: Row(
                                 children: [
-                                  if (!minimalGameLayout) ...[
+                                  ...[
                                     Material(
                                       color: appColor(
                                         context,
@@ -2425,164 +2414,181 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 : 1.0,
                                             child: IgnorePointer(
                                               ignoring: isToolbarVisible,
-                                              child: AnimatedBuilder(
-                                                animation: Listenable.merge(<
-                                                  Listenable
-                                                >[
-                                                  widget.gameStateController,
-                                                  if (widget.senkaController !=
-                                                      null)
-                                                    widget.senkaController!,
-                                                ]),
-                                                builder: (context, _) => WorkspaceContextHeader(
-                                                  workspaceIndex:
-                                                      _workspaceIndex,
-                                                  state: widget
-                                                      .gameStateController
-                                                      .state,
-                                                  senkaState: widget
-                                                      .senkaController
-                                                      ?.state,
-                                                  onSenkaTap:
-                                                      widget.senkaController ==
-                                                          null
-                                                      ? null
-                                                      : () =>
-                                                            _selectWorkspace(9),
-                                                  onFrameRefreshTap:
-                                                      widget.gameFrameRefreshShortcutSettings ==
-                                                          null
-                                                      ? null
-                                                      : _refreshGameFrameFromHeader,
-                                                  anchorageRepairStartedAt: widget
-                                                      .gameStateController
-                                                      .anchorageRepairStartedAt,
-                                                  onAnchorageTimerTap:
-                                                      _openAnchorageRepairCenter,
-                                                  nosakiSparkleStartedAt: widget
-                                                      .gameStateController
-                                                      .nosakiSparkleStartedAt,
-                                                  onNosakiTimerTap:
-                                                      _openNosakiRepairCenter,
-                                                  layoutSettingsController: widget
-                                                      .layoutSettingsController,
-                                                  uiSize: uiSize,
-                                                  selectedFleetId:
-                                                      _fleetCenterInitialFleetId ??
-                                                      1,
-                                                  onFleetSelected: (fleetId) {
-                                                    setState(() {
-                                                      _fleetCenterInitialFleetId =
-                                                          fleetId;
-                                                    });
-                                                  },
-                                                  inventoryShowShips:
-                                                      _inventoryShowShips,
-                                                  inventoryShowOwned:
-                                                      _inventoryShowOwned,
-                                                  onInventoryOwnershipChanged:
-                                                      (value) {
-                                                        setState(
-                                                          () =>
-                                                              _inventoryShowOwned =
-                                                                  value,
-                                                        );
-                                                      },
-                                                  onInventorySectionChanged:
-                                                      (value) {
-                                                        setState(
-                                                          () =>
-                                                              _inventoryShowShips =
-                                                                  value,
-                                                        );
-                                                      },
-                                                  logbookTabIndex:
-                                                      _logbookTabIndex,
-                                                  onLogbookTabChanged: (value) {
-                                                    setState(
-                                                      () => _logbookTabIndex =
-                                                          value,
-                                                    );
-                                                  },
-                                                  settingsTabIndex:
-                                                      _settingsTabIndex,
-                                                  onSettingsTabChanged: (value) {
-                                                    setState(
-                                                      () => _settingsTabIndex =
-                                                          value,
-                                                    );
-                                                  },
-                                                  repairMode: _repairCenterMode,
-                                                  onRepairModeChanged: (mode) {
-                                                    setState(
-                                                      () => _repairCenterMode =
-                                                          mode,
-                                                    );
-                                                  },
-                                                  questMode: _questCenterMode,
-                                                  questFilters: _questFilters,
-                                                  questTranslationEnabled:
-                                                      _questTranslationEnabled,
-                                                  onQuestTranslationChanged:
-                                                      (enabled) {
-                                                        setState(
-                                                          () =>
-                                                              _questTranslationEnabled =
-                                                                  enabled,
-                                                        );
-                                                      },
-                                                  onQuestModeChanged: (mode) {
-                                                    setState(
-                                                      () => _questCenterMode =
-                                                          mode,
-                                                    );
-                                                  },
-                                                  expeditionMode:
-                                                      _expeditionCenterMode,
-                                                  onExpeditionModeChanged: (mode) {
-                                                    setState(
-                                                      () =>
-                                                          _expeditionCenterMode =
-                                                              mode,
-                                                    );
-                                                  },
-                                                  constructionMode:
-                                                      _constructionCenterMode,
-                                                  onConstructionModeChanged: (mode) {
-                                                    setState(() {
-                                                      _constructionCenterMode =
-                                                          mode;
-                                                      if (mode ==
-                                                          ConstructionCenterMode
-                                                              .development) {
-                                                        _developmentWorkbenchMode =
-                                                            DevelopmentWorkbenchMode
-                                                                .calculator;
-                                                      }
-                                                    });
-                                                  },
-                                                  developmentMode:
-                                                      _developmentWorkbenchMode,
-                                                  onDevelopmentModeChanged: (mode) {
-                                                    setState(
-                                                      () =>
+                                              child: Visibility(
+                                                visible:
+                                                    !uiSize.isMinimal ||
+                                                    !isGameWorkspace ||
+                                                    minimalTopBar,
+                                                maintainState: true,
+                                                child: AnimatedBuilder(
+                                                  animation: Listenable.merge(<
+                                                    Listenable
+                                                  >[
+                                                    widget.gameStateController,
+                                                    if (widget
+                                                            .senkaController !=
+                                                        null)
+                                                      widget.senkaController!,
+                                                  ]),
+                                                  builder: (context, _) => WorkspaceContextHeader(
+                                                    workspaceIndex:
+                                                        _workspaceIndex,
+                                                    state: widget
+                                                        .gameStateController
+                                                        .state,
+                                                    senkaState: widget
+                                                        .senkaController
+                                                        ?.state,
+                                                    onSenkaTap:
+                                                        widget.senkaController ==
+                                                            null
+                                                        ? null
+                                                        : () =>
+                                                              _selectWorkspace(
+                                                                9,
+                                                              ),
+                                                    onFrameRefreshTap:
+                                                        widget.gameFrameRefreshShortcutSettings ==
+                                                            null
+                                                        ? null
+                                                        : _refreshGameFrameFromHeader,
+                                                    anchorageRepairStartedAt: widget
+                                                        .gameStateController
+                                                        .anchorageRepairStartedAt,
+                                                    onAnchorageTimerTap:
+                                                        _openAnchorageRepairCenter,
+                                                    nosakiSparkleStartedAt: widget
+                                                        .gameStateController
+                                                        .nosakiSparkleStartedAt,
+                                                    onNosakiTimerTap:
+                                                        _openNosakiRepairCenter,
+                                                    layoutSettingsController: widget
+                                                        .layoutSettingsController,
+                                                    uiSize: uiSize,
+                                                    selectedFleetId:
+                                                        _fleetCenterInitialFleetId ??
+                                                        1,
+                                                    onFleetSelected: (fleetId) {
+                                                      setState(() {
+                                                        _fleetCenterInitialFleetId =
+                                                            fleetId;
+                                                      });
+                                                    },
+                                                    inventoryShowShips:
+                                                        _inventoryShowShips,
+                                                    inventoryShowOwned:
+                                                        _inventoryShowOwned,
+                                                    onInventoryOwnershipChanged:
+                                                        (value) {
+                                                          setState(
+                                                            () =>
+                                                                _inventoryShowOwned =
+                                                                    value,
+                                                          );
+                                                        },
+                                                    onInventorySectionChanged:
+                                                        (value) {
+                                                          setState(
+                                                            () =>
+                                                                _inventoryShowShips =
+                                                                    value,
+                                                          );
+                                                        },
+                                                    logbookTabIndex:
+                                                        _logbookTabIndex,
+                                                    onLogbookTabChanged: (value) {
+                                                      setState(
+                                                        () => _logbookTabIndex =
+                                                            value,
+                                                      );
+                                                    },
+                                                    settingsTabIndex:
+                                                        _settingsTabIndex,
+                                                    onSettingsTabChanged: (value) {
+                                                      setState(
+                                                        () =>
+                                                            _settingsTabIndex =
+                                                                value,
+                                                      );
+                                                    },
+                                                    repairMode:
+                                                        _repairCenterMode,
+                                                    onRepairModeChanged: (mode) {
+                                                      setState(
+                                                        () =>
+                                                            _repairCenterMode =
+                                                                mode,
+                                                      );
+                                                    },
+                                                    questMode: _questCenterMode,
+                                                    questFilters: _questFilters,
+                                                    questTranslationEnabled:
+                                                        _questTranslationEnabled,
+                                                    onQuestTranslationChanged:
+                                                        (enabled) {
+                                                          setState(
+                                                            () =>
+                                                                _questTranslationEnabled =
+                                                                    enabled,
+                                                          );
+                                                        },
+                                                    onQuestModeChanged: (mode) {
+                                                      setState(
+                                                        () => _questCenterMode =
+                                                            mode,
+                                                      );
+                                                    },
+                                                    expeditionMode:
+                                                        _expeditionCenterMode,
+                                                    onExpeditionModeChanged:
+                                                        (mode) {
+                                                          setState(
+                                                            () =>
+                                                                _expeditionCenterMode =
+                                                                    mode,
+                                                          );
+                                                        },
+                                                    constructionMode:
+                                                        _constructionCenterMode,
+                                                    onConstructionModeChanged: (mode) {
+                                                      setState(() {
+                                                        _constructionCenterMode =
+                                                            mode;
+                                                        if (mode ==
+                                                            ConstructionCenterMode
+                                                                .development) {
                                                           _developmentWorkbenchMode =
-                                                              mode,
-                                                    );
-                                                  },
-                                                  senkaMode: _senkaCenterMode,
-                                                  toolboxMode: _toolboxMode,
-                                                  onToolboxModeChanged: (mode) {
-                                                    setState(
-                                                      () => _toolboxMode = mode,
-                                                    );
-                                                  },
-                                                  onSenkaModeChanged: (mode) {
-                                                    setState(
-                                                      () => _senkaCenterMode =
-                                                          mode,
-                                                    );
-                                                  },
+                                                              DevelopmentWorkbenchMode
+                                                                  .calculator;
+                                                        }
+                                                      });
+                                                    },
+                                                    developmentMode:
+                                                        _developmentWorkbenchMode,
+                                                    onDevelopmentModeChanged:
+                                                        (mode) {
+                                                          setState(
+                                                            () =>
+                                                                _developmentWorkbenchMode =
+                                                                    mode,
+                                                          );
+                                                        },
+                                                    senkaMode: _senkaCenterMode,
+                                                    toolboxMode: _toolboxMode,
+                                                    onToolboxModeChanged:
+                                                        (mode) {
+                                                          setState(
+                                                            () => _toolboxMode =
+                                                                mode,
+                                                          );
+                                                        },
+                                                    onSenkaModeChanged: (mode) {
+                                                      setState(
+                                                        () => _senkaCenterMode =
+                                                            mode,
+                                                      );
+                                                    },
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -2913,9 +2919,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.stretch,
                                             children: [
-                                              if (minimalShell &&
+                                              if (flatPanel &&
                                                   !minimalTopBar &&
-                                                  !minimalBottomBar)
+                                                  !gameBottomBar)
                                                 _buildPanelResources(
                                                   cornerOnLeft:
                                                       panelAtScreenEdge &&
@@ -3221,7 +3227,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 ),
                                               // 放在最后，增删它不影响前面游戏
                                               // 子树的位置。
-                                              if (minimalShell &&
+                                              if (_workspaceIndex == 0 &&
                                                   gameBottomBar &&
                                                   !_gameFullscreen)
                                                 Positioned(
@@ -3734,45 +3740,6 @@ class _SideRailColumn extends StatelessWidget {
       ),
     ],
   );
-}
-
-class _MinimalMenuButton extends StatelessWidget {
-  const _MinimalMenuButton({required this.horizontal, required this.onTap});
-
-  final bool horizontal;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'ヤハギ',
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          key: const Key('minimal-menu-button'),
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: SizedBox(
-            width: horizontal ? 44 : null,
-            height: horizontal ? null : 40,
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: Image.asset(
-                  'assets/app_icon.png',
-                  width: 24,
-                  height: 24,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.none,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 final class _WorkspaceDestination {

@@ -119,10 +119,8 @@ void main() {
             '$reason initial disabled baseline',
             escapedGameBounds,
           );
-          // Existing width-priority layouts may crop a raw game surface:
-          // 844x390 HD/right menu has game.top == -2.795 while disabled.
-          // Disabling must restore that baseline and keep its rendered clip
-          // inside the window, rather than silently changing the old layout.
+          // Disabling restores the baseline while the complete game remains
+          // inside its viewport, including height-constrained split windows.
           final disabledGameRect = tester.getRect(game);
           await harness.layout.setCameraAvoidanceEnabled(true);
           await _settleGeometry(tester);
@@ -441,14 +439,14 @@ void _expectAppGeometry(
   );
   final clipRect = tester.getRect(find.byType(GameSurfaceViewport));
   _expectContained(clipRect, expected, '$reason game viewport');
+  _expectContained(gameRect, clipRect, '$reason complete game');
   final renderedRect = gameRect.intersect(clipRect);
   expect(renderedRect.isEmpty, isFalse, reason: reason);
   _expectContained(renderedRect, expected, '$reason rendered game');
-  if (scope.enabled &&
-      (gameRect.left < expected.left - .001 ||
-          gameRect.top < expected.top - .001 ||
-          gameRect.right > expected.right + .001 ||
-          gameRect.bottom > expected.bottom + .001)) {
+  if (gameRect.left < expected.left - .001 ||
+      gameRect.top < expected.top - .001 ||
+      gameRect.right > expected.right + .001 ||
+      gameRect.bottom > expected.bottom + .001) {
     escapedGameBounds.add('$reason: game $gameRect outside $expected');
   }
   expect(harness.bounds, isNotEmpty, reason: reason);

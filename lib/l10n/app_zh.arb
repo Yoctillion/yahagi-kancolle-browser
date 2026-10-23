@@ -116,7 +116,7 @@
   "themeSeaSaltTeal": "海盐青",
   "themeClearSkyBlue": "晴空蓝",
   "uiDisplaySizeTitle": "界面UI大小",
-  "uiDisplaySizeDesc": "调整顶栏、导航栏与信息栏的显示密度；极简档在手机横屏时默认隐藏游戏页顶栏",
+  "uiDisplaySizeDesc": "调整顶栏、导航栏与信息栏的显示密度；极简档保留顶部 Yahagi 入口与功能栏，信息栏采用扁平布局",
   "uiDisplaySizeNormal": "普通",
   "uiDisplaySizeCompact": "紧凑",
   "uiDisplaySizeMinimal": "极简",

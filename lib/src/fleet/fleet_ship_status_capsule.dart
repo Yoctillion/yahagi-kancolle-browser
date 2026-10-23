@@ -126,7 +126,7 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
     final allMechanisms = <EquipmentMechanismDisplay>[
       ...shipMechanisms,
       if (widget.specialAttack != null) widget.specialAttack!,
-    ].where((m) => showsMechanism(widget.visible, m)).toList();
+    ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -740,11 +740,12 @@ class _FleetShipStatusCapsuleState extends State<FleetShipStatusCapsule>
           shipFatigueColor(ship.condition),
         ),
       for (var i = 0; i < mechanisms.length; i++)
-        badge(
-          i == 0 ? 'mechanism' : 'mechanism-$i',
-          mechanisms[i].detailedShortLabel,
-          mechanismToneColor(mechanisms[i].tone),
-        ),
+        if (show('mechanisms'))
+          badge(
+            i == 0 ? 'mechanism' : 'mechanism-$i',
+            mechanisms[i].detailedShortLabel,
+            mechanismToneColor(mechanisms[i].tone),
+          ),
     ];
   }
 }
