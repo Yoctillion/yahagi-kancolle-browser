@@ -10,6 +10,7 @@ import '../widgets/top_notice.dart';
 import '../widgets/adaptive_input_dialog.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'settings_ui_helpers.dart';
+import '../ios/ios_settings_text.dart';
 
 class NetworkSettingsSection extends StatefulWidget {
   const NetworkSettingsSection({
@@ -342,40 +343,72 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: appColor(context, Colors.white70),
-                fontSize: 13,
+          Row(
+            children: [
+              SizedBox(
+                width: 100,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: appColor(context, Colors.white70),
+                    fontSize: 13,
+                  ),
+                ),
               ),
-            ),
+              Icon(icon, color: appColor(context, color), size: 14),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  statusText,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(color: color, fontSize: 13),
+                  ),
+                ),
+              ),
+              if (status == 'success' || status == 'failed')
+                Text(
+                  '${elapsedMs}ms',
+                  style: TextStyle(
+                    color: AppPalette.of(context).isDark
+                        ? Colors.white38
+                        : AppPalette.of(context).muted,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
           ),
-          Icon(icon, color: appColor(context, color), size: 14),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              statusText,
-              style: appTextStyle(
-                context,
-                TextStyle(color: color, fontSize: 13),
-              ),
-            ),
-          ),
-          if (status == 'success' || status == 'failed')
-            Text(
-              '${elapsedMs}ms',
-              style: TextStyle(
-                color: AppPalette.of(context).isDark
-                    ? Colors.white38
-                    : AppPalette.of(context).muted,
-                fontSize: 12,
-              ),
-            ),
+          ?_detailNote(status, detail),
         ],
+      ),
+    );
+  }
+
+  // The iOS proxy channel reports the failure reason / HTTP status per probe.
+  Widget? _detailNote(String status, dynamic detail) {
+    final error = detail['error']?.toString();
+    final statusCode = detail['statusCode'];
+    final text = error != null && error.isNotEmpty
+        ? error
+        : statusCode != null
+        ? 'HTTP $statusCode'
+        : null;
+    if (text == null) return null;
+    return Padding(
+      padding: const EdgeInsets.only(left: 104, top: 2),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: appColor(
+            context,
+            status == 'failed' ? Colors.red.shade300 : const Color(0xff94a3b8),
+          ),
+          fontSize: 11,
+          height: 1.2,
+        ),
       ),
     );
   }
@@ -390,11 +423,15 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
             lookupAppLocalizations(const Locale('zh'));
         final c = widget.controller;
         final bool isProxySupported = c.isProxyOverrideSupported;
+        final isIOSLegacy = isIOSPlatform && !isProxySupported;
+        if (isIOSLegacy && _selectedMode != NetworkMode.system) {
+          _selectedMode = NetworkMode.system;
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!isProxySupported)
+            if (!isProxySupported && !isIOSPlatform)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
@@ -427,24 +464,60 @@ class _NetworkSettingsSectionState extends State<NetworkSettingsSection> {
                   subtitle: l10n.systemNetworkDesc,
                   enabled: true,
                 ),
-                Divider(color: appColor(context, Color(0xff294052)), height: 1),
-                _networkModeTile(
-                  key: const Key('network-mode-http'),
-                  mode: NetworkMode.httpProxy,
-                  title: l10n.httpProxy,
-                  subtitle: l10n.httpProxyDesc,
-                  enabled: isProxySupported,
-                ),
-                Divider(color: appColor(context, Color(0xff294052)), height: 1),
-                _networkModeTile(
-                  key: const Key('network-mode-socks5'),
-                  mode: NetworkMode.socks5Proxy,
-                  title: l10n.socks5Proxy,
-                  subtitle: l10n.socks5ProxyDesc,
-                  enabled: isProxySupported,
-                ),
+                if (!isIOSLegacy) ...[
+                  Divider(
+                    color: appColor(context, Color(0xff294052)),
+                    height: 1,
+                  ),
+                  _networkModeTile(
+                    key: const Key('network-mode-http'),
+                    mode: NetworkMode.httpProxy,
+                    title: l10n.httpProxy,
+                    subtitle: l10n.httpProxyDesc,
+                    enabled: isProxySupported,
+                  ),
+                  Divider(
+                    color: appColor(context, Color(0xff294052)),
+                    height: 1,
+                  ),
+                  _networkModeTile(
+                    key: const Key('network-mode-socks5'),
+                    mode: NetworkMode.socks5Proxy,
+                    title: l10n.socks5Proxy,
+                    subtitle: l10n.socks5ProxyDesc,
+                    enabled: isProxySupported,
+                  ),
+                ],
               ],
             ),
+            if (isIOSLegacy)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: appColor(context, const Color(0xff8197a5)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        iosLegacyProxyNote(l10n),
+                        style: TextStyle(
+                          color: appColor(context, const Color(0xff8197a5)),
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             if (_selectedMode != NetworkMode.system)
               Padding(

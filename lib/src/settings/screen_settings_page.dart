@@ -4,6 +4,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../audio/game_audio_controller.dart';
 import '../localization/runtime_message_text.dart';
+import '../ios/ios_settings_text.dart';
 import '../theme/app_theme.dart';
 import '../subtitles/ship_subtitle_settings.dart';
 import '../subtitles/ship_subtitle_runtime_controller.dart';
@@ -664,7 +665,8 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                 ),
               ),
             ],
-            if (gameRenderingModeController != null) ...<Widget>[
+            if (!isIOSPlatform &&
+                gameRenderingModeController != null) ...<Widget>[
               const SizedBox(height: 24),
               buildSectionTitle(l10n.gameRenderingModeTitle),
               buildCard(
@@ -728,15 +730,19 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                             titleKey: const Key(
                               'settings-background-game-retention',
                             ),
-                            subtitle: switch (retention.errorMessage) {
-                              final error? => runtimeMessageText(
-                                context,
-                                error,
-                              ),
-                              null => l10n.backgroundGameRetentionDesc,
-                            },
-                            value: retention.enabled,
-                            onChanged: retention.setEnabled,
+                            subtitle: isIOSPlatform
+                                ? iosUnsupportedFeatureText
+                                : switch (retention.errorMessage) {
+                                    final error? => runtimeMessageText(
+                                      context,
+                                      error,
+                                    ),
+                                    null => l10n.backgroundGameRetentionDesc,
+                                  },
+                            value: !isIOSPlatform && retention.enabled,
+                            onChanged: isIOSPlatform
+                                ? null
+                                : retention.setEnabled,
                           ),
                         ),
                       ],

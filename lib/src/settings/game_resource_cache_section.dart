@@ -7,6 +7,7 @@ import '../browser/game_resource_cache_controller.dart';
 import '../browser/game_resource_cache_store.dart';
 import '../widgets/top_notice.dart';
 import 'settings_ui_helpers.dart';
+import '../ios/ios_settings_text.dart';
 
 class GameResourceCacheSection extends StatefulWidget {
   const GameResourceCacheSection({super.key, required this.controller});
@@ -56,6 +57,7 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
             status.missingCount > 0 ||
             status.damagedCount > 0 ||
             status.outdatedCount > 0;
+        if (isIOSPlatform) return _iosModes(l10n);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -224,17 +226,41 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
     );
   }
 
+  Widget _iosModes(AppLocalizations l10n) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      _modeTile(
+        mode: GameResourceCacheMode.temporary,
+        title: l10n.gameResourceCacheNone,
+        subtitle: l10n.gameResourceCacheNoneDesc,
+        selectedOverride: true,
+      ),
+      Divider(color: appColor(context, Color(0xff294052)), height: 1),
+      _modeTile(
+        mode: GameResourceCacheMode.full,
+        title: l10n.gameResourceCacheFull,
+        subtitle: iosUnsupportedFeatureText,
+        enabled: false,
+        selectedOverride: false,
+      ),
+    ],
+  );
+
   Widget _modeTile({
     required GameResourceCacheMode mode,
     required String title,
     required String subtitle,
+    bool enabled = true,
+    bool? selectedOverride,
   }) {
     final selected =
-        widget.controller.initialized && widget.controller.mode == mode;
+        selectedOverride ??
+        (widget.controller.initialized && widget.controller.mode == mode);
     return InkWell(
       key: Key('cache-mode-${mode.name}'),
       onTap:
-          !widget.controller.initialized ||
+          !enabled ||
+              !widget.controller.initialized ||
               widget.controller.busy ||
               selected ||
               (!widget.controller.status.supported &&

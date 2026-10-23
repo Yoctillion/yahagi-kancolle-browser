@@ -6,6 +6,7 @@ on:
     branches:
       - feat/ios
       - 'fix/**'
+      - 'ios/**'
 
 permissions:
   contents: read
