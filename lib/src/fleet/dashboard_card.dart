@@ -8,6 +8,19 @@ import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import 'fleet_ui_strings.dart';
 
+/// Renders descendant [DashboardCard]s as bare content so another card can host
+/// them: only the title badge and [DashboardCard.trailing] mode switch survive.
+class DashboardCardEmbedScope extends InheritedWidget {
+  const DashboardCardEmbedScope({super.key, required super.child});
+
+  static bool isEmbedded(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DashboardCardEmbedScope>() !=
+      null;
+
+  @override
+  bool updateShouldNotify(DashboardCardEmbedScope oldWidget) => false;
+}
+
 class DashboardCard extends StatelessWidget {
   const DashboardCard({
     super.key,
@@ -47,6 +60,9 @@ class DashboardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final flat = PanelStyleScope.isFlat(context);
+    if (DashboardCardEmbedScope.isEmbedded(context)) {
+      return _embedded(context, flat);
+    }
     return AnimatedSize(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
@@ -176,6 +192,28 @@ class DashboardCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _embedded(BuildContext context, bool flat) {
+    final hasHeader = titleBadge != null || trailing != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (hasHeader)
+          SizedBox(
+            height: flat ? flatHeaderHeight : null,
+            child: Row(
+              children: [
+                ?titleBadge,
+                const Spacer(),
+                if (trailing != null)
+                  FittedBox(fit: BoxFit.scaleDown, child: trailing),
+              ],
+            ),
+          ),
+        child,
+      ],
     );
   }
 

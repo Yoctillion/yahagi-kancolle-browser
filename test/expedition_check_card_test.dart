@@ -6,6 +6,7 @@ import 'package:yahagi_kancolle_browser/src/account/account_session.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/expedition_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/expedition/expedition_check_card.dart';
+import 'package:yahagi_kancolle_browser/src/expedition/expedition_fleet_request.dart';
 import 'package:yahagi_kancolle_browser/src/expedition/expedition_selection_store.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
@@ -704,6 +705,66 @@ void main() {
     expect(status.style?.fontSize, 11);
     expect(status.maxLines, 1);
     expect(tester.takeException(), isNull);
+  });
+
+  group('fleetRequest', () {
+    late GameStateController controller;
+    late _MemoryExpeditionSelectionStore store;
+
+    setUp(() async {
+      controller = GameStateController();
+      store = _MemoryExpeditionSelectionStore(<int, int>{2: 105, 3: 112});
+      controller
+        ..accept(start2Event)
+        ..accept(portEvent)
+        ..accept(slotItemEvent);
+      await controller.idle;
+    });
+
+    tearDown(() => controller.dispose());
+
+    Future<void> pump(WidgetTester tester, ExpeditionFleetRequest? request) =>
+        tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: ExpeditionCheckContent(
+                controller: controller,
+                onOpenDetails: (_) {},
+                selectionStore: store,
+                fleetRequest: request,
+              ),
+            ),
+          ),
+        );
+
+    String missionName(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const Key('expedition-mission-name')))
+        .data!;
+
+    testWidgets('initial request selects that fleet', (tester) async {
+      await pump(tester, const ExpeditionFleetRequest(3, 1));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('B3'));
+    });
+
+    testWidgets('same request does not override a manual pick', (tester) async {
+      await pump(tester, const ExpeditionFleetRequest(3, 1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('expedition-fleet-2')));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('A6'));
+
+      await pump(tester, const ExpeditionFleetRequest(3, 1));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('A6'));
+
+      await pump(tester, const ExpeditionFleetRequest(3, 2));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('B3'));
+    });
   });
 }
 

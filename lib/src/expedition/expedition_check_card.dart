@@ -19,6 +19,7 @@ import 'expedition_selection_store.dart';
 import 'expedition_strings.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/panel_style.dart';
+import 'expedition_fleet_request.dart';
 
 class ExpeditionCheckContent extends StatefulWidget {
   const ExpeditionCheckContent({
@@ -27,12 +28,17 @@ class ExpeditionCheckContent extends StatefulWidget {
     required this.onOpenDetails,
     this.selectionStore,
     this.accountSession,
+    this.fleetRequest,
   });
 
   final GameStateController controller;
   final ValueChanged<int> onOpenDetails;
   final ExpeditionSelectionStore? selectionStore;
   final AccountSession? accountSession;
+
+  /// Applied on mount and whenever its serial changes; a manual pick made after
+  /// a request survives rebuilds that carry the same request.
+  final ExpeditionFleetRequest? fleetRequest;
 
   @override
   State<ExpeditionCheckContent> createState() => _ExpeditionCheckContentState();
@@ -58,7 +64,17 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
           accountSession: _accountSession,
         );
     _accountSession.addListener(_onAccountChanged);
+    _fleetId = widget.fleetRequest?.fleetId ?? _fleetId;
     _restoreMissionForFleet(_fleetId);
+  }
+
+  @override
+  void didUpdateWidget(covariant ExpeditionCheckContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final request = widget.fleetRequest;
+    if (request != null && request.serial != oldWidget.fleetRequest?.serial) {
+      _selectFleet(request.fleetId);
+    }
   }
 
   Future<void> _restoreMissionForFleet(int fleetId) async {
