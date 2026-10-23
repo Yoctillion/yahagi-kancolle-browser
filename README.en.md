@@ -195,6 +195,8 @@ Sensitive parameters such as api_token and api_starttime are removed from game A
 
 Feedback on your experience, compatibility issues, and feature suggestions is welcome.
 
+I can communicate in Chinese, English, and Japanese. Feel free to contact me in any of these languages.
+
 - **QQ group: 1104904097**
 - **Contact email: yamatosaki123[AT] gmail.com**
 - **Issue tracker:** [GitHub Issues](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)

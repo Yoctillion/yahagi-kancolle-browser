@@ -195,6 +195,8 @@
 
 欢迎分享使用体验、兼容性问题和功能建议。
 
+我可以使用中文、英文和日语交流，欢迎用这些语言联系我。
+
 - **QQ 群：1104904097**
 - **联系邮箱：yamatosaki123[AT] gmail.com**
 - **问题反馈：** [GitHub Issues](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)
