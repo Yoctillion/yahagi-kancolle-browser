@@ -1,6 +1,6 @@
 const String gamePageAlignmentScript = r'''
 (() => {
-  const runtimeVersion = 3;
+  const runtimeVersion = 4;
   if (
     window.__yahagiMobilePresentationRuntimeVersion === runtimeVersion &&
     typeof window.__yahagiMobileSyncPresentation === 'function' &&
@@ -18,6 +18,7 @@ const String gamePageAlignmentScript = r'''
     '#ooi-page #ooi-game > iframe#externalswf, ' +
     '#ooi-page #ooi-game > embed#externalswf, ' +
     '#flashWrap > iframe#externalswf, #flashWrap > embed#externalswf';
+  const ooiFrameScrolling = new Map();
   const fixedCanvasCss = `
     html, body {
       margin: 0 !important;
@@ -122,8 +123,17 @@ const String gamePageAlignmentScript = r'''
     }
   `;
 
+  const restoreOoiFrameScrolling = () => {
+    for (const [frame, original] of ooiFrameScrolling) {
+      if (original === null) frame.removeAttribute('scrolling');
+      else frame.setAttribute('scrolling', original);
+    }
+    ooiFrameScrolling.clear();
+  };
+
   const cleanupOoiBrowserPresentation = () => {
     document.getElementById(ooiBrowserStyleId)?.remove();
+    restoreOoiFrameScrolling();
     for (const game of [document.getElementById('ooi-game'), document.getElementById('flashWrap')]) {
       game?.style.removeProperty('--yahagi-ooi-frame-width');
       game?.style.removeProperty('--yahagi-ooi-frame-height');
@@ -291,6 +301,28 @@ const String gamePageAlignmentScript = r'''
         const game = frame?.parentElement;
         if (!game || !frame || !document.documentElement) return;
 
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        if (!ooiFrameScrolling.has(frame)) {
+          restoreOoiFrameScrolling();
+          ooiFrameScrolling.set(frame, frame.getAttribute('scrolling'));
+        }
+        frame.setAttribute('scrolling', 'no');
+        try {
+          // HTML embed surfaces expose their window through window.frames.
+          const childWindow = frame.contentWindow || Array.from(window.frames || []).find((child) => {
+            try {
+              return child.frameElement === frame;
+            } catch (_) {
+              return false;
+            }
+          });
+          childWindow?.scrollTo(0, 0);
+        } catch (_) {
+          // Cross-origin children remain protected by the browser's origin policy.
+        }
+
         const viewportWidth = Math.max(
           1,
           window.visualViewport?.width || document.documentElement.clientWidth,
@@ -412,6 +444,8 @@ const String gamePageAlignmentScript = r'''
     return 'game';
   };
 
+  // Replace cached OOI hooks when upgrading a runtime in a retained document.
+  cleanupOoiBrowserPresentation();
   window.__yahagiMobilePresentationObserver?.disconnect();
   if ((isGamePage && !isAccountPage) || isOoiBrowserPage) {
     window.__yahagiMobilePresentationObserver = new MutationObserver(() => {

@@ -11,9 +11,8 @@ import '../settings/display_mode_store.dart';
 /// KanColle 1200:720 aspect ratio.
 ///
 /// In split-screen, vertical, or compact workspaces, width alignment is
-/// prioritized so that the game occupies 100% of the available width with
-/// zero horizontal pillarbox black borders. Vertical margins can be adjusted
-/// by the user via the multi-window split divider.
+/// prioritized when the complete game fits in the available height. Shorter
+/// windows use height-constrained scaling so all four edges remain visible.
 ///
 /// In widescreen landscape displays (e.g. standard phone landscape gaming),
 /// contain behavior is preserved with safe edge padding to avoid camera
@@ -79,27 +78,20 @@ class GameSurfaceViewport extends StatelessWidget {
 
   /// Computes the layout rectangle for the game surface in width-priority mode.
   ///
-  /// The game always fills the container's width (width-first alignment).
-  /// If safe area height is sufficient, it is centered within the safe area.
-  /// Otherwise, it is centered within the container height.
+  /// Fills the safe width when height permits, otherwise fits the safe height.
+  /// Complete content takes precedence over filling a short split window.
   static Rect computeWidthPriorityGameRect({
     required double containerWidth,
     required double containerHeight,
     required double aspectRatio,
     EdgeInsets padding = EdgeInsets.zero,
   }) {
-    final gameWidth = containerWidth;
-    final gameHeight = gameWidth / aspectRatio;
-    final safeHeight = containerHeight - padding.vertical;
-
-    final double topOffset;
-    if (safeHeight >= gameHeight) {
-      topOffset = padding.top + (safeHeight - gameHeight) / 2;
-    } else {
-      topOffset = (containerHeight - gameHeight) / 2;
-    }
-
-    return Rect.fromLTWH(0, topOffset, gameWidth, gameHeight);
+    return computeContainGameRect(
+      containerWidth: containerWidth,
+      containerHeight: containerHeight,
+      aspectRatio: aspectRatio,
+      padding: padding,
+    );
   }
 
   /// Computes the layout rectangle for the game surface in contain mode.

@@ -1850,8 +1850,16 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
           await widget.audioController.toggleMuted();
         },
         onCollapse: widget.toolbarController.collapse,
-        onFitScreen: () {
-          widget.browserController.fitGameScreen();
+        onFitScreen: () async {
+          try {
+            await widget.browserController.fitGameScreen();
+          } catch (_) {
+            if (!context.mounted) return;
+            TopNotice.show(
+              context,
+              message: AppLocalizations.of(context)!.gameStatusErrorDesc,
+            );
+          }
         },
         onEnterFullscreen: () => _setGameFullscreen(true),
         onScreenshot: widget.gameScreenshotController == null
