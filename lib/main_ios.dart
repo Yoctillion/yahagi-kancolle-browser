@@ -81,6 +81,7 @@ import 'src/notification/game_notification_coordinator.dart';
 import 'src/notification/method_channel_notification_port.dart';
 import 'src/notification/notification_models.dart';
 import 'src/notification/notification_timer_anchor_store.dart';
+import 'src/practice/practice_opponent_controller.dart';
 import 'src/prototype_status_controller.dart';
 import 'src/quest/quest_catalog_controller.dart';
 import 'src/quest/quest_catalog_store.dart';
@@ -90,6 +91,7 @@ import 'src/quest/shared_preferences_quest_store.dart';
 import 'src/senka/senka_controller.dart';
 import 'src/senka/senka_store.dart';
 import 'src/settings/background_game_retention_controller.dart';
+import 'src/smart_panel/smart_panel_controller.dart';
 import 'src/settings/battle_prediction_settings.dart';
 import 'src/settings/display_mode_controller.dart';
 import 'src/settings/display_mode_store.dart';
@@ -467,6 +469,15 @@ Future<void> main() async {
     layoutSettingsController: layoutSettingsController,
     topNoticeController: headerNoticeController,
   );
+  final smartPanelController = SmartPanelController(
+    stateProvider: () => gameStateController.state,
+    waitForGameState: () => gameStateController.idle,
+    autoSwitchEnabled: () => layoutSettingsController.smartPanelAutoSwitch,
+    accountSession: accountSession,
+  );
+  final practiceOpponentController = PracticeOpponentController(
+    accountSession: accountSession,
+  );
 
   // ── iOS-specific: RawDataServerController for developer mode master data capture ──
   final rawDataServerController = RawDataServerController();
@@ -487,6 +498,8 @@ Future<void> main() async {
       battleController,
       newShipReminderController,
       gameInfoNoticeController,
+      smartPanelController,
+      practiceOpponentController,
       rawDataConsumer,
     ],
     onBackgroundDecodeFallback: (path) {
@@ -666,6 +679,8 @@ Future<void> main() async {
       screenAwakeController: screenAwakeController,
       headerNoticeController: headerNoticeController,
       gameInfoNoticeController: gameInfoNoticeController,
+      smartPanelController: smartPanelController,
+      practiceOpponentController: practiceOpponentController,
       gameMouseWheelSettingsController: gameMouseWheelSettingsController,
       gameFrameRefreshShortcutSettings: gameFrameRefreshShortcutSettings,
       diagnosticController: diagnosticController,
@@ -763,6 +778,8 @@ class _IOSYahagiApp extends StatefulWidget {
     this.screenAwakeController,
     this.headerNoticeController,
     this.gameInfoNoticeController,
+    this.smartPanelController,
+    this.practiceOpponentController,
     this.gameMouseWheelSettingsController,
     this.gameFrameRefreshShortcutSettings,
     this.toolbarDisplayController,
@@ -808,6 +825,8 @@ class _IOSYahagiApp extends StatefulWidget {
   final ScreenAwakeController? screenAwakeController;
   final TopNoticeController? headerNoticeController;
   final GameInfoNoticeController? gameInfoNoticeController;
+  final SmartPanelController? smartPanelController;
+  final PracticeOpponentController? practiceOpponentController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
   final GameToolbarDisplayController? toolbarDisplayController;
@@ -931,6 +950,8 @@ class _IOSYahagiAppState extends State<_IOSYahagiApp> {
       screenAwakeController: widget.screenAwakeController,
       headerNoticeController: widget.headerNoticeController,
       gameInfoNoticeController: widget.gameInfoNoticeController,
+      smartPanelController: widget.smartPanelController,
+      practiceOpponentController: widget.practiceOpponentController,
       gameMouseWheelSettingsController: widget.gameMouseWheelSettingsController,
       gameFrameRefreshShortcutSettings: widget.gameFrameRefreshShortcutSettings,
       showDeveloperDiagnostics: false,
