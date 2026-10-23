@@ -1857,7 +1857,7 @@
       }
     }
   },
-  "noticePracticeExpCtBonus": "Exercise EXP (approx.): S win {sExp} · A win {aExp} (training cruiser +{bonus})",
+  "noticePracticeExpCtBonus": "Exercise EXP (approx.): S win {sExp} · A win {aExp} (training cruiser {bonus})",
   "@noticePracticeExpCtBonus": {
     "placeholders": {
       "sExp": {
@@ -2040,5 +2040,7 @@
   "smartPanelStateBattle": "Battle",
   "smartPanelStateQuests": "Quests",
   "smartPanelStateExpeditionCheck": "Expedition check",
-  "smartPanelStatePractice": "Exercises"
+  "smartPanelStatePractice": "Exercises",
+  "practiceSubmarineExpS": "Submarine S-rank {exp}",
+  "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

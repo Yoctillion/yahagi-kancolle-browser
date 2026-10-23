@@ -3553,7 +3553,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return '演習経験値（約）：S勝利 $sExp · A勝利 $aExp (練巡 +$bonus)';
+    return '演習経験値（約）：S勝利 $sExp · A勝利 $aExp (練巡 $bonus)';
   }
 
   @override
@@ -3970,4 +3970,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get smartPanelStatePractice => '演習';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return '潜水艦 S勝利 $exp';
+  }
 }

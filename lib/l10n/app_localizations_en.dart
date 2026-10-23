@@ -3667,7 +3667,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return 'Exercise EXP (approx.): S win $sExp · A win $aExp (training cruiser +$bonus)';
+    return 'Exercise EXP (approx.): S win $sExp · A win $aExp (training cruiser $bonus)';
   }
 
   @override
@@ -4100,4 +4100,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get smartPanelStatePractice => 'Exercises';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return 'Submarine S-rank $exp';
+  }
 }

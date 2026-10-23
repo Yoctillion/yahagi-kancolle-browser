@@ -1263,7 +1263,7 @@
       }
     }
   },
-  "noticePracticeExpCtBonus": "演习经验（约）：S胜 {sExp} · A胜 {aExp} (练巡 +{bonus})",
+  "noticePracticeExpCtBonus": "演习经验（约）：S胜 {sExp} · A胜 {aExp} (练巡 {bonus})",
   "@noticePracticeExpCtBonus": {
     "placeholders": {
       "sExp": {
@@ -1446,5 +1446,7 @@
   "smartPanelStateBattle": "战斗",
   "smartPanelStateQuests": "任务",
   "smartPanelStateExpeditionCheck": "远征检查",
-  "smartPanelStatePractice": "演习"
+  "smartPanelStatePractice": "演习",
+  "practiceSubmarineExpS": "潜艇 S胜 {exp}",
+  "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

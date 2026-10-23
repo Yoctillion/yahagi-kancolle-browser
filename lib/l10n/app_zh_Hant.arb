@@ -1263,7 +1263,7 @@
       }
     }
   },
-  "noticePracticeExpCtBonus": "演習經驗（約）：S勝 {sExp} · A勝 {aExp} (練巡 +{bonus})",
+  "noticePracticeExpCtBonus": "演習經驗（約）：S勝 {sExp} · A勝 {aExp} (練巡 {bonus})",
   "@noticePracticeExpCtBonus": {
     "placeholders": {
       "sExp": {
@@ -1446,5 +1446,7 @@
   "smartPanelStateBattle": "戰鬥",
   "smartPanelStateQuests": "任務",
   "smartPanelStateExpeditionCheck": "遠征檢查",
-  "smartPanelStatePractice": "演習"
+  "smartPanelStatePractice": "演習",
+  "practiceSubmarineExpS": "潛艇 S勝 {exp}",
+  "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

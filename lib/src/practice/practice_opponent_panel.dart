@@ -127,9 +127,19 @@ class PracticeOpponentPanel extends StatelessWidget {
             ),
             child: Tooltip(
               triggerMode: TooltipTriggerMode.tap,
-              message:
-                  'A/B ${rankExp(PracticeRank.a)} · C ${rankExp(PracticeRank.c)}'
-                  ' · D ${rankExp(PracticeRank.d)} · E ${rankExp(PracticeRank.e)}',
+              message: [
+                'A/B ${rankExp(PracticeRank.a)} · C ${rankExp(PracticeRank.c)}'
+                    ' · D ${rankExp(PracticeRank.d)} · E ${rankExp(PracticeRank.e)}',
+                if (bonus.submarineModifier != bonus.modifier)
+                  l10n.practiceSubmarineExpS(
+                    practiceRankExp(
+                      baseExp,
+                      PracticeRank.s,
+                      bonus,
+                      submarine: true,
+                    ),
+                  ),
+              ].join('\n'),
               child: _text(
                 context,
                 l10n.practiceBaseExpS(rankExp(PracticeRank.s)),

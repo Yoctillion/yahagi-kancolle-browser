@@ -526,9 +526,11 @@ class GameInfoNoticeController implements GameApiEventConsumer {
     final aExp = practiceRankExp(baseExp, PracticeRank.a, bonus);
     if (bonus.modifier != 1) {
       final percent = ((bonus.modifier - 1) * 10000).round() / 100;
+      // Asahi as flagship lowers non-submarine exp, so the sign is part of the value.
+      final sign = percent > 0 ? '+' : '';
       final bonusStr = percent % 1 == 0
-          ? '${percent.toInt()}%'
-          : '${percent.toString()}%';
+          ? '$sign${percent.toInt()}%'
+          : '$sign$percent%';
       postNotice(
         message: l10n.noticePracticeExpCtBonus(sExp, aExp, bonusStr),
         tone: TopNoticeTone.info,

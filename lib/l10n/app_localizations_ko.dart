@@ -3579,7 +3579,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return '연습 경험치 (약): S 승리 $sExp · A 승리 $aExp (연습순양함 +$bonus)';
+    return '연습 경험치 (약): S 승리 $sExp · A 승리 $aExp (연습순양함 $bonus)';
   }
 
   @override
@@ -3998,4 +3998,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get smartPanelStatePractice => '연습';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return '잠수함 S승 $exp';
+  }
 }

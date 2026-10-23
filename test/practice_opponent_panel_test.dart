@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
+import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/practice/practice_opponent_controller.dart';
@@ -137,6 +138,41 @@ void main() {
     expect(find.byKey(const Key('practice-ship-0')), findsOneWidget);
     expect(find.byKey(const Key('practice-ship-1')), findsOneWidget);
     expect(find.byKey(const Key('practice-ship-2')), findsNothing);
+  });
+
+  testWidgets('asahi flagship adds the submarine exp to the tooltip', (
+    tester,
+  ) async {
+    gameState.dispose();
+    gameState = GameStateController(
+      initialState: GameState.empty.copyWith(
+        masterShips: {
+          953: const MasterShip(id: 953, name: '朝日', shipTypeId: 21),
+        },
+        ships: {10: const OwnedShip(id: 10, masterId: 953, level: 50)},
+        fleets: [
+          const Fleet(id: 1, name: '第1舰队', shipIds: [10]),
+        ],
+      ),
+    );
+    practice.accept(
+      _event(
+        'api_req_member/get_practice_enemyinfo',
+        _enemyInfo([
+          {'api_id': 1, 'api_ship_id': 131, 'api_level': 50, 'api_star': 1},
+        ]),
+      ),
+    );
+    await pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('practice-exp-s'))).data,
+      contains('424'),
+    );
+    expect(
+      tester.widget<Tooltip>(find.byType(Tooltip)).message,
+      contains(l10n.practiceSubmarineExpS(918)),
+    );
   });
 
   testWidgets('empty opponent fleet shows no exp', (tester) async {

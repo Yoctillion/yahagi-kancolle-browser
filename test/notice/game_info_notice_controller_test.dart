@@ -705,6 +705,35 @@ void main() {
     );
   });
 
+  test('asahi flagship notice shows a signed reduction', () async {
+    final asahiState = state.copyWith(
+      masterShips: {
+        ...state.masterShips,
+        953: const MasterShip(id: 953, name: '朝日', shipTypeId: 21),
+      },
+      ships: {10: const OwnedShip(id: 10, masterId: 953, level: 50)},
+      fleets: [
+        const Fleet(id: 1, name: 'Fleet 1', shipIds: [10]),
+      ],
+    );
+    final controller = GameInfoNoticeController(
+      stateProvider: () => asahiState,
+      layoutSettingsController: layoutController,
+      topNoticeController: topNoticeController,
+    );
+    controller.accept(
+      createEvent(
+        '/kcsapi/api_req_member/get_practice_enemyinfo',
+        '{"api_result":1,"api_data":{"api_deck":{"api_ships":[{"api_level":50}]}}}',
+      ),
+    );
+    await controller.idle;
+    expect(
+      topNoticeController.current!.message,
+      equals('演习经验（约）：S胜 424 · A胜 353 (练巡 -32.8%)'),
+    );
+  });
+
   group(
     'Requirement 3: Synchronous stateBefore capture (Race condition bug fix)',
     () {

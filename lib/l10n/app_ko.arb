@@ -1857,7 +1857,7 @@
       }
     }
   },
-  "noticePracticeExpCtBonus": "연습 경험치 (약): S 승리 {sExp} · A 승리 {aExp} (연습순양함 +{bonus})",
+  "noticePracticeExpCtBonus": "연습 경험치 (약): S 승리 {sExp} · A 승리 {aExp} (연습순양함 {bonus})",
   "@noticePracticeExpCtBonus": {
     "placeholders": {
       "sExp": {
@@ -2040,5 +2040,7 @@
   "smartPanelStateBattle": "전투",
   "smartPanelStateQuests": "임무",
   "smartPanelStateExpeditionCheck": "원정 점검",
-  "smartPanelStatePractice": "연습"
+  "smartPanelStatePractice": "연습",
+  "practiceSubmarineExpS": "잠수함 S승 {exp}",
+  "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

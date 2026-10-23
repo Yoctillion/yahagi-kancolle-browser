@@ -38,9 +38,16 @@ int practiceBaseExp(int flagshipLevel, int secondShipLevel) {
   return (500 + math.sqrt(raw - 500)).floor();
 }
 
-int practiceRankExp(int baseExp, PracticeRank rank, PracticeCtBonus bonus) {
+/// [submarine] applies Asahi's submarine modifier (KC3 `expectedSub`).
+int practiceRankExp(
+  int baseExp,
+  PracticeRank rank,
+  PracticeCtBonus bonus, {
+  bool submarine = false,
+}) {
   final ranked = (baseExp * _rankCoefficients[rank]!).floor();
-  return (ranked * bonus.modifier).floor();
+  return (ranked * (submarine ? bonus.submarineModifier : bonus.modifier))
+      .floor();
 }
 
 const _asahiMasterId = 953;

@@ -3511,7 +3511,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return '演习经验（约）：S胜 $sExp · A胜 $aExp (练巡 +$bonus)';
+    return '演习经验（约）：S胜 $sExp · A胜 $aExp (练巡 $bonus)';
   }
 
   @override
@@ -3925,6 +3925,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get smartPanelStatePractice => '演习';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return '潜艇 S胜 $exp';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -7436,7 +7441,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return '演習經驗（約）：S勝 $sExp · A勝 $aExp (練巡 +$bonus)';
+    return '演習經驗（約）：S勝 $sExp · A勝 $aExp (練巡 $bonus)';
   }
 
   @override
@@ -7850,4 +7855,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get smartPanelStatePractice => '演習';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return '潛艇 S勝 $exp';
+  }
 }

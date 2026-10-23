@@ -55,6 +55,12 @@ void main() {
     expect(practiceRankExp(526, PracticeRank.a, ct), 604);
   });
 
+  test('submarine rank exp uses the asahi submarine modifier', () {
+    const asahi = PracticeCtBonus(modifier: 0.672, submarineModifier: 1.456);
+    expect(practiceRankExp(526, PracticeRank.s, asahi), 424);
+    expect(practiceRankExp(526, PracticeRank.s, asahi, submarine: true), 918);
+  });
+
   group('training cruiser bonus', () {
     test('no CT gives no bonus', () {
       final bonus = practiceCtBonus(_fleet([(_fubuki, 99), (_fubuki, 99)]));

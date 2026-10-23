@@ -6605,7 +6605,7 @@ abstract class AppLocalizations {
   /// No description provided for @noticePracticeExpCtBonus.
   ///
   /// In zh, this message translates to:
-  /// **'演习经验（约）：S胜 {sExp} · A胜 {aExp} (练巡 +{bonus})'**
+  /// **'演习经验（约）：S胜 {sExp} · A胜 {aExp} (练巡 {bonus})'**
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus);
 
   /// No description provided for @noticeSortieShipFull.
@@ -7357,6 +7357,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'演习'**
   String get smartPanelStatePractice;
+
+  /// No description provided for @practiceSubmarineExpS.
+  ///
+  /// In zh, this message translates to:
+  /// **'潜艇 S胜 {exp}'**
+  String practiceSubmarineExpS(int exp);
 }
 
 class _AppLocalizationsDelegate
