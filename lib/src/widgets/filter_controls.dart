@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 class HeaderFilterIconButton extends StatelessWidget {
@@ -23,15 +24,19 @@ class HeaderFilterIconButton extends StatelessWidget {
       tooltip: tooltip,
       onPressed: onPressed,
       style: IconButton.styleFrom(
-        backgroundColor: active
-            ? const Color(0xff8a6628)
-            : const Color(0xff0b202d),
-        side: const BorderSide(color: Color(0xff315064)),
+        backgroundColor: appColor(
+          context,
+          active ? const Color(0xff8a6628) : const Color(0xff0b202d),
+        ),
+        side: BorderSide(color: appColor(context, Color(0xff315064))),
       ),
       icon: Icon(
         icon,
         size: 18,
-        color: active ? const Color(0xffffdc88) : const Color(0xff9fb3bf),
+        color: appColor(
+          context,
+          active ? const Color(0xffffdc88) : const Color(0xff9fb3bf),
+        ),
       ),
     ),
   );
@@ -58,15 +63,26 @@ class CompactFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xff287e6a) : const Color(0xffd3dae0),
+          color: AppPalette.of(context).isDark
+              ? (selected ? const Color(0xff287e6a) : const Color(0xffd3dae0))
+              : (selected
+                    ? AppPalette.of(context).success
+                    : AppPalette.of(context).raised),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           label,
-          style: TextStyle(
-            color: selected ? Colors.white : const Color(0xff24333c),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: selected
+                  ? appOnAccentColor(context, Colors.white)
+                  : AppPalette.of(context).isDark
+                  ? const Color(0xff24333c)
+                  : AppPalette.of(context).foreground,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),

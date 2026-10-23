@@ -1,3 +1,4 @@
+import '../../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -95,7 +96,7 @@ class _GameModsPageState extends State<GameModsPage> {
       final route = DialogRoute<void>(
         context: context,
         barrierDismissible: false,
-        barrierColor: Colors.black.withValues(alpha: .72),
+        barrierColor: appColor(context, Colors.black.withValues(alpha: .72)),
         settings: const RouteSettings(name: 'game-mods-progress'),
         builder: (context) => PopScope(
           canPop: false,
@@ -129,28 +130,31 @@ class _GameModsPageState extends State<GameModsPage> {
     final s = GameModsStrings.of(context);
     final theme = Theme.of(context);
     final textTheme = theme.textTheme
-        .apply(bodyColor: _ink, displayColor: _ink)
+        .apply(
+          bodyColor: appColor(context, _ink),
+          displayColor: appColor(context, _ink),
+        )
         .copyWith(
           headlineSmall: theme.textTheme.headlineSmall?.copyWith(
-            color: _ink,
+            color: appColor(context, _ink),
             fontSize: 18,
             fontWeight: FontWeight.w700,
             height: 1.3,
           ),
           titleLarge: theme.textTheme.titleLarge?.copyWith(
-            color: _ink,
+            color: appColor(context, _ink),
             fontSize: 16,
             fontWeight: FontWeight.w700,
             height: 1.35,
           ),
           bodyMedium: theme.textTheme.bodyMedium?.copyWith(
-            color: _ink,
+            color: appColor(context, _ink),
             fontSize: 13,
             fontWeight: FontWeight.w400,
             height: 1.4,
           ),
           bodySmall: theme.textTheme.bodySmall?.copyWith(
-            color: _muted,
+            color: appColor(context, _muted),
             fontSize: 11,
             height: 1.35,
           ),
@@ -173,13 +177,18 @@ class _GameModsPageState extends State<GameModsPage> {
     );
     return Theme(
       data: theme.copyWith(
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _gold,
-          brightness: Brightness.dark,
-        ).copyWith(primary: _gold, surface: _surface, onSurface: _ink),
+        brightness: AppPalette.of(context).brightness,
+        colorScheme:
+            ColorScheme.fromSeed(
+              seedColor: appColor(context, _gold),
+              brightness: AppPalette.of(context).brightness,
+            ).copyWith(
+              primary: appColor(context, _gold),
+              surface: appColor(context, _surface),
+              onSurface: appColor(context, _ink),
+            ),
         textTheme: textTheme,
-        dividerColor: _border,
+        dividerColor: appColor(context, _border),
         filledButtonTheme: FilledButtonThemeData(style: buttonStyle),
         outlinedButtonTheme: OutlinedButtonThemeData(style: buttonStyle),
         textButtonTheme: TextButtonThemeData(style: buttonStyle),
@@ -194,17 +203,17 @@ class _GameModsPageState extends State<GameModsPage> {
           labelStyle: textTheme.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: 2),
           labelPadding: const EdgeInsets.symmetric(horizontal: 7),
-          side: const BorderSide(color: _border),
-          selectedColor: _gold.withValues(alpha: .18),
-          backgroundColor: _surface,
+          side: BorderSide(color: appColor(context, _border)),
+          selectedColor: appColor(context, _gold.withValues(alpha: .18)),
+          backgroundColor: appColor(context, _surface),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        expansionTileTheme: const ExpansionTileThemeData(
-          iconColor: _muted,
-          collapsedIconColor: _muted,
+        expansionTileTheme: ExpansionTileThemeData(
+          iconColor: appColor(context, _muted),
+          collapsedIconColor: appColor(context, _muted),
         ),
         dialogTheme: DialogThemeData(
-          backgroundColor: _surface,
+          backgroundColor: appColor(context, _surface),
           titleTextStyle: textTheme.titleLarge,
           contentTextStyle: textTheme.bodyMedium,
           shape: RoundedRectangleBorder(
@@ -213,49 +222,61 @@ class _GameModsPageState extends State<GameModsPage> {
         ),
         switchTheme: SwitchThemeData(
           thumbColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected) ? _gold : _muted,
+            (states) => appColor(
+              context,
+              states.contains(WidgetState.selected) ? _gold : _muted,
+            ),
           ),
           trackColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? _gold.withValues(alpha: .28)
-                : const Color(0xff263b49),
+            (states) => appColor(
+              context,
+              states.contains(WidgetState.selected)
+                  ? _gold.withValues(alpha: .28)
+                  : const Color(0xff263b49),
+            ),
           ),
           trackOutlineColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? _gold.withValues(alpha: .6)
-                : _border,
+            (states) => appColor(
+              context,
+              states.contains(WidgetState.selected)
+                  ? _gold.withValues(alpha: .6)
+                  : _border,
+            ),
           ),
         ),
       ),
       child: DefaultTextStyle(
-        style: textTheme.bodyMedium!,
+        style: appTextStyle(context, textTheme.bodyMedium!),
         child: AnimatedBuilder(
           animation: c,
           builder: (context, _) {
             if (c.loading) {
-              return const ColoredBox(
-                color: _background,
+              return ColoredBox(
+                color: appColor(context, _background),
                 child: Center(child: CircularProgressIndicator()),
               );
             }
             if (c.supported != true) {
               return ColoredBox(
-                color: _background,
+                color: appColor(context, _background),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.extension_off_outlined,
-                          color: _muted,
+                          color: appColor(context, _muted),
                           size: 36,
                         ),
                         const SizedBox(height: 12),
                         Text(
                           s.title,
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: appTextStyle(
+                            context,
+                            Theme.of(context).textTheme.titleLarge,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -286,7 +307,7 @@ class _GameModsPageState extends State<GameModsPage> {
                 )
                 .toList();
             return ColoredBox(
-              color: _background,
+              color: appColor(context, _background),
               child: Column(
                 children: [
                   Expanded(
@@ -320,9 +341,12 @@ class _GameModsPageState extends State<GameModsPage> {
                                         const SizedBox(height: 4),
                                         Text(
                                           s.preserve,
-                                          style: const TextStyle(
-                                            color: _muted,
-                                            fontSize: 12,
+                                          style: appTextStyle(
+                                            context,
+                                            TextStyle(
+                                              color: appColor(context, _muted),
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -363,7 +387,13 @@ class _GameModsPageState extends State<GameModsPage> {
                         const SizedBox(height: 12),
                         Text(
                           s.orderHint,
-                          style: const TextStyle(color: _muted, fontSize: 11),
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, _muted),
+                              fontSize: 11,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         if (filtered.isEmpty)
@@ -371,9 +401,9 @@ class _GameModsPageState extends State<GameModsPage> {
                             padding: const EdgeInsets.symmetric(vertical: 36),
                             child: Column(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.inventory_2_outlined,
-                                  color: _muted,
+                                  color: appColor(context, _muted),
                                   size: 36,
                                 ),
                                 const SizedBox(height: 12),
@@ -425,7 +455,10 @@ class _GameModsPageState extends State<GameModsPage> {
                   const SizedBox(height: 4),
                   Text(
                     s.syncPortraitsHint,
-                    style: const TextStyle(color: _muted, fontSize: 12),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted), fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -450,7 +483,10 @@ class _GameModsPageState extends State<GameModsPage> {
               portraits.errorCode == 'portrait_sync_save_failed'
                   ? s.syncPortraitsSaveFailed
                   : s.syncPortraitsLoadFailed,
-              style: const TextStyle(color: _gold, fontSize: 11),
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _gold), fontSize: 11),
+              ),
             ),
           ),
         ],
@@ -478,7 +514,11 @@ class _GameModsPageState extends State<GameModsPage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.folder_outlined, color: _gold, size: 18),
+                Icon(
+                  Icons.folder_outlined,
+                  color: appColor(context, _gold),
+                  size: 18,
+                ),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -517,9 +557,15 @@ class _GameModsPageState extends State<GameModsPage> {
         );
     final buttonStyle =
         OutlinedButton.styleFrom(
-          foregroundColor: _gold,
-          disabledForegroundColor: _muted.withValues(alpha: .5),
-          backgroundColor: _background.withValues(alpha: .25),
+          foregroundColor: appColor(context, _gold),
+          disabledForegroundColor: appColor(
+            context,
+            _muted.withValues(alpha: .5),
+          ),
+          backgroundColor: appColor(
+            context,
+            _background.withValues(alpha: .25),
+          ),
           minimumSize: const Size(0, 32),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           textStyle: actionTextStyle,
@@ -529,9 +575,12 @@ class _GameModsPageState extends State<GameModsPage> {
         ).copyWith(
           side: WidgetStateProperty.resolveWith(
             (states) => BorderSide(
-              color: states.contains(WidgetState.disabled)
-                  ? _border
-                  : _gold.withValues(alpha: .55),
+              color: appColor(
+                context,
+                states.contains(WidgetState.disabled)
+                    ? _border
+                    : _gold.withValues(alpha: .55),
+              ),
             ),
           ),
         );
@@ -580,7 +629,10 @@ class _GameModsPageState extends State<GameModsPage> {
           var actionsWidth = (labels.length - 1) * 6.0;
           for (final label in labels) {
             final text = TextPainter(
-              text: TextSpan(text: label, style: actionTextStyle),
+              text: TextSpan(
+                text: label,
+                style: appTextStyle(context, actionTextStyle),
+              ),
               textDirection: Directionality.of(context),
               textScaler: textScaler,
             )..layout();
@@ -612,9 +664,12 @@ class _GameModsPageState extends State<GameModsPage> {
                     : library.configured
                     ? s.libraryHint
                     : s.libraryUnconfigured,
-                style: TextStyle(
-                  color: errorCode != null ? _gold : _muted,
-                  fontSize: 11,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: errorCode != null ? _gold : _muted,
+                    fontSize: 11,
+                  ),
                 ),
               ),
               if (!inline) ...[
@@ -670,7 +725,10 @@ class _GameModsPageState extends State<GameModsPage> {
                 if (scan.restoreAvailable) ...[
                   Text(
                     s.libraryRestoreHint,
-                    style: const TextStyle(color: _gold),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _gold)),
+                    ),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -684,7 +742,10 @@ class _GameModsPageState extends State<GameModsPage> {
                   Text(
                     s.libraryCleanupHint(scan.cleanupCount),
                     key: const Key('game-mods-library-cleanup-hint'),
-                    style: const TextStyle(color: _gold),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _gold)),
+                    ),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -720,22 +781,46 @@ class _GameModsPageState extends State<GameModsPage> {
                             if (entry.resourceCount > 0)
                               s.resources(entry.resourceCount),
                           ].join(' · '),
-                          style: const TextStyle(color: _muted, fontSize: 12),
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, _muted),
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
                         if (entry.reason != null)
                           Text(
                             s.reason(entry.reason),
-                            style: const TextStyle(color: _gold, fontSize: 12),
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _gold),
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         if (entry.detail != null && entry.detail!.isNotEmpty)
                           Text(
                             entry.detail!,
-                            style: const TextStyle(color: _muted, fontSize: 12),
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _muted),
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         if (entry.unsupportedCount > 0)
                           Text(
                             '${s.reason('unsupported_files')} (${entry.unsupportedCount})',
-                            style: const TextStyle(color: _gold, fontSize: 12),
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _gold),
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                       ],
                     ),
@@ -748,7 +833,10 @@ class _GameModsPageState extends State<GameModsPage> {
                   const SizedBox(height: 12),
                   Text(
                     s.libraryMissingHint,
-                    style: const TextStyle(color: _muted, fontSize: 12),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted), fontSize: 12),
+                    ),
                   ),
                 ],
               ],
@@ -793,7 +881,13 @@ class _GameModsPageState extends State<GameModsPage> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(s.importHint, style: const TextStyle(color: _muted, fontSize: 11)),
+        Text(
+          s.importHint,
+          style: appTextStyle(
+            context,
+            TextStyle(color: appColor(context, _muted), fontSize: 11),
+          ),
+        ),
       ],
     );
     final actions = Row(
@@ -911,8 +1005,10 @@ class _GameModsPageState extends State<GameModsPage> {
     key: key,
     padding: padding,
     decoration: BoxDecoration(
-      color: removing ? _removalSurface : _surface,
-      border: Border.all(color: removing ? _removalBorder : _border),
+      color: appColor(context, removing ? _removalSurface : _surface),
+      border: Border.all(
+        color: appColor(context, removing ? _removalBorder : _border),
+      ),
       borderRadius: BorderRadius.circular(10),
     ),
     child: child,
@@ -926,7 +1022,14 @@ class _GameModsPageState extends State<GameModsPage> {
             children: [
               Text(
                 text,
-                style: const TextStyle(color: _gold, fontSize: 12, height: 1.4),
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, _gold),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
               ),
               ?action,
             ],
@@ -1012,7 +1115,13 @@ class _GameModsPageState extends State<GameModsPage> {
                     const SizedBox(height: 2),
                     Text(
                       '$selection · ${_size(p.sizeBytes)}',
-                      style: const TextStyle(color: _muted, fontSize: 12),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, _muted),
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     _badges(context, p),
@@ -1134,33 +1243,39 @@ class _GameModsPageState extends State<GameModsPage> {
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         decoration: BoxDecoration(
-          color: removing
-              ? _removalBorder.withValues(alpha: .2)
-              : warning
-              ? _gold.withValues(alpha: .1)
-              : _background,
+          color: appColor(
+            context,
+            removing
+                ? _removalBorder.withValues(alpha: .2)
+                : warning
+                ? _gold.withValues(alpha: .1)
+                : _background,
+          ),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            height: 1.25,
-            color: removing
-                ? _removalInk
-                : warning
-                ? _gold
-                : _muted,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+              color: removing
+                  ? _removalInk
+                  : warning
+                  ? _gold
+                  : _muted,
+            ),
           ),
         ),
       );
   Widget _footer(BuildContext context) {
     final s = GameModsStrings.of(context);
     return Container(
-      decoration: const BoxDecoration(
-        color: _surface,
-        border: Border(top: BorderSide(color: _border)),
+      decoration: BoxDecoration(
+        color: appColor(context, _surface),
+        border: Border(top: BorderSide(color: appColor(context, _border))),
       ),
       child: SafeArea(
         top: false,
@@ -1196,7 +1311,10 @@ class _GameModsPageState extends State<GameModsPage> {
                             coordinates: c.status.writtenCoordinateCount,
                             coordinatePending: c.status.waitingCoordinateCount,
                           ),
-                    style: const TextStyle(color: _muted, fontSize: 12),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted), fontSize: 12),
+                    ),
                   ),
                 ],
               );
@@ -1251,264 +1369,281 @@ class _GameModsPageState extends State<GameModsPage> {
     );
   }
 
-  Future<void> _details(BuildContext context, String id) =>
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        backgroundColor: _surface,
-        constraints: const BoxConstraints(maxWidth: 720),
-        builder: (sheetContext) => AnimatedBuilder(
-          animation: c,
-          builder: (context, _) {
-            final s = GameModsStrings.of(context);
-            final matches = c.status.packages.where((p) => p.id == id);
-            if (matches.isEmpty) return const SizedBox.shrink();
-            final p = matches.first, order = c.status.draft.order;
-            final owners = <String, GameModPackage>{
-              for (final package in c.status.packages)
-                for (final resource in package.resources) resource.id: package,
-            };
-            final groups = <String, List<GameModResource>>{};
-            final ordinals = <String, int>{};
-            var ordinal = 0;
-            for (final r in p.resources) {
-              ordinals[r.id] = ++ordinal;
-              groups
-                  .putIfAbsent(
-                    r.isCoordinates
-                        ? 'coordinates:${r.id}'
-                        : r.groupId?.isNotEmpty == true
-                        ? r.groupId!
-                        : r.kind,
-                    () => [],
-                  )
-                  .add(r);
-            }
-            final sources = <String, int>{};
-            for (final r in p.resources) {
-              for (final target in r.targets) {
-                final winner = c.status.winners[target];
-                if (winner != null &&
-                    winner != r.id &&
-                    c.status.draft.enabledResources.contains(r.id) &&
-                    c.status.draft.enabledPackages.contains(p.id)) {
-                  final name = owners[winner]?.name;
-                  if (name != null) {
-                    sources.update(name, (n) => n + 1, ifAbsent: () => 1);
-                  }
-                }
+  Future<void> _details(
+    BuildContext context,
+    String id,
+  ) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: appColor(context, _surface),
+    constraints: const BoxConstraints(maxWidth: 720),
+    builder: (sheetContext) => AnimatedBuilder(
+      animation: c,
+      builder: (context, _) {
+        final s = GameModsStrings.of(context);
+        final matches = c.status.packages.where((p) => p.id == id);
+        if (matches.isEmpty) return const SizedBox.shrink();
+        final p = matches.first, order = c.status.draft.order;
+        final owners = <String, GameModPackage>{
+          for (final package in c.status.packages)
+            for (final resource in package.resources) resource.id: package,
+        };
+        final groups = <String, List<GameModResource>>{};
+        final ordinals = <String, int>{};
+        var ordinal = 0;
+        for (final r in p.resources) {
+          ordinals[r.id] = ++ordinal;
+          groups
+              .putIfAbsent(
+                r.isCoordinates
+                    ? 'coordinates:${r.id}'
+                    : r.groupId?.isNotEmpty == true
+                    ? r.groupId!
+                    : r.kind,
+                () => [],
+              )
+              .add(r);
+        }
+        final sources = <String, int>{};
+        for (final r in p.resources) {
+          for (final target in r.targets) {
+            final winner = c.status.winners[target];
+            if (winner != null &&
+                winner != r.id &&
+                c.status.draft.enabledResources.contains(r.id) &&
+                c.status.draft.enabledPackages.contains(p.id)) {
+              final name = owners[winner]?.name;
+              if (name != null) {
+                sources.update(name, (n) => n + 1, ifAbsent: () => 1);
               }
             }
-            final rows = <Object>[];
-            for (final group in groups.entries) {
-              if (group.value.first.isCoordinates) {
-                for (final resource in group.value) {
-                  rows.add(
-                    _DetailResource(resource, ordinals[resource.id]!, false),
-                  );
-                }
-                continue;
-              }
-              var linked = false, supported = false, allSelected = true;
-              for (final resource in group.value) {
-                linked |=
-                    resource.kind == 'coordinates' ||
-                    resource.path.endsWith('.json');
-                if (resource.supported) {
-                  supported = true;
-                  allSelected &= c.status.draft.enabledResources.contains(
-                    resource.id,
-                  );
-                }
-              }
+          }
+        }
+        final rows = <Object>[];
+        for (final group in groups.entries) {
+          if (group.value.first.isCoordinates) {
+            for (final resource in group.value) {
               rows.add(
-                _DetailGroup(group.key, group.value, supported, allSelected),
+                _DetailResource(resource, ordinals[resource.id]!, false),
               );
-              for (final resource in group.value) {
-                rows.add(
-                  _DetailResource(
-                    resource,
-                    ordinals[resource.id]!,
-                    linked &&
-                        group.value.length > 1 &&
-                        resource.groupId?.isNotEmpty == true,
-                  ),
-                );
-              }
             }
-            return SizedBox(
-              height: MediaQuery.sizeOf(context).height * .9,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Tooltip(
-                            message: p.name,
-                            child: Text(
-                              p.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: s.close,
-                          onPressed: () => Navigator.pop(sheetContext),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      itemCount: rows.length + 2,
-                      itemBuilder: (context, index) {
-                        if (index == rows.length + 1) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Text(
-                              s.priority(order.indexOf(id) + 1, order.length),
-                              style: const TextStyle(color: _muted),
-                            ),
-                          );
-                        }
-                        if (index == 0) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _badges(context, p, includeSaved: true),
-                              const SizedBox(height: 12),
-                              for (final source in sources.entries)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Text(
-                                    s.source(source.key, source.value),
-                                    style: const TextStyle(color: _gold),
-                                  ),
-                                ),
-                              for (final warning in p.warnings)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Text(
-                                    s.reason(warning),
-                                    style: const TextStyle(color: _gold),
-                                  ),
-                                ),
-                            ],
-                          );
-                        }
-                        final row = rows[index - 1];
-                        if (row is _DetailResource) {
-                          return _resourceRow(
-                            context,
-                            p,
-                            row.resource,
-                            ordinal: row.ordinal,
-                            linked: row.linked,
-                            owners: owners,
-                          );
-                        }
-                        final group = row as _DetailGroup;
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  s.groupLabel(
-                                    group.id,
-                                    group.resources.first.kind,
-                                  ),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              if (group.supported)
-                                TextButton(
-                                  onPressed:
-                                      c.canEdit &&
-                                          !p.pendingRemoval &&
-                                          group.supported
-                                      ? () {
-                                          c.setResourcesEnabled(
-                                            group.resources,
-                                            !group.allSelected,
-                                          );
-                                        }
-                                      : null,
-                                  child: Text(
-                                    group.allSelected
-                                        ? s.deselectAll
-                                        : s.selectAll,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.end,
-                        children: [
-                          TextButton(
-                            key: Key('game-mods-remove-$id'),
-                            onPressed: c.canEdit && !p.pendingRemoval
-                                ? () => _remove(sheetContext, p)
-                                : null,
-                            child: Text(
-                              s.remove,
-                              style: const TextStyle(color: Color(0xffe89b91)),
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed:
-                                c.canEdit &&
-                                    !p.pendingRemoval &&
-                                    order.indexOf(id) > 0
-                                ? () => c.movePackage(id, -1)
-                                : null,
-                            icon: const Icon(Icons.arrow_upward, size: 18),
-                            label: Text(s.up),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed:
-                                c.canEdit &&
-                                    !p.pendingRemoval &&
-                                    order.indexOf(id) < order.length - 1
-                                ? () => c.movePackage(id, 1)
-                                : null,
-                            icon: const Icon(Icons.arrow_downward, size: 18),
-                            label: Text(s.down),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+            continue;
+          }
+          var linked = false, supported = false, allSelected = true;
+          for (final resource in group.value) {
+            linked |=
+                resource.kind == 'coordinates' ||
+                resource.path.endsWith('.json');
+            if (resource.supported) {
+              supported = true;
+              allSelected &= c.status.draft.enabledResources.contains(
+                resource.id,
+              );
+            }
+          }
+          rows.add(
+            _DetailGroup(group.key, group.value, supported, allSelected),
+          );
+          for (final resource in group.value) {
+            rows.add(
+              _DetailResource(
+                resource,
+                ordinals[resource.id]!,
+                linked &&
+                    group.value.length > 1 &&
+                    resource.groupId?.isNotEmpty == true,
               ),
             );
-          },
-        ),
-      );
+          }
+        }
+        return SizedBox(
+          height: MediaQuery.sizeOf(context).height * .9,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Tooltip(
+                        message: p.name,
+                        child: Text(
+                          p.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: appTextStyle(
+                            context,
+                            Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: s.close,
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  itemCount: rows.length + 2,
+                  itemBuilder: (context, index) {
+                    if (index == rows.length + 1) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          s.priority(order.indexOf(id) + 1, order.length),
+                          style: appTextStyle(
+                            context,
+                            TextStyle(color: appColor(context, _muted)),
+                          ),
+                        ),
+                      );
+                    }
+                    if (index == 0) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _badges(context, p, includeSaved: true),
+                          const SizedBox(height: 12),
+                          for (final source in sources.entries)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                s.source(source.key, source.value),
+                                style: appTextStyle(
+                                  context,
+                                  TextStyle(color: appColor(context, _gold)),
+                                ),
+                              ),
+                            ),
+                          for (final warning in p.warnings)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                s.reason(warning),
+                                style: appTextStyle(
+                                  context,
+                                  TextStyle(color: appColor(context, _gold)),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    }
+                    final row = rows[index - 1];
+                    if (row is _DetailResource) {
+                      return _resourceRow(
+                        context,
+                        p,
+                        row.resource,
+                        ordinal: row.ordinal,
+                        linked: row.linked,
+                        owners: owners,
+                      );
+                    }
+                    final group = row as _DetailGroup;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              s.groupLabel(
+                                group.id,
+                                group.resources.first.kind,
+                              ),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (group.supported)
+                            TextButton(
+                              onPressed:
+                                  c.canEdit &&
+                                      !p.pendingRemoval &&
+                                      group.supported
+                                  ? () {
+                                      c.setResourcesEnabled(
+                                        group.resources,
+                                        !group.allSelected,
+                                      );
+                                    }
+                                  : null,
+                              child: Text(
+                                group.allSelected ? s.deselectAll : s.selectAll,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      TextButton(
+                        key: Key('game-mods-remove-$id'),
+                        onPressed: c.canEdit && !p.pendingRemoval
+                            ? () => _remove(sheetContext, p)
+                            : null,
+                        child: Text(
+                          s.remove,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, Color(0xffe89b91)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed:
+                            c.canEdit &&
+                                !p.pendingRemoval &&
+                                order.indexOf(id) > 0
+                            ? () => c.movePackage(id, -1)
+                            : null,
+                        icon: const Icon(Icons.arrow_upward, size: 18),
+                        label: Text(s.up),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed:
+                            c.canEdit &&
+                                !p.pendingRemoval &&
+                                order.indexOf(id) < order.length - 1
+                            ? () => c.movePackage(id, 1)
+                            : null,
+                        icon: const Icon(Icons.arrow_downward, size: 18),
+                        label: Text(s.down),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
 
   Widget _resourceRow(
     BuildContext context,
@@ -1541,8 +1676,8 @@ class _GameModsPageState extends State<GameModsPage> {
         : owners[winner]?.name ?? s.original;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _border)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: appColor(context, _border))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1560,15 +1695,24 @@ class _GameModsPageState extends State<GameModsPage> {
                     const SizedBox(height: 4),
                     Text(
                       r.supported ? stateText : s.reason(r.reason),
-                      style: TextStyle(
-                        color: r.supported ? _muted : _gold,
-                        fontSize: 12,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: r.supported ? _muted : _gold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     if (status.pending)
                       Text(
                         s.nextBy(next),
-                        style: const TextStyle(color: _muted, fontSize: 12),
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, _muted),
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -1588,7 +1732,10 @@ class _GameModsPageState extends State<GameModsPage> {
           if (linked)
             Text(
               s.grouped,
-              style: const TextStyle(color: _muted, fontSize: 12),
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _muted), fontSize: 12),
+              ),
             ),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
@@ -1597,14 +1744,20 @@ class _GameModsPageState extends State<GameModsPage> {
             minTileHeight: 44,
             title: Text(
               s.viewPath,
-              style: const TextStyle(color: _muted, fontSize: 11),
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _muted), fontSize: 11),
+              ),
             ),
             children: [
               Align(
                 alignment: Alignment.centerLeft,
                 child: SelectableText(
                   r.path,
-                  style: const TextStyle(color: _muted, fontSize: 12),
+                  style: TextStyle(
+                    color: appColor(context, _muted),
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -1661,8 +1814,8 @@ class _GameModsPageState extends State<GameModsPage> {
         : s.coordinatesInactive;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _border)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: appColor(context, _border))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1694,20 +1847,26 @@ class _GameModsPageState extends State<GameModsPage> {
                       ? s.coordinatesOn
                       : s.coordinatesOff
                 : s.reason(resource.reason),
-            style: TextStyle(
-              color: resource.supported ? _muted : _gold,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: resource.supported ? _muted : _gold,
+                fontSize: 12,
+              ),
             ),
           ),
           if (resource.supported) ...[
             const SizedBox(height: 4),
             Text(
               current,
-              style: TextStyle(
-                color: status.failures.containsKey(resource.id)
-                    ? _gold
-                    : _muted,
-                fontSize: 12,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: status.failures.containsKey(resource.id)
+                      ? _gold
+                      : _muted,
+                  fontSize: 12,
+                ),
               ),
             ),
             if (selected || status.pending)
@@ -1717,24 +1876,36 @@ class _GameModsPageState extends State<GameModsPage> {
                   resource.targets.length,
                   pending: status.pending,
                 ),
-                style: const TextStyle(color: _muted, fontSize: 12),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, _muted), fontSize: 12),
+                ),
               ),
           ],
           const SizedBox(height: 8),
           Text(
             s.coordinatesCompatible,
-            style: const TextStyle(color: _muted, fontSize: 12),
+            style: appTextStyle(
+              context,
+              TextStyle(color: appColor(context, _muted), fontSize: 12),
+            ),
           ),
           if (overridden > 0) ...[
             const SizedBox(height: 8),
             Text(
               s.coordinateOverridden(overridden, resource.targets.length),
-              style: const TextStyle(color: _gold, fontSize: 12),
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _gold), fontSize: 12),
+              ),
             ),
             for (final entry in conflicts.entries)
               Text(
                 s.source(entry.key, entry.value),
-                style: const TextStyle(color: _gold, fontSize: 12),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, _gold), fontSize: 12),
+                ),
               ),
           ],
           ExpansionTile(
@@ -1743,7 +1914,10 @@ class _GameModsPageState extends State<GameModsPage> {
             minTileHeight: 44,
             title: Text(
               s.coordinateSources,
-              style: const TextStyle(color: _muted, fontSize: 11),
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _muted), fontSize: 11),
+              ),
             ),
             children: [
               for (final path in resource.sources)
@@ -1753,7 +1927,10 @@ class _GameModsPageState extends State<GameModsPage> {
                     alignment: Alignment.centerLeft,
                     child: SelectableText(
                       path,
-                      style: const TextStyle(color: _muted, fontSize: 12),
+                      style: TextStyle(
+                        color: appColor(context, _muted),
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -1943,7 +2120,13 @@ class _GameModsProgressDialog extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+          Text(
+            label,
+            style: appTextStyle(
+              context,
+              TextStyle(color: appColor(context, _muted), fontSize: 12),
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
@@ -1956,43 +2139,59 @@ class _GameModsProgressDialog extends StatelessWidget {
     );
     return Theme(
       data: Theme.of(context).copyWith(
-        brightness: Brightness.dark,
-        colorScheme: const ColorScheme.dark(
-          primary: _gold,
-          surface: _surface,
-          onSurface: _ink,
-        ),
+        brightness: AppPalette.of(context).brightness,
+        colorScheme: AppPalette.of(context).isDark
+            ? const ColorScheme.dark(
+                primary: _gold,
+                surface: _surface,
+                onSurface: _ink,
+              )
+            : Theme.of(context).colorScheme.copyWith(
+                primary: appColor(context, _gold),
+                surface: appColor(context, _surface),
+                onSurface: appColor(context, _ink),
+              ),
       ),
       child: Dialog(
         key: const Key('game-mods-operation-progress'),
-        backgroundColor: _surface,
+        backgroundColor: appColor(context, _surface),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: _border),
+          side: BorderSide(color: appColor(context, _border)),
         ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: DefaultTextStyle(
-              style: const TextStyle(color: _ink, fontSize: 14, height: 1.4),
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, _ink),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.inventory_2_outlined,
-                    color: _gold,
+                    color: appColor(context, _gold),
                     size: 30,
                   ),
                   const SizedBox(height: 14),
                   Text(
                     s.progressTitle(progress?.operation ?? 'import'),
-                    style: const TextStyle(
-                      color: _gold,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, _gold),
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -2006,8 +2205,8 @@ class _GameModsProgressDialog extends StatelessWidget {
                   const SizedBox(height: 10),
                   LinearProgressIndicator(
                     value: progress?.fraction,
-                    color: _gold,
-                    backgroundColor: _border,
+                    color: appColor(context, _gold),
+                    backgroundColor: appColor(context, _border),
                     minHeight: 5,
                   ),
                   const SizedBox(height: 10),
@@ -2053,15 +2252,24 @@ class _GameModsProgressDialog extends StatelessWidget {
                   Text(
                     s.progressElapsed(elapsed),
                     key: const Key('game-mods-progress-elapsed'),
-                    style: const TextStyle(color: _muted, fontSize: 12),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted), fontSize: 12),
+                    ),
                   ),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 14),
-                    child: Divider(height: 1, color: _border),
+                    child: Divider(
+                      height: 1,
+                      color: appColor(context, _border),
+                    ),
                   ),
                   Text(
                     s.progressWorking,
-                    style: const TextStyle(color: _muted, fontSize: 12),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted), fontSize: 12),
+                    ),
                   ),
                 ],
               ),

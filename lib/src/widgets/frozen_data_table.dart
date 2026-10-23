@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 class FrozenDataTable extends StatefulWidget {
@@ -165,14 +166,19 @@ class _FrozenDataTableState extends State<FrozenDataTable> {
               child: ClipRect(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: background,
+                    color: appColor(context, background),
                     border: Border(
                       right: BorderSide(
-                        color: strongTrailingBorder && index == cells.length - 1
-                            ? const Color(0xff38586b)
-                            : const Color(0xff294052),
+                        color: appColor(
+                          context,
+                          strongTrailingBorder && index == cells.length - 1
+                              ? const Color(0xff38586b)
+                              : const Color(0xff294052),
+                        ),
                       ),
-                      bottom: const BorderSide(color: Color(0xff294052)),
+                      bottom: BorderSide(
+                        color: appColor(context, Color(0xff294052)),
+                      ),
                     ),
                   ),
                   child: cells[index],
@@ -211,8 +217,10 @@ class _FrozenDataTableState extends State<FrozenDataTable> {
         borderRadius: BorderRadius.circular(8),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xff0b202c),
-            border: Border.all(color: const Color(0xff294052)),
+            color: appColor(context, const Color(0xff0b202c)),
+            border: Border.all(
+              color: appColor(context, const Color(0xff294052)),
+            ),
           ),
           child: Column(
             children: [

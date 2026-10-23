@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../battle/battle_detail_models.dart';
 import '../battle/battle_detail_strings.dart';
@@ -15,6 +16,7 @@ const healthy = Color(0xff4dbb8b);
 const _headerFontSize = 15.0;
 
 Text label(
+  BuildContext context,
   String value, {
   Color color = const Color(0xffe4edf1),
   double size = 13,
@@ -22,7 +24,7 @@ Text label(
 }) => Text(
   value,
   style: TextStyle(
-    color: color,
+    color: appColor(context, color),
     fontSize: size,
     fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
   ),
@@ -59,7 +61,7 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
   @override
   Widget build(BuildContext context) => Material(
     key: const Key('battle-detail-page'),
-    color: ink,
+    color: appColor(context, ink),
     child: Column(
       children: [
         _header(),
@@ -72,8 +74,8 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
     key: const Key('detail-tabs'),
     padding: const EdgeInsets.all(2),
     decoration: BoxDecoration(
-      color: ink,
-      border: Border.all(color: border),
+      color: appColor(context, ink),
+      border: Border.all(color: appColor(context, border)),
       borderRadius: BorderRadius.circular(20),
     ),
     child: Row(
@@ -90,18 +92,20 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                     : 'battle-detail-tab-process',
               ),
               style: TextButton.styleFrom(
-                foregroundColor: tab == i ? gold : muted,
-                backgroundColor: tab == i
-                    ? const Color(0xff806024)
-                    : Colors.transparent,
+                foregroundColor: appColor(context, tab == i ? gold : muted),
+                backgroundColor: appColor(
+                  context,
+                  tab == i ? const Color(0xff806024) : Colors.transparent,
+                ),
                 padding: EdgeInsets.zero,
                 shape: const StadiumBorder(),
               ),
               onPressed: () => setState(() => tab = i),
               child: label(
+                context,
                 i == 0 ? strings.fleet : strings.process,
                 size: 12,
-                color: tab == i ? gold : muted,
+                color: appColor(context, tab == i ? gold : muted),
                 bold: true,
               ),
             ),
@@ -117,9 +121,9 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
       return Container(
         key: const Key('battle-detail-header'),
         padding: const EdgeInsets.fromLTRB(4, 3, 12, 3),
-        decoration: const BoxDecoration(
-          color: panel,
-          border: Border(bottom: BorderSide(color: border)),
+        decoration: BoxDecoration(
+          color: appColor(context, panel),
+          border: Border(bottom: BorderSide(color: appColor(context, border))),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -139,9 +143,9 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: widget.onBack,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_rounded,
-                      color: friend,
+                      color: appColor(context, friend),
                       size: 20,
                     ),
                   ),
@@ -153,6 +157,7 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       label(
+                        context,
                         '${strings.title} · ${strings.localize(detail.mapLabel)} ${strings.localize(detail.nodeLabel)}',
                         size: _headerFontSize,
                         bold: true,
@@ -164,13 +169,13 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                             Flexible(
                               child: Tag(
                                 detail.enemyFleetName,
-                                color: enemy,
+                                color: appColor(context, enemy),
                                 pill: true,
                               ),
                             ),
                             const SizedBox(width: 6),
                           ],
-                          Tag(detail.rank, color: gold),
+                          Tag(detail.rank, color: appColor(context, gold)),
                         ],
                       ),
                     ],
@@ -288,8 +293,8 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                 key: const Key('battle-detail-filter-container'),
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  color: ink,
-                  border: Border.all(color: border),
+                  color: appColor(context, ink),
+                  border: Border.all(color: appColor(context, border)),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -308,22 +313,32 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                             ][i],
                           ),
                           style: TextButton.styleFrom(
-                            foregroundColor: filter == i ? gold : muted,
-                            backgroundColor: filter == i
-                                ? const Color(0xff806024)
-                                : Colors.transparent,
+                            foregroundColor: appColor(
+                              context,
+                              filter == i ? gold : muted,
+                            ),
+                            backgroundColor: appColor(
+                              context,
+                              filter == i
+                                  ? const Color(0xff806024)
+                                  : Colors.transparent,
+                            ),
                             padding: EdgeInsets.zero,
                             shape: const StadiumBorder(),
                           ),
                           onPressed: () => setState(() => filter = i),
                           child: label(
+                            context,
                             [
                               strings.all,
                               strings.sideAttack(BattleDetailSide.friend),
                               strings.sideAttack(BattleDetailSide.enemy),
                             ][i],
                             size: 12,
-                            color: filter == i ? gold : muted,
+                            color: appColor(
+                              context,
+                              filter == i ? gold : muted,
+                            ),
                             bold: true,
                           ),
                         ),
@@ -331,13 +346,24 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                   ],
                 ),
               ),
-              label(strings.chronological, color: muted, size: 11),
+              label(
+                context,
+                strings.chronological,
+                color: appColor(context, muted),
+                size: 11,
+              ),
             ],
           ),
         ),
         Expanded(
           child: entries.isEmpty
-              ? Center(child: label(strings.noAttacks, color: muted))
+              ? Center(
+                  child: label(
+                    context,
+                    strings.noAttacks,
+                    color: appColor(context, muted),
+                  ),
+                )
               : ListView.builder(
                   key: PageStorageKey('battle-detail-process-$filter'),
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
@@ -363,8 +389,8 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                       margin: const EdgeInsets.only(bottom: 12),
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: panel,
-                        border: Border.all(color: border),
+                        color: appColor(context, panel),
+                        border: Border.all(color: appColor(context, border)),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Column(
@@ -378,7 +404,7 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                               }
                             }),
                             child: Container(
-                              color: const Color(0xff112b39),
+                              color: appColor(context, Color(0xff112b39)),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 11,
@@ -389,7 +415,7 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                                     isClosed
                                         ? Icons.chevron_right
                                         : Icons.expand_more,
-                                    color: gold,
+                                    color: appColor(context, gold),
                                     size: 20,
                                   ),
                                   const SizedBox(width: 6),
@@ -401,17 +427,19 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                                           WrapCrossAlignment.center,
                                       children: [
                                         label(
+                                          context,
                                           strings.localize(stage.title),
-                                          color: gold,
+                                          color: appColor(context, gold),
                                           bold: true,
                                         ),
                                         label(
+                                          context,
                                           strings.stageDamage(
                                             beneficiary,
                                             dealt,
                                             received,
                                           ),
-                                          color: muted,
+                                          color: appColor(context, muted),
                                           size: 11,
                                         ),
                                       ],
@@ -419,8 +447,9 @@ class _BattleDetailPageState extends State<BattleDetailPage> {
                                   ),
                                   const SizedBox(width: 6),
                                   label(
+                                    context,
                                     strings.attackCount(entry.attacks.length),
-                                    color: muted,
+                                    color: appColor(context, muted),
                                     size: 11,
                                   ),
                                 ],
@@ -463,11 +492,19 @@ class Tag extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: .10),
-      border: Border.all(color: color.withValues(alpha: .28)),
+      color: appColor(context, color.withValues(alpha: .10)),
+      border: Border.all(
+        color: appColor(context, color.withValues(alpha: .28)),
+      ),
       borderRadius: BorderRadius.circular(pill ? 20 : 5),
     ),
-    child: label(text, color: color, size: size, bold: true),
+    child: label(
+      context,
+      text,
+      color: appColor(context, color),
+      size: size,
+      bold: true,
+    ),
   );
 }
 
@@ -529,7 +566,7 @@ class _AttackReport extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: 1, color: border),
+        Divider(height: 1, color: appColor(context, border)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
           child: LayoutBuilder(
@@ -546,11 +583,15 @@ class _AttackReport extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       label(
+                        context,
                         number.toString().padLeft(2, '0'),
-                        color: muted,
+                        color: appColor(context, muted),
                         size: 11,
                       ),
-                      Tag(strings.sideAttack(a.attackerSide), color: accent),
+                      Tag(
+                        strings.sideAttack(a.attackerSide),
+                        color: appColor(context, accent),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 9),
@@ -559,25 +600,34 @@ class _AttackReport extends StatelessWidget {
                       children: [
                         TextSpan(
                           text: attackerName,
-                          style: TextStyle(
-                            color: accent,
-                            fontWeight: FontWeight.w700,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: accent,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         TextSpan(
                           text: '  ${strings.attack}  ',
-                          style: const TextStyle(color: muted),
+                          style: appTextStyle(
+                            context,
+                            TextStyle(color: appColor(context, muted)),
+                          ),
                         ),
                         TextSpan(
                           text: strings.shipDisplayName(
                             a.defenderName,
                             shipId: target?.masterId,
                           ),
-                          style: TextStyle(
-                            color: a.defenderSide == BattleDetailSide.enemy
-                                ? enemy
-                                : friend,
-                            fontWeight: FontWeight.w700,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: a.defenderSide == BattleDetailSide.enemy
+                                  ? enemy
+                                  : friend,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
@@ -596,25 +646,33 @@ class _AttackReport extends StatelessWidget {
                     children: [
                       Tag(
                         missed ? strings.miss : strings.damage(a.totalDamage),
-                        color: missed ? muted : gold,
+                        color: appColor(context, missed ? muted : gold),
                         pill: true,
                       ),
                       if (critical && !missed)
-                        Tag(strings.critical, color: enemy, pill: true),
+                        Tag(
+                          strings.critical,
+                          color: appColor(context, enemy),
+                          pill: true,
+                        ),
                       if (status != null)
                         Tag(
                           '${strings.sideName(a.defenderSide)}'
                           '${strings.locale.languageCode == 'en' ? ' ' : ''}'
                           '${strings.damageStatus(status)}',
-                          color: statusColor,
+                          color: appColor(context, statusColor),
                           pill: true,
                         ),
                       if (a.damageControlName != null)
-                        Tag(strings.damageControl, color: healthy, pill: true),
+                        Tag(
+                          strings.damageControl,
+                          color: appColor(context, healthy),
+                          pill: true,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 7),
-                  label(hp, color: muted, size: 12),
+                  label(context, hp, color: appColor(context, muted), size: 12),
                 ],
               );
               return Row(
@@ -623,7 +681,7 @@ class _AttackReport extends StatelessWidget {
                   Container(
                     width: 3,
                     height: 54,
-                    color: accent.withValues(alpha: .65),
+                    color: appColor(context, accent.withValues(alpha: .65)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -658,8 +716,8 @@ class _FleetCard extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: panel,
-        border: Border.all(color: border),
+        color: appColor(context, panel),
+        border: Border.all(color: appColor(context, border)),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -668,15 +726,25 @@ class _FleetCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xff112b39),
-              border: Border(left: BorderSide(color: accent, width: 3)),
+              color: appColor(context, Color(0xff112b39)),
+              border: Border(
+                left: BorderSide(color: appColor(context, accent), width: 3),
+              ),
             ),
             child: Row(
               children: [
-                Expanded(child: label(title, color: accent, bold: true)),
+                Expanded(
+                  child: label(
+                    context,
+                    title,
+                    color: appColor(context, accent),
+                    bold: true,
+                  ),
+                ),
                 label(
+                  context,
                   strings.shipCount(fleet.ships.length),
-                  color: muted,
+                  color: appColor(context, muted),
                   size: 11,
                 ),
               ],
@@ -723,15 +791,18 @@ class _ShipCard extends StatelessWidget {
         : healthy;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: border)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: appColor(context, border))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Tag((s.position + 1).toString(), color: friend),
+              Tag(
+                (s.position + 1).toString(),
+                color: appColor(context, friend),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Wrap(
@@ -740,6 +811,7 @@ class _ShipCard extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     label(
+                      context,
                       strings.shipDisplayName(s.name, shipId: s.masterId) +
                           (s.level == null ? '' : '  Lv.${s.level}'),
                       size: 13,
@@ -748,7 +820,7 @@ class _ShipCard extends StatelessWidget {
                     if (status != null)
                       Tag(
                         strings.damageStatus(status),
-                        color: statusColor,
+                        color: appColor(context, statusColor),
                         pill: true,
                       ),
                   ],
@@ -756,10 +828,11 @@ class _ShipCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               label(
+                context,
                 s.hpUnknown
                     ? '${strings.hpUnknown}（-${s.damageReceived}）'
                     : '${s.finalHp} / ${s.maxHp}（-${s.damageReceived}）',
-                color: hpColor,
+                color: appColor(context, hpColor),
                 size: 12,
                 bold: true,
               ),
@@ -771,8 +844,8 @@ class _ShipCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: s.hpUnknown ? 0 : ratio,
               minHeight: 5,
-              color: hpColor,
-              backgroundColor: const Color(0xff20333e),
+              color: appColor(context, hpColor),
+              backgroundColor: appColor(context, Color(0xff20333e)),
             ),
           ),
           const SizedBox(height: 8),
@@ -781,14 +854,25 @@ class _ShipCard extends StatelessWidget {
             runSpacing: 4,
             children: [
               label(
+                context,
                 s.hpUnknown
                     ? strings.hpUnknown
                     : strings.hpChange(s.initialHp, s.finalHp),
-                color: muted,
+                color: appColor(context, muted),
                 size: 11,
               ),
-              label(strings.dealt(s.damageDealt), color: muted, size: 11),
-              label(strings.received(s.damageReceived), color: muted, size: 11),
+              label(
+                context,
+                strings.dealt(s.damageDealt),
+                color: appColor(context, muted),
+                size: 11,
+              ),
+              label(
+                context,
+                strings.received(s.damageReceived),
+                color: appColor(context, muted),
+                size: 11,
+              ),
               if (s.escaped) Tag(strings.escaped),
             ],
           ),

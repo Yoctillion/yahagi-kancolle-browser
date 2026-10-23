@@ -97,7 +97,7 @@ void main() {
       );
     });
     testWidgets(
-      '$code quest descriptions and rewards translate known entities',
+      '$code quest bodies keep Japanese originals and opt in to Chinese fields',
       (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = const Size(1180, 720);
@@ -108,12 +108,21 @@ void main() {
         final controller = GameStateController(questStore: _MemoryQuestStore());
         addTearDown(controller.dispose);
         await controller.idle;
+        const choiceRewards = '二回選択報酬：[12.7cm連装砲×2、開発資材×3]';
         final catalog = QuestCatalog([
           QuestCatalogEntry.fromJson(999999, {
             'code': 'F99999',
             'name': '睦月',
             'desc': '12.7cm連装砲',
             'rewards': '12.7cm連装砲',
+          }),
+          QuestCatalogEntry.fromJson(999998, {
+            'code': 'F99998',
+            'name': '霧島改二',
+            'desc': '12.7cm連装砲を装備せよ。',
+            'nameZh': '中文任务名',
+            'descZh': '中文条件：12.7cm連装砲',
+            'rewards': choiceRewards,
           }),
         ]);
         await tester.pumpWidget(
@@ -136,12 +145,107 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('睦月'), findsNothing);
-        expect(find.text('12.7cm連装砲'), findsNothing);
+        final strings = lookupAppLocalizations(Locale(code));
         expect(
-          find.textContaining(code == 'en' ? 'Mutsuki' : '무츠키'),
-          findsWidgets,
+          find.descendant(
+            of: find.byKey(const Key('quest-mode-tabs')),
+            matching: find.text(strings.questAll),
+          ),
+          findsOneWidget,
+          reason: 'interface labels follow the app locale',
         );
+        expect(find.text(strings.chineseTranslation), findsOneWidget);
+
+        Future<void> expectQuestFields(
+          int id, {
+          required String name,
+          required String description,
+          required String rewards,
+        }) async {
+          final card = find.byKey(Key('quest-card-$id'));
+          await tester.tap(card);
+          await tester.pumpAndSettle();
+          final title = find.byKey(Key('quest-detail-title-$id'));
+          final detail = find.byKey(const Key('quest-detail-panel'));
+          for (final field in [card, title]) {
+            expect(
+              find.descendant(of: field, matching: find.text(name)),
+              findsOneWidget,
+            );
+          }
+          expect(
+            find.descendant(of: detail, matching: find.text(description)),
+            findsOneWidget,
+            reason: 'conditions use the requested catalog field verbatim',
+          );
+          final rewardsTab = find.byKey(const Key('quest-detail-tab-rewards'));
+          await tester.ensureVisible(rewardsTab);
+          await tester.tap(rewardsTab);
+          await tester.pumpAndSettle();
+          expect(
+            find.descendant(
+              of: rewardsTab,
+              matching: find.text(strings.baseReward),
+            ),
+            findsOneWidget,
+            reason: 'reward labels still follow the app locale',
+          );
+          expect(
+            find.descendant(of: detail, matching: find.text(rewards)),
+            findsOneWidget,
+            reason: 'the complete reward field stays in its original language',
+          );
+        }
+
+        await expectQuestFields(
+          999999,
+          name: '睦月',
+          description: '12.7cm連装砲',
+          rewards: '12.7cm連装砲',
+        );
+        await expectQuestFields(
+          999998,
+          name: '霧島改二',
+          description: '12.7cm連装砲を装備せよ。',
+          rewards: choiceRewards,
+        );
+        await tester.tap(find.byKey(const Key('quest-translation-toggle')));
+        await tester.pumpAndSettle();
+        expect(find.text(strings.japaneseOriginal), findsOneWidget);
+        await expectQuestFields(
+          999998,
+          name: '中文任务名',
+          description: '中文条件：12.7cm連装砲',
+          rewards: choiceRewards,
+        );
+        await expectQuestFields(
+          999999,
+          name: '睦月',
+          description: '12.7cm連装砲',
+          rewards: '12.7cm連装砲',
+        );
+        await tester.tap(find.byKey(const Key('quest-translation-toggle')));
+        await tester.pumpAndSettle();
+        await expectQuestFields(
+          999998,
+          name: '霧島改二',
+          description: '12.7cm連装砲を装備せよ。',
+          rewards: choiceRewards,
+        );
+
+        final fallback = catalog.byGameId(999999)!;
+        expect(fallback.name, '睦月');
+        expect(fallback.description, '12.7cm連装砲');
+        expect(fallback.rewards, '12.7cm連装砲');
+        expect(fallback.translatedName, isNull);
+        expect(fallback.translatedDescription, isNull);
+        final translated = catalog.byGameId(999998)!;
+        expect(translated.name, '霧島改二');
+        expect(translated.description, '12.7cm連装砲を装備せよ。');
+        expect(translated.rewards, choiceRewards);
+        expect(translated.translatedName, '中文任务名');
+        expect(translated.translatedDescription, '中文条件：12.7cm連装砲');
+        expect(tester.takeException(), isNull);
       },
     );
   }

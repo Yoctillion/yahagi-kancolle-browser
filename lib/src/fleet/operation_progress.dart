@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../performance/second_tick_scope.dart';
@@ -71,17 +72,21 @@ class OperationCountdownText extends StatelessWidget {
     return SecondTickBuilder(
       // Stop and render against the same tick, including after background gaps.
       stopAt: completionTime,
-      builder: (context, now, _) => _buildText(completionTime, now),
+      builder: (context, now, _) => _buildText(context, completionTime, now),
     );
   }
 
-  Widget _buildText(DateTime completionTime, DateTime now) {
+  Widget _buildText(
+    BuildContext context,
+    DateTime completionTime,
+    DateTime now,
+  ) {
     final remaining = completionTime.difference(now);
     final isCompleted = operationIsCompleted(completionTime, now: now);
     final baseStyle =
         style ??
-        const TextStyle(
-          color: Color(0xffffc940),
+        TextStyle(
+          color: appColor(context, Color(0xffffc940)),
           fontSize: 13,
           fontWeight: FontWeight.w700,
         );
@@ -92,7 +97,10 @@ class OperationCountdownText extends StatelessWidget {
       isCompleted ? completedText : formatOperationDuration(remaining),
       maxLines: maxLines,
       textAlign: textAlign,
-      style: baseStyle.copyWith(color: color, fontFeatures: fontFeatures),
+      style: appTextStyle(
+        context,
+        baseStyle.copyWith(color: color, fontFeatures: fontFeatures),
+      ),
     );
   }
 }

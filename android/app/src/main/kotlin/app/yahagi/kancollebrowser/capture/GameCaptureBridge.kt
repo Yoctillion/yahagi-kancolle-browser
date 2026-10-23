@@ -93,6 +93,7 @@ class GameCaptureBridge(
         }
 
         disable()
+        val installationGeneration = eventDispatcher.currentGeneration
         try {
             val binaryCaptureEnabled = WebViewFeature.isFeatureSupported(
                 WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER,
@@ -105,7 +106,11 @@ class GameCaptureBridge(
                 webView,
                 MESSAGE_OBJECT_NAME,
                 originPolicy.allowedOriginRules,
-                ::onPostMessage,
+                { sourceWebView, message, sourceOrigin, _, _ ->
+                    if (sourceWebView === webView && attachedWebView === webView) {
+                        onPostMessage(message, sourceOrigin, installationGeneration)
+                    }
+                },
             )
             listenerInstalled = true
             scriptHandler = WebViewCompat.addDocumentStartJavaScript(
@@ -131,13 +136,19 @@ class GameCaptureBridge(
         eventDispatcher.close()
     }
 
-    @Suppress("UNUSED_PARAMETER")
+    /** The host destroys the dead WebView; only retire its capture state here. */
+    fun onRenderProcessGone() {
+        eventDispatcher.invalidatePending()
+        attachedWebView = null
+        scriptHandler = null
+        installedScript = null
+        listenerInstalled = false
+    }
+
     private fun onPostMessage(
-        webView: WebView,
         message: WebMessageCompat,
         sourceOrigin: android.net.Uri,
-        isMainFrame: Boolean,
-        replyProxy: androidx.webkit.JavaScriptReplyProxy,
+        installationGeneration: Long,
     ) {
         val origin = sourceOrigin.toString()
         if (!originPolicy.isAllowed(origin)) {
@@ -150,11 +161,11 @@ class GameCaptureBridge(
                             WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER,
                         )
                     ) {
-                        eventDispatcher.submit(message.arrayBuffer, origin)
+                        eventDispatcher.submit(message.arrayBuffer, origin, installationGeneration)
                     }
                 }
                 WebMessageCompat.TYPE_STRING -> {
-                    message.data?.let { eventDispatcher.submit(it, origin) }
+                    message.data?.let { eventDispatcher.submit(it, origin, installationGeneration) }
                 }
                 else -> Unit
             }

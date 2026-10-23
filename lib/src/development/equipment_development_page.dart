@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -125,19 +126,21 @@ class _EquipmentDevelopmentPageState extends State<EquipmentDevelopmentPage> {
     final locale = Localizations.localeOf(context);
     final activeMode = widget.mode ?? controller.mode;
     return ColoredBox(
-      color: const Color(0xff081521),
+      color: appColor(context, const Color(0xff081521)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
         child: Container(
           key: const Key('development-command-card'),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xff142735),
-            border: Border.all(color: const Color(0xff294052)),
+            color: appColor(context, const Color(0xff142735)),
+            border: Border.all(
+              color: appColor(context, const Color(0xff294052)),
+            ),
             borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x33000000),
+                color: appColor(context, Color(0x33000000)),
                 blurRadius: 12,
                 offset: Offset(0, 5),
               ),
@@ -197,9 +200,12 @@ class _CalculatorBody extends StatelessWidget {
                 }
               },
               side: BorderSide(
-                color: controller.followsCurrentFlagship
-                    ? const Color(0xffd5a44b)
-                    : const Color(0xff315064),
+                color: appColor(
+                  context,
+                  controller.followsCurrentFlagship
+                      ? const Color(0xffd5a44b)
+                      : const Color(0xff315064),
+                ),
               ),
             ),
           ],
@@ -246,7 +252,7 @@ class _CalculatorBody extends StatelessWidget {
                   selectDevelopmentPoolType(controller.resources),
                 ),
               ),
-              backgroundColor: const Color(0xff3a301e),
+              backgroundColor: appColor(context, const Color(0xff3a301e)),
             ),
           ],
         ),
@@ -408,7 +414,7 @@ class _ResourceInputState extends State<_ResourceInput> {
           decoration: InputDecoration(
             isDense: true,
             filled: true,
-            fillColor: const Color(0xff0b202d),
+            fillColor: appColor(context, const Color(0xff0b202d)),
             prefixIconConstraints: const BoxConstraints(minWidth: 40),
             prefixIcon: Padding(
               padding: const EdgeInsets.all(8),

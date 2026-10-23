@@ -72,46 +72,25 @@ final class ShipSubtitleUpdateService implements ShipSubtitleUpdateClient {
     var sourceHost = '';
     for (final host in sourceHosts) {
       sourceHost = host;
-      try {
-        final versionBody = jsonDecode(
-          utf8.decode(await _get(Uri.https(host, '/subtitles/version'), 4096)),
-        );
-        if (versionBody is! Map<String, dynamic>) {
-          throw const FormatException('Subtitle version response is invalid.');
-        }
-        final advertisedVersion = ShipSubtitleCatalog.validateVersion(
-          versionBody['version'],
-        );
-        if (advertisedVersion.compareTo(current.version) <= 0) {
-          return ShipSubtitleUpToDate(current, sourceHost: host);
-        }
-        final bytes = await _get(
-          Uri.https(host, switch (language) {
-            ShipSubtitleLanguage.simplifiedChinese => '/subtitles/zh-cn',
-            ShipSubtitleLanguage.traditionalChinese => '/subtitles/zh-tw',
-            ShipSubtitleLanguage.japanese => '/subtitles/jp',
-            ShipSubtitleLanguage.english || ShipSubtitleLanguage.korean =>
-              throw StateError('This subtitle language uses KC3.'),
-          }),
-          maximumDataBytes,
-        );
-        final catalog = await compute(_decodeCatalog, bytes);
-        if (catalog.version.compareTo(current.version) <= 0) {
-          throw const FormatException('Subtitle CDN returned stale full data.');
-        }
-        try {
-          await store.save(catalog);
-        } on Object catch (error) {
-          return ShipSubtitleUpdateFailed(
-            ShipSubtitleUpdateFailure.storage,
-            error,
-            sourceHost: host,
-          );
-        }
-        return ShipSubtitleUpdated(catalog, sourceHost: host);
-      } on Object catch (error) {
-        lastError = error;
+      final result = await checkKcwikiSource(
+        current: current,
+        sourceHost: host,
+      );
+      if (result is ShipSubtitleUpdateFailed) {
+        lastError = result.error;
+        continue;
       }
+      if (result is ShipSubtitleUpToDate) return result;
+      try {
+        await store.save((result as ShipSubtitleUpdated).catalog);
+      } on Object catch (error) {
+        return ShipSubtitleUpdateFailed(
+          ShipSubtitleUpdateFailure.storage,
+          error,
+          sourceHost: host,
+        );
+      }
+      return result;
     }
     final error =
         lastError ?? const HttpException('Subtitle service is unavailable.');
@@ -122,6 +101,56 @@ final class ShipSubtitleUpdateService implements ShipSubtitleUpdateClient {
       error,
       sourceHost: sourceHost,
     );
+  }
+
+  /// Download one trusted source without saving or falling back independently.
+  /// The group controller validates all three files before publishing any file.
+  Future<ShipSubtitleUpdateResult> checkKcwikiSource({
+    required ShipSubtitleCatalog current,
+    required String sourceHost,
+  }) async {
+    try {
+      if (!sourceHosts.contains(sourceHost) || language.usesKc3Quotes) {
+        throw const FormatException('Invalid kcwiki subtitle source.');
+      }
+      final versionBody = jsonDecode(
+        utf8.decode(
+          await _get(Uri.https(sourceHost, '/subtitles/version'), 4096),
+        ),
+      );
+      if (versionBody is! Map<String, dynamic>) {
+        throw const FormatException('Subtitle version response is invalid.');
+      }
+      final advertisedVersion = ShipSubtitleCatalog.validateVersion(
+        versionBody['version'],
+      );
+      if (advertisedVersion.compareTo(current.version) <= 0) {
+        return ShipSubtitleUpToDate(current, sourceHost: sourceHost);
+      }
+      final bytes = await _get(
+        Uri.https(sourceHost, switch (language) {
+          ShipSubtitleLanguage.simplifiedChinese => '/subtitles/zh-cn',
+          ShipSubtitleLanguage.traditionalChinese => '/subtitles/zh-tw',
+          ShipSubtitleLanguage.japanese => '/subtitles/jp',
+          ShipSubtitleLanguage.english || ShipSubtitleLanguage.korean =>
+            throw StateError('This subtitle language uses KC3.'),
+        }),
+        maximumDataBytes,
+      );
+      final catalog = await compute(_decodeCatalog, bytes);
+      if (catalog.version.compareTo(current.version) <= 0) {
+        throw const FormatException('Subtitle CDN returned stale full data.');
+      }
+      return ShipSubtitleUpdated(catalog, sourceHost: sourceHost);
+    } on Object catch (error) {
+      return ShipSubtitleUpdateFailed(
+        error is FormatException
+            ? ShipSubtitleUpdateFailure.validation
+            : ShipSubtitleUpdateFailure.network,
+        error,
+        sourceHost: sourceHost,
+      );
+    }
   }
 
   Future<ShipSubtitleUpdateResult> _checkKc3(

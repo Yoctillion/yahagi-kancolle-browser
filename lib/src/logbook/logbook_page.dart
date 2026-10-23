@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'dart:convert';
 
@@ -138,7 +139,7 @@ class _LogbookPageState extends State<LogbookPage>
     return KeyedSubtree(
       key: ValueKey((database, scope.generation)),
       child: ColoredBox(
-        color: const Color(0xff081521),
+        color: appColor(context, Color(0xff081521)),
         // Both record lists and details consume device insets exactly once.
         child: SafeArea(
           top: false,
@@ -258,8 +259,8 @@ class _LogbookSegmentedState extends State<LogbookSegmented> {
           height: 38,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: const Color(0xff0b202d),
-            border: Border.all(color: const Color(0xff315064)),
+            color: appColor(context, Color(0xff0b202d)),
+            border: Border.all(color: appColor(context, Color(0xff315064))),
             borderRadius: BorderRadius.circular(20),
           ),
           child: LayoutBuilder(
@@ -310,7 +311,10 @@ class _LogbookSegmentedState extends State<LogbookSegmented> {
     final painter = TextPainter(
       text: TextSpan(
         text: label,
-        style: Theme.of(context).textTheme.bodyMedium!.merge(_logbookTabStyle),
+        style: appTextStyle(
+          context,
+          Theme.of(context).textTheme.bodyMedium!.merge(_logbookTabStyle),
+        ),
       ),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
@@ -338,7 +342,10 @@ class _LogbookSegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: selected ? const Color(0xff8a6628) : Colors.transparent,
+    color: appColor(
+      context,
+      selected ? const Color(0xff8a6628) : Colors.transparent,
+    ),
     borderRadius: BorderRadius.circular(16),
     child: InkWell(
       onTap: onTap,
@@ -346,8 +353,13 @@ class _LogbookSegmentButton extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: _logbookTabStyle.copyWith(
-            color: selected ? const Color(0xffffdc88) : const Color(0xff9fb3bf),
+          style: appTextStyle(
+            context,
+            _logbookTabStyle.copyWith(
+              color: selected
+                  ? const Color(0xffffdc88)
+                  : const Color(0xff9fb3bf),
+            ),
           ),
         ),
       ),
@@ -1015,8 +1027,8 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
                     '共 ${rows.length} 条',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xff8ba2af),
+                    style: TextStyle(
+                      color: appColor(context, Color(0xff8ba2af)),
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1043,13 +1055,13 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
               children: [
                 Positioned.fill(child: _buildTable(rows)),
                 if (rows.isEmpty && !_loading)
-                  const Positioned.fill(
+                  Positioned.fill(
                     child: IgnorePointer(
                       child: Center(
                         child: UiText(
                           '暂无记录',
                           style: TextStyle(
-                            color: Color(0xff8197a5),
+                            color: appColor(context, Color(0xff8197a5)),
                             fontSize: 12,
                           ),
                         ),
@@ -1132,7 +1144,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
     final painter = TextPainter(
       text: TextSpan(
         text: label,
-        style: _effectiveHeavyDamageTextStyle(context),
+        style: appTextStyle(context, _effectiveHeavyDamageTextStyle(context)),
       ),
       textDirection: Directionality.of(context),
       locale: Localizations.maybeLocaleOf(context),
@@ -1343,6 +1355,7 @@ class _LogbookTablePageState extends State<_LogbookTablePage> {
         ),
         _TextCell(
           _dropNames(row),
+          // _TextCell resolves palette colors using its own active context.
           color: const Color(0xff67bce9),
           localize: false,
         ),
@@ -1588,10 +1601,13 @@ class _HeaderCell extends StatelessWidget {
       child: Text(
         uiText(context, label),
         maxLines: 1,
-        style: const TextStyle(
-          color: Color(0xff9fb3bf),
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, Color(0xff9fb3bf)),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     ),
@@ -1620,10 +1636,13 @@ class _ResourceHeader extends StatelessWidget {
             child: Text(
               uiText(context, type.label),
               maxLines: 1,
-              style: const TextStyle(
-                color: Color(0xff9fb3bf),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xff9fb3bf)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -1656,11 +1675,14 @@ class _TextCell extends StatelessWidget {
             : value,
         maxLines: 1,
         overflow: TextOverflow.clip,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: strong ? FontWeight.w900 : FontWeight.w600,
-          fontFeatures: const [FontFeature.tabularFigures()],
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: color,
+            fontSize: 12,
+            fontWeight: strong ? FontWeight.w900 : FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
       ),
     ),
@@ -1759,8 +1781,8 @@ class _SortieSummaryPill extends StatelessWidget {
       child: DecoratedBox(
         key: pillKey,
         decoration: BoxDecoration(
-          color: background,
-          border: Border.all(color: border),
+          color: appColor(context, background),
+          border: Border.all(color: appColor(context, border)),
           borderRadius: BorderRadius.circular(999),
         ),
         child: SizedBox(
@@ -1771,10 +1793,13 @@ class _SortieSummaryPill extends StatelessWidget {
               child: Text(
                 BattleDetailStrings.of(context).localize(label),
                 maxLines: 1,
-                style: TextStyle(
-                  color: foreground,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: foreground,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -1815,7 +1840,7 @@ class _HeavyDamageCell extends StatelessWidget {
         child: Text(
           label,
           softWrap: true,
-          style: _effectiveHeavyDamageTextStyle(context),
+          style: appTextStyle(context, _effectiveHeavyDamageTextStyle(context)),
         ),
       ),
     );
@@ -1848,12 +1873,12 @@ class _ResultCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _TextCell(
     value,
-    color: switch (value) {
+    color: appColor(context, switch (value) {
       '大成功' => const Color(0xffffc857),
       '成功' => const Color(0xff48d88a),
       '失败' => const Color(0xffff6464),
       _ => const Color(0xffd7e3e9),
-    },
+    }),
     strong: true,
   );
 }
@@ -1872,8 +1897,8 @@ class _RankCell extends StatelessWidget {
         child: DecoratedBox(
           key: Key('logbook-rank-$label'),
           decoration: BoxDecoration(
-            color: const Color(0xff2c2015),
-            border: Border.all(color: const Color(0xfff9a825)),
+            color: appColor(context, Color(0xff2c2015)),
+            border: Border.all(color: appColor(context, Color(0xfff9a825))),
             borderRadius: BorderRadius.circular(11),
           ),
           child: SizedBox(
@@ -1882,10 +1907,13 @@ class _RankCell extends StatelessWidget {
             child: Center(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Color(0xffffd700),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffffd700)),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
@@ -1903,7 +1931,10 @@ class _RetirementTypeCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _TextCell(
     value,
-    color: value == '改修' ? const Color(0xff67bce9) : const Color(0xffff6464),
+    color: appColor(
+      context,
+      value == '改修' ? const Color(0xff67bce9) : const Color(0xffff6464),
+    ),
     strong: true,
   );
 }
@@ -1979,12 +2010,15 @@ class _SortieResourceCell extends StatelessWidget {
               values[index].$2 > 0
                   ? '+${values[index].$2}'
                   : '${values[index].$2}',
-              style: TextStyle(
-                color: values[index].$2 > 0
-                    ? const Color(0xff83d5c8)
-                    : const Color(0xffff8c78),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: values[index].$2 > 0
+                      ? const Color(0xff83d5c8)
+                      : const Color(0xffff8c78),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],
@@ -2016,7 +2050,7 @@ class _SortieRewardItemsCell extends StatelessWidget {
                   return '$name ×${reward.count}';
                 })
                 .join('　'),
-      color: const Color(0xff83d5c8),
+      color: appColor(context, Color(0xff83d5c8)),
       strong: rewards.isNotEmpty,
       localize: false,
     );
@@ -2056,9 +2090,12 @@ class _RewardItemsCell extends StatelessWidget {
       items.add(
         TextSpan(
           text: 'X${reward.count}',
-          style: const TextStyle(
-            color: Color(0xff67bce9),
-            fontWeight: FontWeight.w900,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Color(0xff67bce9)),
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       );
@@ -2077,8 +2114,8 @@ class _RewardItemsCell extends StatelessWidget {
           ),
           maxLines: 1,
           overflow: TextOverflow.clip,
-          style: const TextStyle(
-            color: Color(0xffd7e3e9),
+          style: TextStyle(
+            color: appColor(context, Color(0xffd7e3e9)),
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),

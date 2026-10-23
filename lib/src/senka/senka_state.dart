@@ -1,4 +1,7 @@
 import 'senka_catalog.dart';
+import 'senka_ledger_models.dart';
+
+export 'senka_ledger_models.dart';
 
 const int currentSenkaExperienceTrackingVersion = 1;
 
@@ -144,7 +147,7 @@ class SenkaDayRecord {
   final double experience;
   final double eo;
   final double quest;
-  double get total => experience + eo + quest;
+  double get total => finiteSenkaSum([experience, eo, quest]);
 
   SenkaDayRecord add({
     double experience = 0,
@@ -165,9 +168,9 @@ class SenkaDayRecord {
   factory SenkaDayRecord.fromJson(Object? value) {
     final map = value is Map ? value : const {};
     return SenkaDayRecord(
-      experience: _double(map['experience']),
-      eo: _double(map['eo']),
-      quest: _double(map['quest']),
+      experience: _nonNegativeDouble(map['experience']),
+      eo: _nonNegativeDouble(map['eo']),
+      quest: _nonNegativeDouble(map['quest']),
     );
   }
 }
@@ -178,29 +181,41 @@ class SenkaRankingSnapshot {
     required this.senka,
     required this.capturedAt,
     required this.localSenkaAtCapture,
+    this.settlementCutoff,
   });
 
   final int rank;
   final double senka;
   final DateTime capturedAt;
   final double localSenkaAtCapture;
+  final DateTime? settlementCutoff;
 
   Map<String, Object?> toJson() => {
     'rank': rank,
     'senka': senka,
     'capturedAt': capturedAt.toIso8601String(),
     'localSenkaAtCapture': localSenkaAtCapture,
+    if (settlementCutoff != null)
+      'settlementCutoff': settlementCutoff!.toUtc().toIso8601String(),
   };
 
   factory SenkaRankingSnapshot.fromJson(Object? value) {
     final map = value is Map ? value : const {};
+    final capturedAt =
+        _parsedUtcDateTime(map['capturedAt']) ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    final cutoff = _parsedUtcDateTime(map['settlementCutoff']);
     return SenkaRankingSnapshot(
       rank: _int(map['rank']),
-      senka: _double(map['senka']),
-      capturedAt:
-          DateTime.tryParse('${map['capturedAt'] ?? ''}')?.toUtc() ??
-          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-      localSenkaAtCapture: _double(map['localSenkaAtCapture']),
+      senka: _nonNegativeDouble(map['senka']),
+      capturedAt: capturedAt,
+      localSenkaAtCapture: _nonNegativeDouble(map['localSenkaAtCapture']),
+      settlementCutoff:
+          cutoff != null &&
+              senkaSettlementPeriodStart(cutoff) == cutoff &&
+              !cutoff.isAfter(senkaRankingCutoff(capturedAt))
+          ? cutoff
+          : null,
     );
   }
 }
@@ -232,10 +247,23 @@ class SenkaState {
     this.nickname = '',
     this.magic = 0,
     this.latestExperience,
+    List<SenkaExperienceSample> experienceSamples = const [],
+    Map<String, SenkaContribution> contributions = const {},
+    Map<String, SenkaState> monthArchives = const {},
+    this.pendingSortieExperience = 0,
+    Set<String> recordedRewardKeys = const {},
+    Set<String> initializedEoMonths = const {},
+    this.eoCycleMonthKey = '',
+    Set<int> observedEoIds = const {},
+    this.latestEoEventAt,
+    this.pendingEoReward = 0,
+    this.pendingEoRewardAt,
+    List<SenkaEoReceipt> pendingEoReceipts = const [],
     this.unattributedExperienceSenka = 0,
     this.unattributedEoSenka = 0,
     this.eoTrackingInitialized = false,
     Map<String, SenkaDayRecord> days = const {},
+    Map<String, SenkaDayRecord> settlementPeriods = const {},
     Map<int, SenkaRewardStatus> eoStatuses = const {},
     Map<int, SenkaRewardStatus> questStatuses = const {},
     Set<int> recordedQuestIds = const {},
@@ -257,7 +285,15 @@ class SenkaState {
     Map<String, List<SenkaRankingSnapshot>> rankingHistory = const {},
     this.rankingUpdatedAt,
     this.updatedAt,
-  }) : days = Map.unmodifiable(Map.of(days)),
+  }) : pendingEoReceipts = List.unmodifiable(pendingEoReceipts),
+       experienceSamples = List.unmodifiable(experienceSamples),
+       contributions = Map.unmodifiable(contributions),
+       monthArchives = Map.unmodifiable(monthArchives),
+       recordedRewardKeys = Set.unmodifiable(recordedRewardKeys),
+       initializedEoMonths = Set.unmodifiable(initializedEoMonths),
+       observedEoIds = Set.unmodifiable(observedEoIds),
+       days = Map.unmodifiable(Map.of(days)),
+       settlementPeriods = Map.unmodifiable(Map.of(settlementPeriods)),
        eoStatuses = Map.unmodifiable(Map.of(eoStatuses)),
        questStatuses = Map.unmodifiable(Map.of(questStatuses)),
        recordedQuestIds = Set.unmodifiable(recordedQuestIds),
@@ -294,10 +330,27 @@ class SenkaState {
   final String nickname;
   final int magic;
   final int? latestExperience;
+  final List<SenkaExperienceSample> experienceSamples;
+  final Map<String, SenkaContribution> contributions;
+  // Detached month records include buffered rewards for the coming operation.
+  // They never contain another archive map.
+  final Map<String, SenkaState> monthArchives;
+  final int pendingSortieExperience;
+  final Set<String> recordedRewardKeys;
+  final Set<String> initializedEoMonths;
+  final String eoCycleMonthKey;
+  final Set<int> observedEoIds;
+  final DateTime? latestEoEventAt;
+  final double pendingEoReward;
+  final DateTime? pendingEoRewardAt;
+  final List<SenkaEoReceipt> pendingEoReceipts;
   final double unattributedExperienceSenka;
   final double unattributedEoSenka;
   final bool eoTrackingInitialized;
   final Map<String, SenkaDayRecord> days;
+  // Local gains grouped by their 02:00/14:00 JST accounting period. Daily
+  // records cannot separate settled gains from gains after a ranking cutoff.
+  final Map<String, SenkaDayRecord> settlementPeriods;
   final Map<int, SenkaRewardStatus> eoStatuses;
   final Map<int, SenkaRewardStatus> questStatuses;
   final Set<int> recordedQuestIds;
@@ -326,14 +379,16 @@ class SenkaState {
   Map<String, SenkaSortieStats> sortieStatsForDay(DateTime instant) =>
       sortieStatsByDay[dateKey(senkaBusinessDate(instant))] ?? const {};
 
-  double get monthExperienceSenka =>
-      unattributedExperienceSenka +
-      days.values.fold(0, (sum, record) => sum + record.experience);
+  double get monthExperienceSenka => finiteSenkaSum([
+    unattributedExperienceSenka,
+    ...days.values.map((record) => record.experience),
+  ]);
 
-  double get monthRecorded =>
-      unattributedExperienceSenka +
-      unattributedEoSenka +
-      days.values.fold(0, (sum, record) => sum + record.total);
+  double get monthRecorded => finiteSenkaSum([
+    unattributedExperienceSenka,
+    unattributedEoSenka,
+    ...days.values.map((record) => record.total),
+  ]);
 
   double get unsettledSenka {
     final playerHistory = rankingHistory['player'];
@@ -429,10 +484,24 @@ class SenkaState {
     int? magic,
     int? latestExperience,
     bool clearLatestExperience = false,
+    List<SenkaExperienceSample>? experienceSamples,
+    Map<String, SenkaContribution>? contributions,
+    Map<String, SenkaState>? monthArchives,
+    int? pendingSortieExperience,
+    Set<String>? recordedRewardKeys,
+    Set<String>? initializedEoMonths,
+    String? eoCycleMonthKey,
+    Set<int>? observedEoIds,
+    DateTime? latestEoEventAt,
+    double? pendingEoReward,
+    DateTime? pendingEoRewardAt,
+    List<SenkaEoReceipt>? pendingEoReceipts,
+    bool clearPendingEoReward = false,
     double? unattributedExperienceSenka,
     double? unattributedEoSenka,
     bool? eoTrackingInitialized,
     Map<String, SenkaDayRecord>? days,
+    Map<String, SenkaDayRecord>? settlementPeriods,
     Map<int, SenkaRewardStatus>? eoStatuses,
     Map<int, SenkaRewardStatus>? questStatuses,
     Set<int>? recordedQuestIds,
@@ -480,12 +549,32 @@ class SenkaState {
       latestExperience: clearLatestExperience
           ? null
           : latestExperience ?? this.latestExperience,
+      experienceSamples: experienceSamples ?? this.experienceSamples,
+      contributions: contributions ?? this.contributions,
+      monthArchives: monthArchives ?? this.monthArchives,
+      pendingSortieExperience:
+          pendingSortieExperience ?? this.pendingSortieExperience,
+      recordedRewardKeys: recordedRewardKeys ?? this.recordedRewardKeys,
+      initializedEoMonths: initializedEoMonths ?? this.initializedEoMonths,
+      eoCycleMonthKey: eoCycleMonthKey ?? this.eoCycleMonthKey,
+      observedEoIds: observedEoIds ?? this.observedEoIds,
+      latestEoEventAt: latestEoEventAt ?? this.latestEoEventAt,
+      pendingEoReward: clearPendingEoReward
+          ? 0
+          : pendingEoReward ?? this.pendingEoReward,
+      pendingEoRewardAt: clearPendingEoReward
+          ? null
+          : pendingEoRewardAt ?? this.pendingEoRewardAt,
+      pendingEoReceipts: clearPendingEoReward
+          ? const []
+          : pendingEoReceipts ?? this.pendingEoReceipts,
       unattributedExperienceSenka:
           unattributedExperienceSenka ?? this.unattributedExperienceSenka,
       unattributedEoSenka: unattributedEoSenka ?? this.unattributedEoSenka,
       eoTrackingInitialized:
           eoTrackingInitialized ?? this.eoTrackingInitialized,
       days: days ?? this.days,
+      settlementPeriods: settlementPeriods ?? this.settlementPeriods,
       eoStatuses: nextEoStatuses,
       questStatuses: nextQuestStatuses,
       recordedQuestIds: recordedQuestIds ?? this.recordedQuestIds,
@@ -527,10 +616,34 @@ class SenkaState {
     'nickname': nickname,
     'magic': magic,
     'latestExperience': latestExperience,
+    'experienceSamples': experienceSamples
+        .map((sample) => sample.toJson())
+        .toList(),
+    'contributions': contributions.map(
+      (key, value) => MapEntry(key, value.toJson()),
+    ),
+    'monthArchives': monthArchives.map(
+      (key, value) =>
+          MapEntry(key, value.copyWith(monthArchives: const {}).toJson()),
+    ),
+    'pendingSortieExperience': pendingSortieExperience,
+    'recordedRewardKeys': recordedRewardKeys.toList(),
+    'initializedEoMonths': initializedEoMonths.toList(),
+    'eoCycleMonthKey': eoCycleMonthKey,
+    'observedEoIds': observedEoIds.toList(),
+    'latestEoEventAt': latestEoEventAt?.toIso8601String(),
+    'pendingEoReward': pendingEoReward,
+    'pendingEoRewardAt': pendingEoRewardAt?.toIso8601String(),
+    'pendingEoReceipts': pendingEoReceipts
+        .map((receipt) => receipt.toJson())
+        .toList(),
     'unattributedExperienceSenka': unattributedExperienceSenka,
     'unattributedEoSenka': unattributedEoSenka,
     'eoTrackingInitialized': eoTrackingInitialized,
     'days': days.map((key, value) => MapEntry(key, value.toJson())),
+    'settlementPeriods': settlementPeriods.map(
+      (key, value) => MapEntry(key, value.toJson()),
+    ),
     'eoStatuses': eoStatuses.map((key, value) => MapEntry('$key', value.name)),
     'questStatuses': questStatuses.map(
       (key, value) => MapEntry('$key', value.name),
@@ -579,6 +692,7 @@ class SenkaState {
     final rawRanking = value['rankingHistory'];
     final rawSortieStats = value['sortieStats'];
     final sortieStats = _sortieStatsMap(rawSortieStats);
+    final monthArchives = _monthArchives(value['monthArchives'], monthKey);
     final sortieStatsByDay = _sortieStatsByDayMap(
       value['sortieStatsByDay'],
       monthKey,
@@ -593,9 +707,17 @@ class SenkaState {
     final hasStoredStartIdentity =
         value['lastSortieStartAt'] != null ||
         value['lastSortieStartMapKey'] != null;
+    final historicalStats = rawLastSortieStartAt == null
+        ? null
+        : monthArchives[currentSenkaMonthKey(rawLastSortieStartAt)]
+              ?.sortieStats;
+    final lifecycleStats = <String, SenkaSortieStats>{
+      ...?historicalStats,
+      ...sortieStats,
+    };
     final lastStartStats = rawLastSortieStartMapKey == null
         ? null
-        : sortieStats[rawLastSortieStartMapKey];
+        : lifecycleStats[rawLastSortieStartMapKey];
     final hasValidStartIdentity =
         rawLastSortieStartAt != null &&
         rawLastSortieStartMapKey != null &&
@@ -631,7 +753,20 @@ class SenkaState {
       magic: _int(value['magic']),
       latestExperience: value['latestExperience'] == null
           ? null
-          : _int(value['latestExperience']),
+          : _strictInt(value['latestExperience'], minimum: 0),
+      experienceSamples: _experienceSamples(value['experienceSamples']),
+      contributions: _contributions(value['contributions']),
+      monthArchives: monthArchives,
+      pendingSortieExperience:
+          _strictInt(value['pendingSortieExperience'], minimum: 0) ?? 0,
+      recordedRewardKeys: _stringSet(value['recordedRewardKeys']),
+      initializedEoMonths: _stringSet(value['initializedEoMonths']),
+      eoCycleMonthKey: '${value['eoCycleMonthKey'] ?? ''}',
+      observedEoIds: _intSet(value['observedEoIds']),
+      latestEoEventAt: _parsedUtcDateTime(value['latestEoEventAt']),
+      pendingEoReward: _nonNegativeDouble(value['pendingEoReward']),
+      pendingEoRewardAt: _parsedUtcDateTime(value['pendingEoRewardAt']),
+      pendingEoReceipts: _eoReceipts(value['pendingEoReceipts']),
       unattributedExperienceSenka: _nonNegativeDouble(
         value['unattributedExperienceSenka'],
       ),
@@ -647,10 +782,15 @@ class SenkaState {
       days: rawDays is Map
           ? {
               for (final entry in rawDays.entries)
-                '${entry.key}': SenkaDayRecord.fromJson(entry.value),
+                if (_monthDateKey(entry.key, monthKey).isNotEmpty)
+                  '${entry.key}': SenkaDayRecord.fromJson(entry.value),
             }
           : const {},
       eoStatuses: eoStatuses,
+      settlementPeriods: _settlementPeriodRecords(
+        value['settlementPeriods'],
+        monthKey,
+      ),
       questStatuses: questStatuses,
       recordedQuestIds: _intSet(value['recordedQuestIds']),
       quarterlyQuestCycleKey: '${value['quarterlyQuestCycleKey'] ?? ''}'.isEmpty
@@ -659,8 +799,10 @@ class SenkaState {
       annualQuestCycleKey: '${value['annualQuestCycleKey'] ?? ''}'.isEmpty
           ? null
           : '${value['annualQuestCycleKey']}',
-      targetSenka: _double(value['targetSenka']),
-      calculatorCurrentSenka: _double(value['calculatorCurrentSenka']),
+      targetSenka: _nonNegativeDouble(value['targetSenka']),
+      calculatorCurrentSenka: _nonNegativeDouble(
+        value['calculatorCurrentSenka'],
+      ),
       calculatorLocalSenkaAtSet: value['calculatorLocalSenkaAtSet'] == null
           ? null
           : _nonNegativeDouble(value['calculatorLocalSenkaAtSet']),
@@ -672,7 +814,7 @@ class SenkaState {
       sortieStatsByDay: sortieStatsByDay,
       activeSortie: _activeSortie(
         value['activeSortie'],
-        sortieStats,
+        lifecycleStats,
         validLatestSortieEventAt,
         hasValidStartIdentity ? rawLastSortieStartAt : null,
         hasValidStartIdentity ? rawLastSortieStartMapKey : null,
@@ -736,6 +878,10 @@ SenkaState migrateSenkaExperienceTracking(SenkaState state) {
       for (final entry in state.days.entries)
         entry.key: SenkaDayRecord(eo: entry.value.eo, quest: entry.value.quest),
     },
+    settlementPeriods: {
+      for (final entry in state.settlementPeriods.entries)
+        entry.key: SenkaDayRecord(eo: entry.value.eo, quest: entry.value.quest),
+    },
   );
 }
 
@@ -746,11 +892,40 @@ SenkaState migrateSenkaStateToMonth(SenkaState state, String monthKey) {
   if (previous != null && _compareSenkaMonths(next, previous) <= 0) {
     return state;
   }
-  return SenkaState.forMonth(monthKey).copyWith(
+  final archives = Map<String, SenkaState>.of(state.monthArchives);
+  final incoming = archives.remove(monthKey) ?? SenkaState.forMonth(monthKey);
+  archives[state.monthKey] = detachedSenkaMonth(state);
+  return incoming.copyWith(
+    experienceTrackingVersion: state.experienceTrackingVersion,
     serverOrigin: state.serverOrigin,
     memberId: state.memberId,
     nickname: state.nickname,
     magic: state.magic,
+    latestExperience: state.latestExperience,
+    experienceSamples: state.experienceSamples,
+    contributions: state.contributions,
+    monthArchives: archives,
+    pendingSortieExperience: state.pendingSortieExperience,
+    recordedRewardKeys: state.recordedRewardKeys,
+    initializedEoMonths: {
+      ...state.initializedEoMonths,
+      if (state.eoTrackingInitialized)
+        state.eoCycleMonthKey.isEmpty ? state.monthKey : state.eoCycleMonthKey,
+    },
+    eoCycleMonthKey: state.eoCycleMonthKey.isEmpty
+        ? state.monthKey
+        : state.eoCycleMonthKey,
+    observedEoIds: state.observedEoIds.isEmpty && state.eoCycleMonthKey.isEmpty
+        ? state.completedEoIds
+        : state.observedEoIds,
+    latestEoEventAt: state.latestEoEventAt,
+    pendingEoReward: state.pendingEoReward,
+    pendingEoRewardAt: state.pendingEoRewardAt,
+    pendingEoReceipts: state.pendingEoReceipts,
+    activeSortie: state.activeSortie,
+    latestSortieEventAt: state.latestSortieEventAt,
+    lastSortieStartAt: state.lastSortieStartAt,
+    lastSortieStartMapKey: state.lastSortieStartMapKey,
     questStatuses: state.questStatuses,
     recordedQuestIds: state.recordedQuestIds,
     quarterlyQuestCycleKey: state.quarterlyQuestCycleKey,
@@ -760,10 +935,23 @@ SenkaState migrateSenkaStateToMonth(SenkaState state, String monthKey) {
   );
 }
 
+SenkaState detachedSenkaMonth(SenkaState state) => state.copyWith(
+  monthArchives: const {},
+  experienceSamples: const [],
+  contributions: const {},
+);
+
 SenkaState migrateSenkaRewardCycles(SenkaState state, DateTime instant) {
   final questMonthKey = currentQuestMonthKey(instant);
-  final quarterlyKey = senkaQuarterlyCycleKey(questMonthKey) ?? '';
-  final annualKey = senkaAnnualCycleKey(questMonthKey) ?? '';
+  final candidateQuarter = senkaQuarterlyCycleKey(questMonthKey) ?? '';
+  final candidateAnnual = senkaAnnualCycleKey(questMonthKey) ?? '';
+  final quarterlyKey =
+      candidateQuarter.compareTo(state.quarterlyQuestCycleKey) > 0
+      ? candidateQuarter
+      : state.quarterlyQuestCycleKey;
+  final annualKey = candidateAnnual.compareTo(state.annualQuestCycleKey) > 0
+      ? candidateAnnual
+      : state.annualQuestCycleKey;
   if (state.quarterlyQuestCycleKey == quarterlyKey &&
       state.annualQuestCycleKey == annualKey) {
     return state;
@@ -782,9 +970,19 @@ SenkaState migrateSenkaRewardCycles(SenkaState state, DateTime instant) {
     if (keep) statuses[entry.key] = entry.value;
   }
   final recordedQuestIds = <int>{};
+  final rewardKeys = Set<String>.of(state.recordedRewardKeys);
   for (final id in state.recordedQuestIds) {
     final item = senkaQuestById(id);
     if (item == null) continue;
+    final previousCycle = switch (item.category) {
+      SenkaRewardCategory.quarterly => state.quarterlyQuestCycleKey,
+      SenkaRewardCategory.annual => state.annualQuestCycleKey,
+      SenkaRewardCategory.oneTime => 'once',
+      SenkaRewardCategory.eo => '',
+    };
+    if (previousCycle.isNotEmpty) {
+      rewardKeys.add('quest:${item.category.name}:$previousCycle:$id');
+    }
     final keep = switch (item.category) {
       SenkaRewardCategory.eo => false,
       SenkaRewardCategory.quarterly =>
@@ -797,6 +995,7 @@ SenkaState migrateSenkaRewardCycles(SenkaState state, DateTime instant) {
   return state.copyWith(
     questStatuses: statuses,
     recordedQuestIds: recordedQuestIds,
+    recordedRewardKeys: rewardKeys,
     quarterlyQuestCycleKey: quarterlyKey,
     annualQuestCycleKey: annualKey,
   );
@@ -870,14 +1069,68 @@ SenkaActiveSortie? _activeSortie(
 
 DateTime toJst(DateTime value) => value.toUtc().add(const Duration(hours: 9));
 
+double boundedSenkaValue(double value) =>
+    value.isNaN || value <= 0 ? 0 : value.clamp(0.0, double.maxFinite);
+
+double finiteSenkaSum(Iterable<double> values) {
+  var sum = 0.0;
+  for (final value in values) {
+    sum = boundedSenkaValue(sum + boundedSenkaValue(value));
+  }
+  return sum;
+}
+
 DateTime senkaBusinessDate(DateTime value) =>
     toJst(value).subtract(const Duration(hours: 2));
+
+DateTime senkaSettlementPeriodStart(DateTime instant) {
+  final jst = toJst(instant);
+  final hour = jst.hour >= 14 ? 14 : (jst.hour >= 2 ? 2 : -10);
+  return DateTime.utc(
+    jst.year,
+    jst.month,
+    jst.day,
+    hour,
+  ).subtract(const Duration(hours: 9));
+}
+
+// Rankings published at 03:00/15:00 JST cover gains before 02:00/14:00.
+DateTime senkaRankingCutoff(DateTime instant) =>
+    senkaSettlementPeriodStart(instant.subtract(const Duration(hours: 1)));
+
+Map<String, SenkaDayRecord> _settlementPeriodRecords(
+  Object? value,
+  String monthKey,
+) {
+  if (value is! Map) return const {};
+  final result = <String, SenkaDayRecord>{};
+  for (final entry in value.entries) {
+    final start = DateTime.tryParse('${entry.key}')?.toUtc();
+    if (start == null ||
+        senkaSettlementPeriodStart(start) != start ||
+        !_periodCanBelongToMonth(start, monthKey) ||
+        entry.value is! Map) {
+      continue;
+    }
+    final record = entry.value as Map;
+    result[start.toIso8601String()] = SenkaDayRecord(
+      experience: _nonNegativeDouble(record['experience']),
+      eo: _nonNegativeDouble(record['eo']),
+      quest: _nonNegativeDouble(record['quest']),
+    );
+  }
+  return result;
+}
 
 DateTime questBusinessDate(DateTime value) =>
     toJst(value).subtract(const Duration(hours: 5));
 
 String currentSenkaMonthKey([DateTime? now]) {
-  final date = senkaBusinessDate(now ?? DateTime.now().toUtc());
+  final jst = toJst(now ?? DateTime.now().toUtc());
+  final lastDay = DateTime.utc(jst.year, jst.month + 1, 0).day;
+  final date = jst.day == lastDay && jst.hour >= 22
+      ? DateTime.utc(jst.year, jst.month + 1)
+      : jst;
   return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}';
 }
 
@@ -889,8 +1142,9 @@ String currentQuestMonthKey([DateTime? now]) {
 String dateKey(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
-int _int(Object? value) =>
-    value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+int _int(Object? value) => value is num
+    ? (value.isFinite ? value.toInt() : 0)
+    : int.tryParse('$value') ?? 0;
 
 double _double(Object? value) =>
     value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
@@ -898,6 +1152,110 @@ double _double(Object? value) =>
 double _nonNegativeDouble(Object? value) {
   final parsed = _double(value);
   return parsed.isFinite && parsed > 0 ? parsed : 0;
+}
+
+bool _periodCanBelongToMonth(DateTime at, String monthKey) {
+  final month = parseSenkaMonthKey(monthKey)!;
+  // Quest carryover begins on the previous month's final day at 14:00 JST.
+  final start = DateTime.utc(
+    month.year,
+    month.month,
+    0,
+    14,
+  ).subtract(const Duration(hours: 9));
+  final end = DateTime.utc(
+    month.year,
+    month.month + 1,
+  ).subtract(const Duration(hours: 9));
+  return !at.isBefore(start) && at.isBefore(end);
+}
+
+Set<String> _stringSet(Object? value) => value is List
+    ? value.whereType<String>().where((key) => key.isNotEmpty).toSet()
+    : <String>{};
+
+List<SenkaExperienceSample> _experienceSamples(Object? value) {
+  if (value is! List) return const [];
+  final byIdentity = <String, SenkaExperienceSample>{};
+  for (final item in value) {
+    if (item is! Map) continue;
+    final at = _parsedUtcDateTime(item['at']);
+    final experience = _strictInt(item['experience'], minimum: 0);
+    if (at == null || experience == null || experience > 554400000) continue;
+    final sequence = _strictInt(item['sequence'], minimum: 0) ?? 0;
+    final held = _strictInt(item['heldAtAnchor'], minimum: 0) ?? 0;
+    byIdentity['${at.microsecondsSinceEpoch}:$sequence'] =
+        SenkaExperienceSample(
+          at: at,
+          experience: experience,
+          sortieResult: item['sortieResult'] == true,
+          returnedToPort: item['returnedToPort'] == true,
+          sequence: sequence,
+          heldAtAnchor: held <= experience ? held : 0,
+        );
+  }
+  final samples = byIdentity.values.toList()
+    ..sort((left, right) {
+      final time = left.at.compareTo(right.at);
+      return time != 0 ? time : left.sequence.compareTo(right.sequence);
+    });
+  final result = <SenkaExperienceSample>[];
+  for (final sample in samples) {
+    if (result.isEmpty || sample.experience >= result.last.experience) {
+      result.add(sample);
+    }
+  }
+  return result;
+}
+
+Map<String, SenkaContribution> _contributions(Object? value) {
+  if (value is! Map) return const {};
+  final result = <String, SenkaContribution>{};
+  for (final entry in value.entries) {
+    final item = entry.value;
+    if (item is! Map) continue;
+    final at = _parsedUtcDateTime(item['at']);
+    final monthKey = '${item['monthKey'] ?? ''}';
+    if (at == null || parseSenkaMonthKey(monthKey) == null) continue;
+    result['${entry.key}'] = SenkaContribution(
+      at: at,
+      monthKey: monthKey,
+      experience: _nonNegativeDouble(item['experience']),
+    );
+  }
+  return result;
+}
+
+List<SenkaEoReceipt> _eoReceipts(Object? value) {
+  if (value is! List) return const [];
+  final result = <SenkaEoReceipt>[];
+  for (final item in value) {
+    if (item is! Map) continue;
+    final at = _parsedUtcDateTime(item['at']);
+    final amount = _nonNegativeDouble(item['amount']);
+    if (at != null && amount > 0) {
+      result.add(SenkaEoReceipt(at: at, amount: amount));
+    }
+  }
+  return result;
+}
+
+Map<String, SenkaState> _monthArchives(Object? value, String activeMonth) {
+  if (value is! Map) return const {};
+  final result = <String, SenkaState>{};
+  for (final entry in value.entries) {
+    final key = '${entry.key}';
+    if (key == activeMonth ||
+        parseSenkaMonthKey(key) == null ||
+        entry.value is! Map) {
+      continue;
+    }
+    final raw = Map<Object?, Object?>.of(entry.value as Map)
+      ..['monthKey'] = key
+      ..remove('monthArchives');
+    result[key] = SenkaState.fromJson(raw);
+  }
+  return result;
 }
 
 DateTime _storedDateTime(Object? value) =>

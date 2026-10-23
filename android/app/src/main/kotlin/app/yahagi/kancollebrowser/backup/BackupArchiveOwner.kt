@@ -24,8 +24,11 @@ internal object BackupArchiveOwner {
     fun memberId(bytes: ByteArray): Int? = runCatching {
         require(bytes.size <= MAX_ARCHIVE_BYTES) { "Backup is too large" }
         val envelope = JSONObject(bytes.toString(Charsets.UTF_8))
+        val version = envelope.opt("version")
         require(envelope.optString("format") == "yahagi-record-backup" &&
-            envelope.optInt("version") == 1) { "Unsupported backup format" }
+            version is Number && version.toDouble() in listOf(1.0, 2.0)) {
+            "Unsupported backup format"
+        }
         val compressed = Base64.decode(envelope.getString("payload"), Base64.DEFAULT)
         val digest = MessageDigest.getInstance("SHA-256").digest(compressed)
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }

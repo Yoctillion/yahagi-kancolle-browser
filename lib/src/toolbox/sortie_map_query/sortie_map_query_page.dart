@@ -1,3 +1,4 @@
+import '../../theme/app_palette.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -160,7 +161,7 @@ class _SortieMapQueryPageState extends State<SortieMapQueryPage> {
 
     final strings = SortieMapQueryStrings.of(context);
     return ColoredBox(
-      color: const Color(0xff091923),
+      color: appColor(context, const Color(0xff091923)),
       child: FutureBuilder<SortieMapCatalogData>(
         future: _catalogFuture,
         builder: (context, snapshot) {
@@ -557,10 +558,10 @@ class _OverviewPanel extends StatelessWidget {
                         key: const Key('sortie-map-selector'),
                         initialValue: map.id,
                         isExpanded: true,
-                        dropdownColor: const Color(0xff102a39),
-                        iconEnabledColor: const Color(0xffffc85a),
-                        style: const TextStyle(
-                          color: Color(0xffeef6f8),
+                        dropdownColor: appColor(context, Color(0xff102a39)),
+                        iconEnabledColor: appColor(context, Color(0xffffc85a)),
+                        style: TextStyle(
+                          color: appColor(context, Color(0xffeef6f8)),
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -570,10 +571,17 @@ class _OverviewPanel extends StatelessWidget {
                             horizontal: 10,
                             vertical: 11,
                           ),
-                          enabledBorder: _selectorBorder,
+                          enabledBorder: _selectorBorder.copyWith(
+                            borderSide: _selectorBorder.borderSide.copyWith(
+                              color: appColor(
+                                context,
+                                _selectorBorder.borderSide.color,
+                              ),
+                            ),
+                          ),
                           focusedBorder: _selectorBorder.copyWith(
-                            borderSide: const BorderSide(
-                              color: Color(0xffd8aa4d),
+                            borderSide: BorderSide(
+                              color: appColor(context, Color(0xffd8aa4d)),
                             ),
                           ),
                         ),
@@ -607,7 +615,7 @@ class _OverviewPanel extends StatelessWidget {
                       key: const Key('sortie-map-cover'),
                       borderRadius: BorderRadius.circular(6),
                       child: ColoredBox(
-                        color: const Color(0xff07131b),
+                        color: appColor(context, Color(0xff07131b)),
                         child: _AssetImage(
                           asset: map.coverAsset,
                           file: resolveCachedImage?.call(map.coverAsset),
@@ -628,20 +636,26 @@ class _OverviewPanel extends StatelessWidget {
                         key: const Key('sortie-map-identity'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xffffdc88),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xffffdc88)),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 5),
                       Text(
                         '${strings.difficulty}：${'★' * map.difficulty}',
                         key: const Key('sortie-map-difficulty'),
-                        style: const TextStyle(
-                          color: Color(0xffffdc88),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xffffdc88)),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],
@@ -665,10 +679,10 @@ class _OverviewPanel extends StatelessWidget {
             key: const Key('sortie-map-selector'),
             initialValue: map.id,
             isExpanded: true,
-            dropdownColor: const Color(0xff102a39),
-            iconEnabledColor: const Color(0xffffc85a),
+            dropdownColor: appColor(context, Color(0xff102a39)),
+            iconEnabledColor: appColor(context, Color(0xffffc85a)),
             style: TextStyle(
-              color: const Color(0xffeef6f8),
+              color: appColor(context, Color(0xffeef6f8)),
               fontSize: compact ? 11 : 13,
               fontWeight: FontWeight.w700,
             ),
@@ -678,9 +692,15 @@ class _OverviewPanel extends StatelessWidget {
                 horizontal: compact ? 8 : 10,
                 vertical: compact ? 9 : 11,
               ),
-              enabledBorder: _selectorBorder,
+              enabledBorder: _selectorBorder.copyWith(
+                borderSide: _selectorBorder.borderSide.copyWith(
+                  color: appColor(context, _selectorBorder.borderSide.color),
+                ),
+              ),
               focusedBorder: _selectorBorder.copyWith(
-                borderSide: const BorderSide(color: Color(0xffd8aa4d)),
+                borderSide: BorderSide(
+                  color: appColor(context, Color(0xffd8aa4d)),
+                ),
               ),
             ),
             items: [
@@ -706,7 +726,7 @@ class _OverviewPanel extends StatelessWidget {
               key: const Key('sortie-map-cover'),
               borderRadius: BorderRadius.circular(6),
               child: ColoredBox(
-                color: const Color(0xff07131b),
+                color: appColor(context, Color(0xff07131b)),
                 child: _AssetImage(
                   asset: map.coverAsset,
                   file: resolveCachedImage?.call(map.coverAsset),
@@ -719,20 +739,26 @@ class _OverviewPanel extends StatelessWidget {
           Text(
             '${map.id} ${map.nameJa}',
             key: const Key('sortie-map-identity'),
-            style: TextStyle(
-              color: const Color(0xffffdc88),
-              fontSize: compact ? 14 : 18,
-              fontWeight: FontWeight.w900,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: const Color(0xffffdc88),
+                fontSize: compact ? 14 : 18,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
           const SizedBox(height: 5),
           Text(
             '${strings.difficulty}：${'★' * map.difficulty}',
             key: const Key('sortie-map-difficulty'),
-            style: TextStyle(
-              color: const Color(0xffffdc88),
-              fontSize: compact ? 14 : 17,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: const Color(0xffffdc88),
+                fontSize: compact ? 14 : 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -796,8 +822,8 @@ class _RoutePanel extends StatelessWidget {
                     aspectRatio: map.mapAspectRatio,
                     child: PhysicalModel(
                       key: const Key('sortie-map-route-surface'),
-                      color: const Color(0xff07131b),
-                      shadowColor: const Color(0xff000000),
+                      color: appColor(context, Color(0xff07131b)),
+                      shadowColor: appColor(context, Color(0xff000000)),
                       elevation: 5,
                       borderRadius: BorderRadius.circular(6),
                       clipBehavior: Clip.antiAlias,
@@ -817,7 +843,10 @@ class _RoutePanel extends StatelessWidget {
                   if (map.nodes.isEmpty)
                     Text(
                       strings.noNodes,
-                      style: const TextStyle(color: Color(0xff8fa5b2)),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(color: appColor(context, Color(0xff8fa5b2))),
+                      ),
                     )
                   else
                     SingleChildScrollView(
@@ -900,7 +929,10 @@ class _NodeDetailPanel extends StatelessWidget {
         child: node == null
             ? Text(
                 strings.noNodes,
-                style: const TextStyle(color: Color(0xff8fa5b2)),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, Color(0xff8fa5b2))),
+                ),
               )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -916,10 +948,13 @@ class _NodeDetailPanel extends StatelessWidget {
                           fleetName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: const Color(0xffeef6f8),
-                            fontSize: compact ? 13 : 16,
-                            fontWeight: FontWeight.w800,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: const Color(0xffeef6f8),
+                              fontSize: compact ? 13 : 16,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       _NodeTypeBadge(
@@ -950,7 +985,10 @@ class _NodeDetailPanel extends StatelessWidget {
                   if (formationCards.isEmpty)
                     Text(
                       strings.noEnemy,
-                      style: const TextStyle(color: Color(0xff8fa5b2)),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(color: appColor(context, Color(0xff8fa5b2))),
+                      ),
                     )
                   else if (multiColumn)
                     LayoutBuilder(
@@ -1059,7 +1097,10 @@ class _ResourceRewardText extends StatelessWidget {
     return RichText(
       key: const Key('sortie-map-resource-reward'),
       text: TextSpan(
-        style: const TextStyle(color: Color(0xffdbe9ee), fontSize: 12),
+        style: appTextStyle(
+          context,
+          TextStyle(color: appColor(context, Color(0xffdbe9ee)), fontSize: 12),
+        ),
         children: spans,
       ),
     );
@@ -1188,8 +1229,8 @@ class _FormationCard extends StatelessWidget {
     final note = strings.sourceDetail(_visibleFormationNote(formation.note));
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xff0b1d28),
-        border: Border.all(color: const Color(0xff284858)),
+        color: appColor(context, const Color(0xff0b1d28)),
+        border: Border.all(color: appColor(context, const Color(0xff284858))),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
@@ -1225,7 +1266,13 @@ class _FormationCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 note,
-                style: const TextStyle(color: Color(0xff8098a4), fontSize: 10),
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xff8098a4)),
+                    fontSize: 10,
+                  ),
+                ),
               ),
             ],
           ],
@@ -1297,7 +1344,7 @@ class _EnemyFleetGrid extends StatelessWidget {
                 'sortie-map-enemy-divider-$formationVariant-$groupIndex-$start',
               ),
               height: 1,
-              color: const Color(0x263f6374),
+              color: appColor(context, const Color(0x263f6374)),
             ),
         ],
       ],
@@ -1330,7 +1377,7 @@ class _EnemyShipTile extends StatelessWidget {
   Widget build(BuildContext context) => Tooltip(
     message: label,
     child: Material(
-      color: Colors.transparent,
+      color: appColor(context, Colors.transparent),
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
         onTap: () => showSortieEnemyDetails(
@@ -1360,9 +1407,12 @@ class _EnemyShipTile extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: const Color(0xffeef6f8),
-                    fontSize: compact ? 10.5 : 12,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: const Color(0xffeef6f8),
+                      fontSize: compact ? 10.5 : 12,
+                    ),
                   ),
                 ),
               ),
@@ -1401,14 +1451,18 @@ class _NodeButton extends StatelessWidget {
             dimension: 32,
             child: Material(
               key: Key('sortie-map-node-visual-${node.point}'),
-              color: selected
-                  ? const Color(0xff8a6628)
-                  : const Color(0xff132d3b),
+              color: appColor(
+                context,
+                selected ? const Color(0xff8a6628) : const Color(0xff132d3b),
+              ),
               shape: CircleBorder(
                 side: BorderSide(
-                  color: selected
-                      ? const Color(0xff8a6628)
-                      : const Color(0xff3b5c6c),
+                  color: appColor(
+                    context,
+                    selected
+                        ? const Color(0xff8a6628)
+                        : const Color(0xff3b5c6c),
+                  ),
                 ),
               ),
               child: InkWell(
@@ -1425,21 +1479,27 @@ class _NodeButton extends StatelessWidget {
                         if (node.isBoss) ...[
                           Icon(
                             Icons.flag,
-                            color: selected
-                                ? const Color(0xffffdc88)
-                                : const Color(0xffdce9ee),
+                            color: appColor(
+                              context,
+                              selected
+                                  ? const Color(0xffffdc88)
+                                  : const Color(0xffdce9ee),
+                            ),
                             size: 11,
                           ),
                           const SizedBox(width: 1),
                         ],
                         Text(
                           node.point,
-                          style: TextStyle(
-                            color: selected
-                                ? const Color(0xffffdc88)
-                                : const Color(0xffdce9ee),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: selected
+                                  ? const Color(0xffffdc88)
+                                  : const Color(0xffdce9ee),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
@@ -1463,8 +1523,8 @@ class _Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      color: const Color(0xff102431),
-      border: Border.all(color: const Color(0xff294657)),
+      color: appColor(context, Color(0xff102431)),
+      border: Border.all(color: appColor(context, Color(0xff294657))),
       borderRadius: BorderRadius.circular(9),
     ),
     child: child,
@@ -1482,11 +1542,14 @@ class _PanelHeading extends StatelessWidget {
     label,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
-    style: TextStyle(
-      color: const Color(0xffeef6f8),
-      fontSize: compact ? 13 : 16,
-      fontWeight: FontWeight.w800,
-      height: 1,
+    style: appTextStyle(
+      context,
+      TextStyle(
+        color: const Color(0xffeef6f8),
+        fontSize: compact ? 13 : 16,
+        fontWeight: FontWeight.w800,
+        height: 1,
+      ),
     ),
   );
 }
@@ -1502,10 +1565,13 @@ class _AttributionFooter extends StatelessWidget {
       strings.attribution,
       key: const Key('sortie-map-attribution'),
       textAlign: TextAlign.center,
-      style: const TextStyle(
-        color: Color(0xff718b98),
-        fontSize: 10,
-        fontWeight: FontWeight.w600,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xff718b98)),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     ),
   );
@@ -1520,10 +1586,13 @@ class _FleetHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     label,
-    style: TextStyle(
-      color: const Color(0xffeef6f8),
-      fontSize: compact ? 11 : 13,
-      fontWeight: FontWeight.w800,
+    style: appTextStyle(
+      context,
+      TextStyle(
+        color: const Color(0xffeef6f8),
+        fontSize: compact ? 11 : 13,
+        fontWeight: FontWeight.w800,
+      ),
     ),
   );
 }
@@ -1557,15 +1626,18 @@ class _NodeTypeBadge extends StatelessWidget {
       key: badgeKey,
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: background,
+        color: appColor(context, background),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: foreground,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -1592,12 +1664,12 @@ class _AssetImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget errorBuilder(context, error, stackTrace) => const ColoredBox(
-      color: Color(0xff0a1a24),
+    Widget errorBuilder(context, error, stackTrace) => ColoredBox(
+      color: appColor(context, Color(0xff0a1a24)),
       child: Center(
         child: Icon(
           Icons.image_not_supported_outlined,
-          color: Color(0xff537383),
+          color: appColor(context, Color(0xff537383)),
         ),
       ),
     );
@@ -1634,9 +1706,15 @@ class _CenteredStatus extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: const Color(0xff6e8b99), size: 30),
+        Icon(icon, color: appColor(context, Color(0xff6e8b99)), size: 30),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: Color(0xff9bb0ba))),
+        Text(
+          label,
+          style: appTextStyle(
+            context,
+            TextStyle(color: appColor(context, Color(0xff9bb0ba))),
+          ),
+        ),
         if (actionLabel != null && onAction != null) ...[
           const SizedBox(height: 10),
           OutlinedButton.icon(

@@ -30,15 +30,27 @@ internal class OrderedCaptureEventDispatcher(
     private val generation = AtomicLong(0)
     private val closed = AtomicBoolean(false)
 
-    fun submit(message: String, sourceOrigin: String) {
-        enqueue { validator.validate(message, sourceOrigin) }
+    /** Capture once when installing a listener so late callbacks retain their old generation. */
+    val currentGeneration: Long
+        get() = generation.get()
+
+    fun submit(
+        message: String,
+        sourceOrigin: String,
+        submittedGeneration: Long = currentGeneration,
+    ) {
+        enqueue(submittedGeneration) { validator.validate(message, sourceOrigin) }
     }
 
-    fun submit(message: ByteArray, sourceOrigin: String) {
+    fun submit(
+        message: ByteArray,
+        sourceOrigin: String,
+        submittedGeneration: Long = currentGeneration,
+    ) {
         // WebMessageCompat owns the incoming buffer. Keep worker lifetime
         // independent from the callback by taking one immutable snapshot.
         val snapshot = message.copyOf()
-        enqueue { validator.validate(snapshot, sourceOrigin) }
+        enqueue(submittedGeneration) { validator.validate(snapshot, sourceOrigin) }
     }
 
     fun invalidatePending() {
@@ -51,9 +63,8 @@ internal class OrderedCaptureEventDispatcher(
         ownedWorker?.shutdownNow()
     }
 
-    private fun enqueue(validate: () -> Map<String, Any?>?) {
-        if (closed.get()) return
-        val submittedGeneration = generation.get()
+    private fun enqueue(submittedGeneration: Long, validate: () -> Map<String, Any?>?) {
+        if (!isCurrent(submittedGeneration)) return
         try {
             worker.execute {
                 if (!isCurrent(submittedGeneration)) return@execute

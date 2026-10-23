@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 const _prophetHpThresholds = <double>[0.25, 0.50, 0.75];
@@ -30,8 +31,8 @@ class ProphetHpBar extends StatelessWidget {
               LinearProgressIndicator(
                 minHeight: height,
                 value: ratio,
-                color: color,
-                backgroundColor: backgroundColor,
+                color: appColor(context, color),
+                backgroundColor: appColor(context, backgroundColor),
               ),
               ClipRect(
                 clipper: _ProphetHpFillClipper(ratio),
@@ -50,8 +51,11 @@ class ProphetHpBar extends StatelessWidget {
                             0.0,
                             constraints.maxHeight,
                           ),
-                          child: const ColoredBox(
-                            color: Color.fromRGBO(2, 11, 16, 0.78),
+                          child: ColoredBox(
+                            color: appColor(
+                              context,
+                              Color.fromRGBO(2, 11, 16, 0.78),
+                            ),
                           ),
                         ),
                   ],

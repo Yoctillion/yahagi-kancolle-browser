@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'fleet_ui_strings.dart';
 
@@ -221,7 +222,7 @@ class _ShipHpFrameState extends State<ShipHpFrame>
     Widget coloredFrame({double glowRadius = 1}) => CustomPaint(
       painter: _ShipHpFramePainter(
         ratio: widget.ratio,
-        color: spec.color,
+        color: appColor(context, spec.color),
         glowRadius: glowRadius,
         strokeWidth: effectiveStrokeWidth,
       ),
@@ -233,7 +234,7 @@ class _ShipHpFrameState extends State<ShipHpFrame>
           CustomPaint(
             painter: _ShipHpFramePainter(
               ratio: 1,
-              color: const Color(0xff59666e),
+              color: appColor(context, Color(0xff59666e)),
               strokeWidth: widget.strokeWidth,
             ),
           ),
@@ -257,7 +258,7 @@ class _ShipHpFrameState extends State<ShipHpFrame>
                       Opacity(
                         key: Key('fleet-damage-tint-${widget.shipId}'),
                         opacity: tintOpacity,
-                        child: ColoredBox(color: spec.color),
+                        child: ColoredBox(color: appColor(context, spec.color)),
                       ),
                     Opacity(
                       key: Key('fleet-damage-pulse-${widget.shipId}'),
@@ -360,18 +361,24 @@ class FatigueFace extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color,
+        color: appColor(context, color),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xfff6ead1), width: 1.5),
+        border: Border.all(
+          color: appColor(context, Color(0xfff6ead1)),
+          width: 1.5,
+        ),
         boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 5),
+          BoxShadow(
+            color: appColor(context, color.withValues(alpha: 0.45)),
+            blurRadius: 5,
+          ),
         ],
       ),
       child: Icon(
         danger
             ? Icons.sentiment_very_dissatisfied_rounded
             : Icons.sentiment_dissatisfied_rounded,
-        color: const Color(0xff3a2a20),
+        color: appColor(context, Color(0xff3a2a20)),
         size: size * 0.79,
       ),
     );
@@ -439,21 +446,30 @@ class ShipMoraleMark extends StatelessWidget {
                         (isDetail ? badgeHeight : repairBadgeHeight) * 0.34,
                   ),
                   decoration: BoxDecoration(
-                    color: repairLabel == '退避'
-                        ? const Color(0xdd1e293b)
-                        : (repairLabel == '刷闪'
-                              ? const Color(0xdd0b2a1a)
-                              : const Color(0xdd0b2738)),
+                    color: appColor(
+                      context,
+                      repairLabel == '退避'
+                          ? const Color(0xdd1e293b)
+                          : (repairLabel == '刷闪'
+                                ? const Color(0xdd0b2a1a)
+                                : const Color(0xdd0b2738)),
+                    ),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
-                      color: repairLabel == '退避'
-                          ? const Color(0xff64748b)
-                          : (repairLabel == '刷闪'
-                                ? const Color(0xc965d493)
-                                : const Color(0xc963c7ee)),
+                      color: appColor(
+                        context,
+                        repairLabel == '退避'
+                            ? const Color(0xff64748b)
+                            : (repairLabel == '刷闪'
+                                  ? const Color(0xc965d493)
+                                  : const Color(0xc963c7ee)),
+                      ),
                     ),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x99000000), blurRadius: 4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appColor(context, Color(0x99000000)),
+                        blurRadius: 4,
+                      ),
                     ],
                   ),
                   child: FittedBox(
@@ -461,14 +477,17 @@ class ShipMoraleMark extends StatelessWidget {
                     child: Text(
                       fleetText(context, repairLabel!),
                       maxLines: 1,
-                      style: TextStyle(
-                        color: repairLabel == '退避'
-                            ? const Color(0xffcbd5e1)
-                            : (repairLabel == '刷闪'
-                                  ? const Color(0xff65d493)
-                                  : const Color(0xff8edcff)),
-                        fontSize: badgeFont,
-                        fontWeight: FontWeight.w900,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: repairLabel == '退避'
+                              ? const Color(0xffcbd5e1)
+                              : (repairLabel == '刷闪'
+                                    ? const Color(0xff65d493)
+                                    : const Color(0xff8edcff)),
+                          fontSize: badgeFont,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ),
@@ -484,13 +503,19 @@ class ShipMoraleMark extends StatelessWidget {
                   width: badgeWidth,
                   padding: EdgeInsets.symmetric(horizontal: badgeHeight * 0.34),
                   decoration: BoxDecoration(
-                    color: const Color(0xdd07131d),
+                    color: appColor(context, Color(0xdd07131d)),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
-                      color: shipFatigueColor(value).withValues(alpha: 0.78),
+                      color: appColor(
+                        context,
+                        shipFatigueColor(value).withValues(alpha: 0.78),
+                      ),
                     ),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x99000000), blurRadius: 4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appColor(context, Color(0x99000000)),
+                        blurRadius: 4,
+                      ),
                     ],
                   ),
                   child: FittedBox(
@@ -500,18 +525,24 @@ class ShipMoraleMark extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: fleetText(context, '疲劳 '),
-                            style: TextStyle(
-                              color: shipFatigueColor(value),
-                              fontSize: badgeFont,
-                              fontWeight: FontWeight.w700,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: shipFatigueColor(value),
+                                fontSize: badgeFont,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                           TextSpan(
                             text: '$value',
-                            style: TextStyle(
-                              color: shipFatigueColor(value),
-                              fontSize: badgeFont + 1,
-                              fontWeight: FontWeight.w900,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: shipFatigueColor(value),
+                                fontSize: badgeFont + 1,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ],
@@ -614,6 +645,7 @@ class _ShipSparkleLayer extends StatelessWidget {
   Widget _starIcon(int index) => Icon(
     index.isEven ? Icons.auto_awesome_rounded : Icons.star_rounded,
     size: points[index].size,
+    // These lights overlay ship artwork rather than a themed UI surface.
     color: const Color(0xfffff7a4),
     shadows: const [
       Shadow(color: Colors.white, blurRadius: 3),

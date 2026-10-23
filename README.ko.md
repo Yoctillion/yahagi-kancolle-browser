@@ -195,6 +195,8 @@ DMM 접속 외에도 실험적인 OOI 서드파티 접속 경로를 제공합니
 
 사용 경험, 호환성 문제 및 기능 제안을 환영합니다.
 
+저는 중국어, 영어, 일본어로 소통할 수 있습니다. 이 세 언어 중 편한 언어로 연락해 주세요.
+
 - **QQ 그룹: 1104904097**
 - **연락처 이메일: yamatosaki123[AT] gmail.com**
 - **문제 제보:** [GitHub Issues](https://github.com/yamatosaki/yahagi-kancolle-browser/issues)

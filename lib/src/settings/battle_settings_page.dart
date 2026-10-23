@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -25,7 +26,7 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
         lookupAppLocalizations(const Locale('zh'));
 
     return Container(
-      color: const Color(0xff0d1a26),
+      color: appColor(context, const Color(0xff0d1a26)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
@@ -113,7 +114,10 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         onChanged: safetySettingsController
                             .setBattleStatusEffectsEnabled,
                       ),
-                      const Divider(height: 1, color: Color(0xff294052)),
+                      Divider(
+                        height: 1,
+                        color: appColor(context, Color(0xff294052)),
+                      ),
                       _StatusEffectRow(
                         title: l10n.battleEffectDisplayScope,
                         subtitle: l10n.battleEffectDisplayScopeDesc,
@@ -147,7 +151,10 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                               : null,
                         ),
                       ),
-                      const Divider(height: 1, color: Color(0xff294052)),
+                      Divider(
+                        height: 1,
+                        color: appColor(context, Color(0xff294052)),
+                      ),
                       _StatusEffectRow(
                         title: l10n.battleDamagePulse,
                         subtitle: l10n.battleDamagePulseDesc,
@@ -181,7 +188,10 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                               : null,
                         ),
                       ),
-                      const Divider(height: 1, color: Color(0xff294052)),
+                      Divider(
+                        height: 1,
+                        color: appColor(context, Color(0xff294052)),
+                      ),
                       _StatusEffectRow(
                         title: l10n.battleDamageVibrationEffect,
                         subtitle: l10n.battleDamageVibrationEffectDesc,
@@ -215,7 +225,10 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
                               : null,
                         ),
                       ),
-                      const Divider(height: 1, color: Color(0xff294052)),
+                      Divider(
+                        height: 1,
+                        color: appColor(context, Color(0xff294052)),
+                      ),
                       _StatusEffectRow(
                         title: l10n.battleMoraleSparkle,
                         subtitle: l10n.battleMoraleSparkleDesc,
@@ -333,15 +346,21 @@ class _StatusEffectRow extends StatelessWidget {
       children: <Widget>[
         Text(
           title,
-          style: SettingsTileTypography.title.copyWith(
-            color: enabled ? null : const Color(0xff526776),
+          style: appTextStyle(
+            context,
+            SettingsTileTypography.title.copyWith(
+              color: enabled ? null : const Color(0xff526776),
+            ),
           ),
         ),
         const SizedBox(height: 3),
         Text(
           subtitle,
-          style: SettingsTileTypography.description.copyWith(
-            color: enabled ? null : const Color(0xff526776),
+          style: appTextStyle(
+            context,
+            SettingsTileTypography.description.copyWith(
+              color: enabled ? null : const Color(0xff526776),
+            ),
           ),
         ),
       ],

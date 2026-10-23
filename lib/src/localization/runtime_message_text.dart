@@ -339,6 +339,24 @@ const runtimeMessageTranslations = <String, (String, String, String, String)>{
 };
 
 const _prefixes = <String, (String, String, String, String)>{
+  '后台保活状态同步失败：': (
+    '背景保活狀態同步失敗：',
+    'バックグラウンド動作の状態同期に失敗：',
+    '백그라운드 유지 상태 동기화 실패: ',
+    'Failed to synchronize background retention: ',
+  ),
+  '后台保活设置失败：': (
+    '背景保活設定失敗：',
+    'バックグラウンド動作の設定に失敗：',
+    '백그라운드 유지 설정 실패: ',
+    'Failed to configure background retention: ',
+  ),
+  '后台保活启动失败：': (
+    '背景保活啟動失敗：',
+    'バックグラウンド動作の開始に失敗：',
+    '백그라운드 유지 시작 실패: ',
+    'Failed to start background retention: ',
+  ),
   '游戏页面启动失败：': (
     '遊戲頁面啟動失敗：',
     'ゲームページの起動に失敗：',

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
+import '../theme/app_palette.dart';
 
-Color battleDividerColor(BuildContext context) =>
-    PanelStyleScope.isFlat(context)
-    ? flatDividerColor
-    : const Color(0xff203746);
+Color battleDividerColor(BuildContext context) => appColor(
+  context,
+  PanelStyleScope.isFlat(context) ? flatDividerColor : const Color(0xff203746),
+);
 
 const battleFleetTitleStyle = TextStyle(
   fontSize: 11,
@@ -28,7 +29,7 @@ class BattleFleetBlock extends StatelessWidget {
       decoration: flat
           ? null
           : BoxDecoration(
-              color: const Color(0xff10212e),
+              color: appColor(context, const Color(0xff10212e)),
               borderRadius: BorderRadius.circular(8),
             ),
       child: Column(

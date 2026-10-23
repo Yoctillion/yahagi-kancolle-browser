@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
@@ -185,14 +186,14 @@ class ConstructionSummaryCard extends StatelessWidget {
             ? const Color(0xff4caf50)
             : const Color(0xffffc940);
         return Material(
-          color: Colors.transparent,
+          color: appColor(context, Colors.transparent),
           child: InkWell(
             onTap: onOpenConstruction,
             borderRadius: BorderRadius.circular(6),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xff0d1a26),
+                color: appColor(context, Color(0xff0d1a26)),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -211,16 +212,19 @@ class ConstructionSummaryCard extends StatelessWidget {
                         width: iconWidth,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: const Color(0xff142735),
+                          color: appColor(context, Color(0xff142735)),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Center(
                           child: Icon(
                             Icons.handyman_rounded,
                             size: 16,
-                            color: disabled
-                                ? const Color(0xff4a5c68)
-                                : const Color(0xff8197a5),
+                            color: appColor(
+                              context,
+                              disabled
+                                  ? const Color(0xff4a5c68)
+                                  : const Color(0xff8197a5),
+                            ),
                           ),
                         ),
                       ),
@@ -242,12 +246,15 @@ class ConstructionSummaryCard extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   '${visible.contains('empty') ? '' : '$position · '}${master == null ? fleetText(context, name) : name}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: disabled
-                                        ? const Color(0xff4a5c68)
-                                        : Colors.white,
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: disabled
+                                          ? const Color(0xff4a5c68)
+                                          : Colors.white,
+                                    ),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -259,7 +266,7 @@ class ConstructionSummaryCard extends StatelessWidget {
                                   height: 6,
                                   margin: const EdgeInsets.only(left: 4),
                                   decoration: BoxDecoration(
-                                    color: statusDotColor,
+                                    color: appColor(context, statusDotColor),
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -276,8 +283,11 @@ class ConstructionSummaryCard extends StatelessWidget {
                               child: completed
                                   ? Text(
                                       fleetText(context, '已完成'),
-                                      style: operationSummaryTimeStyle.copyWith(
-                                        color: const Color(0xff4caf50),
+                                      style: appTextStyle(
+                                        context,
+                                        operationSummaryTimeStyle.copyWith(
+                                          color: const Color(0xff4caf50),
+                                        ),
                                       ),
                                     )
                                   : OperationCountdownText(
@@ -293,11 +303,14 @@ class ConstructionSummaryCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             fleetText(context, disabled ? '锁' : '闲置'),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: disabled
-                                  ? const Color(0xff4a5c68)
-                                  : const Color(0xff8197a5),
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                fontSize: 11,
+                                color: disabled
+                                    ? const Color(0xff4a5c68)
+                                    : const Color(0xff8197a5),
+                              ),
                             ),
                           ),
                         ],

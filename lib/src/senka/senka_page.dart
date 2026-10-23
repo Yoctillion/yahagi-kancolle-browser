@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -44,15 +45,17 @@ class SenkaPage extends StatefulWidget {
   State<SenkaPage> createState() => _SenkaPageState();
 }
 
-class _SenkaPageState extends State<SenkaPage> {
+class _SenkaPageState extends State<SenkaPage> with WidgetsBindingObserver {
   Timer? _refreshTimer;
+  bool _refreshQueued = false;
   late DateTime _instant;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _instant = widget.now?.toUtc() ?? DateTime.now().toUtc();
-    _scheduleRefresh();
+    _queueRefresh();
   }
 
   @override
@@ -62,11 +65,33 @@ class _SenkaPageState extends State<SenkaPage> {
         widget.controller != oldWidget.controller) {
       _refreshTimer?.cancel();
       _instant = widget.now?.toUtc() ?? DateTime.now().toUtc();
-      _scheduleRefresh();
+      _queueRefresh();
     }
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _queueRefresh();
+    } else {
+      _refreshTimer?.cancel();
+    }
+  }
+
+  void _queueRefresh() {
+    if (widget.now != null || _refreshQueued) return;
+    _refreshQueued = true;
+    // A controller listener may be an ancestor currently building this page.
+    // Wait until the frame ends before synchronously notifying its listeners.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshQueued = false;
+      if (mounted && widget.now == null) _refreshAtBoundary();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
   void _scheduleRefresh() {
+    _refreshTimer?.cancel();
     if (widget.now != null) return;
     final current = DateTime.now().toUtc();
     final next = senkaNextRefreshInstant(current);
@@ -74,7 +99,7 @@ class _SenkaPageState extends State<SenkaPage> {
   }
 
   void _refreshAtBoundary() {
-    if (!mounted) return;
+    if (!mounted || widget.now != null) return;
     _instant = DateTime.now().toUtc();
     widget.controller.refreshForCurrentTime();
     setState(() {});
@@ -83,13 +108,14 @@ class _SenkaPageState extends State<SenkaPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: senkaBackground,
+    color: appColor(context, senkaBackground),
     child: AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) => LayoutBuilder(
@@ -111,18 +137,23 @@ class _SenkaPageState extends State<SenkaPage> {
                       vertical: compact ? 3 : 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xff4a2020),
-                      border: Border.all(color: const Color(0xffb85b5b)),
+                      color: appColor(context, const Color(0xff4a2020)),
+                      border: Border.all(
+                        color: appColor(context, const Color(0xffb85b5b)),
+                      ),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       (AppLocalizations.of(context) ??
                               lookupAppLocalizations(const Locale('zh')))
                           .senkaSaveFailedWarning,
-                      style: TextStyle(
-                        color: const Color(0xffffb8b8),
-                        fontSize: compact ? 9 : 12,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: const Color(0xffffb8b8),
+                          fontSize: compact ? 9 : 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),

@@ -1,5 +1,6 @@
 // ignore_for_file: use_null_aware_elements
 
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 
@@ -9,490 +10,12 @@ import '../game_state/game_state_controller.dart';
 import '../game_state/quest_text_normalizer.dart';
 import '../layout/adaptive_layout.dart';
 import '../settings/display_mode_store.dart';
-import '../widgets/filter_controls.dart';
-import '../widgets/adaptive_input_dialog.dart';
 import 'quest_catalog.dart';
 import 'quest_progress_engine.dart';
 import 'quest_catalog_controller.dart';
+import 'quest_query_controls.dart';
 
-enum QuestCenterMode { active, all }
-
-class QuestFilterController extends ChangeNotifier {
-  String query = '';
-  int? category;
-  int? period;
-  QuestUnlockState? unlockState;
-  bool acceptedOnly = false;
-
-  bool get hasSearch => query.trim().isNotEmpty;
-  bool get hasFilters =>
-      category != null || period != null || unlockState != null || acceptedOnly;
-
-  void setQuery(String value) {
-    if (query == value) return;
-    query = value;
-    notifyListeners();
-  }
-
-  void setCategory(int? value) {
-    if (category == value) return;
-    category = value;
-    notifyListeners();
-  }
-
-  void setPeriod(int? value) {
-    if (period == value) return;
-    period = value;
-    notifyListeners();
-  }
-
-  void setUnlockState(QuestUnlockState? value) {
-    if (unlockState == value) return;
-    unlockState = value;
-    notifyListeners();
-  }
-
-  void clear() {
-    query = '';
-    category = null;
-    period = null;
-    unlockState = null;
-    acceptedOnly = false;
-    notifyListeners();
-  }
-
-  void setAcceptedOnly(bool value) {
-    if (acceptedOnly == value) return;
-    acceptedOnly = value;
-    notifyListeners();
-  }
-}
-
-class QuestModeTabs extends StatelessWidget {
-  const QuestModeTabs({super.key, required this.mode, required this.onChanged});
-
-  final QuestCenterMode mode;
-  final ValueChanged<QuestCenterMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n =
-        AppLocalizations.of(context) ??
-        lookupAppLocalizations(const Locale('zh'));
-    return SizedBox(
-      width: 260,
-      height: 38,
-      child: Container(
-        key: const Key('quest-mode-tabs'),
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: const Color(0xff0b202d),
-          border: Border.all(color: const Color(0xff315064)),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _QuestModeButton(
-                selected: mode == QuestCenterMode.active,
-                label: l10n.inProgress,
-                onTap: () => onChanged(QuestCenterMode.active),
-              ),
-            ),
-            Expanded(
-              child: _QuestModeButton(
-                selected: mode == QuestCenterMode.all,
-                label: l10n.questAll,
-                onTap: () => onChanged(QuestCenterMode.all),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuestModeButton extends StatelessWidget {
-  const _QuestModeButton({
-    required this.selected,
-    required this.label,
-    required this.onTap,
-  });
-
-  final bool selected;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: selected ? const Color(0xff8a6628) : Colors.transparent,
-    borderRadius: BorderRadius.circular(15),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? const Color(0xffffdc88) : const Color(0xff9fb3bf),
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class QuestHeaderControls extends StatelessWidget {
-  const QuestHeaderControls({
-    super.key,
-    required this.mode,
-    required this.onModeChanged,
-    required this.filters,
-    required this.translationEnabled,
-    required this.onTranslationChanged,
-    this.compactTranslation = false,
-  });
-
-  final QuestCenterMode mode;
-  final ValueChanged<QuestCenterMode> onModeChanged;
-  final QuestFilterController filters;
-  final bool translationEnabled;
-  final ValueChanged<bool> onTranslationChanged;
-  final bool compactTranslation;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n =
-        AppLocalizations.of(context) ??
-        lookupAppLocalizations(const Locale('zh'));
-    return AnimatedBuilder(
-      animation: filters,
-      builder: (context, _) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          QuestTranslationToggle(
-            enabled: translationEnabled,
-            compact: compactTranslation,
-            onChanged: onTranslationChanged,
-          ),
-          const SizedBox(width: 8),
-          QuestModeTabs(mode: mode, onChanged: onModeChanged),
-          if (mode == QuestCenterMode.all) ...[
-            const SizedBox(width: 6),
-            HeaderFilterIconButton(
-              key: const Key('quest-search-button'),
-              icon: Icons.search,
-              active: filters.hasSearch,
-              tooltip: l10n.searchQuest,
-              onPressed: () => _showQuestSearch(context, filters),
-            ),
-            const SizedBox(width: 4),
-            HeaderFilterIconButton(
-              key: const Key('quest-filter-button'),
-              icon: Icons.filter_alt_outlined,
-              active: filters.hasFilters,
-              tooltip: l10n.filterQuest,
-              onPressed: () => _showQuestFilters(context, filters),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class QuestTranslationToggle extends StatelessWidget {
-  const QuestTranslationToggle({
-    super.key,
-    required this.enabled,
-    required this.onChanged,
-    this.compact = false,
-  });
-
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n =
-        AppLocalizations.of(context) ??
-        lookupAppLocalizations(const Locale('zh'));
-    final english = Localizations.maybeLocaleOf(context)?.languageCode == 'en';
-    final color = enabled ? const Color(0xffffd47a) : const Color(0xff9fb3bf);
-    return SizedBox(
-      key: const Key('quest-translation-toggle'),
-      height: 38,
-      width: compact
-          ? 38
-          : english
-          ? null
-          : 100,
-      child: Material(
-        color: enabled ? const Color(0xff5b4420) : const Color(0xff0b202d),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(19),
-          side: BorderSide(
-            color: enabled ? const Color(0xffb88b38) : const Color(0xff315064),
-          ),
-        ),
-        child: InkWell(
-          onTap: () => onChanged(!enabled),
-          borderRadius: BorderRadius.circular(19),
-          child: Tooltip(
-            message: l10n.chineseTranslation,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (english && !compact) const SizedBox(width: 8),
-                Icon(Icons.translate, size: 17, color: color),
-                if (!compact) ...[
-                  const SizedBox(width: 5),
-                  Text(
-                    l10n.chineseTranslation,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-                if (english && !compact) const SizedBox(width: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-Future<void> _showQuestSearch(
-  BuildContext context,
-  QuestFilterController filters,
-) async {
-  final l10n =
-      AppLocalizations.of(context) ??
-      lookupAppLocalizations(const Locale('zh'));
-  final textController = TextEditingController(text: filters.query);
-  await showDialog<void>(
-    context: context,
-    builder: (context) => AdaptiveInputDialog(
-      title: Text(l10n.searchQuest),
-      content: TextField(
-        key: const Key('quest-search-field'),
-        controller: textController,
-        autofocus: true,
-        onChanged: filters.setQuery,
-        decoration: InputDecoration(
-          hintText: l10n.searchQuestHint,
-          prefixIcon: const Icon(Icons.search),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            textController.clear();
-            filters.setQuery('');
-          },
-          child: Text(l10n.clear),
-        ),
-        FilledButton(
-          key: const Key('quest-search-close'),
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.done),
-        ),
-      ],
-    ),
-  );
-}
-
-Future<void> _showQuestFilters(
-  BuildContext context,
-  QuestFilterController filters,
-) {
-  final content = _QuestFilterSheet(filters: filters);
-  if (MediaQuery.sizeOf(context).width < 600) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xff142735),
-      builder: (context) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-          ),
-          child: SingleChildScrollView(child: content),
-        ),
-      ),
-    );
-  }
-  return showDialog<void>(
-    context: context,
-    builder: (_) => Dialog(
-      child: SizedBox(width: 520, child: SingleChildScrollView(child: content)),
-    ),
-  );
-}
-
-class _QuestFilterSheet extends StatelessWidget {
-  const _QuestFilterSheet({required this.filters});
-
-  final QuestFilterController filters;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n =
-        AppLocalizations.of(context) ??
-        lookupAppLocalizations(const Locale('zh'));
-    final categories = <(int, String)>[
-      (2, l10n.questSortie),
-      (1, l10n.questFormation),
-      (3, l10n.questExercise),
-      (4, l10n.expedition),
-      (5, l10n.questSupplyRepair),
-      (6, l10n.questFactory),
-      (7, l10n.questRemodeling),
-      (0, l10n.questOther),
-    ];
-    final periods = <(int, String)>[
-      (1, l10n.questDaily),
-      (2, l10n.questWeekly),
-      (3, l10n.questMonthly),
-      (4, l10n.questOneTime),
-      (5, l10n.questSeasonal),
-      (6, l10n.questYearly),
-    ];
-    return AnimatedBuilder(
-      key: const Key('quest-filter-sheet'),
-      animation: filters,
-      builder: (context, _) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  l10n.filterQuest,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  key: const Key('quest-filter-clear'),
-                  onPressed: filters.clear,
-                  child: Text(l10n.clearAll),
-                ),
-                IconButton(
-                  key: const Key('quest-filter-close'),
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(l10n.questType),
-            const SizedBox(height: 5),
-            Wrap(
-              runSpacing: 5,
-              children: [
-                CompactFilterChip(
-                  key: const Key('quest-filter-category-all'),
-                  label: l10n.allTypes,
-                  selected: filters.category == null,
-                  onTap: () => filters.setCategory(null),
-                ),
-                for (final item in categories)
-                  CompactFilterChip(
-                    key: Key('quest-filter-category-${item.$1}'),
-                    label: item.$2,
-                    selected: filters.category == item.$1,
-                    onTap: () => filters.setCategory(item.$1),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(l10n.questPeriod),
-            const SizedBox(height: 5),
-            Wrap(
-              runSpacing: 5,
-              children: [
-                CompactFilterChip(
-                  key: const Key('quest-filter-period-all'),
-                  label: l10n.allPeriods,
-                  selected: filters.period == null,
-                  onTap: () => filters.setPeriod(null),
-                ),
-                for (final item in periods)
-                  CompactFilterChip(
-                    key: Key('quest-filter-period-${item.$1}'),
-                    label: item.$2,
-                    selected: filters.period == item.$1,
-                    onTap: () => filters.setPeriod(item.$1),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(l10n.unlockStatus),
-            const SizedBox(height: 5),
-            Wrap(
-              children: [
-                CompactFilterChip(
-                  key: const Key('quest-filter-unlock-all'),
-                  label: l10n.allStatuses,
-                  selected: filters.unlockState == null,
-                  onTap: () => filters.setUnlockState(null),
-                ),
-                CompactFilterChip(
-                  key: const Key('quest-filter-unlock-unlocked'),
-                  label: l10n.questUnlocked,
-                  selected: filters.unlockState == QuestUnlockState.unlocked,
-                  onTap: () =>
-                      filters.setUnlockState(QuestUnlockState.unlocked),
-                ),
-                CompactFilterChip(
-                  key: const Key('quest-filter-unlock-locked'),
-                  label: l10n.questLocked,
-                  selected: filters.unlockState == QuestUnlockState.locked,
-                  onTap: () => filters.setUnlockState(QuestUnlockState.locked),
-                ),
-                CompactFilterChip(
-                  key: const Key('quest-filter-unlock-completed'),
-                  label: l10n.completed,
-                  selected: filters.unlockState == QuestUnlockState.completed,
-                  onTap: () =>
-                      filters.setUnlockState(QuestUnlockState.completed),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.questFilterHelp,
-              style: const TextStyle(fontSize: 11, color: Color(0xff9fb3bf)),
-            ),
-            CheckboxListTile(
-              key: const Key('quest-filter-accepted-only'),
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: Text(l10n.questAcceptedOnly),
-              value: filters.acceptedOnly,
-              onChanged: (value) => filters.setAcceptedOnly(value ?? false),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+export 'quest_query_controls.dart';
 
 class QuestCenterPage extends StatefulWidget {
   const QuestCenterPage({
@@ -528,7 +51,15 @@ class QuestCenterPage extends StatefulWidget {
 
 class _QuestCenterPageState extends State<QuestCenterPage> {
   late int? _selectedQuestId = widget.initialQuestId;
+  late int? _targetQuestId = widget.initialQuestId;
+  late bool _explicitTarget = widget.initialQuestId != null;
   late QuestCenterMode _mode = widget.mode;
+  final _listController = ScrollController();
+  final _detailController = ScrollController();
+  final _history = <({int id, int tab, double offset})>[];
+  int _detailTab = 0;
+  bool _selectionRequired = false;
+  QuestQuery? _appliedQuery;
   QuestCatalog? _catalog;
   QuestCatalog? _projectedCatalog;
   Map<int, GameQuest>? _projectedLiveQuests;
@@ -542,18 +73,15 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
       widget.filterController ?? _localFilters;
   bool get _translationEnabled =>
       widget.translationEnabled ?? _localTranslationEnabled;
-
-  void _changeTranslation(bool enabled) {
-    if (widget.translationEnabled == null) {
-      setState(() => _localTranslationEnabled = enabled);
-    }
-    widget.onTranslationChanged?.call(enabled);
-  }
+  AppLocalizations get _l10n =>
+      AppLocalizations.of(context) ??
+      lookupAppLocalizations(const Locale('zh'));
 
   @override
   void initState() {
     super.initState();
     _catalog = widget.catalogController?.catalog ?? widget.catalog;
+    _appliedQuery = _filters.value;
     if (_catalog == null) _loadCatalog();
   }
 
@@ -564,6 +92,12 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
 
   @override
   void dispose() {
+    if (_filters.previewCount == _previewCount) {
+      _filters.previewCount = null;
+      _filters.previewChanges = null;
+    }
+    _listController.dispose();
+    _detailController.dispose();
     _localFilters.dispose();
     super.dispose();
   }
@@ -573,9 +107,19 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
     super.didUpdateWidget(oldWidget);
     if (widget.initialQuestId != null &&
         widget.initialQuestId != oldWidget.initialQuestId) {
-      _selectedQuestId = widget.initialQuestId;
+      _selectedQuestId = _targetQuestId = widget.initialQuestId;
+      _explicitTarget = true;
+      _selectionRequired = false;
+      _history.clear();
+      _detailTab = 0;
     }
-    if (widget.mode != oldWidget.mode) _mode = widget.mode;
+    if (widget.mode != oldWidget.mode) {
+      _mode = widget.mode;
+      _history.clear();
+      if (widget.initialQuestId == oldWidget.initialQuestId) {
+        _explicitTarget = false;
+      }
+    }
     if (widget.catalog != oldWidget.catalog && widget.catalog != null) {
       _catalog = widget.catalog;
     }
@@ -583,35 +127,233 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
         widget.catalogController != null) {
       _catalog = widget.catalogController!.catalog;
     }
+    if (widget.filterController != oldWidget.filterController) {
+      final previous = oldWidget.filterController ?? _localFilters;
+      if (previous.previewCount == _previewCount) {
+        previous.previewCount = null;
+        previous.previewChanges = null;
+      }
+      _appliedQuery = null;
+    }
+  }
+
+  void _changeTranslation(bool enabled) {
+    if (widget.translationEnabled == null) {
+      setState(() => _localTranslationEnabled = enabled);
+    }
+    widget.onTranslationChanged?.call(enabled);
   }
 
   void _changeMode(QuestCenterMode mode) {
-    setState(() => _mode = mode);
+    if (_mode == mode) return;
+    setState(() {
+      _mode = mode;
+      _history.clear();
+      _explicitTarget = false;
+    });
     widget.onModeChanged?.call(mode);
   }
 
-  void _selectRelation(int id) {
-    setState(() {
-      _selectedQuestId = id;
-      _mode = QuestCenterMode.all;
+  double get _detailOffset =>
+      _detailController.hasClients ? _detailController.offset : 0;
+
+  void _restoreDetailOffset(double offset) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_detailController.hasClients) return;
+      _detailController.jumpTo(
+        offset.clamp(0, _detailController.position.maxScrollExtent),
+      );
     });
-    _filters.clear();
-    widget.onModeChanged?.call(QuestCenterMode.all);
+  }
+
+  void _openQuest(int id) {
+    setState(() {
+      _selectedQuestId = _targetQuestId = id;
+      _explicitTarget = false;
+      _selectionRequired = false;
+      _history.clear();
+      _detailTab = 0;
+    });
+    _restoreDetailOffset(0);
+  }
+
+  void _selectRelation(int id) {
+    if (id == _selectedQuestId || _entryById(id) == null) return;
+    final previousId = _selectedQuestId;
+    final offset = _detailOffset;
+    setState(() {
+      if (previousId != null) {
+        _history.add((id: previousId, tab: _detailTab, offset: offset));
+      }
+      _targetQuestId ??= previousId;
+      _selectedQuestId = id;
+      _detailTab = 0;
+    });
+    _restoreDetailOffset(0);
+  }
+
+  void _back() {
+    if (_history.isNotEmpty) {
+      final previous = _history.removeLast();
+      setState(() {
+        _selectedQuestId = previous.id;
+        _detailTab = previous.tab;
+      });
+      _restoreDetailOffset(previous.offset);
+    }
+  }
+
+  void _returnToTarget() {
+    setState(() {
+      _selectedQuestId = _targetQuestId;
+      _history.clear();
+      _detailTab = 0;
+    });
+    _restoreDetailOffset(0);
+  }
+
+  bool _horizontal(Size size) =>
+      classifyAdaptiveWindow(size) == AdaptiveWindowClass.nearSquareLarge ||
+      switch (widget.displayMode) {
+        DisplayMode.landscape => true,
+        DisplayMode.portrait => false,
+        DisplayMode.auto => size.width > size.height,
+      };
+
+  int? _previewCount(QuestQuery query) {
+    if (!mounted || (_mode == QuestCenterMode.all && _catalog == null)) {
+      return null;
+    }
+    return _entries(widget.controller.state.quests, query: query).length;
   }
 
   @override
   Widget build(BuildContext context) => Material(
-    color: const Color(0xff081521),
+    color: appColor(context, Color(0xff081521)),
     child: AnimatedBuilder(
-      animation: Listenable.merge(<Listenable>[
+      animation: Listenable.merge([
         widget.controller,
         _filters,
         if (widget.catalogController case final controller?) controller,
       ]),
       builder: (context, _) {
         _catalog = widget.catalogController?.catalog ?? _catalog;
-        if (_mode == QuestCenterMode.all && _catalog == null) {
-          return Column(
+        _filters.previewCount = _previewCount;
+        _filters.previewChanges = Listenable.merge([
+          widget.controller,
+          if (widget.catalogController case final controller?) controller,
+        ]);
+        final horizontal = _horizontal(MediaQuery.sizeOf(context));
+        final entries = _entries(widget.controller.state.quests);
+        if (_appliedQuery != _filters.value) {
+          _appliedQuery = _filters.value;
+          _history.clear();
+          _explicitTarget = false;
+          if (!entries.any((e) => e.id == _selectedQuestId)) {
+            _selectedQuestId = null;
+            _selectionRequired = true;
+          }
+          _targetQuestId = _selectedQuestId;
+          if (_listController.hasClients) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _listController.hasClients) {
+                _listController.jumpTo(0);
+              }
+            });
+          }
+        }
+        if (_selectedQuestId == null &&
+            !_selectionRequired &&
+            entries.isNotEmpty) {
+          _selectedQuestId = _targetQuestId = entries.first.id;
+        }
+        final selected = _history.isNotEmpty || _explicitTarget
+            ? _entryById(_selectedQuestId)
+            : entries.where((e) => e.id == _selectedQuestId).firstOrNull;
+        final loading = _mode == QuestCenterMode.all && _catalog == null;
+        final list = _QuestListPanel(
+          key: const Key('quest-list-panel'),
+          entries: entries,
+          selectedQuestId: _selectedQuestId,
+          filters: _filters,
+          controller: _listController,
+          translationEnabled: _translationEnabled,
+          shrinkWrap: !horizontal,
+          onSelected: _openQuest,
+          empty: loading
+              ? const Center(
+                  key: Key('quest-catalog-loading'),
+                  heightFactor: 1,
+                  child: CircularProgressIndicator(),
+                )
+              : _mode == QuestCenterMode.active &&
+                    !_filters.hasSearch &&
+                    !_filters.hasFilters
+              ? _WaitingState(
+                  syncedEmpty:
+                      widget.controller.state.hasQuestData &&
+                      widget.controller.state.activeQuestCount == 0,
+                )
+              : _QuestEmptyResults(
+                  filters: _filters,
+                  needsSync:
+                      !widget.controller.state.hasQuestData &&
+                      _filters.unlockState != null,
+                ),
+        );
+        final detail = selected == null
+            ? Center(
+                key: const Key('quest-detail-placeholder'),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    _l10n.questSelectTask,
+                    textAlign: TextAlign.center,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, Color(0xff9fb3bf))),
+                    ),
+                  ),
+                ),
+              )
+            : _QuestDetail(
+                key: const Key('quest-detail-panel'),
+                entry: selected,
+                title: _questTitle(selected),
+                detail: _questDescription(selected),
+                translationEnabled: _translationEnabled,
+                serverProgress: widget
+                    .controller
+                    .state
+                    .quests[selected.id]
+                    ?.serverProgressPercentLabel,
+                steps:
+                    widget.controller.questProgress?.stepsFor(selected.id) ??
+                    const [],
+                controller: _detailController,
+                tab: _detailTab,
+                onTabChanged: (index) {
+                  setState(() => _detailTab = index);
+                  _restoreDetailOffset(0);
+                },
+                onRelationSelected: _selectRelation,
+                relationEntry: _entryById,
+                catalog: _catalog,
+                onBack: _history.isNotEmpty ? _back : null,
+                hasHistory: _history.isNotEmpty,
+                onReturnToTarget:
+                    _history.length > 1 &&
+                        _selectedQuestId != _targetQuestId &&
+                        _history.last.id != _targetQuestId
+                    ? _returnToTarget
+                    : null,
+              );
+        return PopScope(
+          canPop: _history.isEmpty,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _back();
+          },
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (widget.showTitle)
@@ -622,165 +364,154 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
                   translationEnabled: _translationEnabled,
                   onTranslationChanged: _changeTranslation,
                 ),
-              const Expanded(
-                child: Center(
-                  key: Key('quest-catalog-loading'),
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-            ],
-          );
-        }
-        final live = widget.controller.state.quests;
-        final entries = _entries(live);
-        final selected = _selected(entries);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (widget.showTitle)
-              _QuestHeader(
-                mode: _mode,
-                filters: _filters,
-                onModeChanged: _changeMode,
-                translationEnabled: _translationEnabled,
-                onTranslationChanged: _changeTranslation,
-              ),
-            Expanded(
-              child: entries.isEmpty
-                  ? _mode == QuestCenterMode.all
-                        ? _QuestEmptyResults(
-                            filters: _filters,
-                            needsSync:
-                                !widget.controller.state.hasQuestData &&
-                                _filters.unlockState != null,
-                          )
-                        : const _WaitingState()
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final list = _QuestListPanel(
-                          entries: entries,
-                          selectedQuestId: selected!.id,
-                          allMode: _mode == QuestCenterMode.all,
-                          onSelected: (id) =>
-                              setState(() => _selectedQuestId = id),
-                        );
-                        final detail = _QuestDetail(
-                          key: const Key('quest-detail-panel'),
-                          entry: selected,
-                          serverProgress:
-                              live[selected.id]?.serverProgressPercentLabel,
-                          steps:
-                              widget.controller.questProgress?.stepsFor(
-                                selected.id,
-                              ) ??
-                              const [],
-                          title: _translationEnabled
-                              ? _catalog
-                                        ?.byGameId(selected.id)
-                                        ?.translatedName ??
-                                    selected.title
-                              : selected.title,
-                          detail: _translationEnabled
-                              ? _catalog
-                                        ?.byGameId(selected.id)
-                                        ?.translatedDescription ??
-                                    selected.detail
-                              : selected.detail,
-                          onRelationSelected: _selectRelation,
-                        );
-                        final windowSize = MediaQuery.sizeOf(context);
-                        final unfoldedSquare =
-                            classifyAdaptiveWindow(windowSize) ==
-                            AdaptiveWindowClass.nearSquareLarge;
-                        // Expanded near-square screens keep both panes visible
-                        // in every display mode, even with a narrow side menu.
-                        final horizontal =
-                            unfoldedSquare ||
-                            switch (widget.displayMode) {
-                              DisplayMode.landscape => true,
-                              DisplayMode.portrait => false,
-                              DisplayMode.auto =>
-                                windowSize.width > windowSize.height,
-                            };
-                        if (!horizontal) {
-                          final detailMin = _mode == QuestCenterMode.all
-                              ? 310.0
-                              : 330.0;
-                          final naturalList = 18.0 + entries.length * 70.0;
-                          final listHeight = naturalList.clamp(
-                            84.0,
-                            (constraints.maxHeight - detailMin).clamp(
-                              84.0,
-                              constraints.maxHeight * 0.55,
-                            ),
+              Expanded(
+                child: horizontal
+                    ? LayoutBuilder(
+                        builder: (context, constraints) {
+                          final width = constraints.maxWidth;
+                          final left = (width * .38).clamp(
+                            width < 400
+                                ? width * .38
+                                : width < 580
+                                ? 170.0
+                                : 210.0,
+                            width * .46,
                           );
-                          return Column(
+                          return Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(height: listHeight, child: list),
-                              const Divider(height: 1),
+                              SizedBox(width: left, child: list),
+                              const VerticalDivider(width: 1),
                               Expanded(child: detail),
                             ],
                           );
-                        }
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(flex: 42, child: list),
-                            const VerticalDivider(width: 1),
-                            Expanded(flex: 58, child: detail),
-                          ],
-                        );
-                      },
-                    ),
-            ),
-          ],
+                        },
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxHeight <= 1) {
+                            return const SizedBox.shrink();
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: (constraints.maxHeight - 1) / 2,
+                                ),
+                                child: list,
+                              ),
+                              const Divider(height: 1, thickness: 1),
+                              Expanded(child: detail),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         );
       },
     ),
   );
 
-  List<_QuestViewEntry> _entries(Map<int, GameQuest> live) {
-    if (_mode == QuestCenterMode.active) {
-      final values =
-          live.values
-              .map((quest) => _QuestViewEntry.fromLive(quest, _catalog))
-              .toList()
-            ..sort((a, b) {
-              final completed = (b.completed ? 1 : 0).compareTo(
-                a.completed ? 1 : 0,
-              );
-              return completed != 0 ? completed : a.id.compareTo(b.id);
-            });
-      return values;
-    }
-    final projection = _projectionFor(live);
-    final keywords = _filters.query
+  String _questTitle(_QuestViewEntry entry) => _translationEnabled
+      ? _catalog?.byGameId(entry.id)?.translatedName ?? entry.title
+      : entry.title;
+  String _questDescription(_QuestViewEntry entry) => _translationEnabled
+      ? _catalog?.byGameId(entry.id)?.translatedDescription ?? entry.detail
+      : entry.detail;
+
+  List<_QuestViewEntry> _entries(
+    Map<int, GameQuest> live, {
+    QuestQuery? query,
+  }) {
+    final filters = query ?? _filters.value;
+    final keywords = filters.query
         .toLowerCase()
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
         .toList();
     final names = gameNames(context);
-    return projection.items
-        .where((item) {
-          final entry = item.entry;
-          if (!item.matchesSearch(keywords, displayText: names.entityText)) {
-            return false;
-          }
-          if (_filters.acceptedOnly && !(item.liveQuest?.isAccepted ?? false)) {
-            return false;
-          }
-          if (_filters.category != null &&
-              entry.category != _filters.category) {
-            return false;
-          }
-          if (_filters.period != null && entry.period != _filters.period) {
-            return false;
-          }
-          return item.matchesUnlockFilter(_filters.unlockState);
-        })
-        .map((item) => _QuestViewEntry.fromCatalog(item, _catalog!))
-        .toList(growable: false);
+    bool matches(_QuestViewEntry item, QuestCatalogItem? projected) {
+      if (projected != null) {
+        if (!projected.matchesSearch(keywords, displayText: names.entityText)) {
+          return false;
+        }
+      } else if (keywords.isNotEmpty) {
+        final doc = _catalog?.byGameId(item.id);
+        final source =
+            '${item.id} ${item.code} ${item.title} ${item.detail} ${doc?.translatedName ?? ''} ${doc?.translatedDescription ?? ''} ${item.memo} ${item.rewardsText}';
+        if (!keywords.any(source.toLowerCase().contains) &&
+            !keywords.any(names.entityText(source).toLowerCase().contains)) {
+          return false;
+        }
+      }
+      if (filters.acceptedOnly && !(live[item.id]?.isAccepted ?? false)) {
+        return false;
+      }
+      if (filters.category != null && filters.category != item.category) {
+        return false;
+      }
+      if (filters.period != null && filters.period != item.period) return false;
+      if (filters.status != null && filters.status != item.status) return false;
+      return projected?.matchesUnlockFilter(filters.unlockState) ??
+          (filters.unlockState == null ||
+              filters.unlockState == QuestUnlockState.unlocked ||
+              filters.unlockState == QuestUnlockState.completed &&
+                  item.status == QuestStatus.claimable);
+    }
+
+    List<_QuestViewEntry> values;
+    if (_mode == QuestCenterMode.active) {
+      values =
+          live.values
+              .where((q) => q.isAccepted)
+              .map((q) => _QuestViewEntry.fromLive(q, _catalog))
+              .where((q) => matches(q, null))
+              .toList()
+            ..sort((a, b) {
+              final claimable = (b.status == QuestStatus.claimable ? 1 : 0)
+                  .compareTo(a.status == QuestStatus.claimable ? 1 : 0);
+              return claimable != 0 ? claimable : a.id.compareTo(b.id);
+            });
+    } else {
+      if (_catalog == null) return const [];
+      values = _projectionFor(live).items
+          .where(
+            (item) =>
+                matches(_QuestViewEntry.fromCatalog(item, _catalog!), item),
+          )
+          .map((item) => _QuestViewEntry.fromCatalog(item, _catalog!))
+          .toList();
+    }
+    final exact = filters.query.trim().toLowerCase();
+    if (exact.isNotEmpty) {
+      final ranked = [
+        for (var i = 0; i < values.length; i++) (index: i, entry: values[i]),
+      ];
+      int priority(_QuestViewEntry e) =>
+          e.code.toLowerCase() == exact || '${e.id}' == exact ? 0 : 1;
+      ranked.sort((a, b) {
+        final p = priority(a.entry).compareTo(priority(b.entry));
+        return p != 0 ? p : a.index.compareTo(b.index);
+      });
+      values = ranked.map((e) => e.entry).toList();
+    }
+    return values;
+  }
+
+  _QuestViewEntry? _entryById(int? id) {
+    if (id == null) return null;
+    final live = widget.controller.state.quests;
+    if (_catalog != null) {
+      final item = _projectionFor(
+        live,
+      ).items.where((e) => e.gameId == id).firstOrNull;
+      if (item != null) return _QuestViewEntry.fromCatalog(item, _catalog!);
+    }
+    final quest = live[id];
+    return quest == null ? null : _QuestViewEntry.fromLive(quest, _catalog);
   }
 
   QuestCatalogProjection _projectionFor(Map<int, GameQuest> live) {
@@ -805,17 +536,7 @@ class _QuestCenterPageState extends State<QuestCenterPage> {
     _projectedLiveQuests = live;
     _projectedAvailableQuests = available;
     _projectedIsComplete = isComplete;
-    _cachedProjection = projection;
-    return projection;
-  }
-
-  _QuestViewEntry? _selected(List<_QuestViewEntry> entries) {
-    if (entries.isEmpty) return null;
-    for (final entry in entries) {
-      if (entry.id == _selectedQuestId) return entry;
-    }
-    _selectedQuestId = entries.first.id;
-    return entries.first;
+    return _cachedProjection = projection;
   }
 }
 
@@ -838,9 +559,11 @@ class _QuestHeader extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     height: 48,
     padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: const BoxDecoration(
-      color: Color(0xff0d1a26),
-      border: Border(bottom: BorderSide(color: Color(0xff294052))),
+    decoration: BoxDecoration(
+      color: appColor(context, Color(0xff0d1a26)),
+      border: Border(
+        bottom: BorderSide(color: appColor(context, Color(0xff294052))),
+      ),
     ),
     child: LayoutBuilder(
       builder: (context, constraints) {
@@ -853,10 +576,7 @@ class _QuestHeader extends StatelessWidget {
           compactTranslation: constraints.maxWidth < 560,
         );
         if (constraints.maxWidth < 430) {
-          return Align(
-            alignment: Alignment.centerRight,
-            child: FittedBox(fit: BoxFit.scaleDown, child: controls),
-          );
+          return Align(alignment: Alignment.centerRight, child: controls);
         }
         return Row(
           children: [
@@ -864,14 +584,19 @@ class _QuestHeader extends StatelessWidget {
               (AppLocalizations.of(context) ??
                       lookupAppLocalizations(const Locale('zh')))
                   .quests,
-              style: const TextStyle(
-                color: Color(0xffd4a85f),
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffd4a85f)),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-            const Spacer(),
-            controls,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Align(alignment: Alignment.centerRight, child: controls),
+            ),
           ],
         );
       },
@@ -881,196 +606,244 @@ class _QuestHeader extends StatelessWidget {
 
 class _QuestListPanel extends StatelessWidget {
   const _QuestListPanel({
+    super.key,
     required this.entries,
     required this.selectedQuestId,
-    required this.allMode,
+    required this.filters,
+    required this.controller,
+    required this.translationEnabled,
     required this.onSelected,
+    required this.empty,
+    this.shrinkWrap = false,
   });
-
   final List<_QuestViewEntry> entries;
-  final int selectedQuestId;
-  final bool allMode;
+  final int? selectedQuestId;
+  final QuestFilterController filters;
+  final ScrollController controller;
+  final bool translationEnabled;
   final ValueChanged<int> onSelected;
+  final Widget empty;
+  final bool shrinkWrap;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      if (allMode)
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final summary = filters.summary(context);
+    return Column(
+      mainAxisSize: shrinkWrap ? MainAxisSize.min : MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-          child: Text(
-            (AppLocalizations.of(context) ??
-                    lookupAppLocalizations(const Locale('zh')))
-                .questResultsCount(entries.length),
-            key: const Key('quest-results-count'),
-            style: const TextStyle(fontSize: 11, color: Color(0xff9fb3bf)),
+          padding: const EdgeInsets.fromLTRB(10, 5, 6, 3),
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  l10n.questResultsCount(entries.length),
+                  key: const Key('quest-results-count'),
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      fontSize: 11,
+                      color: appColor(context, Color(0xff9fb3bf)),
+                    ),
+                  ),
+                ),
+              ),
+              if (summary.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Tooltip(
+                    message: summary,
+                    child: Text(
+                      summary,
+                      key: const Key('quest-query-summary'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          fontSize: 11,
+                          color: appColor(context, Color(0xffe4b666)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: IconButton(
+                    key: const Key('quest-query-clear'),
+                    tooltip: l10n.clearAll,
+                    padding: EdgeInsets.zero,
+                    iconSize: 17,
+                    onPressed: filters.clear,
+                    icon: const Icon(Icons.close),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-      Expanded(
-        child: ListView.separated(
-          padding: const EdgeInsets.all(12),
-          itemCount: entries.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 6),
-          itemBuilder: (context, index) {
-            final entry = entries[index];
-            return _QuestCard(
-              entry: entry,
-              selected: entry.id == selectedQuestId,
-              onTap: () => onSelected(entry.id),
-            );
-          },
+        Flexible(
+          fit: shrinkWrap ? FlexFit.loose : FlexFit.tight,
+          child: entries.isEmpty
+              ? empty
+              : ListView.separated(
+                  key: const PageStorageKey('quest-results-list'),
+                  controller: controller,
+                  shrinkWrap: shrinkWrap,
+                  padding: const EdgeInsets.fromLTRB(8, 3, 8, 10),
+                  itemCount: entries.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 5),
+                  itemBuilder: (context, index) => _QuestCard(
+                    entry: entries[index],
+                    selected: entries[index].id == selectedQuestId,
+                    title: translationEnabled
+                        ? entries[index].translatedTitle
+                        : entries[index].title,
+                    onTap: () => onSelected(entries[index].id),
+                  ),
+                ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _QuestCard extends StatelessWidget {
   const _QuestCard({
     required this.entry,
     required this.selected,
+    required this.title,
     required this.onTap,
   });
-
   final _QuestViewEntry entry;
   final bool selected;
+  final String title;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final accent = entry.completed
-        ? const Color(0xff66cda4)
-        : entry.locked
-        ? const Color(0xff728793)
-        : const Color(0xff70c5c1);
-    return Material(
-      key: Key('quest-card-${entry.id}'),
-      color: selected ? const Color(0xff183041) : const Color(0xff142735),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(9),
-        side: BorderSide(
-          color: selected ? const Color(0xff8d7040) : const Color(0xff294052),
+  Widget build(BuildContext context) => Material(
+    key: Key('quest-card-${entry.id}'),
+    color: appColor(
+      context,
+      selected ? const Color(0xff183041) : const Color(0xff102331),
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(
+        color: appColor(
+          context,
+          selected ? const Color(0xffb28a43) : const Color(0xff294052),
         ),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(9),
-        child: Stack(
+    ),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-            ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 64),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 10, 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final tags = Wrap(
+                  spacing: 5,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final code = _QuestCodeTag(
-                          key: Key('quest-card-code-${entry.id}'),
-                          code: entry.code,
-                        );
-                        final narrow =
-                            constraints.maxWidth <
-                            MediaQuery.textScalerOf(context).scale(160);
-                        final title = Text(
-                          gameNames(context).entityText(entry.title),
-                          maxLines: narrow ? 2 : 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        );
-                        if (narrow) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              FittedBox(fit: BoxFit.scaleDown, child: code),
-                              const SizedBox(height: 3),
-                              title,
-                            ],
-                          );
-                        }
-                        return Row(
-                          children: [
-                            code,
-                            const SizedBox(width: 6),
-                            Expanded(child: title),
-                          ],
-                        );
-                      },
+                    _QuestCodeTag(
+                      key: Key('quest-card-code-${entry.id}'),
+                      code: entry.code,
                     ),
-                    const SizedBox(height: 3),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final tags = <Widget>[
-                          _SmallTag(
-                            label: entry.categoryLabel(context),
-                            color: entry.categoryColor,
-                          ),
-                          _SmallTag(
-                            label: entry.periodLabel(context),
-                            color: entry.periodColor,
-                          ),
-                          _SmallTag(
-                            label: entry.progressLabel,
-                            color: entry.progressColor,
-                          ),
-                        ];
-                        final status = _StatusBadge(
-                          key: Key('quest-card-status-${entry.id}'),
-                          entry: entry,
-                        );
-                        if (constraints.maxWidth <
-                            MediaQuery.textScalerOf(context).scale(200)) {
-                          return Wrap(
-                            spacing: 5,
-                            runSpacing: 3,
-                            children: [...tags, status],
-                          );
-                        }
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: Wrap(
-                                spacing: 5,
-                                runSpacing: 3,
-                                children: tags,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            status,
-                          ],
-                        );
-                      },
+                    _SmallTag(
+                      label: entry.categoryLabel(context),
+                      color: appColor(context, entry.categoryColor),
+                      pill: true,
+                    ),
+                    _SmallTag(
+                      label: entry.periodLabel(context),
+                      color: appColor(context, entry.periodColor),
+                      pill: true,
                     ),
                   ],
+                );
+                final statusAndProgress = Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 5,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _StatusBadge(
+                      key: Key('quest-card-status-${entry.id}'),
+                      entry: entry,
+                    ),
+                    _SmallTag(
+                      key: Key('quest-card-progress-${entry.id}'),
+                      label: entry.progressLabel,
+                      color: appColor(context, entry.progressColor),
+                      pill: true,
+                    ),
+                  ],
+                );
+                if (constraints.maxWidth <
+                    MediaQuery.textScalerOf(context).scale(200)) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      tags,
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: statusAndProgress,
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: tags),
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * .47,
+                      ),
+                      child: statusAndProgress,
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 5),
+            Tooltip(
+              message: title,
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xffe6edf2)),
+                    fontSize: 14,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _QuestDetail extends StatelessWidget {
@@ -1079,15 +852,28 @@ class _QuestDetail extends StatelessWidget {
     required this.entry,
     required this.title,
     required this.detail,
+    required this.translationEnabled,
+    required this.controller,
+    required this.tab,
+    required this.onTabChanged,
     required this.onRelationSelected,
+    required this.relationEntry,
+    required this.catalog,
+    required this.hasHistory,
+    this.onBack,
+    this.onReturnToTarget,
     this.steps = const [],
     this.serverProgress,
   });
-
   final _QuestViewEntry entry;
-  final String title;
-  final String detail;
-  final ValueChanged<int> onRelationSelected;
+  final String title, detail;
+  final bool translationEnabled, hasHistory;
+  final ScrollController controller;
+  final int tab;
+  final ValueChanged<int> onTabChanged, onRelationSelected;
+  final _QuestViewEntry? Function(int?) relationEntry;
+  final QuestCatalog? catalog;
+  final VoidCallback? onBack, onReturnToTarget;
   final List<QuestStepProgress> steps;
   final String? serverProgress;
 
@@ -1097,177 +883,298 @@ class _QuestDetail extends StatelessWidget {
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     return DefaultTextStyle.merge(
-      style: const TextStyle(color: Colors.white),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              key: Key('quest-detail-title-${entry.id}'),
-              children: [
-                _QuestCodeTag(
-                  key: Key('quest-detail-code-${entry.id}'),
-                  code: entry.code,
-                  large: true,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    gameNames(context).entityText(title),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 9),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                _SmallTag(
-                  label: entry.categoryLabel(context),
-                  color: entry.categoryColor,
-                ),
-                _SmallTag(
-                  label: entry.periodLabel(context),
-                  color: entry.periodColor,
-                ),
-                if (entry.exactProgress == null)
-                  _SmallTag(
-                    label: entry.progressLabel,
-                    color: entry.progressColor,
-                  ),
-                _StatusBadge(
-                  key: Key('quest-detail-status-${entry.id}'),
-                  entry: entry,
-                ),
-                if (entry.exactProgress case final progress?)
-                  _SmallTag(
-                    key: Key('quest-detail-exact-progress-${entry.id}'),
-                    label: progress,
-                    color: const Color(0xff8ec6e8),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 13),
-            _DetailCard(
-              title: l10n.questDesc,
-              child: Text(
-                detail.isEmpty
-                    ? l10n.noDescription
-                    : gameNames(
-                        context,
-                      ).entityText(normalizeQuestDetail(detail)),
-                style: const TextStyle(fontSize: 13, height: 1.45),
-              ),
-            ),
-            if (steps.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _DetailCard(
-                title: l10n.questLocalProgress,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (serverProgress != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          l10n.questServerProgress(serverProgress!),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xff8da7b7),
-                          ),
+      style: TextStyle(color: appColor(context, Color(0xffe6edf2))),
+      child: Column(
+        children: [
+          if (onBack != null || onReturnToTarget != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  if (onBack != null)
+                    Flexible(
+                      child: TextButton.icon(
+                        key: Key(
+                          hasHistory
+                              ? 'quest-relation-back'
+                              : 'quest-back-to-list',
+                        ),
+                        onPressed: onBack,
+                        icon: const Icon(Icons.arrow_back, size: 18),
+                        label: Text(
+                          hasHistory ? l10n.back : l10n.questBackToList,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        for (final step in steps)
-                          Text(
-                            '${gameNames(context).entityText(step.description)}  ${step.count}/${step.required}',
-                            style: TextStyle(
-                              color: step.count >= step.required
-                                  ? const Color(0xff67d6a3)
-                                  : const Color(0xffdbe8ef),
-                            ),
-                          ),
-                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
-            if (entry.memo.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _DetailCard(
-                title: l10n.completionConditions,
-                child: Text(gameNames(context).entityText(entry.memo)),
-              ),
-            ],
-            const SizedBox(height: 8),
-            _DetailCard(
-              title: l10n.baseReward,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      for (var index = 0; index < 4; index++) ...[
-                        if (index > 0) const SizedBox(width: 8),
-                        Expanded(
-                          child: _MaterialReward(
-                            assetIndex: index + 1,
-                            value: entry.materials[index],
-                          ),
+                  if (onReturnToTarget != null) ...[
+                    const Spacer(),
+                    Flexible(
+                      child: TextButton(
+                        key: const Key('quest-return-target'),
+                        onPressed: onReturnToTarget,
+                        child: Text(
+                          l10n.questReturnToTarget,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ],
-                  ),
-                  if (entry.rewardsText.isNotEmpty) ...[
-                    const SizedBox(height: 9),
-                    Text(gameNames(context).entityText(entry.rewardsText)),
+                      ),
+                    ),
                   ],
                 ],
               ),
             ),
-            if (entry.prerequisites.isNotEmpty ||
-                entry.successors.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _DetailCard(
-                title: l10n.questRelations,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (entry.prerequisites.isNotEmpty)
-                      _RelationRow(
-                        label: l10n.prerequisiteQuests,
-                        entries: entry.prerequisites,
-                        keyPrefix: 'quest-relation-pre',
-                        onSelected: onRelationSelected,
+          Expanded(
+            child: SingleChildScrollView(
+              key: const PageStorageKey('quest-detail-scroll'),
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _QuestCodeTag(
+                      key: Key('quest-detail-code-${entry.id}'),
+                      code: entry.code,
+                      large: true,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Padding(
+                    key: Key('quest-detail-title-${entry.id}'),
+                    padding: EdgeInsets.zero,
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        height: 1.4,
+                        fontWeight: FontWeight.w700,
                       ),
-                    if (entry.successors.isNotEmpty) ...[
-                      if (entry.prerequisites.isNotEmpty)
-                        const SizedBox(height: 8),
-                      _RelationRow(
-                        label: l10n.followingQuests,
-                        entries: entry.successors,
-                        keyPrefix: 'quest-relation-post',
-                        onSelected: onRelationSelected,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 5,
+                    children: [
+                      _SmallTag(
+                        label: entry.categoryLabel(context),
+                        color: appColor(context, Color(0xff9fb3bf)),
+                      ),
+                      _SmallTag(
+                        label: entry.periodLabel(context),
+                        color: appColor(context, Color(0xff9fb3bf)),
+                      ),
+                      _StatusBadge(
+                        key: Key('quest-detail-status-${entry.id}'),
+                        entry: entry,
+                      ),
+                      if (entry.exactProgress case final progress?)
+                        _SmallTag(
+                          key: Key('quest-detail-exact-progress-${entry.id}'),
+                          label: progress,
+                          color: appColor(context, const Color(0xff8ec6e8)),
+                        )
+                      else if (entry.progressLabel != '—')
+                        _SmallTag(
+                          label: entry.progressLabel,
+                          color: appColor(context, entry.progressColor),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 13),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final labels = [
+                        l10n.questConditionsAndProgress,
+                        l10n.baseReward,
+                        l10n.questRelations,
+                      ];
+                      return Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          for (var index = 0; index < labels.length; index++)
+                            TextButton(
+                              key: Key(
+                                'quest-detail-tab-${['conditions', 'rewards', 'relations'][index]}',
+                              ),
+                              onPressed: () => onTabChanged(index),
+                              style: TextButton.styleFrom(
+                                foregroundColor: appColor(
+                                  context,
+                                  tab == index
+                                      ? const Color(0xffffd47a)
+                                      : const Color(0xff9fb3bf),
+                                ),
+                                backgroundColor: appColor(
+                                  context,
+                                  tab == index
+                                      ? const Color(0xff3a3020)
+                                      : Colors.transparent,
+                                ),
+                                minimumSize: const Size(0, 38),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                ),
+                              ),
+                              child: Text(
+                                labels[index],
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                  Divider(
+                    color: appColor(context, Color(0xff294052)),
+                    height: 18,
+                  ),
+                  if (tab == 0) ...[
+                    _DetailCard(
+                      title: l10n.completionConditions,
+                      child: Text(
+                        detail.isEmpty
+                            ? l10n.noDescription
+                            : normalizeQuestDetail(detail),
+                        style: const TextStyle(fontSize: 14, height: 1.6),
+                      ),
+                    ),
+                    if (steps.isNotEmpty) ...[
+                      const SizedBox(height: 9),
+                      _DetailCard(
+                        title: l10n.questLocalProgress,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (serverProgress != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  l10n.questServerProgress(serverProgress!),
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      fontSize: 12,
+                                      color: appColor(
+                                        context,
+                                        Color(0xff9fb3bf),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            for (final step in steps)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 5,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        step.description,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      '${step.count}/${step.required}',
+                                      style: appTextStyle(
+                                        context,
+                                        TextStyle(
+                                          fontSize: 13,
+                                          color: step.count >= step.required
+                                              ? const Color(0xff67d6a3)
+                                              : const Color(0xffdbe8ef),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (translationEnabled && entry.memo.isNotEmpty) ...[
+                      const SizedBox(height: 9),
+                      _DetailCard(
+                        title: l10n.questDesc,
+                        child: Text(
+                          entry.memo,
+                          style: const TextStyle(fontSize: 13, height: 1.6),
+                        ),
                       ),
                     ],
                   ],
-                ),
+                  if (tab == 1)
+                    _DetailCard(
+                      title: l10n.baseReward,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              for (var index = 0; index < 4; index++) ...[
+                                if (index > 0) const SizedBox(width: 6),
+                                Expanded(
+                                  child: _MaterialReward(
+                                    assetIndex: index + 1,
+                                    value: entry.materials[index],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (entry.rewardsText.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              entry.rewardsText,
+                              style: const TextStyle(fontSize: 13, height: 1.6),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  if (tab == 2) ...[
+                    _RelationRow(
+                      label: l10n.prerequisiteQuests,
+                      entries: entry.prerequisites,
+                      unresolvedCodes:
+                          catalog?.unresolvedPrerequisitesOf(entry.id) ??
+                          const [],
+                      keyPrefix: 'quest-relation-pre',
+                      onSelected: onRelationSelected,
+                      translationEnabled: translationEnabled,
+                      relationEntry: relationEntry,
+                      catalog: catalog,
+                      visited: {entry.id},
+                    ),
+                    const SizedBox(height: 15),
+                    _RelationRow(
+                      label: l10n.followingQuests,
+                      entries: entry.successors,
+                      keyPrefix: 'quest-relation-post',
+                      onSelected: onRelationSelected,
+                      translationEnabled: translationEnabled,
+                      relationEntry: relationEntry,
+                      catalog: null,
+                      visited: {entry.id},
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1279,46 +1186,194 @@ class _RelationRow extends StatelessWidget {
     required this.entries,
     required this.keyPrefix,
     required this.onSelected,
+    required this.translationEnabled,
+    required this.relationEntry,
+    required this.catalog,
+    required this.visited,
+    this.unresolvedCodes = const [],
+    this.depth = 0,
   });
-
-  final String label;
+  final String label, keyPrefix;
   final List<QuestCatalogEntry> entries;
-  final String keyPrefix;
+  final List<String> unresolvedCodes;
   final ValueChanged<int> onSelected;
+  final bool translationEnabled;
+  final _QuestViewEntry? Function(int?) relationEntry;
+  final QuestCatalog? catalog;
+  final Set<int> visited;
+  final int depth;
 
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      SizedBox(width: 58, child: Text(label)),
-      const SizedBox(width: 12),
-      Expanded(
-        child: SingleChildScrollView(
-          key: Key('$keyPrefix-scroll'),
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (var index = 0; index < entries.length; index++) ...[
-                if (index > 0) const SizedBox(width: 6),
-                Material(
-                  key: Key('$keyPrefix-${entries[index].gameId}'),
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(5),
-                    onTap: () => onSelected(entries[index].gameId),
-                    child: _QuestCodeTag(
-                      key: Key('quest-relation-code-${entries[index].gameId}'),
-                      code: entries[index].code,
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: appColor(context, Color(0xffd4a85f)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (entries.isEmpty && unresolvedCodes.isEmpty)
+          Text(
+            keyPrefix.startsWith('quest-relation-post')
+                ? l10n.questNoSuccessors
+                : l10n.questNoPrerequisites,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                fontSize: 12,
+                color: appColor(context, Color(0xff9fb3bf)),
+              ),
+            ),
+          ),
+        for (final doc in entries) ...[
+          Material(
+            color: appColor(context, Color(0xff102331)),
+            borderRadius: BorderRadius.circular(7),
+            child: InkWell(
+              key: Key('$keyPrefix-${doc.gameId}'),
+              onTap: visited.contains(doc.gameId)
+                  ? null
+                  : () => onSelected(doc.gameId),
+              borderRadius: BorderRadius.circular(7),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: _QuestCodeTag(
+                              key: Key('quest-relation-code-${doc.gameId}'),
+                              code: doc.code,
+                            ),
+                          ),
+                        ),
+                        if (relationEntry(doc.gameId) case final status?) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: _StatusBadge(entry: status),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            translationEnabled
+                                ? doc.translatedName ?? doc.name
+                                : doc.name,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                fontSize: 13,
+                                height: 1.5,
+                                color: appColor(context, Color(0xffe6edf2)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 19,
+                          color: appColor(context, Color(0xff9fb3bf)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (catalog != null &&
+              depth < 4 &&
+              !visited.contains(doc.gameId) &&
+              (catalog!.prerequisitesOf(doc.gameId).isNotEmpty ||
+                  catalog!.unresolvedPrerequisitesOf(doc.gameId).isNotEmpty))
+            ExpansionTile(
+              key: PageStorageKey('quest-expand-pre-${doc.gameId}'),
+              tilePadding: const EdgeInsets.only(left: 12),
+              visualDensity: VisualDensity.compact,
+              title: Text(
+                l10n.prerequisiteQuests,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    fontSize: 12,
+                    color: appColor(context, Color(0xff9fb3bf)),
+                  ),
+                ),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: _RelationRow(
+                    label: doc.code,
+                    entries: catalog!.prerequisitesOf(doc.gameId),
+                    unresolvedCodes: catalog!.unresolvedPrerequisitesOf(
+                      doc.gameId,
+                    ),
+                    keyPrefix: '$keyPrefix-${doc.gameId}',
+                    onSelected: onSelected,
+                    translationEnabled: translationEnabled,
+                    relationEntry: relationEntry,
+                    catalog: catalog,
+                    visited: {...visited, doc.gameId},
+                    depth: depth + 1,
                   ),
                 ),
               ],
-            ],
+            ),
+          const SizedBox(height: 6),
+        ],
+        for (final code in unresolvedCodes)
+          Container(
+            key: Key('$keyPrefix-unresolved-$code'),
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: appColor(context, Color(0xff102331)),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 5,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _QuestCodeTag(code: code),
+                _SmallTag(
+                  label: l10n.questStateUnknown,
+                  color: appColor(context, Color(0xffe0ad4f)),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _QuestCodeTag extends StatelessWidget {
@@ -1336,17 +1391,22 @@ class _QuestCodeTag extends StatelessWidget {
         vertical: large ? 3 : 2,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
+        color: appColor(context, color.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withValues(alpha: 0.65)),
+        border: Border.all(
+          color: appColor(context, color.withValues(alpha: 0.65)),
+        ),
       ),
       child: Text(
         code,
         maxLines: 1,
-        style: TextStyle(
-          color: color,
-          fontSize: large ? 13 : 10.5,
-          fontWeight: FontWeight.w900,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: color,
+            fontSize: large ? 13 : 10.5,
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
     );
@@ -1384,9 +1444,14 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: positive ? const Color(0xff173a31) : const Color(0xff3b3020),
+        color: appColor(
+          context,
+          positive ? const Color(0xff173a31) : const Color(0xff3b3020),
+        ),
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withValues(alpha: 0.75)),
+        border: Border.all(
+          color: appColor(context, color.withValues(alpha: 0.75)),
+        ),
       ),
       child: Text(
         switch (entry.status) {
@@ -1397,10 +1462,9 @@ class _StatusBadge extends StatelessWidget {
           QuestStatus.completed => l10n.questInferredCompleted,
           QuestStatus.unknown => l10n.questStateUnknown,
         },
-        style: TextStyle(
-          color: color,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w800,
+        style: appTextStyle(
+          context,
+          TextStyle(color: color, fontSize: 10.5, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -1417,19 +1481,22 @@ class _DetailCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: const Color(0xff142735),
+      color: appColor(context, Color(0xff142735)),
       borderRadius: BorderRadius.circular(9),
-      border: Border.all(color: const Color(0xff294052)),
+      border: Border.all(color: appColor(context, Color(0xff294052))),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Color(0xffd4a85f),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w800,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, Color(0xffd4a85f)),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -1479,24 +1546,25 @@ class _SmallTag extends StatelessWidget {
     super.key,
     required this.label,
     this.color = const Color(0xffa9bdc8),
+    this.pill = false,
   });
 
   final String label;
   final Color color;
+  final bool pill;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.2),
-      borderRadius: BorderRadius.circular(5),
+      color: appColor(context, color.withValues(alpha: 0.2)),
+      borderRadius: BorderRadius.circular(pill ? 20 : 5),
     ),
     child: Text(
       label,
-      style: TextStyle(
-        color: color,
-        fontSize: 10.5,
-        fontWeight: FontWeight.w800,
+      style: appTextStyle(
+        context,
+        TextStyle(color: color, fontSize: 10.5, fontWeight: FontWeight.w800),
       ),
     ),
   );
@@ -1513,13 +1581,18 @@ class _QuestEmptyResults extends StatelessWidget {
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     return Center(
+      heightFactor: 1,
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.search_off, color: Color(0xffd4a85f), size: 36),
+              Icon(
+                Icons.search_off,
+                color: appColor(context, Color(0xffd4a85f)),
+                size: 36,
+              ),
               const SizedBox(height: 10),
               Text(
                 needsSync ? l10n.waitingQuestData : l10n.questNoResults,
@@ -1529,7 +1602,10 @@ class _QuestEmptyResults extends StatelessWidget {
               Text(
                 needsSync ? l10n.waitingQuestDataDesc : l10n.questNoResultsHint,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xff9fb3bf)),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, Color(0xff9fb3bf))),
+                ),
               ),
               if (filters.hasFilters || filters.hasSearch)
                 TextButton(
@@ -1546,7 +1622,9 @@ class _QuestEmptyResults extends StatelessWidget {
 }
 
 class _WaitingState extends StatelessWidget {
-  const _WaitingState();
+  const _WaitingState({required this.syncedEmpty});
+
+  final bool syncedEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -1554,25 +1632,36 @@ class _WaitingState extends StatelessWidget {
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.assignment_outlined,
-            color: Color(0xffd4a85f),
-            size: 42,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            l10n.waitingQuestData,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            l10n.waitingQuestDataDesc,
-            style: const TextStyle(color: Color(0xff8197a5)),
-          ),
-        ],
+      heightFactor: 1,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.assignment_outlined,
+              color: appColor(context, Color(0xffd4a85f)),
+              size: 42,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              syncedEmpty ? l10n.noPinnedQuests : l10n.waitingQuestData,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            if (!syncedEmpty) ...[
+              const SizedBox(height: 7),
+              Text(
+                l10n.waitingQuestDataDesc,
+                textAlign: TextAlign.center,
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, Color(0xff8197a5))),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -1583,6 +1672,7 @@ class _QuestViewEntry {
     required this.id,
     required this.code,
     required this.title,
+    required this.translatedTitle,
     required this.detail,
     required this.category,
     required this.period,
@@ -1606,9 +1696,16 @@ class _QuestViewEntry {
       id: quest.id,
       code: doc?.code ?? quest.id.toString(),
       title: quest.title,
+      translatedTitle: doc?.translatedName ?? quest.title,
       detail: quest.detail,
-      category: quest.category,
-      period: quest.type,
+      category: switch (quest.category) {
+        8 || 9 || 10 => 2,
+        11 => 6,
+        _ => quest.category,
+      },
+      // API type 5 covers both seasonal and yearly quests. Only catalog
+      // recurrence metadata can distinguish them; retain the API fallback.
+      period: quest.type == 5 && doc?.period == 6 ? 6 : quest.type,
       progressLabel: quest.exactProgressLabel ?? quest.progressPercentLabel,
       completed: quest.isCompleted,
       locked: false,
@@ -1640,6 +1737,7 @@ class _QuestViewEntry {
       id: doc.gameId,
       code: doc.code,
       title: doc.name,
+      translatedTitle: doc.translatedName ?? doc.name,
       detail: doc.description,
       category: doc.category,
       period: doc.period,
@@ -1661,6 +1759,7 @@ class _QuestViewEntry {
   final int id;
   final String code;
   final String title;
+  final String translatedTitle;
   final String detail;
   final int category;
   final int period;

@@ -1,9 +1,59 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/painting.dart';
 import 'package:yahagi_kancolle_browser/src/layout/window_metrics_change.dart';
 
 void main() {
+  test('180-degree cutout and safe-inset swaps count as geometry changes', () {
+    final left = WindowMetricsSnapshot(
+      physicalSize: const Size(2400, 1080),
+      devicePixelRatio: 3,
+      imeBottom: 0,
+      viewPadding: const EdgeInsets.only(left: 96),
+      displayFeatures: const [
+        DisplayFeature(
+          bounds: Rect.fromLTWH(12, 480, 72, 72),
+          type: DisplayFeatureType.cutout,
+          state: DisplayFeatureState.unknown,
+        ),
+      ],
+    );
+    final right = WindowMetricsSnapshot(
+      physicalSize: const Size(2400, 1080),
+      devicePixelRatio: 3,
+      imeBottom: 0,
+      viewPadding: const EdgeInsets.only(right: 96),
+      displayFeatures: const [
+        DisplayFeature(
+          bounds: Rect.fromLTWH(2316, 480, 72, 72),
+          type: DisplayFeatureType.cutout,
+          state: DisplayFeatureState.unknown,
+        ),
+      ],
+    );
+    expect(
+      classifyWindowMetricsChange(left, right),
+      WindowMetricsChange.geometry,
+    );
+    final noInset = WindowMetricsSnapshot(
+      physicalSize: left.physicalSize,
+      devicePixelRatio: 3,
+      imeBottom: 0,
+      displayFeatures: right.displayFeatures,
+    );
+    final noInsetOld = WindowMetricsSnapshot(
+      physicalSize: left.physicalSize,
+      devicePixelRatio: 3,
+      imeBottom: 0,
+      displayFeatures: left.displayFeatures,
+    );
+    expect(
+      classifyWindowMetricsChange(noInsetOld, noInset),
+      WindowMetricsChange.geometry,
+    );
+  });
+
   const original = WindowMetricsSnapshot(
     physicalSize: Size(1080, 2400),
     devicePixelRatio: 3,

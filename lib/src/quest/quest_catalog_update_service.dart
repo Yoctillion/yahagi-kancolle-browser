@@ -119,6 +119,7 @@ final class QuestCatalogUpdateService implements QuestCatalogUpdateClient {
       final sourceHost = display.host == relations.host
           ? display.host
           : '${display.host}+${relations.host}';
+      final displayDataset = await store.withBundledDisplayFallback(dataset);
       try {
         await store.save(dataset);
       } on IOException catch (error) {
@@ -130,7 +131,10 @@ final class QuestCatalogUpdateService implements QuestCatalogUpdateClient {
         await _saveState(current, failed, 'storageFailed');
         return failed;
       }
-      final result = QuestCatalogUpdated(dataset, sourceHost: sourceHost);
+      final result = QuestCatalogUpdated(
+        displayDataset,
+        sourceHost: sourceHost,
+      );
       await _saveState(dataset, result, 'updated');
       return result;
     } on FormatException catch (error) {

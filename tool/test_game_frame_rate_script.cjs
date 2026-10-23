@@ -11,8 +11,9 @@ const source = fs.readFileSync(path.join(folder, sourceFile), 'utf8').split('"""
 const tickerSource = fs.readFileSync(path.join(__dirname, 'fixtures/createjs-ticker-0.6.2.js'), 'utf8');
 
 function frame({pixi = true, pathname = '/kcs2/index.php', canvasFirst = true, initialFps = 60} = {}) {
-  let now = 1000, id = 0, ticks = 0, draws = 0, offscreen = 0, otherDraws = 0;
+  let now = 1000, id = 0, ticks = 0, draws = 0, offscreen = 0, otherDraws = 0, reloads = 0;
   const raf = new Map(), timers = new Map(), events = new Map(), messages = [];
+  const cancelled = {raf: [], timers: []};
   const canvas = {nodeName: 'CANVAS', width: 1200, height: 720, isConnected: true};
   const otherCanvas = {nodeName: 'CANVAS', width: 24, height: 24, isConnected: true};
   const document = {
@@ -30,14 +31,14 @@ function frame({pixi = true, pathname = '/kcs2/index.php', canvasFirst = true, i
     return 'rendered';
   };
   const context = {
-    console, document, location: {pathname}, performance: {now: () => now},
+    console, document, location: {pathname, reload() {reloads++;}}, performance: {now: () => now},
     YahagiFrameRate: channel,
     requestAnimationFrame(fn) {const key = ++id; raf.set(key, fn); return key;},
-    cancelAnimationFrame(key) {raf.delete(key);},
+    cancelAnimationFrame(key) {cancelled.raf.push(key); raf.delete(key);},
     setInterval(fn, ms) {const key = ++id; timers.set(key, {fn, ms, next: now + ms, repeat: true}); return key;},
     clearInterval(key) {timers.delete(key);},
     setTimeout(fn, ms) {const key = ++id; timers.set(key, {fn, ms, next: now + ms}); return key;},
-    clearTimeout(key) {timers.delete(key);},
+    clearTimeout(key) {cancelled.timers.push(key); timers.delete(key);},
     addEventListener: (name, fn) => events.set(name, fn),
     removeEventListener: (name, fn) => {if (events.get(name) === fn) events.delete(name);},
   };
@@ -48,10 +49,12 @@ function frame({pixi = true, pathname = '/kcs2/index.php', canvasFirst = true, i
   const ticker = context.createjs.Ticker;
   ticker.framerate = initialFps;
   const originalSynch = ticker._handleSynch, originalRAF = ticker._handleRAF;
+  const originalSetFPS = ticker.setFPS;
   const originalSetup = ticker._setupTick, originalTick = ticker._tick;
   vm.runInContext(source, context);
   const renderer = new Renderer();
-  const send = target => channel.onmessage({data: JSON.stringify({target})});
+  const send = (target, foreground) => channel.onmessage?.({data: JSON.stringify({target,
+    ...(typeof foreground === 'boolean' ? {foreground} : {})})});
   const listen = () => ticker.addEventListener('tick', () => ticks++);
   listen();
   const run = (hz, seconds, render = true) => {
@@ -69,12 +72,14 @@ function frame({pixi = true, pathname = '/kcs2/index.php', canvasFirst = true, i
     }
   };
   return {
-    context, ticker, renderer, Renderer, canvas, otherCanvas, document, channel, messages, raf, timers,
-    originalSynch, originalRAF, originalSetup, originalTick, originalRender, send, run, listen,
-    counts: () => ({ticks, draws, offscreen, otherDraws}),
+    context, ticker, renderer, Renderer, canvas, otherCanvas, document, channel, messages, raf, timers, cancelled,
+    originalSynch, originalRAF, originalSetFPS, originalSetup, originalTick, originalRender, send, run, listen,
+    counts: () => ({ticks, draws, offscreen, otherDraws, reloads}),
     advance(ms) {now += ms;},
     sample() {for (const timer of [...timers.values()]) if (timer.repeat) timer.fn(); return messages.filter(m => m.kind === 'sample').at(-1);},
     visible(value) {document.hidden = !value; document.visibilityState = value ? 'visible' : 'hidden'; events.get('visibilitychange')?.();},
+    pageHide(persisted = false) {events.get('pagehide')?.({persisted});},
+    pageShow(persisted = false) {events.get('pageshow')?.({persisted});},
   };
 }
 
@@ -232,4 +237,155 @@ test('outer documents never start canvas instrumentation or the meter', () => {
   const f = frame({pathname: '/gadget_html5/'}); f.run(120, 2);
   assert.equal(f.counts().draws, 240); f.sample();
   assert.equal(f.messages.filter(message => message.kind === 'sample').length, 0);
+});
+
+function loseGameCallback(f) {
+  const key = f.ticker._timerId;
+  if (f.ticker._raf) f.raf.delete(key); else f.timers.delete(key);
+  return key;
+}
+
+test('native foreground recovery restarts a lost game RAF without resetting listeners', () => {
+  const f = frame(); f.send('fps60', true); f.run(120, 1);
+  f.send('fps30', false); loseGameCallback(f); f.advance(15000);
+  const listeners = f.ticker._listeners.tick.slice();
+  const startTime = f.ticker._startTime, before = f.counts().ticks;
+  f.send('fps60', true); f.run(120, 3);
+  assert.ok(f.counts().ticks - before >= 100, 'lost RAF must resume actual game ticks');
+  assert.equal(f.ticker._startTime, startTime, 'recovery must not reset the ticker');
+  assert.deepEqual(f.ticker._listeners.tick, listeners);
+  assert.ok(f.raf.size <= 2, 'one game RAF and one meter RAF');
+});
+
+test('visibility recovery also repairs lost RAF when native foreground remains true', () => {
+  const f = frame(); f.send('fps60', true); f.run(120, 1);
+  f.visible(false); loseGameCallback(f); f.advance(15000);
+  const before = f.counts().ticks;
+  f.visible(true); f.run(120, 3);
+  assert.ok(f.counts().ticks - before >= 100);
+});
+
+test('a stalled ticker cannot report its old measured FPS as fresh progress', () => {
+  const f = frame(); f.run(120, 2); f.sample();
+  loseGameCallback(f); f.run(120, 2);
+  assert.equal(f.sample().fps, null, 'getMeasuredFPS retains history when no new tick runs');
+});
+
+test('normal foreground resume never adds a duplicate game loop', () => {
+  const f = frame(); f.send('fps60', true); f.run(120, 1);
+  f.send('fps30', false); f.visible(false); f.advance(15000);
+  f.visible(true); f.send('fps60', true);
+  const before = f.counts().ticks; f.run(120, 3);
+  assert.ok(Math.abs(f.counts().ticks - before - 180) <= 2);
+  assert.ok(f.raf.size <= 2);
+});
+
+test('background signals and rapid toggles cancel obsolete recovery checks', () => {
+  const f = frame(); f.send('fps60', true); f.run(120, 1);
+  f.send('fps30', false); loseGameCallback(f);
+  const before = f.counts().ticks;
+  for (let index = 0; index < 30; index++) { f.send('fps60', true); f.send('fps30', false); }
+  f.run(120, 3); assert.equal(f.counts().ticks, before, 'background must not repair the game loop');
+  assert.equal([...f.timers.values()].filter(timer => !timer.repeat).length, 0);
+  f.send('fps60', true); f.run(120, 3);
+  assert.ok(f.counts().ticks > before); assert.ok(f.raf.size <= 2);
+});
+
+test('recovery preserves a deliberately paused ticker and a ticker without game listeners', () => {
+  for (const reason of ['paused', 'listeners', 'uninitialized']) {
+    const f = frame(); f.send('fps60', true); f.run(120, 1);
+    f.send('fps30', false); const stale = loseGameCallback(f);
+    f.send('fps60', true);
+    if (reason === 'paused') f.ticker.paused = true;
+    if (reason === 'listeners') f.ticker.removeAllEventListeners('tick');
+    if (reason === 'uninitialized') f.ticker.reset();
+    const before = f.ticker.getTicks(); f.run(120, 3);
+    assert.equal(f.ticker.getTicks(), before, reason);
+    assert.equal(f.ticker.paused, reason === 'paused');
+    if (reason !== 'uninitialized') assert.equal(f.ticker._timerId, stale, reason);
+  }
+});
+
+test('recovery does not mistake intentional very low game FPS for a dead scheduler', () => {
+  const f = frame(); f.send('fps60', true); f.run(120, 1);
+  f.send('fps60', false); f.ticker.setFPS(0.5); f.send('fps60', true);
+  const before = f.ticker.getTicks(); f.run(120, 8);
+  assert.ok(f.ticker.getTicks() - before >= 3);
+  assert.ok(Math.abs(f.ticker.framerate - 0.5) < 0.001);
+  assert.ok(f.raf.size <= 2);
+});
+
+test('disposal and replacement ticker epochs cannot revive an old lost RAF', () => {
+  for (const change of ['dispose', 'reset', 'replace']) {
+    const f = frame(); f.send('fps60', true); f.run(120, 1);
+    f.send('fps30', false); loseGameCallback(f); f.send('fps60', true);
+    const before = f.ticker.getTicks(), old = f.ticker;
+    if (change === 'dispose') f.context.__yahagiFrameRateRuntime.dispose();
+    if (change === 'reset') f.ticker.reset();
+    if (change === 'replace') f.context.createjs = {Ticker: {}};
+    f.run(120, 3);
+    assert.equal(old.getTicks(), change === 'reset' ? 0 : before, change);
+  }
+});
+
+test('foreground checks never recover a ticker belonging to an outer document', () => {
+  const f = frame({pathname: '/gadget_html5/'}); f.run(120, 1);
+  f.send('fps60', false); loseGameCallback(f); const before = f.ticker.getTicks();
+  f.send('fps60', true); f.visible(false); f.visible(true); f.run(120, 3);
+  assert.equal(f.ticker.getTicks(), before);
+});
+
+test('recovery cancels the old scheduler in its actual RAF or timeout queue', () => {
+  for (const mode of ['fps60', 'highRefresh', 'timeout']) {
+    const f = frame();
+    if (mode === 'timeout') {
+      f.context.__yahagiFrameRateRuntime.dispose();
+      f.ticker._handleSynch = undefined;
+      vm.runInContext(source, f.context);
+    }
+    const target = mode === 'timeout' ? 'fps60' : mode;
+    f.send(target, true); f.run(120, 1); f.send(target, false);
+    const stale = loseGameCallback(f), wasRAF = f.ticker._raf;
+    const before = f.ticker.getTicks(); f.send(target, true); f.run(120, 3);
+    assert.ok(f.ticker.getTicks() > before, mode);
+    assert.ok((wasRAF ? f.cancelled.raf : f.cancelled.timers).includes(stale), mode);
+    assert.equal((wasRAF ? f.cancelled.timers : f.cancelled.raf).includes(stale), false, mode);
+  }
+});
+
+test('a recovery epoch performs at most one repair and pagehide invalidates it', () => {
+  const f = frame(); f.send('fps60', true); f.run(120, 1);
+  f.send('fps60', false); loseGameCallback(f); f.send('fps60', true); f.run(120, 3);
+  loseGameCallback(f); const before = f.ticker.getTicks(); f.run(120, 3);
+  assert.equal(f.ticker.getTicks(), before, 'no recurring repair loop');
+  f.send('fps60', false); f.send('fps60', true); f.pageHide();
+  f.send('fps60', false); f.send('fps60', true); f.visible(false); f.visible(true);
+  f.run(120, 3); assert.equal(f.ticker.getTicks(), before, 'departed documents stay inactive');
+  assert.equal([...f.timers.values()].filter(timer => !timer.repeat).length, 0);
+});
+
+test('persisted pageshow resumes its current document after pagehide without duplicate schedulers', () => {
+  const f = frame(); f.send('fps60', true); f.run(120, 1);
+  f.pageHide(true); loseGameCallback(f);
+  const before = f.ticker.getTicks(); f.run(120, 3);
+  assert.equal(f.ticker.getTicks(), before, 'pagehide must not revive a cached document');
+  f.pageShow(true); f.run(120, 3);
+  assert.ok(f.ticker.getTicks() > before, 'the restored document must recover its lost RAF');
+  const running = f.ticker.getTicks();
+  for (let index = 0; index < 10; index++) f.pageShow(true);
+  f.run(120, 3);
+  assert.ok(Math.abs(f.ticker.getTicks() - running - 180) <= 2);
+  assert.ok(f.raf.size <= 2);
+});
+
+test('pageshow still respects native background state and a disposed runtime', () => {
+  for (const reason of ['background', 'disposed']) {
+    const f = frame(); f.send('fps60', true); f.run(120, 1);
+    f.pageHide(true); loseGameCallback(f);
+    if (reason === 'background') f.send('fps60', false);
+    else f.context.__yahagiFrameRateRuntime.dispose();
+    const before = f.ticker.getTicks(); f.pageShow(true); f.run(120, 3);
+    assert.equal(f.ticker.getTicks(), before, reason);
+    assert.equal([...f.timers.values()].filter(timer => !timer.repeat).length, 0, reason);
+  }
 });

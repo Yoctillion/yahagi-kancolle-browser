@@ -124,9 +124,123 @@ void main() {
       'unsupportedCount': 1,
     });
     await controller.pickArchive();
+    expect(controller.preflight, same(port.candidate));
+    expect(port.discarded, isEmpty);
     await controller.cancelImport();
+    expect(controller.preflight, isNull);
     expect(port.discarded, ['temporary']);
     expect(port.commitCalls, 0);
+  });
+
+  test(
+    'a preview arriving after disposal is released without notification',
+    () async {
+      final port = FakeGameModsPort()
+        ..pickerGate = Completer<GameModsPreflight?>();
+      final controller = GameModsController(port: port);
+      await controller.initialize();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      final picking = controller.pickArchive();
+      await Future<void>.delayed(Duration.zero);
+      expect(port.pickCalls, 1);
+      expect(controller.busy, isTrue);
+      controller.dispose();
+      final notificationsAtDisposal = notifications;
+
+      port.pickerGate!.complete(
+        const GameModsPreflight(
+          token: 'late-preview',
+          name: 'cache.zip',
+          resourceCount: 1,
+          supportedCount: 1,
+          unsupportedCount: 0,
+        ),
+      );
+      await picking;
+      await controller.cancelImport();
+      await controller.pickArchive();
+
+      expect(port.discarded, ['late-preview']);
+      expect(controller.preflight, isNull);
+      expect(controller.busy, isFalse);
+      expect(controller.operationProgress, isNull);
+      expect(controller.errorCode, isNull);
+      expect(notifications, notificationsAtDisposal);
+      expect(port.pickCalls, 1);
+      expect(port.commitCalls, 0);
+    },
+  );
+
+  test(
+    'late preview cleanup failure cannot change the picker result',
+    () async {
+      final port = FakeGameModsPort()
+        ..pickerGate = Completer<GameModsPreflight?>()
+        ..discardError = PlatformException(code: 'unsupported_platform');
+      final controller = GameModsController(port: port);
+      await controller.initialize();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      final picking = controller.pickArchive();
+      await Future<void>.delayed(Duration.zero);
+      controller.dispose();
+      final notificationsAtDisposal = notifications;
+
+      port.pickerGate!.complete(
+        const GameModsPreflight(
+          token: 'late-preview',
+          name: 'cache.zip',
+          resourceCount: 1,
+          supportedCount: 1,
+          unsupportedCount: 0,
+        ),
+      );
+      await expectLater(picking, completes);
+
+      expect(port.discarded, ['late-preview']);
+      expect(controller.preflight, isNull);
+      expect(controller.supported, isTrue);
+      expect(controller.errorCode, isNull);
+      expect(controller.busy, isFalse);
+      expect(notifications, notificationsAtDisposal);
+    },
+  );
+
+  test('a cancelled picker arriving after disposal needs no cleanup', () async {
+    final port = FakeGameModsPort()
+      ..pickerGate = Completer<GameModsPreflight?>();
+    final controller = GameModsController(port: port);
+    await controller.initialize();
+    final picking = controller.pickArchive();
+    await Future<void>.delayed(Duration.zero);
+    controller.dispose();
+
+    port.pickerGate!.complete(null);
+    await picking;
+
+    expect(port.discarded, isEmpty);
+    expect(controller.preflight, isNull);
+    expect(controller.errorCode, isNull);
+    expect(controller.busy, isFalse);
+  });
+
+  test('picker errors retain the platform error and never discard', () async {
+    final port = FakeGameModsPort()
+      ..pickerGate = Completer<GameModsPreflight?>();
+    final controller = GameModsController(port: port);
+    addTearDown(controller.dispose);
+    await controller.initialize();
+    final picking = controller.pickArchive();
+    await Future<void>.delayed(Duration.zero);
+
+    port.pickerGate!.completeError(PlatformException(code: 'invalid_archive'));
+    await picking;
+
+    expect(controller.errorCode, 'invalid_archive');
+    expect(controller.preflight, isNull);
+    expect(controller.busy, isFalse);
+    expect(port.discarded, isEmpty);
   });
 
   test(
@@ -549,9 +663,11 @@ class FakeGameModsPort implements GameModsPort {
   Completer<void>? saveGate;
   Completer<void>? cancelGate;
   Completer<GameModsStatus>? statusGate;
+  Completer<GameModsPreflight?>? pickerGate;
   GameModsPreflight? candidate;
+  Object? discardError;
   int statusCalls = 0, applyCalls = 0, resetCalls = 0, commitCalls = 0;
-  int cancelCalls = 0;
+  int cancelCalls = 0, pickCalls = 0;
   int concurrentSaves = 0, maxConcurrentSaves = 0;
   bool missing = false;
   bool unsupportedPlatform = false;
@@ -603,7 +719,12 @@ class FakeGameModsPort implements GameModsPort {
   }
 
   @override
-  Future<GameModsPreflight?> pickAndPreflightArchive() async => candidate;
+  Future<GameModsPreflight?> pickAndPreflightArchive() async {
+    pickCalls++;
+    final gate = pickerGate;
+    return gate == null ? candidate : gate.future;
+  }
+
   @override
   Future<void> commitImport(String token) async {
     commitCalls++;
@@ -612,6 +733,7 @@ class FakeGameModsPort implements GameModsPort {
   @override
   Future<void> discardImport(String token) async {
     discarded.add(token);
+    if (discardError != null) throw discardError!;
   }
 
   @override

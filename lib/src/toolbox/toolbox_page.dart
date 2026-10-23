@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -61,11 +62,17 @@ class ToolboxPage extends StatelessWidget {
       ),
       ColoredBox(
         key: const Key('toolbox-other-page'),
-        color: const Color(0xff091923),
+        color: appColor(context, const Color(0xff091923)),
         child: Center(
           child: Text(
             AppLocalizations.of(context)!.otherToolsComingSoon,
-            style: const TextStyle(color: Color(0xffecf3f5), fontSize: 14),
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffecf3f5)),
+                fontSize: 14,
+              ),
+            ),
           ),
         ),
       ),

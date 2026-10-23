@@ -8,6 +8,8 @@ import 'package:yahagi_kancolle_browser/src/settings/network_settings_controller
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_section.dart';
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_store.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
+import 'package:yahagi_kancolle_browser/src/theme/app_palette.dart';
+import 'package:yahagi_kancolle_browser/src/theme/app_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -21,9 +23,11 @@ void main() {
     NetworkSettingsController controller, {
     VoidCallback? onSuccess,
     Locale locale = const Locale('zh'),
+    ThemeData? theme,
   }) {
     return MaterialApp(
       locale: locale,
+      theme: theme,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: TopNoticeHost(
@@ -56,6 +60,52 @@ void main() {
 
   Finder noticeMatching(Finder matching) =>
       find.descendant(of: find.byKey(topNoticeKey), matching: matching);
+
+  testWidgets('diagnostic timing stays readable in both light themes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = await createController(
+      handler: (_) async => {
+        'success': true,
+        'code': 'ok',
+        'message': '网络畅通，可正常访问游戏服务。',
+        'elapsedMs': 10,
+        'details': {
+          'proxy': {'status': 'success', 'elapsedMs': 20},
+        },
+      },
+    );
+    await controller.testConnection(NetworkMode.system, '', 8080);
+    for (final mode in AppThemeMode.values) {
+      await tester.pumpWidget(
+        app(controller, theme: createAppTheme(mode: mode)),
+      );
+      await tester.pumpAndSettle();
+      final totalColor = tester.widget<Text>(find.text('10ms')).style!.color!;
+      final connectionColor = tester
+          .widget<Text>(find.text('20ms'))
+          .style!
+          .color!;
+      if (mode == AppThemeMode.dark) {
+        expect(totalColor, Colors.white54);
+        expect(connectionColor, Colors.white38);
+      } else {
+        final palette = AppPalette(mode);
+        expect(totalColor, palette.muted);
+        expect(connectionColor, palette.muted);
+        expect(totalColor.a, 1);
+        final textLuminance = totalColor.computeLuminance();
+        final backgroundLuminance = palette.inner.computeLuminance();
+        expect(
+          (backgroundLuminance + .05) / (textLuminance + .05),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    }
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('diagnostic result follows app locale and keeps raw errors', (
     tester,

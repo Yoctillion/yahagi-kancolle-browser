@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -16,7 +17,7 @@ class SoundSettingsPage extends StatelessWidget with SettingsUIHelpers {
         lookupAppLocalizations(const Locale('zh'));
 
     return Container(
-      color: const Color(0xff0d1a26),
+      color: appColor(context, const Color(0xff0d1a26)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(

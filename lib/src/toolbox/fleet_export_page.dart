@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -136,11 +137,17 @@ class _FleetExportPageState extends State<FleetExportPage> {
               const SizedBox(height: 10),
               Text(
                 l10n.openInSystemBrowser,
-                style: const TextStyle(color: Color(0xff8fa5b2), fontSize: 12),
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xff8fa5b2)),
+                    fontSize: 12,
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               Material(
-                color: Colors.transparent,
+                color: appColor(context, Colors.transparent),
                 child: CheckboxListTile(
                   key: const Key('event-land-bases-only'),
                   contentPadding: EdgeInsets.zero,
@@ -149,7 +156,10 @@ class _FleetExportPageState extends State<FleetExportPage> {
                   value: _eventLandBasesOnly,
                   title: Text(
                     l10n.eventLandBasesOnly,
-                    style: const TextStyle(color: Color(0xffd7e2e8)),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, Color(0xffd7e2e8))),
+                    ),
                   ),
                   onChanged: (value) {
                     if (value == null) return;
@@ -163,10 +173,13 @@ class _FleetExportPageState extends State<FleetExportPage> {
               const SizedBox(height: 4),
               Text(
                 l10n.landBaseExportLimitHint,
-                style: const TextStyle(
-                  color: Color(0xff8fa5b2),
-                  fontSize: 11,
-                  height: 1.35,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, Color(0xff8fa5b2)),
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
                 ),
               ),
             ],
@@ -183,10 +196,13 @@ class _FleetExportPageState extends State<FleetExportPage> {
                 children: [
                   Text(
                     l10n.fleetExportText,
-                    style: const TextStyle(
-                      color: Color(0xffe8eef2),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffe8eef2)),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   _FormatBadge(label: l10n.deckBuilderV4),
@@ -209,8 +225,10 @@ class _FleetExportPageState extends State<FleetExportPage> {
                 constraints: const BoxConstraints(minHeight: 190),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xff081923),
-                  border: Border.all(color: const Color(0xff294657)),
+                  color: appColor(context, Color(0xff081923)),
+                  border: Border.all(
+                    color: appColor(context, const Color(0xff294657)),
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: SelectableText(
@@ -220,8 +238,8 @@ class _FleetExportPageState extends State<FleetExportPage> {
                       ? l10n.waitingForEquip
                       : l10n.waitingForPortData,
                   key: const Key('fleet-export-text'),
-                  style: const TextStyle(
-                    color: Color(0xffc4d4dc),
+                  style: TextStyle(
+                    color: appColor(context, Color(0xffc4d4dc)),
                     fontSize: 12,
                     height: 1.45,
                   ),
@@ -291,8 +309,8 @@ class _FleetExportPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      color: const Color(0xff102733),
-      border: Border.all(color: const Color(0xff294657)),
+      color: appColor(context, Color(0xff102733)),
+      border: Border.all(color: appColor(context, Color(0xff294657))),
       borderRadius: BorderRadius.circular(14),
     ),
     child: Padding(padding: const EdgeInsets.all(16), child: child),
@@ -308,15 +326,18 @@ class _FormatBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
     decoration: BoxDecoration(
-      color: const Color(0xff173947),
+      color: appColor(context, Color(0xff173947)),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Text(
       label,
-      style: const TextStyle(
-        color: Color(0xff98c6d8),
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xff98c6d8)),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
   );

@@ -9,7 +9,7 @@ import 'package:yahagi_kancolle_browser/src/senka/senka_state.dart';
 void main() {
   const reducer = SenkaReducer();
 
-  test('经验差按 7/10000 计入捕获日战果', () {
+  test('出击经验差按 7/10000 在归港日计入战果', () {
     var state = SenkaState.forMonth('2026-08');
     state = reducer.reduce(
       state,
@@ -28,6 +28,13 @@ void main() {
       }, atJst: DateTime(2026, 8, 10, 12)),
     );
 
+    expect(state.monthRecorded, 0);
+    state = reducer.reduce(
+      state,
+      apiEvent('/kcsapi/api_port/port', {
+        'api_basic': {'api_experience': 105500},
+      }, atJst: DateTime(2026, 8, 10, 12, 1)),
+    );
     expect(state.day(DateTime(2026, 8, 10)).experience, 3.85);
     expect(state.monthRecorded, 3.85);
   });
@@ -59,6 +66,13 @@ void main() {
       }, atJst: DateTime(2026, 8, 19, 13)),
     );
 
+    expect(state.monthRecorded, 0);
+    state = reducer.reduce(
+      state,
+      apiEvent('/kcsapi/api_port/port', {
+        'api_basic': {'api_experience': 15001000},
+      }, atJst: DateTime(2026, 8, 19, 13, 1)),
+    );
     expect(state.latestExperience, 15001000);
     expect(state.day(DateTime(2026, 8, 19)).experience, closeTo(.7, 1e-9));
   });
@@ -407,6 +421,13 @@ void main() {
       ),
     );
 
+    expect(state.playerRankingRow.senkaDelta, 80);
+    state = reducer.reduce(
+      state,
+      apiEvent('/kcsapi/api_port/port', {
+        'api_basic': {'api_experience': 105500},
+      }, atJst: DateTime(2026, 8, 10, 10, 1)),
+    );
     expect(state.playerRankingRow.senkaDelta, closeTo(83.85, 0.0001));
   });
 
@@ -1188,7 +1209,7 @@ void main() {
       }
     });
 
-    test('后续月份 rollover 重置出击统计、watermark 与 active 并保留身份', () {
+    test('跨月归档出击统计并保留待归港上下文和身份', () {
       var state = SenkaState.forMonth(
         '2026-08',
       ).copyWith(memberId: 123, nickname: '矢矧', magic: 61);
@@ -1214,10 +1235,11 @@ void main() {
       expect(state.nickname, '矢矧');
       expect(state.magic, 61);
       expect(state.sortieStats, isEmpty);
-      expect(state.activeSortie, isNull);
-      expect(state.toJson()['latestSortieEventAt'], isNull);
-      expect(state.toJson()['lastSortieStartAt'], isNull);
-      expect(state.toJson()['lastSortieStartMapKey'], isNull);
+      expect(state.activeSortie?.mapKey, '2-3');
+      expect(state.monthArchives['2026-08']!.sortieStats['2-3']?.sorties, 1);
+      expect(state.latestSortieEventAt, isNotNull);
+      expect(state.lastSortieStartAt, isNotNull);
+      expect(state.lastSortieStartMapKey, '2-3');
     });
 
     test('JSON last start 无对应有效统计时清空生命周期元数据且不误判重复', () {

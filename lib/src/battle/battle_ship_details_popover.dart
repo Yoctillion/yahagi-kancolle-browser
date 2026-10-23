@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'dart:math' as math;
 
@@ -260,14 +261,20 @@ class BattleShipDetailsTap extends StatelessWidget {
       child: Semantics(
         selected: selected,
         child: Material(
-          color: selected ? color.withValues(alpha: .13) : Colors.transparent,
+          color: appColor(
+            context,
+            selected ? color.withValues(alpha: .13) : Colors.transparent,
+          ),
           child: InkWell(
             onTap: () => scope.owner._toggle(context, ship),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: selected ? color : Colors.transparent,
+                    color: appColor(
+                      context,
+                      selected ? color : Colors.transparent,
+                    ),
                     width: 2,
                   ),
                 ),
@@ -393,25 +400,25 @@ class _ShipPopoverState extends State<_ShipPopover> {
     final color = enemy ? const Color(0xffff907e) : const Color(0xff70c7bc);
     final strings = BattleDetailStrings.of(context);
     String number(int? value) => value?.toString() ?? '—';
-    const labelStyle = TextStyle(
+    final labelStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w700,
-      color: Color(0xffa9bac4),
+      color: appColor(context, Color(0xffa9bac4)),
     );
-    const valueStyle = TextStyle(
+    final valueStyle = TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w700,
-      color: Color(0xffe5ebee),
+      color: appColor(context, Color(0xffe5ebee)),
     );
-    const metaLabelStyle = TextStyle(
+    final metaLabelStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w700,
-      color: Color(0xffa9bac4),
+      color: appColor(context, Color(0xffa9bac4)),
     );
-    const metaValueStyle = TextStyle(
+    final metaValueStyle = TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w700,
-      color: Color(0xffe5ebee),
+      color: appColor(context, Color(0xffe5ebee)),
     );
     final remodelValue =
         details?.remodelShipId == 0 && details?.remodelLevel == 0
@@ -424,8 +431,14 @@ class _ShipPopoverState extends State<_ShipPopover> {
     Widget labeledValue(String label, String value) => Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: '$label ', style: enemy ? labelStyle : metaLabelStyle),
-          TextSpan(text: value, style: enemy ? valueStyle : metaValueStyle),
+          TextSpan(
+            text: '$label ',
+            style: appTextStyle(context, enemy ? labelStyle : metaLabelStyle),
+          ),
+          TextSpan(
+            text: value,
+            style: appTextStyle(context, enemy ? valueStyle : metaValueStyle),
+          ),
         ],
       ),
     );
@@ -439,7 +452,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
             const SizedBox(width: 3),
             Text(
               value == null ? '—' : '$value%',
-              style: enemy ? valueStyle : metaValueStyle,
+              style: appTextStyle(context, enemy ? valueStyle : metaValueStyle),
             ),
           ],
         ),
@@ -450,17 +463,22 @@ class _ShipPopoverState extends State<_ShipPopover> {
       explicitChildNodes: true,
       child: Material(
         key: const Key('battle-ship-details-popover'),
-        color: const Color(0xff192f3d),
+        color: appColor(context, const Color(0xff192f3d)),
         elevation: 14,
-        shadowColor: Colors.black87,
+        shadowColor: appColor(context, Colors.black87),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: color.withValues(alpha: .55)),
+          side: BorderSide(
+            color: appColor(context, color.withValues(alpha: .55)),
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: DefaultTextStyle(
-          style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-              .copyWith(color: Color(0xffe5ebee), fontSize: 12, height: 1.25),
+          style: appTextStyle(
+            context,
+            (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+                .copyWith(color: Color(0xffe5ebee), fontSize: 12, height: 1.25),
+          ),
           child: SingleChildScrollView(
             controller: _scrollController,
             primary: false,
@@ -492,9 +510,15 @@ class _ShipPopoverState extends State<_ShipPopover> {
                               if (details?.enemyVariant case final variant?)
                                 Text(
                                   variant,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xffffbe67),
+                                  style: appTextStyle(
+                                    context,
+                                    TextStyle(
+                                      fontSize: 12,
+                                      color: appColor(
+                                        context,
+                                        Color(0xffffbe67),
+                                      ),
+                                    ),
                                   ),
                                 ),
                             ],
@@ -506,10 +530,10 @@ class _ShipPopoverState extends State<_ShipPopover> {
                       key: const Key('battle-ship-details-close'),
                       tooltip: l.close,
                       onPressed: onClose,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close,
                         size: 19,
-                        color: Color(0xffa5bac4),
+                        color: appColor(context, Color(0xffa5bac4)),
                       ),
                       visualDensity: VisualDensity.compact,
                       style: const ButtonStyle(
@@ -566,13 +590,19 @@ class _ShipPopoverState extends State<_ShipPopover> {
                             child: Text.rich(
                               TextSpan(
                                 children: [
-                                  const TextSpan(
+                                  TextSpan(
                                     text: 'Next ',
-                                    style: metaLabelStyle,
+                                    style: appTextStyle(
+                                      context,
+                                      metaLabelStyle,
+                                    ),
                                   ),
                                   TextSpan(
                                     text: number(details?.nextExperience),
-                                    style: metaValueStyle,
+                                    style: appTextStyle(
+                                      context,
+                                      metaValueStyle,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -588,11 +618,17 @@ class _ShipPopoverState extends State<_ShipPopover> {
                                   TextSpan(
                                     text:
                                         '${fleetText(context, FleetUiKeys.remodel)}：',
-                                    style: metaLabelStyle,
+                                    style: appTextStyle(
+                                      context,
+                                      metaLabelStyle,
+                                    ),
                                   ),
                                   TextSpan(
                                     text: remodelValue,
-                                    style: metaValueStyle,
+                                    style: appTextStyle(
+                                      context,
+                                      metaValueStyle,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -629,7 +665,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xff10232e),
+                    color: appColor(context, Color(0xff10232e)),
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: Row(
@@ -650,9 +686,12 @@ class _ShipPopoverState extends State<_ShipPopover> {
                               Text(
                                 stat.$1,
                                 textAlign: TextAlign.center,
-                                style: labelStyle,
+                                style: appTextStyle(context, labelStyle),
                               ),
-                              Text(number(stat.$2), style: valueStyle),
+                              Text(
+                                number(stat.$2),
+                                style: appTextStyle(context, valueStyle),
+                              ),
                             ],
                           ),
                         ),
@@ -663,17 +702,23 @@ class _ShipPopoverState extends State<_ShipPopover> {
                 if (equipment == null)
                   Text(
                     strings.equipmentUnavailable,
-                    style: const TextStyle(
-                      color: Color(0xff93aab8),
-                      fontSize: 12,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xff93aab8)),
+                        fontSize: 12,
+                      ),
                     ),
                   )
                 else if (equipment.isEmpty)
                   Text(
                     strings.noEquipment,
-                    style: const TextStyle(
-                      color: Color(0xff93aab8),
-                      fontSize: 12,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xff93aab8)),
+                        fontSize: 12,
+                      ),
                     ),
                   )
                 else
@@ -711,9 +756,12 @@ class _EquipmentRow extends StatelessWidget {
                   (item.masterId == null
                       ? l.unknownEquip
                       : '${l.unknownEquip} #${item.masterId}'),
-              style: const TextStyle(
-                color: Color(0xffe5ebee),
-                fontWeight: FontWeight.w700,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffe5ebee)),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -725,10 +773,13 @@ class _EquipmentRow extends StatelessWidget {
                 if (item.improvement > 0)
                   Text(
                     '★+${item.improvement}',
-                    style: const TextStyle(
-                      color: Color(0xff7bcba7),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xff7bcba7)),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 if (item.proficiency > 0)
@@ -744,10 +795,13 @@ class _EquipmentRow extends StatelessWidget {
                 if (item.extra)
                   Text(
                     strings.expansionSlot,
-                    style: const TextStyle(
-                      color: Color(0xffa9bac4),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffa9bac4)),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
               ],

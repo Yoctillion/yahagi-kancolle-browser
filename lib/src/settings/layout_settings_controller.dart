@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../theme/app_fonts.dart';
+import '../theme/app_theme.dart';
 import '../theme/custom_font_controller.dart';
 import 'header_resource_settings.dart';
 import 'workspace_menu_settings.dart';
@@ -8,6 +9,7 @@ import 'fleet_display_options.dart';
 import 'module_display_settings.dart';
 import 'layout_settings_store.dart';
 import 'hd_layout_settings.dart';
+import 'camera_avoidance_settings.dart';
 
 class LayoutSettingsController extends ChangeNotifier {
   LayoutSettingsController._(
@@ -267,6 +269,27 @@ class LayoutSettingsController extends ChangeNotifier {
       controller._uiLocked = await (store as UiLockSettingsStore)
           .loadUiLocked();
     }
+    if (store is AppThemeSettingsStore) {
+      try {
+        controller._appThemeMode = await (store as AppThemeSettingsStore)
+            .loadAppThemeMode();
+      } catch (error) {
+        debugPrint('Appearance preference could not be loaded: $error');
+      }
+    }
+    controller._persistedAppThemeMode = controller._appThemeMode;
+    if (store is CameraAvoidanceSettingsStore) {
+      try {
+        controller._cameraAvoidanceSettings =
+            (await (store as CameraAvoidanceSettingsStore)
+                    .loadCameraAvoidanceSettings())
+                .normalized();
+      } catch (error) {
+        debugPrint('Camera avoidance preference could not be loaded: $error');
+      }
+    }
+    controller._persistedCameraAvoidanceSettings =
+        controller._cameraAvoidanceSettings;
     controller._expeditionCountdownConfigured = true;
     controller._fleetDisplayFieldsLoaded = true;
     return controller;
@@ -274,6 +297,101 @@ class LayoutSettingsController extends ChangeNotifier {
 
   bool _uiLocked = false;
   bool get uiLocked => _uiLocked;
+
+  CameraAvoidanceSettings _cameraAvoidanceSettings =
+      const CameraAvoidanceSettings();
+  CameraAvoidanceSettings _persistedCameraAvoidanceSettings =
+      const CameraAvoidanceSettings();
+  Future<void> _cameraAvoidanceSaveQueue = Future<void>.value();
+  int _cameraAvoidanceRevision = 0;
+  bool _cameraAvoidanceDisposed = false;
+
+  bool get cameraAvoidanceEnabled => _cameraAvoidanceSettings.enabled;
+  double get cameraAvoidanceDistance => _cameraAvoidanceSettings.distance;
+
+  Future<void> setCameraAvoidanceEnabled(bool enabled) =>
+      _setCameraAvoidanceSettings(
+        CameraAvoidanceSettings(
+          enabled: enabled,
+          distance: cameraAvoidanceDistance,
+        ),
+      );
+
+  Future<void> setCameraAvoidanceDistance(double distance) =>
+      _setCameraAvoidanceSettings(
+        CameraAvoidanceSettings(
+          enabled: cameraAvoidanceEnabled,
+          distance: CameraAvoidanceSettings.normalizeDistance(distance),
+        ),
+      );
+
+  Future<void> _setCameraAvoidanceSettings(
+    CameraAvoidanceSettings settings,
+  ) async {
+    if (_cameraAvoidanceDisposed) return;
+    if (settings.enabled == cameraAvoidanceEnabled &&
+        settings.distance == cameraAvoidanceDistance) {
+      return _cameraAvoidanceSaveQueue;
+    }
+    final revision = ++_cameraAvoidanceRevision;
+    _cameraAvoidanceSettings = settings;
+    if (_store is CameraAvoidanceSettingsStore) {
+      // Save complete snapshots in order while the UI previews each edit.
+      final save = _cameraAvoidanceSaveQueue.then((_) async {
+        try {
+          await (_store as CameraAvoidanceSettingsStore)
+              .saveCameraAvoidanceSettings(settings);
+          _persistedCameraAvoidanceSettings = settings;
+        } catch (error) {
+          if (revision == _cameraAvoidanceRevision) {
+            _cameraAvoidanceSettings = _persistedCameraAvoidanceSettings;
+            if (!_cameraAvoidanceDisposed) notifyListeners();
+          }
+          debugPrint('Camera avoidance preference could not be saved: $error');
+        }
+      });
+      _cameraAvoidanceSaveQueue = save;
+      notifyListeners();
+      await save;
+    } else {
+      notifyListeners();
+    }
+  }
+
+  AppThemeMode _appThemeMode = AppThemeMode.dark;
+  AppThemeMode _persistedAppThemeMode = AppThemeMode.dark;
+  Future<void> _appThemeSaveQueue = Future<void>.value();
+  int _appThemeRevision = 0;
+  bool _appThemeDisposed = false;
+  AppThemeMode get appThemeMode => _appThemeMode;
+
+  Future<void> setAppThemeMode(AppThemeMode mode) async {
+    if (_appThemeDisposed) return;
+    if (_appThemeMode == mode) return _appThemeSaveQueue;
+    final revision = ++_appThemeRevision;
+    _appThemeMode = mode;
+    if (_store is AppThemeSettingsStore) {
+      // Keep the immediate preview while committing rapid selections in order.
+      // A late failure may only roll back the selection that caused it.
+      final save = _appThemeSaveQueue.then((_) async {
+        try {
+          await (_store as AppThemeSettingsStore).saveAppThemeMode(mode);
+          _persistedAppThemeMode = mode;
+        } catch (error) {
+          if (revision == _appThemeRevision) {
+            _appThemeMode = _persistedAppThemeMode;
+            if (!_appThemeDisposed) notifyListeners();
+          }
+          debugPrint('Appearance preference could not be saved: $error');
+        }
+      });
+      _appThemeSaveQueue = save;
+      notifyListeners();
+      await save;
+    } else {
+      notifyListeners();
+    }
+  }
 
   Future<void> setUiLocked(bool locked) async {
     if (_uiLocked == locked) return;
@@ -906,6 +1024,8 @@ class LayoutSettingsController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _cameraAvoidanceDisposed = true;
+    _appThemeDisposed = true;
     customFontController?.removeListener(_handleCustomFontChanged);
     super.dispose();
   }

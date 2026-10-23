@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -35,17 +36,20 @@ class DataUpdateMetadata extends StatelessWidget {
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
-    const style = TextStyle(color: Color(0xff8197a5));
+    final style = TextStyle(color: appColor(context, Color(0xff8197a5)));
     final checked = lastCheckedAt;
     return Wrap(
       spacing: 16,
       runSpacing: 2,
       children: [
-        Text('${l10n.dataVersionLabel}：${versionDate(version)}', style: style),
+        Text(
+          '${l10n.dataVersionLabel}：${versionDate(version)}',
+          style: appTextStyle(context, style),
+        ),
         Text(
           '${l10n.dataLastCheckedLabel}：'
           '${checked == null ? l10n.dataNotChecked : _time(checked)}',
-          style: style,
+          style: appTextStyle(context, style),
         ),
       ],
     );

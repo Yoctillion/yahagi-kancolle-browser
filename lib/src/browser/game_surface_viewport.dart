@@ -1,8 +1,10 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
 import '../layout/adaptive_layout.dart';
+import '../layout/camera_avoidance.dart';
 import '../settings/display_mode_store.dart';
 
 /// Displays the platform game surface while strictly maintaining the
@@ -115,6 +117,15 @@ class GameSurfaceViewport extends StatelessWidget {
   }) {
     final availW = math.max(0.0, containerWidth - padding.horizontal);
     final availH = math.max(0.0, containerHeight - padding.vertical);
+    if (availW <= 0 || availH <= 0) {
+      // Do not turn an exhausted safe area into an overflowing platform view.
+      return Rect.fromLTWH(
+        padding.left.clamp(0.0, math.max(0.0, containerWidth)),
+        padding.top.clamp(0.0, math.max(0.0, containerHeight)),
+        0,
+        0,
+      );
+    }
 
     final double gameWidth;
     final double gameHeight;
@@ -135,14 +146,15 @@ class GameSurfaceViewport extends StatelessWidget {
   Widget build(BuildContext context) {
     final padding = viewPadding ?? MediaQuery.viewPaddingOf(context);
     final centerAbove = centerAboveBottomInset && !fullscreen;
+    final camera = CameraAvoidanceScope.maybeOf(context);
     final effectivePadding = fullscreen
-        ? padding
+        ? camera?.gameViewPadding(padding) ?? padding
         : centerAbove
         ? EdgeInsets.only(bottom: padding.bottom)
         : EdgeInsets.zero;
 
     return ColoredBox(
-      color: backgroundColor,
+      color: appColor(context, backgroundColor),
       child: ClipRect(
         child: CustomSingleChildLayout(
           delegate: _GameSurfaceLayoutDelegate(
@@ -150,7 +162,12 @@ class GameSurfaceViewport extends StatelessWidget {
             fullscreen: fullscreen,
             isLandscape: isLandscape,
             displayMode: displayMode,
-            fitWithinBounds: fitWithinBounds || centerAbove,
+            fitWithinBounds:
+                fitWithinBounds ||
+                centerAbove ||
+                (camera != null &&
+                    camera.enabled &&
+                    camera.cutoutEdges.isNotEmpty),
             padding: effectivePadding,
           ),
           child: child,

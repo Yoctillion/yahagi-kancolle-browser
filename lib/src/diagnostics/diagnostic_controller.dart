@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'diagnostic_event.dart';
+import 'diagnostic_lifecycle.dart';
 import 'diagnostic_export_service.dart';
 import 'diagnostic_performance_monitor.dart';
 import 'diagnostic_platform_port.dart';
@@ -212,15 +213,9 @@ final class DiagnosticController extends ChangeNotifier {
       }
     }
     if (!_enabled) return;
-    final lifecycleState = WidgetsBinding.instance.lifecycleState;
-    final lifecycle = switch (lifecycleState) {
-      AppLifecycleState.resumed => DiagnosticLifecycleState.resumed,
-      AppLifecycleState.inactive ||
-      AppLifecycleState.hidden ||
-      AppLifecycleState.paused => DiagnosticLifecycleState.paused,
-      AppLifecycleState.detached => DiagnosticLifecycleState.stopped,
-      null => null,
-    };
+    final lifecycle = diagnosticLifecycleState(
+      WidgetsBinding.instance.lifecycleState,
+    );
     recorder.record(
       DiagnosticEvent.fixedError(
         occurredAt: now,

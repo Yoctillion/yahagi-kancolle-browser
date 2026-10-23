@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -7,28 +8,37 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../layout/camera_avoidance.dart';
 import 'game_fullscreen_exit_dialog.dart';
 
 const fullscreenExitSize = Size(34, 34);
 const _positionKey = 'game_fullscreen_exit_position';
 
 /// Range of allowed top-left positions, expanding near screen edges.
-Rect fullscreenExitArea(Size size, [EdgeInsets insets = EdgeInsets.zero]) {
-  final left = insets.left;
-  final top = insets.top;
+Rect fullscreenExitArea(
+  Size size, [
+  EdgeInsets insets = EdgeInsets.zero,
+  Size buttonSize = fullscreenExitSize,
+]) {
+  final left = insets.left.clamp(0.0, size.width);
+  final top = insets.top.clamp(0.0, size.height);
   return Rect.fromLTRB(
     left,
     top,
-    math.max(left, size.width - insets.right - fullscreenExitSize.width),
-    math.max(top, size.height - insets.bottom - fullscreenExitSize.height),
+    math.max(left, size.width - insets.right - buttonSize.width),
+    math.max(top, size.height - insets.bottom - buttonSize.height),
   );
 }
 
-Rect fullscreenExitRect(Rect area, Offset? anchor) => Rect.fromLTWH(
+Rect fullscreenExitRect(
+  Rect area,
+  Offset? anchor, [
+  Size buttonSize = fullscreenExitSize,
+]) => Rect.fromLTWH(
   area.left + area.width * (anchor?.dx ?? 1).clamp(0.0, 1.0),
   area.top + area.height * (anchor?.dy ?? 0).clamp(0.0, 1.0),
-  fullscreenExitSize.width,
-  fullscreenExitSize.height,
+  buttonSize.width,
+  buttonSize.height,
 );
 
 Offset snapFullscreenExit(Rect area, Offset position) {
@@ -92,6 +102,11 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
   bool _showHint = false;
   Timer? _hintTimer;
   Map<String, Object>? _lastNativeConfig;
+  Map<String, Object>? _pendingNativeConfig;
+  bool _nativeSyncScheduled = false;
+  bool _targetUnavailableReported = false;
+  static int _nextNativeGeometryRevision = 0;
+  int _nativeGeometryRevision = 0;
   Future<void> _nativeQueue = Future<void>.value();
 
   @override
@@ -164,6 +179,12 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
 
   Future<void> _onNativeEvent(MethodCall call) async {
     if (!mounted || !widget.active) return;
+    final arguments = call.arguments;
+    if (arguments is Map &&
+        arguments['geometryRevision'] is num &&
+        arguments['geometryRevision'] != _nativeGeometryRevision) {
+      return;
+    }
     if (call.method == 'exit') {
       unawaited(_handleExit());
     } else if (call.method == 'moved') {
@@ -173,7 +194,13 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
           (args['x'] as num).toDouble(),
           (args['y'] as num).toDouble(),
         );
-        if (position.dx.isFinite && position.dy.isFinite) _finishDrag(position);
+        final box = context.findRenderObject();
+        if (position.dx.isFinite &&
+            position.dy.isFinite &&
+            box is RenderBox &&
+            box.hasSize) {
+          _finishDrag(box.globalToLocal(position));
+        }
       }
     }
   }
@@ -199,18 +226,65 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
   }
 
   void _syncNative(Map<String, Object> config) {
-    if (mapEquals(config, _lastNativeConfig)) return;
-    _lastNativeConfig = config;
+    _pendingNativeConfig = config;
+    if (_nativeSyncScheduled) return;
+    _nativeSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _nativeSyncScheduled = false;
       if (!mounted) return;
+      final box = context.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) return;
+      // Padding can move this viewport without changing its size. Read the
+      // laid-out origin every frame before comparing or sending native bounds.
+      final origin = box.localToGlobal(Offset.zero);
+      final localConfig = _pendingNativeConfig!;
+      final nativeConfig = <String, Object>{
+        ...localConfig,
+        'contentLeft': localConfig['contentLeft'] ?? origin.dx,
+        'contentTop': localConfig['contentTop'] ?? origin.dy,
+        'contentWidth': localConfig['contentWidth'] ?? box.size.width,
+        'contentHeight': localConfig['contentHeight'] ?? box.size.height,
+        for (final key in ['x', 'minX', 'maxX'])
+          key: (localConfig[key] as double) + origin.dx,
+        for (final key in ['y', 'minY', 'maxY'])
+          key: (localConfig[key] as double) + origin.dy,
+      };
+      if (mapEquals(nativeConfig, _lastNativeConfig)) return;
+      const geometryKeys = [
+        'active',
+        'scale',
+        'x',
+        'y',
+        'width',
+        'height',
+        'minX',
+        'maxX',
+        'minY',
+        'maxY',
+        'contentLeft',
+        'contentTop',
+        'contentWidth',
+        'contentHeight',
+      ];
+      if (geometryKeys.any(
+        (key) => nativeConfig[key] != _lastNativeConfig?[key],
+      )) {
+        _nativeGeometryRevision = ++_nextNativeGeometryRevision;
+      }
+      _lastNativeConfig = nativeConfig;
+      final revision = _nativeGeometryRevision;
       _nativeQueue = _nativeQueue.then((_) async {
-        if (!mounted) return;
+        if (!mounted || !identical(nativeConfig, _lastNativeConfig)) return;
         try {
-          await _channel.invokeMethod<void>('update', config);
+          await _channel.invokeMethod<void>('update', {
+            ...nativeConfig,
+            'geometryRevision': revision,
+          });
         } catch (_) {
           if (mounted &&
               widget.active &&
-              identical(config, _lastNativeConfig)) {
+              nativeConfig['active'] == true &&
+              identical(nativeConfig, _lastNativeConfig)) {
             // Do not leave the player fullscreen with an inaccessible control.
             (widget.onUnavailable ?? widget.onExit)();
           }
@@ -241,16 +315,40 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     final media = MediaQuery.of(context);
+    final avoidance = CameraAvoidanceScope.maybeOf(context);
+    final safePadding =
+        avoidance?.gameViewPadding(media.viewPadding) ?? media.viewPadding;
     final insets = EdgeInsets.fromLTRB(
-      media.viewPadding.left,
-      media.viewPadding.top,
-      media.viewPadding.right,
-      math.max(media.viewPadding.bottom, media.viewInsets.bottom),
+      safePadding.left,
+      safePadding.top,
+      safePadding.right,
+      math.max(safePadding.bottom, media.viewInsets.bottom),
     );
     return LayoutBuilder(
       builder: (context, constraints) {
-        _area = fullscreenExitArea(constraints.biggest, insets);
-        final rect = fullscreenExitRect(_area, _anchor);
+        final buttonSize = Size(
+          math.min(
+            fullscreenExitSize.width,
+            math.max(0.0, constraints.maxWidth - insets.horizontal),
+          ),
+          math.min(
+            fullscreenExitSize.height,
+            math.max(0.0, constraints.maxHeight - insets.vertical),
+          ),
+        );
+        _area = fullscreenExitArea(constraints.biggest, insets, buttonSize);
+        final rect = fullscreenExitRect(_area, _anchor, buttonSize);
+        final targetAvailable = !buttonSize.isEmpty;
+        if (!widget.active || targetAvailable) {
+          _targetUnavailableReported = false;
+        } else if (!_targetUnavailableReported) {
+          _targetUnavailableReported = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && widget.active && _targetUnavailableReported) {
+              (widget.onUnavailable ?? widget.onExit)();
+            }
+          });
+        }
         final clampedDrag = _dragPosition != null
             ? Offset(
                 _dragPosition!.dx.clamp(_area.left, _area.right),
@@ -260,7 +358,7 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
         final position = clampedDrag ?? rect.topLeft;
         if (widget.useNativeOverlay) {
           _syncNative({
-            'active': widget.active,
+            'active': widget.active && targetAvailable,
             'x': position.dx,
             'y': position.dy,
             'width': rect.width,
@@ -270,6 +368,18 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
             'minY': _area.top,
             'maxY': _area.bottom,
             'scale': media.devicePixelRatio,
+            if (avoidance != null) ...{
+              'contentLeft': avoidance.insets.left,
+              'contentTop': avoidance.insets.top,
+              'contentWidth': math.max(
+                0.0,
+                avoidance.windowSize.width - avoidance.insets.horizontal,
+              ),
+              'contentHeight': math.max(
+                0.0,
+                avoidance.windowSize.height - avoidance.insets.vertical,
+              ),
+            },
             'label': l10n.exitFullscreenShort,
             'description': l10n.exitGameFullscreen,
             'hint': _showHint ? l10n.gameFullscreenHint : '',
@@ -279,7 +389,9 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
           fit: StackFit.expand,
           children: [
             widget.child,
-            if (widget.active && !widget.useNativeOverlay) ...[
+            if (widget.active &&
+                targetAvailable &&
+                !widget.useNativeOverlay) ...[
               if (_showHint)
                 Positioned(
                   left: 16,
@@ -288,15 +400,18 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
                   child: IgnorePointer(
                     child: Center(
                       child: Material(
-                        color: const Color(0xe6122431),
+                        color: appColor(context, const Color(0xe6122431)),
                         borderRadius: BorderRadius.circular(8),
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Text(
                             l10n.gameFullscreenHint,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, Colors.white),
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ),
@@ -326,9 +441,11 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
                   child: Tooltip(
                     message: l10n.exitGameFullscreen,
                     child: Material(
-                      color: const Color(0xcc122431),
-                      shape: const CircleBorder(
-                        side: BorderSide(color: Color(0x668197a5)),
+                      color: appColor(context, const Color(0xcc122431)),
+                      shape: CircleBorder(
+                        side: BorderSide(
+                          color: appColor(context, Color(0x668197a5)),
+                        ),
                       ),
                       child: InkWell(
                         key: const Key('game-exit-fullscreen'),
@@ -338,10 +455,10 @@ class _GameFullscreenControlsState extends State<GameFullscreenControls> {
                           label: l10n.exitGameFullscreen,
                           button: true,
                           excludeSemantics: true,
-                          child: const Center(
+                          child: Center(
                             child: Icon(
                               Icons.fullscreen_exit,
-                              color: Colors.white,
+                              color: appColor(context, Colors.white),
                               size: 20,
                             ),
                           ),

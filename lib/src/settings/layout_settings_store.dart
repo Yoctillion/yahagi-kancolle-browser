@@ -1,11 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../theme/app_fonts.dart';
+import '../theme/app_theme.dart';
 import 'header_resource_settings.dart';
 import 'workspace_menu_settings.dart';
 import 'module_display_settings.dart';
 import 'fleet_display_options.dart';
 import 'hd_layout_settings.dart';
+import 'camera_avoidance_settings.dart';
 
 enum FleetMoraleMetricMode { minimumCondition, recoveryCountdown }
 
@@ -134,6 +136,16 @@ abstract interface class UiLockSettingsStore {
   Future<void> saveUiLocked(bool locked);
 }
 
+abstract interface class AppThemeSettingsStore {
+  Future<AppThemeMode> loadAppThemeMode();
+  Future<void> saveAppThemeMode(AppThemeMode mode);
+}
+
+abstract interface class CameraAvoidanceSettingsStore {
+  Future<CameraAvoidanceSettings> loadCameraAvoidanceSettings();
+  Future<void> saveCameraAvoidanceSettings(CameraAvoidanceSettings settings);
+}
+
 abstract interface class TopNoticeSettingsStore {
   Future<bool> loadTopNoticeEnabled();
   Future<void> saveTopNoticeEnabled(bool enabled);
@@ -158,7 +170,43 @@ class SharedPreferencesLayoutSettingsStore
         InformationPanelSideSettingsStore,
         WorkspaceMenuPositionStore,
         TopNoticeSettingsStore,
+        AppThemeSettingsStore,
+        CameraAvoidanceSettingsStore,
         UiLockSettingsStore {
+  static const _cameraAvoidanceKey = 'layout_camera_avoidance_v1';
+
+  @override
+  Future<CameraAvoidanceSettings> loadCameraAvoidanceSettings() async {
+    final raw = (await SharedPreferences.getInstance()).get(
+      _cameraAvoidanceKey,
+    );
+    return CameraAvoidanceSettings.decode(raw is String ? raw : null);
+  }
+
+  @override
+  Future<void> saveCameraAvoidanceSettings(
+    CameraAvoidanceSettings settings,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final previous = prefs.get(_cameraAvoidanceKey);
+    try {
+      if (!await prefs.setString(_cameraAvoidanceKey, settings.encode())) {
+        throw StateError('Camera avoidance preference was not saved');
+      }
+    } catch (_) {
+      // SharedPreferences changes its cache before the platform write completes.
+      // Restore that cache so newly loaded controllers see confirmed settings.
+      try {
+        if (previous is String) {
+          await prefs.setString(_cameraAvoidanceKey, previous);
+        } else {
+          await prefs.remove(_cameraAvoidanceKey);
+        }
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
   @override
   Future<String?> loadWorkspaceMenuPosition() async =>
       (await SharedPreferences.getInstance()).getString(
@@ -682,6 +730,39 @@ class SharedPreferencesLayoutSettingsStore
   }
 
   static const _keyUiLocked = 'layout_ui_locked';
+  static const _keyAppThemeMode = 'app_theme_mode';
+
+  @override
+  Future<AppThemeMode> loadAppThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.get(_keyAppThemeMode);
+    return AppThemeMode.values.firstWhere(
+      (mode) => mode.name == saved,
+      orElse: () => AppThemeMode.dark,
+    );
+  }
+
+  @override
+  Future<void> saveAppThemeMode(AppThemeMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    final previous = prefs.get(_keyAppThemeMode);
+    try {
+      if (!await prefs.setString(_keyAppThemeMode, mode.name)) {
+        throw StateError('Appearance preference was not saved');
+      }
+    } catch (_) {
+      // SharedPreferences updates its Dart cache before the platform finishes.
+      // Keep new controllers aligned with the last confirmed preference.
+      try {
+        if (previous is String) {
+          await prefs.setString(_keyAppThemeMode, previous);
+        } else {
+          await prefs.remove(_keyAppThemeMode);
+        }
+      } catch (_) {}
+      rethrow;
+    }
+  }
 
   @override
   Future<bool> loadUiLocked() async {

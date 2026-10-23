@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -660,8 +661,14 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                                   onPressed: () =>
                                       setState(() => _showSaved = false),
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xffe8c67c),
-                                    foregroundColor: const Color(0xff10222d),
+                                    backgroundColor: appColor(
+                                      context,
+                                      Color(0xffe8c67c),
+                                    ),
+                                    foregroundColor: appOnAccentColor(
+                                      context,
+                                      const Color(0xff10222d),
+                                    ),
                                     fixedSize: const Size(32, 32),
                                     minimumSize: const Size(32, 32),
                                     maximumSize: const Size(32, 32),
@@ -683,8 +690,14 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                                   icon: const Icon(Icons.add, size: 18),
                                   label: Text(strings.newRecord),
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xffe8c67c),
-                                    foregroundColor: const Color(0xff10222d),
+                                    backgroundColor: appColor(
+                                      context,
+                                      Color(0xffe8c67c),
+                                    ),
+                                    foregroundColor: appOnAccentColor(
+                                      context,
+                                      const Color(0xff10222d),
+                                    ),
                                     minimumSize: const Size(0, 32),
                                     tapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
@@ -734,7 +747,10 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                               ? null
                               : () => _deleteRecord(selectedRecord, strings),
                           style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xffeaa5a0),
+                            foregroundColor: appColor(
+                              context,
+                              Color(0xffeaa5a0),
+                            ),
                             minimumSize: const Size(32, 32),
                             maximumSize: const Size.fromHeight(32),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -756,7 +772,7 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
             ),
           ),
         ),
-        const Divider(height: 1, color: Color(0xff315064)),
+        Divider(height: 1, color: appColor(context, Color(0xff315064))),
         Expanded(
           child: _showSaved
               ? _library(strings)
@@ -806,8 +822,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
       builder: (context, constraints) => Container(
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: const Color(0xff0b202d),
-          border: Border.all(color: const Color(0xff315064)),
+          color: appColor(context, Color(0xff0b202d)),
+          border: Border.all(color: appColor(context, Color(0xff315064))),
           borderRadius: BorderRadius.circular(20),
         ),
         child: ClipRRect(
@@ -823,7 +839,7 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                 curve: Curves.easeOutCubic,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: const Color(0xff8a6628),
+                    color: appColor(context, Color(0xff8a6628)),
                     borderRadius: BorderRadius.circular(17),
                   ),
                 ),
@@ -858,12 +874,15 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: _showSaved == (index == 0)
-                                            ? const Color(0xffffdc88)
-                                            : const Color(0xffa8bac4),
+                                      style: appTextStyle(
+                                        context,
+                                        TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: _showSaved == (index == 0)
+                                              ? const Color(0xffffdc88)
+                                              : const Color(0xffa8bac4),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -872,10 +891,16 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                                   const SizedBox(width: 5),
                                   Text(
                                     '${_records.length}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xfff2cc7d),
+                                    style: appTextStyle(
+                                      context,
+                                      TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: appColor(
+                                          context,
+                                          Color(0xfff2cc7d),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1132,7 +1157,7 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
       key: const Key('composition-filter'),
       height: 36,
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xff526a76)),
+        border: Border.all(color: appColor(context, Color(0xff526a76))),
         borderRadius: BorderRadius.circular(4),
       ),
       child: DropdownButtonHideUnderline(
@@ -1140,8 +1165,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
           value: selectedTag,
           isExpanded: true,
           isDense: true,
-          style: const TextStyle(
-            color: Color(0xfff4eee4),
+          style: TextStyle(
+            color: appColor(context, Color(0xfff4eee4)),
             fontSize: 14,
             fontWeight: FontWeight.w800,
           ),
@@ -1149,7 +1174,7 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
           icon: const SizedBox.shrink(),
           menuWidth: math.min(440, MediaQuery.sizeOf(context).width - 24),
           menuMaxHeight: 430,
-          dropdownColor: const Color(0xff183541),
+          dropdownColor: appColor(context, Color(0xff183541)),
           items: options,
           selectedItemBuilder: (context) => [
             for (final label in [
@@ -1192,15 +1217,15 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
       Container(
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: const Color(0xff102732),
+          color: appColor(context, Color(0xff102732)),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xff284553)),
+          border: Border.all(color: appColor(context, Color(0xff284553))),
         ),
         child: Column(
           children: [
-            const Icon(
+            Icon(
               Icons.bookmark_border,
-              color: Color(0xff809baa),
+              color: appColor(context, Color(0xff809baa)),
               size: 34,
             ),
             const SizedBox(height: 10),
@@ -1215,7 +1240,10 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                 child: Text(
                   detail,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xff9aafb9)),
+                  style: appTextStyle(
+                    context,
+                    TextStyle(color: appColor(context, Color(0xff9aafb9))),
+                  ),
                 ),
               ),
             if (onRetry != null) ...[
@@ -1257,7 +1285,10 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
   ) {
     final selected = record.id == _selectedRecordId;
     return Material(
-      color: selected ? const Color(0xff203b49) : const Color(0xff142d39),
+      color: appColor(
+        context,
+        selected ? const Color(0xff203b49) : const Color(0xff142d39),
+      ),
       child: InkWell(
         key: Key('composition-record-${record.id}'),
         onTap: () => _readSelected(record.id),
@@ -1266,10 +1297,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
-                color: selected ? const Color(0xffcaa566) : Colors.transparent,
+                color: appColor(
+                  context,
+                  selected ? const Color(0xffcaa566) : Colors.transparent,
+                ),
                 width: 3,
               ),
-              bottom: const BorderSide(color: Color(0xff355260)),
+              bottom: BorderSide(color: appColor(context, Color(0xff355260))),
             ),
           ),
           child: Text(
@@ -1336,8 +1370,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
       key: const Key('composition-record-detail'),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xff112a37),
-        border: Border.all(color: const Color(0xff315064)),
+        color: appColor(context, Color(0xff112a37)),
+        border: Border.all(color: appColor(context, Color(0xff315064))),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Column(
@@ -1482,9 +1516,9 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
       key: const Key('composition-controls'),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xff102732),
+        color: appColor(context, Color(0xff102732)),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xff284553)),
+        border: Border.all(color: appColor(context, const Color(0xff284553))),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1511,10 +1545,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   group([
                     Text(
                       strings.fleets,
-                      style: const TextStyle(
-                        color: Color(0xffa6bdc8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffa6bdc8)),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1544,10 +1581,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   group([
                     Text(
                       strings.airBaseTitle,
-                      style: const TextStyle(
-                        color: Color(0xffa6bdc8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffa6bdc8)),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1556,10 +1596,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           strings.noAirBases,
-                          style: const TextStyle(
-                            color: Color(0xff7893a2),
-                            fontSize: 11,
-                            height: 1.5,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, Color(0xff7893a2)),
+                              fontSize: 11,
+                              height: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -1569,9 +1612,9 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                       initialValue: _effectiveArea,
                       hint: Text(strings.noAirBase),
                       isExpanded: true,
-                      dropdownColor: const Color(0xff183541),
+                      dropdownColor: appColor(context, Color(0xff183541)),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xffd5e4eb),
+                        color: appColor(context, const Color(0xffd5e4eb)),
                         fontSize: 12,
                       ),
                       decoration: const InputDecoration(
@@ -1633,10 +1676,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   group([
                     Text(
                       strings.fleetForm,
-                      style: const TextStyle(
-                        color: Color(0xffa6bdc8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffa6bdc8)),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1645,10 +1691,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   group([
                     Text(
                       strings.planeCounts,
-                      style: const TextStyle(
-                        color: Color(0xffa6bdc8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffa6bdc8)),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1657,10 +1706,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   group([
                     Text(
                       strings.targetMap,
-                      style: const TextStyle(
-                        color: Color(0xffa6bdc8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffa6bdc8)),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1691,7 +1743,7 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                             : null,
                         hint: Text(strings.chooseMap),
                         isExpanded: true,
-                        dropdownColor: const Color(0xff183541),
+                        dropdownColor: appColor(context, Color(0xff183541)),
                         decoration: const InputDecoration(
                           isDense: true,
                           border: OutlineInputBorder(),
@@ -1728,10 +1780,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                       ),
                       Text(
                         strings.difficulty,
-                        style: const TextStyle(
-                          color: Color(0xffa6bdc8),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xffa6bdc8)),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1755,10 +1810,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   group([
                     Text(
                       strings.recordName,
-                      style: const TextStyle(
-                        color: Color(0xffa6bdc8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, Color(0xffa6bdc8)),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -1786,10 +1844,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                       Text(
                         '${strings.finalRecordName}：${_recordName(strings)}',
                         key: const Key('composition-name-preview'),
-                        style: const TextStyle(
-                          color: Color(0xffe8c67c),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, Color(0xffe8c67c)),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -1826,10 +1887,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
         children: [
           Text(
             strings.preview,
-            style: const TextStyle(
-              color: Color(0xffecf3f5),
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffecf3f5)),
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           Wrap(
@@ -1845,8 +1909,11 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                 icon: const Icon(Icons.bookmark_add_outlined, size: 18),
                 label: Text(strings.recordSave),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xffd7b56d),
-                  foregroundColor: const Color(0xff10222d),
+                  backgroundColor: appColor(context, Color(0xffd7b56d)),
+                  foregroundColor: appOnAccentColor(
+                    context,
+                    const Color(0xff10222d),
+                  ),
                 ),
               ),
             ],
@@ -1858,15 +1925,15 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 55),
           decoration: BoxDecoration(
-            color: const Color(0xff102732),
+            color: appColor(context, Color(0xff102732)),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             children: [
-              const Icon(
+              Icon(
                 Icons.photo_library_outlined,
                 size: 34,
-                color: Color(0xff5b7a89),
+                color: appColor(context, Color(0xff5b7a89)),
               ),
               const SizedBox(height: 14),
               Text(
@@ -1878,7 +1945,10 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                     ? strings.refreshingShips
                     : strings.emptySelection,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xffa6bdc8)),
+                style: appTextStyle(
+                  context,
+                  TextStyle(color: appColor(context, Color(0xffa6bdc8))),
+                ),
               ),
             ],
           ),
@@ -1931,8 +2001,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
         width: constraints.maxWidth,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: const Color(0xff0b202d),
-          border: Border.all(color: const Color(0xff315064)),
+          color: appColor(context, Color(0xff0b202d)),
+          border: Border.all(color: appColor(context, Color(0xff315064))),
           borderRadius: BorderRadius.circular(18),
         ),
         padding: const EdgeInsets.all(3),
@@ -1985,11 +2055,14 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
         height: 34,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: !enabled
-              ? const Color(0xff1b2e38)
-              : selected
-              ? const Color(0xff8a6628)
-              : Colors.transparent,
+          color: appColor(
+            context,
+            !enabled
+                ? const Color(0xff1b2e38)
+                : selected
+                ? const Color(0xff8a6628)
+                : Colors.transparent,
+          ),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Padding(
@@ -2000,10 +2073,10 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (!enabled) ...[
-                  const Icon(
+                  Icon(
                     Icons.lock_outline,
                     size: 11,
-                    color: Color(0xff718896),
+                    color: appColor(context, Color(0xff718896)),
                   ),
                   const SizedBox(width: 3),
                 ],
@@ -2011,14 +2084,17 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: !enabled
-                        ? const Color(0xff718896)
-                        : selected
-                        ? const Color(0xffffdc88)
-                        : const Color(0xffaabdc6),
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: !enabled
+                          ? const Color(0xff718896)
+                          : selected
+                          ? const Color(0xffffdc88)
+                          : const Color(0xffaabdc6),
+                    ),
                   ),
                 ),
               ],
@@ -2034,8 +2110,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
     height: 40,
     padding: const EdgeInsets.all(3),
     decoration: BoxDecoration(
-      color: const Color(0xff0b202d),
-      border: Border.all(color: const Color(0xff315064)),
+      color: appColor(context, Color(0xff0b202d)),
+      border: Border.all(color: appColor(context, Color(0xff315064))),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -2050,9 +2126,12 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
               selected: _planeCounts == mode,
               child: Material(
                 key: Key('composition-planes-${mode.name}'),
-                color: _planeCounts == mode
-                    ? const Color(0xff8a6628)
-                    : Colors.transparent,
+                color: appColor(
+                  context,
+                  _planeCounts == mode
+                      ? const Color(0xff8a6628)
+                      : Colors.transparent,
+                ),
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
@@ -2069,12 +2148,15 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                         CompositionPlaneCountMode.current => strings.current,
                         CompositionPlaneCountMode.maximum => strings.maximum,
                       },
-                      style: TextStyle(
-                        color: _planeCounts == mode
-                            ? const Color(0xffffdc88)
-                            : const Color(0xff9fb3bf),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: _planeCounts == mode
+                              ? const Color(0xffffdc88)
+                              : const Color(0xff9fb3bf),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
@@ -2100,17 +2182,20 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
         : const Icon(Icons.save_alt_rounded, size: 18),
     label: Text(_saving ? strings.saving : strings.exportImage),
     style: FilledButton.styleFrom(
-      backgroundColor: const Color(0xff234352),
-      foregroundColor: const Color(0xffd7e8eb),
+      backgroundColor: appColor(context, Color(0xff234352)),
+      foregroundColor: appColor(context, Color(0xffd7e8eb)),
     ),
   );
 
   Widget _label(String text) => Text(
     text,
-    style: const TextStyle(
-      color: Color(0xffd8e6ec),
-      fontSize: 13,
-      fontWeight: FontWeight.w700,
+    style: appTextStyle(
+      context,
+      TextStyle(
+        color: appColor(context, Color(0xffd8e6ec)),
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+      ),
     ),
   );
 }

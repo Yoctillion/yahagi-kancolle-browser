@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../layout/flat_list_row.dart';
@@ -36,19 +37,19 @@ class AdaptiveBattleHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nodeStyle = TextStyle(
-      color: const Color(0xffffd65c),
+      color: appColor(context, Color(0xffffd65c)),
       fontSize: nodeFontSize,
       fontWeight: FontWeight.w800,
     );
     final enemyTitle = enemyNameIsFallback
-        ? BattleUiText(enemyName, style: enemyStyle)
-        : Text(enemyName, style: enemyStyle);
+        ? BattleUiText(enemyName, style: appTextStyle(context, enemyStyle))
+        : Text(enemyName, style: appTextStyle(context, enemyStyle));
     if (Localizations.localeOf(context).languageCode == 'en') {
       return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          BattleUiText(nodeLabel, style: nodeStyle),
+          BattleUiText(nodeLabel, style: appTextStyle(context, nodeStyle)),
           const SizedBox(height: 3),
           enemyTitle,
         ],
@@ -57,7 +58,7 @@ class AdaptiveBattleHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
-        BattleUiText(nodeLabel, style: nodeStyle),
+        BattleUiText(nodeLabel, style: appTextStyle(context, nodeStyle)),
         const SizedBox(width: 6),
         Expanded(child: enemyTitle),
       ],
@@ -550,9 +551,9 @@ class AirSuperiorityPill extends StatelessWidget {
           ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
           : _battlePillPadding,
       decoration: BoxDecoration(
-        color: colors.background,
+        color: appColor(context, colors.background),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: appColor(context, colors.border)),
       ),
       child: Align(
         widthFactor: 1,
@@ -561,7 +562,10 @@ class AirSuperiorityPill extends StatelessWidget {
                   lookupAppLocalizations(const Locale('zh')))
               .airStateLabel(BattleDetailStrings.of(context).localize(label)),
           textAlign: english ? TextAlign.center : null,
-          style: _battlePillTextStyle.copyWith(color: colors.foreground),
+          style: appTextStyle(
+            context,
+            _battlePillTextStyle.copyWith(color: colors.foreground),
+          ),
         ),
       ),
     );
@@ -581,15 +585,18 @@ class NodeTypePill extends StatelessWidget {
       height: _battlePillHeight,
       padding: _battlePillPadding,
       decoration: BoxDecoration(
-        color: colors.background,
+        color: appColor(context, colors.background),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: appColor(context, colors.border)),
       ),
       child: Align(
         widthFactor: 1,
         child: BattleUiText(
           label,
-          style: _battlePillTextStyle.copyWith(color: colors.foreground),
+          style: appTextStyle(
+            context,
+            _battlePillTextStyle.copyWith(color: colors.foreground),
+          ),
         ),
       ),
     );
@@ -607,16 +614,19 @@ class DropPill extends StatelessWidget {
       key: const Key('battle-drop-pill'),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 1),
       decoration: BoxDecoration(
-        color: const Color(0xff183e38),
+        color: appColor(context, const Color(0xff183e38)),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xff2f7469)),
+        border: Border.all(color: appColor(context, const Color(0xff2f7469))),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xff83d5c8),
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, Color(0xff83d5c8)),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -635,9 +645,9 @@ class ResourceChangesPill extends StatelessWidget {
       height: _battlePillHeight,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: const Color(0xff183e38),
+        color: appColor(context, const Color(0xff183e38)),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xff2f7469)),
+        border: Border.all(color: appColor(context, const Color(0xff2f7469))),
       ),
       child: SingleChildScrollView(
         key: const PageStorageKey('battle-resource-changes-scroll'),
@@ -651,7 +661,7 @@ class ResourceChangesPill extends StatelessWidget {
                   width: 1,
                   height: 10,
                   margin: const EdgeInsets.symmetric(horizontal: 5),
-                  color: const Color(0x4d83d5c8),
+                  color: appColor(context, const Color(0x4d83d5c8)),
                 ),
               Image.asset(
                 'assets/images/material/${changes[index].type.apiId.toString().padLeft(2, '0')}.png',
@@ -663,10 +673,13 @@ class ResourceChangesPill extends StatelessWidget {
               const SizedBox(width: 2),
               Text(
                 _signed(changes[index].amount),
-                style: _battlePillTextStyle.copyWith(
-                  color: changes[index].amount < 0
-                      ? const Color(0xffff8c78)
-                      : const Color(0xff83d5c8),
+                style: appTextStyle(
+                  context,
+                  _battlePillTextStyle.copyWith(
+                    color: changes[index].amount < 0
+                        ? const Color(0xffff8c78)
+                        : const Color(0xff83d5c8),
+                  ),
                 ),
               ),
             ],
@@ -691,9 +704,9 @@ class RewardItemsPill extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: _battlePillHeight),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
-          color: const Color(0xff183e38),
+          color: appColor(context, const Color(0xff183e38)),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xff2f7469)),
+          border: Border.all(color: appColor(context, Color(0xff2f7469))),
         ),
         child: SingleChildScrollView(
           // Keep the offset separate from LiveBattleCard's saved panel mode.
@@ -708,12 +721,15 @@ class RewardItemsPill extends StatelessWidget {
                     width: 1,
                     height: 10,
                     margin: const EdgeInsets.symmetric(horizontal: 6),
-                    color: const Color(0x4d83d5c8),
+                    color: appColor(context, Color(0x4d83d5c8)),
                   ),
                 Text(
                   '${items[index].name} ×${items[index].count}',
-                  style: _battlePillTextStyle.copyWith(
-                    color: const Color(0xff83d5c8),
+                  style: appTextStyle(
+                    context,
+                    _battlePillTextStyle.copyWith(
+                      color: const Color(0xff83d5c8),
+                    ),
                   ),
                 ),
               ],
@@ -740,15 +756,18 @@ class MetaChip extends StatelessWidget {
       height: _battlePillHeight,
       padding: _battlePillPadding,
       decoration: BoxDecoration(
-        color: colors.background,
+        color: appColor(context, colors.background),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: appColor(context, colors.border)),
       ),
       child: Align(
         widthFactor: 1,
         child: BattleUiText(
           label,
-          style: _battlePillTextStyle.copyWith(color: colors.foreground),
+          style: appTextStyle(
+            context,
+            _battlePillTextStyle.copyWith(color: colors.foreground),
+          ),
         ),
       ),
     );
@@ -796,16 +815,19 @@ class BattleRankBadge extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: colors.background,
+        color: appColor(context, colors.background),
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: appColor(context, colors.border)),
       ),
       child: Text(
         rank.label,
-        style: TextStyle(
-          color: colors.foreground,
-          fontSize: fontSize,
-          fontWeight: FontWeight.w900,
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: colors.foreground,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
     );

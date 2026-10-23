@@ -268,7 +268,16 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
     if (!canEdit || preflight != null || libraryScan != null) return;
     await _run(() async {
       if (!await _ensureLibrary()) return;
-      preflight = await _port.pickAndPreflightArchive();
+      final candidate = await _port.pickAndPreflightArchive();
+      if (_disposed) {
+        if (candidate != null) {
+          try {
+            await _port.discardImport(candidate.token);
+          } catch (_) {}
+        }
+        return;
+      }
+      preflight = candidate;
     }, operation: 'import');
   }
 

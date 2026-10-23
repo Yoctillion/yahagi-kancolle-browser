@@ -31,7 +31,7 @@ void main() {
       ),
     );
 
-    expect(find.text('進行中'), findsOneWidget);
+    expect(find.text('已接取'), findsOneWidget);
     expect(find.text('全部任務'), findsOneWidget);
     expect(find.text('全任务'), findsNothing);
   });

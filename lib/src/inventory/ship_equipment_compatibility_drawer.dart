@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/services.dart';
@@ -98,13 +99,15 @@ class _ShipEquipmentCompatibilityDrawerState
                   width: width,
                   height: constraints.maxHeight,
                   child: Material(
-                    color: const Color(0xff0d2330),
+                    color: appColor(context, const Color(0xff0d2330)),
                     elevation: 18,
-                    shadowColor: Colors.black87,
+                    shadowColor: appColor(context, Colors.black87),
                     child: DecoratedBox(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(
-                          left: BorderSide(color: Color(0xff38586b)),
+                          left: BorderSide(
+                            color: appColor(context, Color(0xff38586b)),
+                          ),
                         ),
                       ),
                       child: CustomScrollView(
@@ -284,10 +287,13 @@ class _Header extends StatelessWidget {
                   gameNames(context).shipName(ship.name, shipId: ship.id),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xfff2f7f9),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xfff2f7f9)),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -295,10 +301,13 @@ class _Header extends StatelessWidget {
                   ownedShip == null
                       ? typeName
                       : '$typeName  Lv.${ownedShip!.level}',
-                  style: const TextStyle(
-                    color: Color(0xff9bb0bb),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xff9bb0bb)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -308,7 +317,10 @@ class _Header extends StatelessWidget {
             key: const Key('ship-equipment-compatibility-close'),
             tooltip: l10n.close,
             onPressed: onClose,
-            icon: const Icon(Icons.close, color: Color(0xffc7d5dc)),
+            icon: Icon(
+              Icons.close,
+              color: appColor(context, Color(0xffc7d5dc)),
+            ),
           ),
         ],
       ),
@@ -336,18 +348,25 @@ class _ToolButton extends StatelessWidget {
     isSelected: active,
     constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
     style: IconButton.styleFrom(
-      foregroundColor: active
-          ? const Color(0xfff2f7f9)
-          : const Color(0xff9bb0bb),
+      foregroundColor: appColor(
+        context,
+        active ? const Color(0xfff2f7f9) : const Color(0xff9bb0bb),
+      ),
     ),
     onPressed: onPressed,
     icon: Container(
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: active ? const Color(0xff2b7180) : const Color(0xff102a38),
+        color: appColor(
+          context,
+          active ? const Color(0xff2b7180) : const Color(0xff102a38),
+        ),
         border: Border.all(
-          color: active ? const Color(0xff69d2cf) : const Color(0xff315064),
+          color: appColor(
+            context,
+            active ? const Color(0xff69d2cf) : const Color(0xff315064),
+          ),
         ),
         shape: BoxShape.circle,
       ),
@@ -369,17 +388,21 @@ class _CategoryDialog extends StatelessWidget {
         lookupAppLocalizations(const Locale('zh'));
     return Dialog(
       insetPadding: const EdgeInsets.all(24),
-      backgroundColor: Colors.transparent,
+      backgroundColor: appColor(context, Colors.transparent),
       child: Container(
         key: const Key('ship-equipment-compatibility-category-dialog'),
         width: 520,
         constraints: const BoxConstraints(maxHeight: 520),
         decoration: BoxDecoration(
-          color: const Color(0xff101d27),
-          border: Border.all(color: const Color(0xff385064)),
+          color: appColor(context, Color(0xff101d27)),
+          border: Border.all(color: appColor(context, const Color(0xff385064))),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(color: Colors.black54, blurRadius: 22, spreadRadius: 2),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: appColor(context, Colors.black54),
+              blurRadius: 22,
+              spreadRadius: 2,
+            ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
@@ -391,34 +414,37 @@ class _CategoryDialog extends StatelessWidget {
               child: Row(
                 children: <Widget>[
                   const SizedBox(width: 16),
-                  const Icon(
+                  Icon(
                     Icons.filter_alt_rounded,
                     size: 20,
-                    color: Color(0xff69d2cf),
+                    color: appColor(context, Color(0xff69d2cf)),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     l10n.shipEquipmentCompatibilitySelectCategory,
-                    style: const TextStyle(
-                      color: Color(0xfff2f7f9),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xfff2f7f9)),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   const Spacer(),
                   IconButton(
                     tooltip: l10n.close,
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close_rounded,
-                      color: Color(0xffc7d5dc),
+                      color: appColor(context, Color(0xffc7d5dc)),
                     ),
                   ),
                   const SizedBox(width: 4),
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xff385064)),
+            Divider(height: 1, color: appColor(context, Color(0xff385064))),
             Flexible(
               child: ListView(
                 shrinkWrap: true,
@@ -492,9 +518,9 @@ class _ScopeTabs extends StatelessWidget {
       height: 32,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xff081923),
+        color: appColor(context, const Color(0xff081923)),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xff315064)),
+        border: Border.all(color: appColor(context, const Color(0xff315064))),
       ),
       child: Row(
         children: <Widget>[
@@ -539,7 +565,10 @@ class _ScopeTab extends StatelessWidget {
     excludeSemantics: true,
     onTap: onTap,
     child: Material(
-      color: selected ? const Color(0xff2b7180) : Colors.transparent,
+      color: appColor(
+        context,
+        selected ? const Color(0xff2b7180) : Colors.transparent,
+      ),
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
@@ -547,12 +576,15 @@ class _ScopeTab extends StatelessWidget {
         child: Center(
           child: Text(
             label,
-            style: TextStyle(
-              color: selected
-                  ? const Color(0xfff2f7f9)
-                  : const Color(0xff8ba2af),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: selected
+                    ? const Color(0xfff2f7f9)
+                    : const Color(0xff8ba2af),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
@@ -613,7 +645,10 @@ class _FilterChip extends StatelessWidget {
     excludeSemantics: true,
     onTap: onTap,
     child: Material(
-      color: selected ? const Color(0xff173f4c) : const Color(0xff102a38),
+      color: appColor(
+        context,
+        selected ? const Color(0xff173f4c) : const Color(0xff102a38),
+      ),
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
@@ -622,12 +657,15 @@ class _FilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Text(
             label,
-            style: TextStyle(
-              color: selected
-                  ? const Color(0xff69d2cf)
-                  : const Color(0xff9bb0bb),
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: selected
+                    ? const Color(0xff69d2cf)
+                    : const Color(0xff9bb0bb),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
@@ -675,10 +713,13 @@ class _GroupHeader extends StatelessWidget {
       gameNames(
         context,
       ).equipmentTypeName(group.typeName, typeId: group.typeId),
-      style: const TextStyle(
-        color: Color(0xff69d2cf),
-        fontSize: 11,
-        fontWeight: FontWeight.w900,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, Color(0xff69d2cf)),
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     ),
   );
@@ -707,15 +748,15 @@ class _EquipmentRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: const Color(0xff102a38),
+        color: appColor(context, Color(0xff102a38)),
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xff294052)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
       ),
       child: Row(
         children: <Widget>[
           DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xff173546),
+              color: appColor(context, Color(0xff173546)),
               borderRadius: BorderRadius.circular(7),
             ),
             child: Padding(
@@ -736,19 +777,25 @@ class _EquipmentRow extends StatelessWidget {
                   gameNames(context).equipmentName(row.master.name),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xffe8f0f4),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xffe8f0f4)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   slotLabel,
-                  style: const TextStyle(
-                    color: Color(0xff72d8ae),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xff72d8ae)),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 if (compatibility.expansionSlotMinimumImprovement >
@@ -758,10 +805,13 @@ class _EquipmentRow extends StatelessWidget {
                     l10n.equipmentCompatibilityExpansionRequirement(
                       compatibility.expansionSlotMinimumImprovement,
                     ),
-                    style: const TextStyle(
-                      color: Color(0xffffc85a),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffffc85a)),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -780,10 +830,13 @@ class _EquipmentRow extends StatelessWidget {
                 child: Text(
                   l10n.shipEquipmentCompatibilityOwnedCount(row.ownedCount),
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: Color(0xfff2c96d),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, Color(0xfff2c96d)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
@@ -806,7 +859,10 @@ class _Message extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: Color(0xff8ba2af), fontSize: 12),
+        style: appTextStyle(
+          context,
+          TextStyle(color: appColor(context, Color(0xff8ba2af)), fontSize: 12),
+        ),
       ),
     ),
   );

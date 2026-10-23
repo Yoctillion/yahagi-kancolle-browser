@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/layout_settings_controller.dart';
@@ -51,7 +52,7 @@ class HdBottomStrip extends StatelessWidget {
                 onStartEditing?.call();
               },
         child: ColoredBox(
-          color: const Color(0xff0c1c27),
+          color: appColor(context, const Color(0xff0c1c27)),
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: LayoutBuilder(
@@ -181,8 +182,8 @@ class _HdDropPlaceholder extends StatelessWidget {
     width: double.infinity,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: const Color(0xff49616f)),
-      color: const Color(0xff102331),
+      border: Border.all(color: appColor(context, const Color(0xff49616f))),
+      color: appColor(context, const Color(0xff102331)),
     ),
     padding: const EdgeInsets.all(8),
     child: Center(
@@ -191,13 +192,25 @@ class _HdDropPlaceholder extends StatelessWidget {
         children: [
           Text(
             '1×$span',
-            style: const TextStyle(color: Color(0xffd4a85f), fontSize: 12),
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xffd4a85f)),
+                fontSize: 12,
+              ),
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             AppLocalizations.of(context)!.hdDropArea,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xff8197a5), fontSize: 12),
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, Color(0xff8197a5)),
+                fontSize: 12,
+              ),
+            ),
           ),
         ],
       ),

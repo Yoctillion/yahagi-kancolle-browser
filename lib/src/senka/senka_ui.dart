@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 const senkaBackground = Color(0xff071520);
@@ -58,16 +59,19 @@ class SenkaPanel extends StatelessWidget {
       title,
       maxLines: english ? null : 1,
       overflow: english ? null : TextOverflow.ellipsis,
-      style: TextStyle(
-        color: senkaText,
-        fontSize: compact ? 12 : 15,
-        fontWeight: FontWeight.w800,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: senkaText,
+          fontSize: compact ? 12 : 15,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
     return Material(
-      color: senkaPanel,
+      color: appColor(context, senkaPanel),
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: senkaLine),
+        side: BorderSide(color: appColor(context, senkaLine)),
         borderRadius: BorderRadius.circular(compact ? 7 : 11),
       ),
       child: ClipRRect(
@@ -83,7 +87,7 @@ class SenkaPanel extends StatelessWidget {
                       minHeight: headerHeight ?? (compact ? 28 : 36),
                     )
                   : null,
-              color: senkaPanelAlt,
+              color: appColor(context, senkaPanelAlt),
               padding: EdgeInsets.symmetric(
                 horizontal: compact ? 7 : 11,
                 vertical: english ? 4 : 0,
@@ -127,10 +131,13 @@ class SenkaLabelValue extends StatelessWidget {
         child: Text(
           label,
           maxLines: 1,
-          style: TextStyle(
-            color: senkaMuted,
-            fontSize: compact ? 10 : 13,
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: senkaMuted,
+              fontSize: compact ? 10 : 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
@@ -140,11 +147,14 @@ class SenkaLabelValue extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.right,
-          style: TextStyle(
-            color: senkaText,
-            fontSize: compact ? 11 : 14,
-            fontWeight: FontWeight.w800,
-            fontFeatures: const [FontFeature.tabularFigures()],
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: senkaText,
+              fontSize: compact ? 11 : 14,
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ),
       ),

@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -274,12 +275,12 @@ class _NoticeCapsule extends StatelessWidget {
           type: MaterialType.transparency,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: palette.background,
+              color: appColor(context, palette.background),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: palette.border),
-              boxShadow: const [
+              border: Border.all(color: appColor(context, palette.border)),
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.black45,
+                  color: appColor(context, Colors.black45),
                   blurRadius: 12,
                   offset: Offset(0, 4),
                 ),
@@ -290,7 +291,7 @@ class _NoticeCapsule extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 20, color: foreground),
+                  Icon(icon, size: 20, color: appColor(context, foreground)),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -298,10 +299,13 @@ class _NoticeCapsule extends StatelessWidget {
                       key: topNoticeTextKey,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 14,
-                        decoration: TextDecoration.none,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: foreground,
+                          fontSize: 14,
+                          decoration: TextDecoration.none,
+                        ),
                       ),
                     ),
                   ),

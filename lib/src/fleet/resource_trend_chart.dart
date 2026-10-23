@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat, NumberFormat;
@@ -154,8 +155,8 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                   .clamp(0.0, 1.0));
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xff102532),
-        border: Border.all(color: _line),
+        color: appColor(context, Color(0xff102532)),
+        border: Border.all(color: appColor(context, _line)),
         borderRadius: BorderRadius.circular(9),
       ),
       child: Column(
@@ -166,15 +167,19 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
             padding: const EdgeInsets.only(left: 14, right: 6, top: 2),
             child: Row(
               children: [
-                Text(
-                  l10n.resourceTrendInventoryTitle,
-                  style: const TextStyle(
-                    color: Color(0xffc3d2da),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    l10n.resourceTrendInventoryTitle,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffc3d2da)),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-                const Spacer(),
                 IconButton(
                   key: ValueKey(
                     widget.expanded
@@ -188,7 +193,7 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                   icon: Icon(
                     widget.expanded ? Icons.close : Icons.open_in_full,
                     size: 17,
-                    color: _muted,
+                    color: appColor(context, _muted),
                   ),
                 ),
               ],
@@ -215,9 +220,12 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                             Flexible(
                               child: Text(
                                 '${widget.label} · ${l10n.resourceTrendLatest}',
-                                style: const TextStyle(
-                                  color: _muted,
-                                  fontSize: 12,
+                                style: appTextStyle(
+                                  context,
+                                  TextStyle(
+                                    color: appColor(context, _muted),
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ),
@@ -228,12 +236,15 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                           fit: BoxFit.scaleDown,
                           child: Text(
                             resourceTrendNumber(current),
-                            style: const TextStyle(
-                              color: Color(0xffeff5f8),
-                              fontSize: 28,
-                              height: 1.2,
-                              fontWeight: FontWeight.w700,
-                              fontFeatures: [FontFeature.tabularFigures()],
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, Color(0xffeff5f8)),
+                                fontSize: 28,
+                                height: 1.2,
+                                fontWeight: FontWeight.w700,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
                             ),
                           ),
                         ),
@@ -247,7 +258,13 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                       children: [
                         Text(
                           l10n.resourceTrendChange,
-                          style: const TextStyle(color: _muted, fontSize: 11),
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, _muted),
+                              fontSize: 11,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 5),
                         FittedBox(
@@ -256,14 +273,17 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                             delta == null
                                 ? '—'
                                 : '${delta > 0 ? '+' : ''}${resourceTrendNumber(delta)}',
-                            style: TextStyle(
-                              color: delta == null || delta == 0
-                                  ? _muted
-                                  : delta > 0
-                                  ? const Color(0xff70d7b2)
-                                  : const Color(0xffff7464),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: delta == null || delta == 0
+                                    ? _muted
+                                    : delta > 0
+                                    ? const Color(0xff70d7b2)
+                                    : const Color(0xffff7464),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
@@ -282,7 +302,10 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                   child: Text(
                     l10n.resourceTrendNoPeriodData,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: _muted),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted)),
+                    ),
                   ),
                 ),
               ),
@@ -301,10 +324,11 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                       baseline: data.baseline?.value(widget.resourceKey),
                     );
                     final painter = ResourceTrendPainter(
+                      palette: AppPalette.of(context),
                       points: points,
                       window: window,
                       scale: scale,
-                      color: widget.color,
+                      color: appColor(context, widget.color),
                       selected: _inspection,
                       baseline: data.baseline?.value(widget.resourceKey),
                       baselineLabel: l10n.resourceTrendBaseShort,
@@ -343,58 +367,89 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
           if (points.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Text(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final textScale =
+                      MediaQuery.textScalerOf(context).scale(11) / 11;
+                  final narrow = constraints.maxWidth / textScale < 250;
+                  final instruction = Text(
                     l10n.resourceTrendInspect,
-                    style: const TextStyle(color: _muted, fontSize: 11),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        activeTrackColor: widget.color.withValues(alpha: .7),
-                        inactiveTrackColor: _line,
-                        thumbColor: widget.color,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 13,
-                        ),
-                      ),
-                      child: Slider(
-                        key: const ValueKey('resource-trend-scrubber'),
-                        value: position,
-                        onChanged: points.length > 1 ? _inspect : null,
-                        semanticFormatterCallback: (value) {
-                          final time = window.start.add(
-                            Duration(microseconds: (duration * value).round()),
-                          );
-                          final p =
-                              points[nearestResourceTrendPoint(points, time)];
-                          return '${resourceTrendTime(p.time, seconds: true)} JST, ${p.value}';
-                        },
-                      ),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted), fontSize: 11),
                     ),
-                  ),
-                  Text(
-                    DateFormat(
-                      window.days == 1 ? 'HH:mm' : 'MM-dd',
-                    ).format(resourceTrendJst(chosen!.time)),
-                    style: const TextStyle(
-                      color: Color(0xffd6e2e8),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+                  );
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (narrow) ...[instruction, const SizedBox(height: 4)],
+                      Row(
+                        children: [
+                          if (!narrow) instruction,
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 2,
+                                activeTrackColor: appColor(
+                                  context,
+                                  widget.color.withValues(alpha: .7),
+                                ),
+                                inactiveTrackColor: appColor(context, _line),
+                                thumbColor: appColor(context, widget.color),
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 5,
+                                ),
+                                overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 13,
+                                ),
+                              ),
+                              child: Slider(
+                                key: const ValueKey('resource-trend-scrubber'),
+                                value: position,
+                                onChanged: points.length > 1 ? _inspect : null,
+                                semanticFormatterCallback: (value) {
+                                  final time = window.start.add(
+                                    Duration(
+                                      microseconds: (duration * value).round(),
+                                    ),
+                                  );
+                                  final p =
+                                      points[nearestResourceTrendPoint(
+                                        points,
+                                        time,
+                                      )];
+                                  return '${resourceTrendTime(p.time, seconds: true)} JST, ${p.value}';
+                                },
+                              ),
+                            ),
+                          ),
+                          Text(
+                            DateFormat(
+                              window.days == 1 ? 'HH:mm' : 'MM-dd',
+                            ).format(resourceTrendJst(chosen!.time)),
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, Color(0xffd6e2e8)),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           if (!short)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: _line)),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: appColor(context, _line)),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,14 +464,26 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                             : l10n.resourceTrendBaseline(
                                 resourceTrendTime(data.baseline!.time),
                               ),
-                        style: const TextStyle(color: _muted, fontSize: 10),
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, _muted),
+                            fontSize: 10,
+                          ),
+                        ),
                       ),
                       if (data.latest != null)
                         Text(
                           l10n.resourceTrendObserved(
                             resourceTrendTime(data.latest!.time),
                           ),
-                          style: const TextStyle(color: _muted, fontSize: 10),
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, _muted),
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -427,14 +494,23 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
                         : data.baseline!.time.isAfter(window.start)
                         ? l10n.resourceTrendPartial
                         : l10n.resourceTrendLocalScale,
-                    style: const TextStyle(color: _muted, fontSize: 10),
+                    style: appTextStyle(
+                      context,
+                      TextStyle(color: appColor(context, _muted), fontSize: 10),
+                    ),
                   ),
                   if (data.recordCount > points.length)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         l10n.resourceTrendSampled,
-                        style: const TextStyle(color: _muted, fontSize: 10),
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: appColor(context, _muted),
+                            fontSize: 10,
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -448,6 +524,7 @@ class _ResourceTrendChartState extends State<ResourceTrendChart> {
 
 class ResourceTrendPainter extends CustomPainter {
   ResourceTrendPainter({
+    required this.palette,
     required this.points,
     required this.window,
     required this.scale,
@@ -460,6 +537,7 @@ class ResourceTrendPainter extends CustomPainter {
     this.locale = 'zh',
   });
   final List<ResourceTrendPoint> points;
+  final AppPalette palette;
   final ResourceTrendWindow window;
   final ResourceTrendScale scale;
   final Color color;
@@ -500,7 +578,7 @@ class ResourceTrendPainter extends CustomPainter {
     text: TextSpan(
       text: value,
       style: TextStyle(
-        color: ink,
+        color: palette.color(ink),
         fontSize: size * textScale,
         fontFamily: fontFamily,
         fontWeight: weight,
@@ -549,7 +627,7 @@ class ResourceTrendPainter extends CustomPainter {
     if (points.isEmpty) return;
     final rect = plotRect(size);
     final grid = Paint()
-      ..color = const Color(0xff365262).withValues(alpha: .5)
+      ..color = palette.color(const Color(0xff365262)).withValues(alpha: .5)
       ..strokeWidth = 1;
     for (final value in scale.ticks) {
       final yy = y(value, rect);
@@ -624,7 +702,9 @@ class ResourceTrendPainter extends CustomPainter {
         Offset(rect.left, y(baseline!.toDouble(), rect)),
         Offset(rect.right, y(baseline!.toDouble(), rect)),
         Paint()
-          ..color = const Color(0xffc2a56a).withValues(alpha: .65)
+          ..color = palette
+              .color(const Color(0xffc2a56a))
+              .withValues(alpha: .65)
           ..strokeWidth = 1,
         length: 7,
         gap: 5,
@@ -650,7 +730,11 @@ class ResourceTrendPainter extends CustomPainter {
     final last = offset(points.last, rect);
     canvas.drawCircle(last, 8, Paint()..color = color.withValues(alpha: .1));
     canvas.drawCircle(last, 4, Paint()..color = color);
-    canvas.drawCircle(last, 2, Paint()..color = const Color(0xffe8fff6));
+    canvas.drawCircle(
+      last,
+      2,
+      Paint()..color = palette.color(const Color(0xffe8fff6)),
+    );
     canvas.restore();
     if (baseline != null && selected == null) {
       final label = text(
@@ -675,7 +759,10 @@ class ResourceTrendPainter extends CustomPainter {
           ),
           const Radius.circular(3),
         ),
-        Paint()..color = const Color(0xff102532).withValues(alpha: .9),
+        Paint()
+          ..color = palette
+              .color(const Color(0xff102532))
+              .withValues(alpha: .9),
       );
       label.paint(canvas, origin);
     }
@@ -693,7 +780,11 @@ class ResourceTrendPainter extends CustomPainter {
         gap: 4,
       );
       canvas.drawCircle(p, 8, Paint()..color = color.withValues(alpha: .18));
-      canvas.drawCircle(p, 4, Paint()..color = const Color(0xff102532));
+      canvas.drawCircle(
+        p,
+        4,
+        Paint()..color = palette.color(const Color(0xff102532)),
+      );
       canvas.drawCircle(
         p,
         4,
@@ -725,11 +816,14 @@ class ResourceTrendPainter extends CustomPainter {
         const Radius.circular(7),
       );
       canvas.drawShadow(Path()..addRRect(box), Colors.black54, 6, false);
-      canvas.drawRRect(box, Paint()..color = const Color(0xff183444));
+      canvas.drawRRect(
+        box,
+        Paint()..color = palette.color(const Color(0xff183444)),
+      );
       canvas.drawRRect(
         box,
         Paint()
-          ..color = const Color(0xff517082)
+          ..color = palette.color(const Color(0xff517082))
           ..style = PaintingStyle.stroke,
       );
       date.paint(canvas, Offset(left + 12, top + 8));

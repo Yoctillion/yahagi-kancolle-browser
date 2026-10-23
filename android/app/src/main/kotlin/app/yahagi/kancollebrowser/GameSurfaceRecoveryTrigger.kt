@@ -1,6 +1,7 @@
 package app.yahagi.kancollebrowser
 
 enum class GameSurfaceRecoveryReason {
+    ACTIVITY_RESUMED,
     MULTI_WINDOW_ENTER,
     MULTI_WINDOW_EXIT,
     PICTURE_IN_PICTURE_ENTER,
@@ -11,6 +12,18 @@ enum class GameSurfaceRecoveryReason {
 class GameSurfaceRecoveryTrigger(
     private val recover: (GameSurfaceRecoveryReason) -> Unit,
 ) {
+    private var resumeRecoveryPending = false
+
+    fun onPause() {
+        resumeRecoveryPending = true
+    }
+
+    fun onResume() {
+        if (!resumeRecoveryPending) return
+        resumeRecoveryPending = false
+        recover(GameSurfaceRecoveryReason.ACTIVITY_RESUMED)
+    }
+
     fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
         recover(
             if (isInMultiWindowMode) {

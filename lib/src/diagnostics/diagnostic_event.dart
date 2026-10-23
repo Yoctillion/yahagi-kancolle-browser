@@ -6,7 +6,15 @@ import 'diagnostic_privacy_policy.dart';
 
 enum DiagnosticOutcome { success, failure, skipped }
 
-enum DiagnosticLifecycleState { started, resumed, paused, stopped, lowMemory }
+enum DiagnosticLifecycleState {
+  started,
+  resumed,
+  inactive,
+  hidden,
+  paused,
+  stopped,
+  lowMemory,
+}
 
 enum DiagnosticComponent { application, capture, database, platform, webView }
 
@@ -211,6 +219,34 @@ final class DiagnosticEvent {
       'errorCode': ?errorCode,
     },
   );
+
+  factory DiagnosticEvent.gameLoopSample({
+    required DateTime occurredAt,
+    required Map<Object?, Object?> snapshot,
+  }) {
+    final fresh = snapshot['fresh'] == true;
+    final raw = snapshot['sample'];
+    final sample = fresh && raw is Map ? raw : const <Object?, Object?>{};
+    num? number(Object? value) =>
+        value is num && value.isFinite && value >= 0 ? value : null;
+    final target = sample['target'];
+    return DiagnosticEvent._(
+      occurredAt: occurredAt.toUtc(),
+      type: 'gameLoopSample',
+      fields: <String, Object?>{
+        'fresh': fresh,
+        'sampleAgeMs': number(snapshot['sampleAgeMs']),
+        'target': const ['fps30', 'fps60', 'highRefresh'].contains(target)
+            ? target
+            : null,
+        'visible': sample['visible'] is bool ? sample['visible'] : null,
+        'gameFps': number(sample['fps']),
+        'gameRenderFps': number(sample['renderFps']),
+        'rafFps': number(sample['rafFps']),
+        'configuredFps': number(sample['configuredFps']),
+      },
+    );
+  }
 
   Map<String, Object?> toJson() => <String, Object?>{
     'occurredAt': occurredAt.toIso8601String(),

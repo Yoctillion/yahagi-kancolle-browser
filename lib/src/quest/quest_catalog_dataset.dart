@@ -45,9 +45,10 @@ final class QuestCatalogVersion implements Comparable<QuestCatalogVersion> {
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('Quest metadata root must be an object');
     }
-    final committedAt = DateTime.tryParse(
-      decoded['committedAt'] as String? ?? '',
-    );
+    final committedAtValue = decoded['committedAt'];
+    final committedAt = committedAtValue is String
+        ? DateTime.tryParse(committedAtValue)
+        : null;
     final displayCommitSha =
         decoded['displayCommitSha'] ?? decoded['commitSha'];
     final relationCommitSha = decoded['relationCommitSha'] ?? displayCommitSha;
@@ -88,6 +89,14 @@ final class QuestCatalogDataset {
   final QuestCatalog catalog;
   final QuestCatalogVersion version;
   final String rawJson;
+
+  /// Display-only fallback: the downloaded bytes and their hash stay unchanged.
+  QuestCatalogDataset withDisplayFallbackFrom(QuestCatalogDataset fallback) =>
+      QuestCatalogDataset(
+        catalog: catalog.withTranslationFallbackFrom(fallback.catalog),
+        version: version,
+        rawJson: rawJson,
+      );
 
   static QuestCatalogDataset parse({
     required String rawJson,

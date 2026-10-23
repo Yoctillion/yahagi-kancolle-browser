@@ -69,6 +69,14 @@ final class FcdMapUpdateService implements FcdMapUpdateClient {
   Future<FcdMapUpdateResult> checkAndUpdate({
     required FcdMapDataset current,
   }) async {
+    FcdMapDataset? bundled;
+    try {
+      bundled = await store.loadBundled();
+    } catch (_) {
+      // Current data remains the baseline if the bundled copy is unavailable.
+    }
+    final needsGeometryRepair =
+        bundled != null && !current.preservesDrawableMapsFrom(bundled);
     FcdMapUpdateFailed? lastFailure;
     for (final source in fcdMapUpdateSources) {
       final host = Uri.parse(source).host;
@@ -77,7 +85,7 @@ final class FcdMapUpdateService implements FcdMapUpdateClient {
         if (remoteVersion.compareTo(current.version) < 0) {
           throw const FormatException('FCD update would downgrade data');
         }
-        if (remoteVersion == current.version) {
+        if (remoteVersion == current.version && !needsGeometryRepair) {
           final result = FcdMapUpToDate(current.version, host: host);
           await _persistState(current, result, 'upToDate');
           return result;
@@ -88,8 +96,16 @@ final class FcdMapUpdateService implements FcdMapUpdateClient {
             'FCD meta.json and map.json versions do not match',
           );
         }
-        if (dataset.version.compareTo(current.version) <= 0) {
+        final versionComparison = dataset.version.compareTo(current.version);
+        if (versionComparison < 0 ||
+            (versionComparison == 0 && !needsGeometryRepair)) {
           throw const FormatException('FCD update would downgrade data');
+        }
+        if (!dataset.preservesDrawableMapsFrom(current) ||
+            (bundled != null && !dataset.preservesDrawableMapsFrom(bundled))) {
+          throw const FormatException(
+            'FCD update removes drawable map geometry',
+          );
         }
         try {
           await store.save(dataset);

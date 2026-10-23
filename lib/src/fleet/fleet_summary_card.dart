@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import '../settings/fleet_display_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -190,7 +191,12 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                               alignment: Alignment.center,
                               child: Text(
                                 fleetText(context, '无数据'),
-                                style: TextStyle(color: Color(0xff8197a5)),
+                                style: TextStyle(
+                                  color: appColor(
+                                    context,
+                                    const Color(0xff8197a5),
+                                  ),
+                                ),
                               ),
                             )
                     : flat
@@ -199,9 +205,11 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                         children: [
                           for (var i = 0; i < ships.length; i++) ...[
                             if (i > 0)
-                              const SizedBox(
+                              SizedBox(
                                 height: 1,
-                                child: ColoredBox(color: Color(0xff1b3142)),
+                                child: ColoredBox(
+                                  color: appColor(context, flatDividerColor),
+                                ),
                               ),
                             FleetShipMinimalRow(
                               state: state,
@@ -308,8 +316,8 @@ class _FleetSegmentedSwitcher extends StatelessWidget {
       height: 28,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xff102331),
-        border: Border.all(color: const Color(0xff294052)),
+        color: appColor(context, Color(0xff102331)),
+        border: Border.all(color: appColor(context, Color(0xff294052))),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -318,7 +326,10 @@ class _FleetSegmentedSwitcher extends StatelessWidget {
           return Expanded(
             child: Material(
               key: Key('fleet-summary-selector-${fleet.id}'),
-              color: isSelected ? const Color(0xff8a6628) : Colors.transparent,
+              color: appColor(
+                context,
+                isSelected ? const Color(0xff8a6628) : Colors.transparent,
+              ),
               borderRadius: BorderRadius.circular(6),
               child: InkWell(
                 onTap: () => onSelected(fleet.id),
@@ -329,9 +340,12 @@ class _FleetSegmentedSwitcher extends StatelessWidget {
                     child: Text(
                       _fleetSelectorLabel(fleet),
                       style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xffffdc88)
-                            : const Color(0xff9fb3bf),
+                        color: appColor(
+                          context,
+                          isSelected
+                              ? const Color(0xffffdc88)
+                              : const Color(0xff9fb3bf),
+                        ),
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                       ),
@@ -527,10 +541,10 @@ class _FleetSummaryMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     key: Key('fleet-summary-metric-$id'),
-    color: const Color(0xff102331),
+    color: appColor(context, Color(0xff102331)),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(6),
-      side: const BorderSide(color: Color(0xff294052)),
+      side: BorderSide(color: appColor(context, Color(0xff294052))),
     ),
     clipBehavior: Clip.antiAlias,
     child: Semantics(
@@ -550,11 +564,14 @@ class _FleetSummaryMetric extends StatelessWidget {
                   child: Text(
                     label,
                     maxLines: 1,
-                    style: const TextStyle(
-                      color: Color(0xff8197a5),
-                      fontSize: 8,
-                      height: 1,
-                      fontWeight: FontWeight.w700,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xff8197a5)),
+                        fontSize: 8,
+                        height: 1,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -565,12 +582,17 @@ class _FleetSummaryMetric extends StatelessWidget {
                     value,
                     key: Key('fleet-summary-metric-$id-value'),
                     maxLines: 1,
-                    style: const TextStyle(
-                      color: Color(0xffdce6eb),
-                      fontSize: 8,
-                      height: 1,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: appColor(context, Color(0xffdce6eb)),
+                        fontSize: 8,
+                        height: 1,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
+                      ),
                     ),
                   ),
                 ),

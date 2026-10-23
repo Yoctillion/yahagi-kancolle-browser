@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
+import 'package:yahagi_kancolle_browser/src/game_state/game_state_serializer.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 import 'package:yahagi_kancolle_browser/src/subtitles/ship_subtitle_catalog.dart';
@@ -17,6 +19,8 @@ import 'package:yahagi_kancolle_browser/src/subtitles/ship_subtitle_runtime_cont
 import 'package:yahagi_kancolle_browser/src/subtitles/ship_subtitle_settings.dart';
 import 'package:yahagi_kancolle_browser/src/subtitles/ship_subtitle_update_service.dart';
 
+import '../fixtures/kcsapi_fixtures.dart' show kcsapiEvent;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
@@ -24,6 +28,333 @@ void main() {
     GameStateController.disableTimerForTest = true;
   });
   tearDown(() => GameStateController.disableTimerForTest = false);
+
+  test(
+    'unsupported subtitles expose status and retry without losing opt-in',
+    () async {
+      final f = await _Fixture.create(supported: false);
+      addTearDown(f.dispose);
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.unsupported);
+      expect(f.settings.enabled, isTrue);
+      expect(f.port.configs, isEmpty);
+
+      f.port.supported = true;
+      await f.runtime.retry();
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+      expect(f.port.ships.single.single['fileName'], 'voice-file');
+      expect(f.port.catalogs, hasLength(1));
+      expect(f.port.configs.last['enabled'], isTrue);
+    },
+  );
+
+  test(
+    'support channel errors stay distinguishable and recover on enable',
+    () async {
+      final port = _Port()
+        ..supportError = PlatformException(code: 'temporarily_unavailable');
+      final f = await _Fixture.create(port: port);
+      addTearDown(f.dispose);
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+      expect(f.runtime.lastError, isA<PlatformException>());
+      port.supportError = null;
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      expect(port.supportChecks, 2);
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+      expect(port.configs.last['enabled'], isTrue);
+      expect(f.runtime.lastError, isNull);
+    },
+  );
+
+  test(
+    'unsupported rendering rechecks on a later foreground session',
+    () async {
+      final f = await _Fixture.create(supported: false);
+      addTearDown(f.dispose);
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      f.runtime.didChangeAppLifecycleState(AppLifecycleState.paused);
+      f.port.supported = true;
+      f.runtime.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await f.runtime.idle;
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+      expect(f.port.configs.last['enabled'], isTrue);
+    },
+  );
+
+  for (final recovery in ['retry', 'reenable']) {
+    test(
+      'failed language loads stay visible and recover on $recovery',
+      () async {
+        var loads = 0;
+        var failLoad = true;
+        final loadError = StateError('Temporary language read failure');
+        final f = await _Fixture.create(
+          languageLoader: (_) async {
+            loads++;
+            if (failLoad) throw loadError;
+            return _languageSource('日本語の台詞', _Updater());
+          },
+        );
+        addTearDown(f.dispose);
+        await f.settings.setEnabled(true);
+        await f.runtime.idle;
+        await f.settings.setLanguage(ShipSubtitleLanguage.japanese);
+        await Future<void>.delayed(Duration.zero);
+        await f.runtime.idle;
+        expect(loads, 1);
+        expect(f.catalog.isLanguageReady, isFalse);
+        expect(f.port.configs.last['enabled'], isFalse);
+        expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+        expect(f.runtime.lastError, same(loadError));
+
+        failLoad = false;
+        if (recovery == 'retry') {
+          await f.runtime.retry();
+        } else {
+          await f.settings.setEnabled(false);
+          await f.runtime.idle;
+          await f.settings.setEnabled(true);
+        }
+        await f.runtime.idle;
+        expect(loads, 2);
+        expect(f.catalog.isLanguageReady, isTrue);
+        expect(f.port.catalogs.last.quotes['1']?['1'], '日本語の台詞');
+        expect(f.port.configs.last['enabled'], isTrue);
+        expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+        expect(f.runtime.lastError, isNull);
+      },
+    );
+  }
+
+  test(
+    'failed support rechecks still allow an active renderer to stop',
+    () async {
+      final f = await _Fixture.create();
+      addTearDown(f.dispose);
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      expect(f.port.configs.last['enabled'], isTrue);
+      final catalogsSent = f.port.catalogs.length;
+      f.port.supportError = PlatformException(code: 'temporarily_unavailable');
+      await f.runtime.retry();
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+
+      await f.settings.setEnabled(false);
+      await f.runtime.idle;
+      expect(f.port.configs.last['enabled'], isFalse);
+      expect(f.port.catalogs.length, catalogsSent);
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+      expect(f.runtime.lastError, isA<PlatformException>());
+    },
+  );
+
+  test('an active renderer stops while a support recheck is pending', () async {
+    final f = await _Fixture.create();
+    addTearDown(f.dispose);
+    await f.settings.setEnabled(true);
+    await f.runtime.idle;
+    final gate = Completer<bool>();
+    f.port.supportGate = gate.future;
+    final retry = f.runtime.retry();
+    await Future<void>.delayed(Duration.zero);
+    await f.settings.setEnabled(false);
+    await Future<void>.delayed(Duration.zero);
+    final stoppedBeforeReply = f.port.configs.last['enabled'] == false;
+    gate.completeError(PlatformException(code: 'temporarily_unavailable'));
+    await retry;
+    expect(stoppedBeforeReply, isTrue);
+    expect(f.port.configs.last['enabled'], isFalse);
+    expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+  });
+
+  test('a failed support recheck cannot leave a late enable running', () async {
+    final f = await _Fixture.create();
+    addTearDown(f.dispose);
+    await f.settings.setEnabled(true);
+    await f.runtime.idle;
+    final gate = Completer<void>();
+    f.port.configureGate = gate.future;
+    await f.settings.setFontSize(ShipSubtitleFontSize.large);
+    await Future<void>.delayed(Duration.zero);
+    f.port.supportError = PlatformException(code: 'temporarily_unavailable');
+    final retry = f.runtime.retry();
+    await f.settings.setEnabled(false);
+    gate.complete();
+    await retry;
+    await f.runtime.idle;
+    expect(f.port.configs.last['enabled'], isFalse);
+    expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+  });
+
+  test(
+    'a renderer stops on background after a failed support recheck',
+    () async {
+      final f = await _Fixture.create();
+      addTearDown(f.dispose);
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      f.port.supportError = PlatformException(code: 'temporarily_unavailable');
+      await f.runtime.retry();
+      f.runtime.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await f.runtime.idle;
+      expect(f.port.configs.last['enabled'], isFalse);
+      expect(f.settings.enabled, isTrue);
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+    },
+  );
+
+  test(
+    'concurrent support retries share one check and disposal ignores its reply',
+    () async {
+      final f = await _Fixture.create();
+      final gate = Completer<bool>();
+      f.port.supportGate = gate.future;
+      final checks = f.port.supportChecks;
+      var notifications = 0;
+      f.runtime.addListener(() => notifications++);
+      final first = f.runtime.retry();
+      final second = f.runtime.retry();
+      await Future<void>.delayed(Duration.zero);
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.checking);
+      expect(f.port.supportChecks, checks + 1);
+      f.dispose();
+      final beforeReply = notifications;
+      gate.complete(true);
+      await Future.wait([first, second]);
+      expect(notifications, beforeReply);
+      expect(f.port.configs, hasLength(1));
+    },
+  );
+
+  test(
+    'retry waits for an old catalog send before resending the complete state',
+    () async {
+      final f = await _Fixture.create();
+      addTearDown(f.dispose);
+      final gate = Completer<void>();
+      f.port.catalogGate = gate.future;
+      await f.settings.setEnabled(true);
+      await f.port.catalogStarted.future;
+      final retry = f.runtime.retry();
+      gate.complete();
+      await retry;
+      expect(f.port.ships, hasLength(2));
+      expect(f.port.catalogs, hasLength(2));
+      expect(f.port.configs.last['enabled'], isTrue);
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+    },
+  );
+
+  testWidgets(
+    'missing voice filenames are visible and arriving master data clears the wait',
+    (tester) async {
+      final f = await _Fixture.create(
+        masterShips: const {1: MasterShip(id: 1, name: '睦月', shipTypeId: 2)},
+      );
+      addTearDown(f.dispose);
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.waitingForGameData);
+      expect(f.port.ships.single, isEmpty);
+
+      f.game.accept(
+        kcsapiEvent('/kcsapi/api_start2/getData', {
+          'api_mst_ship': [
+            {'api_id': 1, 'api_name': '睦月', 'api_stype': 2},
+          ],
+          'api_mst_shipgraph': [
+            {
+              'api_id': 1,
+              'api_filename': 'arriving-voice',
+              'api_version': ['1'],
+            },
+          ],
+        }),
+      );
+      await f.game.idle;
+      await tester.pump();
+      await f.runtime.idle;
+      expect(f.port.ships.last.single['fileName'], 'arriving-voice');
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+      f.runtime.dispose();
+    },
+  );
+
+  test(
+    'cached voice mappings reach subtitles before any live startup response',
+    () async {
+      final cached = GameStateSerializer.deserialize(
+        GameStateSerializer.serialize(
+          const GameState(
+            masterShips: {
+              1: MasterShip(
+                id: 1,
+                name: '睦月',
+                shipTypeId: 2,
+                portraitFileName: 'cached-voice',
+                portraitVersion: '1',
+              ),
+            },
+          ),
+        ),
+      );
+      final f = await _Fixture.create(masterShips: cached.masterShips);
+      addTearDown(f.dispose);
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      expect(f.port.ships.single.single['fileName'], 'cached-voice');
+      expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+    },
+  );
+
+  for (final stage in ['catalog', 'configure']) {
+    test(
+      '$stage delivery errors remain visible and retry resends current state',
+      () async {
+        final f = await _Fixture.create();
+        addTearDown(f.dispose);
+        if (stage == 'catalog') {
+          f.port.catalogError = PlatformException(code: 'send_failed');
+        } else {
+          f.port.configureError = PlatformException(code: 'send_failed');
+        }
+        await f.settings.setEnabled(true);
+        await f.runtime.idle;
+        expect(f.runtime.status, ShipSubtitleRuntimeStatus.failed);
+        expect(f.runtime.lastError, isA<PlatformException>());
+        f.port.catalogError = null;
+        f.port.configureError = null;
+        await f.runtime.retry();
+        expect(f.runtime.status, ShipSubtitleRuntimeStatus.ready);
+        expect(f.port.configs.last['enabled'], isTrue);
+        expect(f.port.ships.last.single['fileName'], 'voice-file');
+        expect(f.port.catalogs.last.quotes['1']?['1'], '台词');
+      },
+    );
+  }
+
+  test(
+    'disabling during a support retry never enables the old request',
+    () async {
+      final f = await _Fixture.create();
+      addTearDown(f.dispose);
+      await f.settings.setEnabled(true);
+      await f.runtime.idle;
+      final gate = Completer<bool>();
+      f.port.supportGate = gate.future;
+      final retry = f.runtime.retry();
+      final previousCount = f.port.configs.length;
+      await f.settings.setEnabled(false);
+      gate.complete(true);
+      await retry;
+      expect(f.port.configs.skip(previousCount).map((c) => c['enabled']), [
+        false,
+      ]);
+    },
+  );
 
   test(
     'default off sends no full catalog and performs no update check',
@@ -497,6 +828,7 @@ final class _Fixture {
     ShipSubtitleCatalogSourceLoader? languageLoader,
     ShipSubtitleKc3Source? kc3Source,
     bool supported = true,
+    _Port? port,
     Map<int, MasterShip>? masterShips,
   }) async {
     final settings = await ShipSubtitleSettingsController.load();
@@ -529,7 +861,7 @@ final class _Fixture {
             },
       ),
     );
-    final port = _Port()..supported = supported;
+    port ??= _Port()..supported = supported;
     final runtime = ShipSubtitleRuntimeController(
       settings: settings,
       catalog: catalog,
@@ -627,6 +959,12 @@ final class _Updater implements ShipSubtitleUpdateClient {
 
 final class _Port implements ShipSubtitlePort {
   bool supported = true;
+  int supportChecks = 0;
+  Object? supportError;
+  Object? catalogError;
+  Object? configureError;
+  Future<bool>? supportGate;
+  Future<void>? configureGate;
   Future<void>? catalogGate;
   final catalogStarted = Completer<void>();
   @override
@@ -635,7 +973,12 @@ final class _Port implements ShipSubtitlePort {
   final catalogs = <ShipSubtitleCatalog>[];
   final ships = <List<Map<String, Object?>>>[];
   @override
-  Future<bool> isSupported() async => supported;
+  Future<bool> isSupported() async {
+    supportChecks++;
+    if (supportError != null) throw supportError!;
+    return supportGate == null ? supported : await supportGate!;
+  }
+
   @override
   Future<void> configure({
     required bool enabled,
@@ -644,6 +987,8 @@ final class _Port implements ShipSubtitlePort {
     required double x,
     required double y,
   }) async {
+    await configureGate;
+    if (configureError != null) throw configureError!;
     configs.add({
       'enabled': enabled,
       'fontSize': fontSize.wireName,
@@ -655,6 +1000,7 @@ final class _Port implements ShipSubtitlePort {
 
   @override
   Future<void> setCatalog(ShipSubtitleCatalog data) async {
+    if (catalogError != null) throw catalogError!;
     if (!catalogStarted.isCompleted) catalogStarted.complete();
     await catalogGate;
     catalogs.add(data);

@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
@@ -111,12 +112,18 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                       children: <Widget>[
                         Text(
                           l10n.gadgetBypassEnable,
-                          style: SettingsTileTypography.title,
+                          style: appTextStyle(
+                            context,
+                            SettingsTileTypography.title,
+                          ),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           l10n.gadgetBypassDesc,
-                          style: SettingsTileTypography.description,
+                          style: appTextStyle(
+                            context,
+                            SettingsTileTypography.description,
+                          ),
                         ),
                       ],
                     ),
@@ -125,8 +132,14 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                   Switch(
                     key: const Key('gadget-bypass-switch'),
                     value: controller.enabled,
-                    activeTrackColor: const Color(0xffb98a28),
-                    activeThumbColor: const Color(0xff403923),
+                    activeTrackColor: appColor(
+                      context,
+                      const Color(0xffb98a28),
+                    ),
+                    activeThumbColor: appColor(
+                      context,
+                      const Color(0xff403923),
+                    ),
                     onChanged: controller.isApplying || !controller.supported
                         ? null
                         : _setEnabled,
@@ -139,9 +152,9 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Text(
                   l10n.gadgetBypassUnsupported,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xffe0a35f),
+                    color: appColor(context, Color(0xffe0a35f)),
                   ),
                 ),
               ),
@@ -151,13 +164,16 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                 key: const Key('gadget-bypass-endpoint-dropdown'),
                 initialValue: _selectedPreset,
                 isExpanded: true,
-                dropdownColor: const Color(0xff142735),
-                style: const TextStyle(fontSize: 13, color: Color(0xffdce6eb)),
+                dropdownColor: appColor(context, const Color(0xff142735)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: appColor(context, Color(0xffdce6eb)),
+                ),
                 decoration: InputDecoration(
                   labelText: l10n.gadgetBypassEndpoint,
-                  labelStyle: const TextStyle(
+                  labelStyle: TextStyle(
                     fontSize: 12,
-                    color: Color(0xff8197a5),
+                    color: appColor(context, Color(0xff8197a5)),
                   ),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(
@@ -188,9 +204,11 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Material(
                   key: const Key('gadget-bypass-custom-endpoint'),
-                  color: Colors.transparent,
-                  shape: const RoundedRectangleBorder(
-                    side: BorderSide(color: Color(0xff8197a5)),
+                  color: appColor(context, Colors.transparent),
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: appColor(context, Color(0xff8197a5)),
+                    ),
                     borderRadius: BorderRadius.all(Radius.circular(4)),
                   ),
                   child: InkWell(
@@ -229,11 +247,14 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                           : l10n.gadgetBypassStatusOff,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: controller.enabled
-                            ? const Color(0xff9eb2bd)
-                            : const Color(0xff5c7482),
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          fontSize: 11,
+                          color: controller.enabled
+                              ? const Color(0xff9eb2bd)
+                              : const Color(0xff5c7482),
+                        ),
                       ),
                     ),
                   ),
@@ -242,7 +263,7 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                     onPressed: () => controller.clearCache(),
                     style: TextButton.styleFrom(
                       visualDensity: VisualDensity.compact,
-                      foregroundColor: const Color(0xff8fa8b6),
+                      foregroundColor: appColor(context, Color(0xff8fa8b6)),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                     child: Text(
@@ -271,7 +292,7 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                   ),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
-                    foregroundColor: const Color(0xff8fa8b6),
+                    foregroundColor: appColor(context, Color(0xff8fa8b6)),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
                 ),
@@ -294,9 +315,9 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Text(
                   '${l10n.gadgetBypassError}: ${controller.lastError}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: Color(0xffe07a6a),
+                    color: appColor(context, Color(0xffe07a6a)),
                   ),
                 ),
               ),
@@ -329,19 +350,25 @@ class _GadgetBypassSectionState extends State<GadgetBypassSection> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12, color: Color(0xff8197a5)),
+              style: TextStyle(
+                fontSize: 12,
+                color: appColor(context, Color(0xff8197a5)),
+              ),
             ),
           ),
           Text(
             statusText,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: ok
-                  ? const Color(0xff4caf50)
-                  : statusCode == 403
-                  ? const Color(0xffffc940)
-                  : const Color(0xfff44336),
+            style: appTextStyle(
+              context,
+              TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: ok
+                    ? const Color(0xff4caf50)
+                    : statusCode == 403
+                    ? const Color(0xffffc940)
+                    : const Color(0xfff44336),
+              ),
             ),
           ),
         ],

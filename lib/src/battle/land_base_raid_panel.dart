@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import 'battle_ui_text.dart';
@@ -19,17 +20,20 @@ class LandBaseRaidPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final english = Localizations.localeOf(context).languageCode == 'en';
-    const title = BattleUiText(
+    final title = BattleUiText(
       '基地空袭',
-      style: TextStyle(color: Color(0xffffa092), fontWeight: FontWeight.w800),
+      style: appTextStyle(
+        context,
+        TextStyle(color: Color(0xffffa092), fontWeight: FontWeight.w800),
+      ),
     );
     final heading = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(
+        Icon(
           Icons.warning_amber_rounded,
           size: 18,
-          color: Color(0xffff8c78),
+          color: appColor(context, Color(0xffff8c78)),
         ),
         const SizedBox(width: 6),
         if (english) Flexible(child: title) else title,
@@ -40,9 +44,9 @@ class LandBaseRaidPanel extends StatelessWidget {
       key: const Key('land-base-raid-panel'),
       padding: EdgeInsets.all(compact ? 8 : 10),
       decoration: BoxDecoration(
-        color: const Color(0xff24191b),
+        color: appColor(context, const Color(0xff24191b)),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xff713d43)),
+        border: Border.all(color: appColor(context, const Color(0xff713d43))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -61,15 +65,15 @@ class LandBaseRaidPanel extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(7),
             child: ColoredBox(
-              color: const Color(0xff10212e),
+              color: appColor(context, const Color(0xff10212e)),
               child: Column(
                 children: <Widget>[
                   for (var index = 0; index < result.bases.length; index++) ...[
                     if (index > 0)
-                      const Divider(
+                      Divider(
                         height: 1,
                         thickness: 1,
-                        color: Color(0xff294354),
+                        color: appColor(context, Color(0xff294354)),
                       ),
                     _LandBaseRaidTile(
                       base: result.bases[index],
@@ -109,11 +113,14 @@ class _LandBaseRaidTile extends StatelessWidget {
               _landBaseJapaneseName(base.baseId),
               maxLines: 1,
               softWrap: false,
-              style: const TextStyle(
-                color: Color(0xfff0f5f7),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                height: 1,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xfff0f5f7)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
               ),
             ),
           ),
@@ -131,11 +138,14 @@ class _LandBaseRaidTile extends StatelessWidget {
                     '${base.currentHp}/${base.maxHp}（-${base.damage}）',
                     maxLines: 1,
                     softWrap: false,
-                    style: TextStyle(
-                      color: valueColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
+                    style: appTextStyle(
+                      context,
+                      TextStyle(
+                        color: valueColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ),
@@ -145,8 +155,8 @@ class _LandBaseRaidTile extends StatelessWidget {
                   child: LinearProgressIndicator(
                     minHeight: compact ? 6 : 7,
                     value: ratio,
-                    color: barColor,
-                    backgroundColor: const Color(0xff263e4d),
+                    color: appColor(context, barColor),
+                    backgroundColor: appColor(context, const Color(0xff263e4d)),
                   ),
                 ),
               ],

@@ -23,6 +23,7 @@ import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/safety_settings_controller.dart';
+import 'package:yahagi_kancolle_browser/src/theme/app_theme.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
 
 Map<String, String> collectBusinessDartSources(Directory projectRoot) {
@@ -371,6 +372,15 @@ void main() {
 
 class _LayoutSettingsControllerStub extends ChangeNotifier
     implements LayoutSettingsController {
+  @override
+  AppThemeMode get appThemeMode => AppThemeMode.dark;
+
+  @override
+  bool get cameraAvoidanceEnabled => false;
+
+  @override
+  double get cameraAvoidanceDistance => 0;
+
   @override
   bool get autoZoom => false;
 

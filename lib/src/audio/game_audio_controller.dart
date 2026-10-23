@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import 'game_audio_port.dart';
@@ -6,6 +8,8 @@ import 'game_audio_store.dart';
 enum GameAudioAvailability { checking, available, unavailable }
 
 final class GameAudioController extends ChangeNotifier {
+  static const _nativeOperationTimeout = Duration(seconds: 5);
+
   GameAudioController._({
     required this._store,
     required this._isMuted,
@@ -55,13 +59,17 @@ final class GameAudioController extends ChangeNotifier {
     if (_disposed) return;
     _port = port;
     final generation = ++_portGeneration;
+    // A replaced WebView may never answer its old support or mute request.
+    _nativeTail = Future<void>.value();
     _lastAppliedMuted = null;
     _availability = GameAudioAvailability.checking;
     _errorMessage = null;
     try {
       await _enqueueNative(() async {
         if (_disposed || generation != _portGeneration) return;
-        final supported = await port.isSupported();
+        final supported = await port.isSupported().timeout(
+          _nativeOperationTimeout,
+        );
         if (_disposed || generation != _portGeneration) return;
         _availability = supported
             ? GameAudioAvailability.available
@@ -162,30 +170,78 @@ final class GameAudioController extends ChangeNotifier {
 
   Future<void> _applyEffectiveMuted() => _enqueueNative(_reconcileNative);
 
-  // Every port uses the same queue: a replaced port can still finish a native
-  // side effect, so the replacement must apply its state after that completion.
+  // Commands within one WebView remain ordered. Old WebView and timed-out
+  // commands are repaired if their late effect contradicts the latest target.
   Future<void> _reconcileNative() async {
     while (!_disposed && _availability == GameAudioAvailability.available) {
       final port = _port;
       final generation = _portGeneration;
       final muted = effectiveMuted;
       if (port == null || _lastAppliedMuted == muted) return;
+      _lastAppliedMuted = null;
+      final operation = Future<void>.sync(() => port.setMuted(muted));
+      final weakController = WeakReference(this);
+      var retired = false;
+      void reconcileLateEffect() {
+        final controller = weakController.target;
+        if (controller == null ||
+            controller._disposed ||
+            (!retired && generation == controller._portGeneration) ||
+            muted == controller.effectiveMuted) {
+          return;
+        }
+        // An error reply can also arrive after the native side effect.
+        controller._lastAppliedMuted = null;
+        unawaited(controller._applyEffectiveMuted().catchError((Object _) {}));
+      }
+
+      unawaited(
+        operation.then<void>(
+          (_) => reconcileLateEffect(),
+          onError: (Object _) => reconcileLateEffect(),
+        ),
+      );
       try {
-        await port.setMuted(muted);
+        await operation.timeout(_nativeOperationTimeout);
+      } on TimeoutException {
+        retired = true;
+        if (_disposed) return;
+        if (generation != _portGeneration) {
+          await _settleReplacement();
+          return;
+        }
+        _lastAppliedMuted = null;
+        rethrow;
       } catch (_) {
-        if (_disposed || generation != _portGeneration) return;
+        if (_disposed) return;
+        if (generation != _portGeneration) {
+          await _settleReplacement();
+          return;
+        }
         _lastAppliedMuted = null;
         rethrow;
       }
-      if (_disposed || generation != _portGeneration) return;
+      if (_disposed) return;
+      if (generation != _portGeneration) {
+        await _settleReplacement();
+        return;
+      }
       _lastAppliedMuted = muted;
       _errorMessage = null;
       _notify();
     }
   }
 
+  Future<void> _settleReplacement() async {
+    await _applyEffectiveMuted().catchError((Object _) {});
+  }
+
   Future<void> _enqueueNative(Future<void> Function() action) {
-    final result = _nativeTail.then((_) => action());
+    final generation = _portGeneration;
+    final result = _nativeTail.then<void>((_) async {
+      if (_disposed || generation != _portGeneration) return;
+      await action();
+    });
     _nativeTail = result.catchError((Object _) {});
     return result;
   }

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../layout/dashboard_editing_scope.dart';
 import '../layout/flat_collapse_chevron.dart';
@@ -61,14 +62,18 @@ class DashboardCard extends StatelessWidget {
                     collapsed ? 8 : 10,
                   ),
         decoration: flat
-            ? const BoxDecoration(
-                border: Border(bottom: BorderSide(color: flatDividerColor)),
+            ? BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: appColor(context, flatDividerColor),
+                  ),
+                ),
               )
             : BoxDecoration(
-                color: const Color(0xff142735),
+                color: appColor(context, const Color(0xff142735)),
                 borderRadius: BorderRadius.circular(10),
                 border: borderColor != null
-                    ? Border.all(color: borderColor!)
+                    ? Border.all(color: appColor(context, borderColor!))
                     : null,
               ),
         child: Column(
@@ -117,7 +122,7 @@ class DashboardCard extends StatelessWidget {
                           IconTheme(
                             data: IconThemeData(
                               size: 16,
-                              color: const Color(0xffd4a85f),
+                              color: appColor(context, Color(0xffd4a85f)),
                             ),
                             child: icon,
                           ),
@@ -134,7 +139,10 @@ class DashboardCard extends StatelessWidget {
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       title,
-                                      style: _titleStyle(false),
+                                      style: appTextStyle(
+                                        context,
+                                        _titleStyle(false),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -234,7 +242,7 @@ class DashboardCard extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: _titleStyle(true),
+                      style: appTextStyle(context, _titleStyle(true)),
                     ),
                   ),
                   if (!collapsed && titleBadge != null) ...[
@@ -318,7 +326,10 @@ class DashboardCard extends StatelessWidget {
         children: [
           if (showLogo) ...[
             IconTheme(
-              data: const IconThemeData(size: 16, color: Color(0xffd4a85f)),
+              data: IconThemeData(
+                size: 16,
+                color: appColor(context, Color(0xffd4a85f)),
+              ),
               child: icon,
             ),
             if (showTitle) const SizedBox(width: 6),
@@ -329,7 +340,8 @@ class DashboardCard extends StatelessWidget {
               runSpacing: 4,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (showTitle) Text(title, style: _titleStyle(false)),
+                if (showTitle)
+                  Text(title, style: appTextStyle(context, _titleStyle(false))),
                 if (!collapsed && titleBadge != null) titleBadge!,
               ],
             ),
@@ -368,7 +380,7 @@ class DashboardCard extends StatelessWidget {
             ? Icons.keyboard_arrow_down_rounded
             : Icons.keyboard_arrow_up_rounded,
         size: 20,
-        color: const Color(0xff8fa8b6),
+        color: appColor(context, Color(0xff8fa8b6)),
       ),
     ),
   );

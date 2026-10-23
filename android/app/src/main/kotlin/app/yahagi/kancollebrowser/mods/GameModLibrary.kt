@@ -7,11 +7,16 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+
+/** Applied configurations and synchronization journals share the private index budget. */
+internal const val GAME_MOD_LIBRARY_STATE_LIMIT = 64L * 1024 * 1024
 
 /** A user-owned document tree. Paths are relative and never refer outside its root. */
 interface GameModLibraryStore {
@@ -84,10 +89,12 @@ class GameModLibrary @JvmOverloads constructor(
         var itemNumber = 0
 
         directories.forEach { entry ->
-            val path = safe(entry.name)
+            val path = entry.name
             progress?.startPackage("read", entry.name, completedPackages, totalPackages)
             try {
+                safeEntryName(path)
                 val marker = readMarker(path)
+                val markerHash = markerHash(path)
                 val located = state.packages.firstOrNull { it.path == path }
                 if (located != null && marker != null && located.id != marker.id) {
                     fail("library_metadata_invalid", "已知魔改目录的包标识发生变化，请恢复其标记文件后重试。")
@@ -107,6 +114,7 @@ class GameModLibrary @JvmOverloads constructor(
                 val tree = File(local, "tree").apply { mkdirs() }
                 val hash = copyTree(path, tree)
                 if (hashTree(path) != hash) fail("library_changed", "扫描期间文件发生变化，请复制完成后重试。")
+                if (markerHash(path) != markerHash) fail("library_changed", "扫描期间魔改包标记发生变化，请重新扫描。")
                 val archive = File(local, "package.zip")
                 zipTree(tree, archive)
                 val checked = validations[hash] ?: validate(archive, marker?.name ?: entry.name, File(local, "validate"))
@@ -119,7 +127,8 @@ class GameModLibrary @JvmOverloads constructor(
                 val row = item(id, record.name, path, kind, hash).apply {
                     put("resourceCount", checked.resourceCount); put("supportedCount", checked.supportedCount)
                 }
-                val result = Prepared(record, archive, tree, path, hash, false, kind, row)
+                val result = Prepared(record, archive, tree, path, hash, false, kind, row,
+                    TreeSnapshot(path, hash, markerHash))
                 prepared.add(result); discovered[id] = result; items.add(row)
             } catch (error: Exception) {
                 val old = state.packages.firstOrNull { it.path == path }
@@ -132,9 +141,10 @@ class GameModLibrary @JvmOverloads constructor(
         }
 
         zipFiles.forEach { entry ->
-            val path = safe(entry.name)
+            val path = entry.name
             progress?.startPackage("read", entry.name, completedPackages, totalPackages)
             try {
+                safeEntryName(path)
                 val local = File(directory, "${itemNumber++}").apply { mkdirs() }
                 val archive = File(local, "package.zip")
                 progress?.files(0, 1, path, 0, null)
@@ -170,6 +180,10 @@ class GameModLibrary @JvmOverloads constructor(
                     items.add(item(id, previous?.name ?: checked.name, path, "invalid", hash, "解压目录和来源 ZIP 均已修改。"))
                     return@forEach
                 }
+                val replaced = if (previous == null) null else current?.replaced ?: run {
+                    if (exists(previous.path)) fail("library_changed", "原解压目录未通过扫描，请保留其文件并重新扫描。")
+                    TreeSnapshot(previous.path, null, null)
+                }
                 if (current != null) { prepared.remove(current); items.remove(current.row) }
                 val kind = if (previous != null) "updated" else "new"
                 val record = PackageRecord(id, previous?.name ?: checked.name, previous?.path ?: "", hash, path, sourceHash)
@@ -178,7 +192,7 @@ class GameModLibrary @JvmOverloads constructor(
                 }
                 val normalized = File(local, "normalized.zip")
                 zipTree(tree, normalized)
-                val result = Prepared(record, normalized, tree, path, sourceHash, true, kind, row)
+                val result = Prepared(record, normalized, tree, path, sourceHash, true, kind, row, replaced)
                 prepared.add(result); discovered[id] = result; seen.add(id); items.add(row)
                 archives.add(SourceArchive(id, path, sourceHash, hash))
             } catch (error: Exception) {
@@ -213,12 +227,13 @@ class GameModLibrary @JvmOverloads constructor(
             progress?.startPackage("read", candidate.record.name, index, preview.prepared.size)
             val current = if (candidate.zip) hashFile(candidate.sourcePath, MAX_ARCHIVE) else hashTree(candidate.sourcePath)
             if (current != candidate.sourceHash) fail("library_changed", "预览后魔改文件发生变化，请重新扫描。")
+            if (candidate.zip) candidate.replaced?.let(::verifyReplacement)
             progress?.update(completedPackages = index + 1)
         }
         val results = mutableListOf<GameModLibraryCandidate>()
         preview.prepared.forEachIndexed { index, candidate ->
             progress?.startPackage("save", candidate.record.name, index, preview.prepared.size)
-            val record = if (candidate.zip) saveTree(candidate.record, candidate.tree) else {
+            val record = if (candidate.zip) saveTree(candidate.record, candidate.tree, candidate.replaced) else {
                 writeMarker(candidate.record)
                 updateRecord(candidate.record)
                 candidate.record
@@ -319,13 +334,14 @@ class GameModLibrary @JvmOverloads constructor(
         return failures.distinct()
     }
 
-    private fun saveTree(record: PackageRecord, tree: File): PackageRecord {
+    private fun saveTree(record: PackageRecord, tree: File, replaced: TreeSnapshot? = null): PackageRecord {
+        replaced?.let(::verifyReplacement)
         val previous = state.packages.firstOrNull { it.id == record.id }
         val ownsPrevious = previous != null && exists(previous.path) && runCatching { readMarker(previous.path)?.id == previous.id }.getOrDefault(false)
-        if (previous != null && ownsPrevious && previous.contentHash == record.contentHash && hashTree(previous.path) == record.contentHash) {
+        if (replaced == null && previous != null && ownsPrevious && previous.contentHash == record.contentHash && hashTree(previous.path) == record.contentHash) {
             val same = record.copy(path = previous.path); writeMarker(same); updateRecord(same); return same
         }
-        val safeName = record.name.replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().take(64).ifEmpty { "魔改包" }
+        val safeName = record.name.replace(Regex("[\\\\/:*?%#\"<>|\\p{Cntrl}]"), "_").trim().take(64).ifEmpty { "魔改包" }
         var destination = "$safeName-${record.id.take(8)}-${record.contentHash.take(8)}"
         if (exists(destination)) destination += "-${UUID.randomUUID().toString().take(8)}"
         val temporary = ".yahagi-import-${UUID.randomUUID()}"
@@ -351,8 +367,26 @@ class GameModLibrary @JvmOverloads constructor(
             }
             val saved = record.copy(path = destination)
             writeMarker(saved) // A renamed marker must describe its final location.
+            replaced?.let(::verifyReplacement)
+            val beforeUpdate = state
             updateRecord(saved)
-            if (ownsPrevious && previous != null && previous.path != saved.path) store.delete(previous.path)
+            // Publishing/index IO can yield to an editor or document provider. This
+            // includes markerless trees and directories that were absent at preview.
+            if (replaced != null) {
+                try { verifyReplacement(replaced) }
+                catch (changed: GameModException) {
+                    // Keep earlier successful packages in this batch, but do not let
+                    // this refused replacement hide its still-editable old directory.
+                    try { saveState(beforeUpdate) }
+                    catch (rollback: Exception) {
+                        fail("storage_error", "原文件已保留，但魔改库配置回滚失败：${message(rollback)}")
+                    }
+                    throw changed
+                }
+            }
+            if (ownsPrevious && previous.path != saved.path) {
+                if (replaced != null || readMarker(previous.path)?.id == previous.id) store.delete(previous.path)
+            }
             return saved
         } catch (error: Exception) {
             runCatching { store.delete(temporary) }
@@ -361,6 +395,18 @@ class GameModLibrary @JvmOverloads constructor(
             if (error is GameModException) throw error
             fail("storage_error", "无法保存公共魔改文件：${message(error)}")
         }
+    }
+
+    private fun markerHash(path: String): String? =
+        if (store.list(path).any { it.name == MARKER }) hashFile("$path/$MARKER", MAX_METADATA) else null
+
+    private fun verifyReplacement(snapshot: TreeSnapshot) {
+        val unchanged = runCatching {
+            if (snapshot.contentHash == null) !exists(snapshot.path)
+            else exists(snapshot.path) && markerHash(snapshot.path) == snapshot.markerHash &&
+                hashTree(snapshot.path) == snapshot.contentHash
+        }.getOrDefault(false)
+        if (!unchanged) fail("library_changed", "预览后原解压目录或包标记发生变化，已保留原文件，请重新扫描。")
     }
 
     private fun discardIncompleteTree(path: String) {
@@ -400,7 +446,7 @@ class GameModLibrary @JvmOverloads constructor(
         if (present.isEmpty()) return LibraryState()
         val valid = present.mapNotNull { entry ->
             try {
-                val envelope = JsonParser.parseString(readText(entry.name)).asJsonObject
+                val envelope = JsonParser.parseString(readText(entry.name, GAME_MOD_LIBRARY_STATE_LIMIT)).asJsonObject
                 val payload = envelope.getAsJsonObject("state")
                 val encoded = payload.toString().toByteArray(Charsets.UTF_8)
                 if (envelope["schemaVersion"].asInt != 1 || envelope["sha256"].asString != digest(encoded)) return@mapNotNull null
@@ -422,9 +468,10 @@ class GameModLibrary @JvmOverloads constructor(
         }
         val name = STATE_FILES[((nextGeneration - 1) % STATE_FILES.size).toInt()]
         val bytes = envelope.toString().toByteArray(Charsets.UTF_8)
+        if (bytes.size > GAME_MOD_LIBRARY_STATE_LIMIT) fail("quota_exceeded", "魔改库配置不能超过 64 MiB。")
         try {
             writeBytes(name, bytes)
-            if (!store.openRead(name).use { it.readBytesLimited(MAX_METADATA) }.contentEquals(bytes)) fail("storage_error", "魔改库配置写入校验失败。")
+            if (!store.openRead(name).use { it.readBytesLimited(GAME_MOD_LIBRARY_STATE_LIMIT) }.contentEquals(bytes)) fail("storage_error", "魔改库配置写入校验失败。")
         } catch (error: Exception) {
             if (error is GameModException) throw error
             fail("storage_error", "无法保存魔改库配置：${message(error)}")
@@ -610,11 +657,13 @@ class GameModLibrary @JvmOverloads constructor(
             entries.forEach { entry ->
                 val relative = if (path.isEmpty()) entry.name else "$path/${entry.name}"
                 if (relative == MARKER) return@forEach
+                safeEntryName(entry.name)
+                val checked = fileStore.resolve(safe(relative))
                 if (entry.isDirectory) visit(relative, depth + 1) else {
                     if (entry.size > MAX_FILE) fail("quota_exceeded", "单个魔改文件不能超过 64 MiB。")
                     total += entry.size
                     if (total > MAX_TREE) fail("quota_exceeded", "魔改包总大小不能超过 1 GiB。")
-                    files.add(File(directory, relative))
+                    files.add(checked)
                 }
             }
         }
@@ -718,7 +767,7 @@ class GameModLibrary @JvmOverloads constructor(
         hash
     }
     private fun writeBytes(path: String, bytes: ByteArray) = store.openWrite(safe(path)).use { it.write(bytes) }
-    private fun readText(path: String): String = store.openRead(safe(path)).use { it.readBytesLimited(MAX_METADATA).toString(Charsets.UTF_8) }
+    private fun readText(path: String, limit: Long = MAX_METADATA): String = store.openRead(safe(path)).use { it.readBytesLimited(limit).toString(Charsets.UTF_8) }
     private fun stage(name: String): File = File(workspace, "$name-${UUID.randomUUID()}").apply { if (!mkdirs()) fail("storage_error", "无法准备魔改库临时目录。") }
     private fun item(id: String?, name: String, path: String, status: String, hash: String?, error: String? = null): MutableMap<String, Any?> = linkedMapOf(
         "id" to id, "name" to name, "path" to path, "status" to status, "contentHash" to hash,
@@ -730,7 +779,8 @@ class GameModLibrary @JvmOverloads constructor(
         fun toMap(): Map<String, Any?> = linkedMapOf("id" to id, "name" to name, "path" to path, "contentHash" to contentHash, "sourceZip" to sourceZip, "sourceHash" to sourceHash)
     }
     private data class Tombstone(val id: String, val path: String, val sourceZip: String? = null, val sourceHash: String? = null, val cleaned: Boolean = false)
-    private data class Prepared(val record: PackageRecord, val archive: File, val tree: File, val sourcePath: String, val sourceHash: String, val zip: Boolean, val kind: String, val row: MutableMap<String, Any?>)
+    private data class TreeSnapshot(val path: String, val contentHash: String?, val markerHash: String?)
+    private data class Prepared(val record: PackageRecord, val archive: File, val tree: File, val sourcePath: String, val sourceHash: String, val zip: Boolean, val kind: String, val row: MutableMap<String, Any?>, val replaced: TreeSnapshot? = null)
     private data class SourceArchive(val id: String, val path: String, val hash: String, val contentHash: String)
     private data class ScanPreview(val directory: File, val prepared: List<Prepared>, val archives: List<SourceArchive>)
     private data class ValidationSummary(val resourceCount: Int, val supportedCount: Int)
@@ -755,6 +805,9 @@ class GameModLibrary @JvmOverloads constructor(
         fun safe(relative: String): String {
             if (relative.isEmpty() || relative.length > 4096 || relative.startsWith('/') || relative.any { it.code < 32 || it in "\\:%?#" } || relative.split('/').any { it.isEmpty() || it == "." || it == ".." || it.length > 255 }) fail("unsafe_path", "魔改库包含不安全的相对路径。")
             return relative
+        }
+        fun safeEntryName(name: String): String = safe(name).also {
+            if ('/' in it) fail("unsafe_path", "魔改库条目名称不能包含路径。")
         }
         fun digest(bytes: ByteArray): String = hex(MessageDigest.getInstance("SHA-256").digest(bytes))
         fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it.toInt() and 255) }
@@ -783,8 +836,11 @@ class GameModFileLibraryStore(private val root: File) : GameModLibraryStore {
     override fun list(relative: String): List<GameModLibraryEntry> = resolve(relative, true).let { directory ->
         if (!directory.isDirectory) throw GameModException("storage_error", "魔改库目录不存在。")
         directory.listFiles()?.map { file ->
-            val checked = resolve(if (relative.isEmpty()) file.name else "$relative/${file.name}")
-            GameModLibraryEntry(checked.name, checked.isDirectory, if (checked.isFile) checked.length() else 0, checked.lastModified())
+            // Enumerate names before validating each candidate. A user's unrelated
+            // backup#1 must not prevent inspection of the rest of the library.
+            // Do not follow links even to obtain metadata; all IO still uses resolve.
+            val attributes = Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            GameModLibraryEntry(file.name, attributes.isDirectory, if (attributes.isRegularFile) attributes.size() else 0, attributes.lastModifiedTime().toMillis())
         } ?: throw GameModException("storage_error", "无法读取魔改库目录。")
     }
     override fun openRead(relative: String): InputStream = resolve(relative).let { if (!it.isFile) throw GameModException("storage_error", "魔改文件不存在。"); it.inputStream() }
@@ -801,7 +857,7 @@ class GameModFileLibraryStore(private val root: File) : GameModLibraryStore {
         return remove(target)
     }
     override fun rename(from: String, to: String): Boolean { val source=resolve(from);val target=resolve(to);return !target.exists() && source.renameTo(target) }
-    private fun resolve(relative: String, allowRoot: Boolean = false): File {
+    internal fun resolve(relative: String, allowRoot: Boolean = false): File {
         if (relative.isEmpty() && allowRoot) return root
         if (relative.isEmpty() || relative.startsWith('/') || relative.any {it.code<32 || it in "\\:%?#"} || relative.split('/').any {it.isEmpty()||it=="."||it==".."}) throw GameModException("unsafe_path", "魔改库路径不安全。")
         val file=File(root,relative).absoluteFile.normalize();val canonical=file.canonicalFile;val base=root.canonicalFile

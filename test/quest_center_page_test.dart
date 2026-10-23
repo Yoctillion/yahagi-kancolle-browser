@@ -12,7 +12,6 @@ import 'package:yahagi_kancolle_browser/src/quest/quest_catalog_controller.dart'
 import 'package:yahagi_kancolle_browser/src/quest/quest_catalog_dataset.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_catalog_update_service.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_store.dart';
-import 'package:yahagi_kancolle_browser/src/widgets/filter_controls.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -55,7 +54,8 @@ void main() {
         ),
       );
 
-      void expectRewards(String reason) {
+      Future<void> expectRewards(String reason) async {
+        await _openDetailTab(tester, 'rewards');
         _expectQuestMaterials(tester, materials, reason: reason);
         expect(_questDetailText(rewards), findsOneWidget, reason: reason);
         for (final item in const <String>[
@@ -75,7 +75,7 @@ void main() {
         }
       }
 
-      expectRewards('catalog rewards before the first quest snapshot');
+      await expectRewards('catalog rewards before the first quest snapshot');
       var sequence = 0;
       for (final state in const <int>[1, 2, 3, 1]) {
         await _acceptRewardQuestSnapshot(
@@ -98,23 +98,23 @@ void main() {
           ),
           findsOneWidget,
         );
-        expectRewards('all quests, api_state $state, snapshot $sequence');
+        await expectRewards('all quests, api_state $state, snapshot $sequence');
 
         if (state >= 2) {
-          await tester.tap(_questModeTab('进行中'));
+          await tester.tap(_questModeTab('已接取'));
           await tester.pumpAndSettle();
-          expectRewards('active quests, api_state $state');
+          await expectRewards('active quests, api_state $state');
           await tester.tap(_questModeTab('全任务'));
           await tester.pumpAndSettle();
-          expectRewards('return to all quests, api_state $state');
+          await expectRewards('return to all quests, api_state $state');
         }
       }
-      await tester.tap(_questModeTab('进行中'));
+      await tester.tap(_questModeTab('已接取'));
       await tester.pumpAndSettle();
-      expect(find.text('等待任务数据'), findsOneWidget);
+      expect(find.text('当前无进行中任务'), findsOneWidget);
       await tester.tap(_questModeTab('全任务'));
       await tester.pumpAndSettle();
-      expectRewards('return to all quests after stopping the quest');
+      await expectRewards('return to all quests after stopping the quest');
       expect(tester.takeException(), isNull);
     },
   );
@@ -138,6 +138,7 @@ void main() {
         MaterialApp(home: QuestCenterPage(controller: controller)),
       );
       await tester.pumpAndSettle();
+      await _openDetailTab(tester, 'rewards');
       _expectQuestMaterials(tester, materials, reason: 'no catalog supplied');
 
       const rewards = '零式艦戦21型×2、開発資材×3';
@@ -159,9 +160,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      for (final mode in const <String>['进行中', '全任务']) {
+      for (final mode in const <String>['已接取', '全任务']) {
         await tester.tap(_questModeTab(mode));
         await tester.pumpAndSettle();
+        await _openDetailTab(tester, 'rewards');
         _expectQuestMaterials(tester, materials, reason: mode);
         expect(_questDetailText(rewards), findsOneWidget, reason: mode);
         for (final value in const <String>['600', '300', '200', '650']) {
@@ -211,9 +213,11 @@ void main() {
         home: QuestCenterPage(controller: controller, catalog: catalog),
       ),
     );
-    for (final mode in const <String>['进行中', '全任务']) {
+    for (final mode in const <String>['已接取', '全任务']) {
       await tester.tap(_questModeTab(mode));
       await tester.pumpAndSettle();
+      await _openQuestDetail(tester, 1164);
+      await _openDetailTab(tester, 'rewards');
       _expectQuestMaterials(tester, materials, reason: mode);
       final reward = _questDetailText(rewards);
       expect(reward, findsOneWidget, reason: mode);
@@ -314,7 +318,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const Key('quest-mode-tabs')),
-        matching: find.text('进行中'),
+        matching: find.text('已接取'),
       ),
       findsOneWidget,
     );
@@ -323,9 +327,9 @@ void main() {
     expect(find.byKey(const Key('quest-mode-tabs')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('quest-mode-tabs'))),
-      const Size(260, 38),
+      const Size(220, 40),
     );
-    expect(find.byKey(const Key('quest-search-button')), findsNothing);
+    expect(find.byKey(const Key('quest-search-button')), findsOneWidget);
     expect(find.byKey(const Key('quest-filter-button')), findsNothing);
     expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
     expect(find.byKey(const Key('quest-card-402')), findsOneWidget);
@@ -350,6 +354,7 @@ void main() {
     await tester.tap(find.byKey(const Key('quest-card-201')));
     await tester.pump();
     expect(find.text('敵艦隊を捕捉、これを撃破せよ！'), findsOneWidget);
+    await _openDetailTab(tester, 'rewards');
     expect(find.text('50'), findsNWidgets(2));
 
     await tester.tap(find.byKey(const Key('quest-card-402')));
@@ -357,13 +362,14 @@ void main() {
 
     expect(find.text('输送船を撃沉せよ。'), findsNothing);
     expect(find.text('輸送船を撃沈せよ。'), findsOneWidget);
+    await _openDetailTab(tester, 'rewards');
     expect(find.text('500'), findsOneWidget);
     expect(find.text('400'), findsOneWidget);
     controller.dispose();
   });
 
   testWidgets(
-    'Chinese translation is opt-in and changes only the selected detail text',
+    'Chinese translation is opt-in and updates quest cards and details',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(1180, 720);
@@ -386,12 +392,21 @@ void main() {
       await controller.idle;
       final catalog = QuestCatalog(const <QuestCatalogEntry>[
         QuestCatalogEntry(
+          gameId: 441,
+          code: 'D1',
+          name: '日本語前提任務',
+          description: '日本語前提説明',
+          translatedName: '中文前置任务',
+          translatedDescription: '中文前置说明',
+        ),
+        QuestCatalogEntry(
           gameId: 442,
           code: 'Dy7',
           name: '西方連絡作戦準備を実施せよ！',
           description: '西方連絡作戦準備：各遠征を実施せよ！',
           translatedName: '实施西方联络作战准备！',
           translatedDescription: '西方联络作战准备：实施各项远征！',
+          prerequisites: <String>['D1'],
         ),
       ]);
 
@@ -407,7 +422,24 @@ void main() {
       expect(tester.getRect(toggle).right, lessThan(tester.getRect(tabs).left));
       expect(find.text('西方連絡作戦準備を実施せよ！'), findsWidgets);
       expect(find.text('实施西方联络作战准备！'), findsNothing);
-      expect(find.byType(Image), findsNWidgets(4));
+      expect(find.byType(Image), findsNothing);
+      await _openDetailTab(tester, 'rewards');
+      _expectQuestMaterials(tester, const [
+        0,
+        900,
+        500,
+        500,
+      ], reason: 'original');
+      await _openDetailTab(tester, 'relations');
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('quest-relation-pre-441')),
+          matching: find.text('日本語前提任務'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('中文前置任务'), findsNothing);
+      await _openDetailTab(tester, 'conditions');
 
       await tester.tap(toggle);
       await tester.pump();
@@ -415,7 +447,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const Key('quest-card-442')),
-          matching: find.text('西方連絡作戦準備を実施せよ！'),
+          matching: find.text('实施西方联络作战准备！'),
         ),
         findsOneWidget,
       );
@@ -429,7 +461,25 @@ void main() {
       expect(find.text('西方联络作战准备：实施各项远征！'), findsOneWidget);
       expect(find.text('燃料 0'), findsNothing);
       expect(find.text('弹药 900'), findsNothing);
-      expect(find.byType(Image), findsNWidgets(4));
+      await _openDetailTab(tester, 'rewards');
+      _expectQuestMaterials(tester, const [
+        0,
+        900,
+        500,
+        500,
+      ], reason: 'translated');
+      await _openDetailTab(tester, 'relations');
+      final translatedRelation = find.byKey(
+        const Key('quest-relation-pre-441'),
+      );
+      expect(
+        find.descendant(of: translatedRelation, matching: find.text('中文前置任务')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: translatedRelation, matching: find.text('日本語前提任務')),
+        findsNothing,
+      );
 
       await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
       await tester.pumpWidget(
@@ -512,7 +562,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const Key('quest-card-442')),
-        matching: find.text('日本語任務名'),
+        matching: find.text('中文任务名'),
       ),
       findsOneWidget,
     );
@@ -678,7 +728,7 @@ void main() {
   });
 
   testWidgets(
-    'all quests shows filters, English code, progress and relations',
+    'unified query commits drafts and keeps portrait relation navigation in scope',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(390, 780);
@@ -697,15 +747,18 @@ void main() {
           ),
         }),
       );
+      final filters = QuestFilterController();
+      addTearDown(controller.dispose);
+      addTearDown(filters.dispose);
       await controller.idle;
-      final catalog = QuestCatalog(<QuestCatalogEntry>[
-        const QuestCatalogEntry(
+      final catalog = QuestCatalog(const <QuestCatalogEntry>[
+        QuestCatalogEntry(
           gameId: 101,
           code: 'A1',
           name: '前置任务',
           description: '前置说明',
         ),
-        const QuestCatalogEntry(
+        QuestCatalogEntry(
           gameId: 201,
           code: 'B1',
           name: '当前任务',
@@ -713,7 +766,7 @@ void main() {
           rewards: '奖励内容',
           prerequisites: <String>['A1'],
         ),
-        const QuestCatalogEntry(
+        QuestCatalogEntry(
           gameId: 202,
           code: 'Bd2',
           name: '后置任务',
@@ -733,53 +786,41 @@ void main() {
             initialQuestId: 201,
             mode: QuestCenterMode.all,
             catalog: catalog,
+            filterController: filters,
           ),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('quest-search-button')), findsOneWidget);
-      expect(find.byKey(const Key('quest-filter-button')), findsOneWidget);
-      expect(find.byType(HeaderFilterIconButton), findsNWidgets(2));
-      expect(find.byKey(const Key('quest-search-field')), findsNothing);
-      await tester.tap(find.byKey(const Key('quest-search-button')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('quest-search-field')), findsOneWidget);
-      await tester.enterText(find.byKey(const Key('quest-search-field')), 'B1');
-      await tester.tap(find.byKey(const Key('quest-search-close')));
-      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('quest-filter-button')), findsNothing);
+      expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
       expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
-      expect(find.byKey(const Key('quest-card-202')), findsNothing);
-      await tester.tap(find.byKey(const Key('quest-search-button')));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const Key('quest-search-field')), '');
-      await tester.tap(find.byKey(const Key('quest-search-close')));
-      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('quest-back-to-list')), findsNothing);
+      expect(find.text('当前说明'), findsOneWidget);
+      expect(find.text('奖励内容'), findsNothing);
 
-      await tester.tap(find.byKey(const Key('quest-filter-button')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('quest-filter-sheet')), findsOneWidget);
+      await _tapQuestKey(tester, 'quest-search-button');
+      expect(find.byKey(const Key('quest-query-dialog')), findsOneWidget);
+      expect(find.text('查询范围：全任务'), findsOneWidget);
       expect(find.text('全部类型'), findsOneWidget);
       expect(find.text('全部周期'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('quest-filter-category-1')));
-      await tester.tap(find.byKey(const Key('quest-filter-close')));
+      await tester.enterText(find.byKey(const Key('quest-search-field')), 'B1');
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('quest-card-101')), findsOneWidget);
-      expect(find.byKey(const Key('quest-card-201')), findsNothing);
-      await tester.tap(find.byKey(const Key('quest-filter-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('quest-filter-clear')));
-      await tester.tap(find.byKey(const Key('quest-filter-close')));
-      await tester.pumpAndSettle();
+      expect(filters.value, const QuestQuery());
+      expect(find.text('显示 1 个任务'), findsOneWidget);
+      await _tapQuestKey(tester, 'quest-query-cancel');
+      expect(filters.value, const QuestQuery());
+      expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
+
+      await _applyQuestSearch(tester, 'B1');
+      expect(filters.query, 'B1');
       expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('quest-card-201')));
-      await tester.pump();
+      expect(find.byKey(const Key('quest-card-101')), findsNothing);
+      expect(find.byKey(const Key('quest-card-202')), findsNothing);
+      expect(find.byKey(const Key('quest-detail-panel')), findsOneWidget);
+      expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
       expect(find.byKey(const Key('quest-card-code-201')), findsOneWidget);
-      expect(find.text('当前任务'), findsWidgets);
-      expect(
-        tester.getSize(find.byKey(const Key('quest-card-201'))).height,
-        64,
-      );
       expect(
         find.descendant(
           of: find.byKey(const Key('quest-card-201')),
@@ -787,67 +828,112 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('quest-relation-pre-101')),
-          matching: find.text('A1'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('quest-relation-pre-101')),
-          matching: find.text('前置任务'),
-        ),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const Key('quest-relation-pre-scroll')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('quest-relation-code-101')), findsOneWidget);
-      final preLabelRect = tester.getRect(find.text('前置任务').at(1));
-      final preCodeRect = tester.getRect(
-        find.byKey(const Key('quest-relation-code-101')),
-      );
-      expect(preCodeRect.left - preLabelRect.right, greaterThanOrEqualTo(12));
-      expect(
-        (preCodeRect.center.dy - preLabelRect.center.dy).abs(),
-        lessThanOrEqualTo(0.5),
-      );
-      expect(
-        find.byKey(const Key('quest-relation-post-scroll')),
-        findsOneWidget,
-      );
-      expect(find.text('奖励内容'), findsOneWidget);
-      TextStyle effectiveStyle(Finder finder) {
+
+      await _tapQuestKey(tester, 'quest-search-button');
+      await _tapQuestKey(tester, 'quest-query-reset');
+      expect(filters.query, 'B1');
+      expect(find.text('显示 3 个任务'), findsOneWidget);
+      await _tapQuestKey(tester, 'quest-query-cancel');
+      expect(filters.query, 'B1');
+      expect(find.byKey(const Key('quest-card-101')), findsNothing);
+
+      await _tapQuestKey(tester, 'quest-search-button');
+      await _tapQuestKey(tester, 'quest-query-reset');
+      await _tapQuestKey(tester, 'quest-filter-category-1');
+      expect(filters.value, const QuestQuery(query: 'B1'));
+      expect(find.text('显示 1 个任务'), findsOneWidget);
+      await _tapQuestKey(tester, 'quest-query-apply');
+      expect(filters.value, const QuestQuery(category: 1));
+      expect(find.byKey(const Key('quest-card-101')), findsOneWidget);
+      expect(find.byKey(const Key('quest-card-201')), findsNothing);
+
+      await _tapQuestKey(tester, 'quest-search-button');
+      await _tapQuestKey(tester, 'quest-query-reset');
+      await _tapQuestKey(tester, 'quest-query-apply');
+      expect(filters.value, const QuestQuery());
+      for (final id in const [101, 201, 202]) {
+        expect(find.byKey(Key('quest-card-$id')), findsOneWidget);
+      }
+
+      // The related quests remain available even outside the applied query.
+      await _applyQuestSearch(tester, 'B1');
+      await _openQuestDetail(tester, 201);
+      expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
+      expect(find.text('当前说明'), findsOneWidget);
+      void expectDetailStyle(Finder finder) {
         final text = tester.widget<Text>(finder);
-        return DefaultTextStyle.of(
+        final style = DefaultTextStyle.of(
           tester.element(finder),
         ).style.merge(text.style);
-      }
-
-      for (final finder in <Finder>[
-        find.text('当前说明'),
-        find.text('奖励内容'),
-        find.text('前置任务').at(1),
-      ]) {
-        final style = effectiveStyle(finder);
         expect(style.fontFamily, 'HarmonyOS_Sans_SC');
-        expect(style.color, Colors.white);
+        expect(style.color, const Color(0xffe6edf2));
       }
 
-      await tester.tap(find.byKey(const Key('quest-relation-post-202')));
-      await tester.pump();
+      expectDetailStyle(find.text('当前说明'));
+      await _openDetailTab(tester, 'rewards');
+      _expectQuestMaterials(tester, const [0, 0, 0, 0], reason: 'live rewards');
+      expect(find.text('奖励内容'), findsOneWidget);
+      expectDetailStyle(find.text('奖励内容'));
+
+      await _openDetailTab(tester, 'relations');
+      final pre = find.byKey(const Key('quest-relation-pre-101'));
+      final post = find.byKey(const Key('quest-relation-post-202'));
+      expect(
+        find.descendant(of: pre, matching: find.text('A1')),
+        findsOneWidget,
+      );
+      final preName = find.descendant(of: pre, matching: find.text('前置任务'));
+      expect(preName, findsOneWidget);
+      expect(
+        find.descendant(of: pre, matching: find.text('推算完成')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: post, matching: find.text('后置任务')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: post, matching: find.text('未解锁')),
+        findsOneWidget,
+      );
+      final preRect = tester.getRect(pre);
+      final postRect = tester.getRect(post);
+      expect(postRect.top, greaterThan(preRect.bottom));
+
+      await _tapQuestKey(tester, 'quest-relation-pre-101');
+      expect(find.byKey(const Key('quest-detail-title-101')), findsOneWidget);
+      expect(find.text('前置说明'), findsOneWidget);
+      expect(filters.value, const QuestQuery(query: 'B1'));
+      expect(_questModeTab('全任务'), findsOneWidget);
+      await _tapQuestKey(tester, 'quest-relation-back');
+      expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
+      expect(find.byKey(const Key('quest-relation-post-202')), findsOneWidget);
+
+      await _tapQuestKey(tester, 'quest-relation-post-202');
       expect(find.byKey(const Key('quest-detail-title-202')), findsOneWidget);
       expect(find.byKey(const Key('quest-detail-code-202')), findsOneWidget);
-      expect(find.text('后置任务'), findsWidgets);
-      controller.dispose();
+      expect(find.text('后置说明'), findsOneWidget);
+      expect(filters.value, const QuestQuery(query: 'B1'));
+      expect(find.byKey(const Key('quest-return-target')), findsNothing);
+      await _tapQuestKey(tester, 'quest-relation-back');
+      expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
+      expect(find.byKey(const Key('quest-relation-post-202')), findsOneWidget);
+      await _openDetailTab(tester, 'conditions');
+      expect(find.text('当前说明'), findsOneWidget);
+      expect(find.byKey(const Key('quest-back-to-list')), findsNothing);
+      expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
+      expect(find.byKey(const Key('quest-card-101')), findsNothing);
+      expect(find.byKey(const Key('quest-card-202')), findsNothing);
+      expect(find.byKey(const Key('quest-detail-panel')), findsOneWidget);
+      expect(filters.value, const QuestQuery(query: 'B1'));
+      await _openQuestDetail(tester, 201);
+      await _openDetailTab(tester, 'relations');
+      expectDetailStyle(preName);
+      expect(tester.takeException(), isNull);
     },
   );
-
   testWidgets(
-    'portrait detail follows a short list without a half-screen gap',
+    'portrait keeps a naturally short list above the selected detail',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(390, 780);
@@ -872,11 +958,29 @@ void main() {
         MaterialApp(home: QuestCenterPage(controller: controller)),
       );
 
-      final card = tester.getRect(find.byKey(const Key('quest-card-201')));
+      expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
+      expect(find.byKey(const Key('quest-detail-panel')), findsOneWidget);
+      expect(find.byKey(const Key('quest-detail-title-201')), findsOneWidget);
+      expect(find.text('details'), findsOneWidget);
+      final list = tester.getRect(find.byKey(const Key('quest-list-panel')));
       final detail = tester.getRect(
         find.byKey(const Key('quest-detail-panel')),
       );
-      expect(detail.top - card.bottom, lessThan(32));
+      final contentHeight = detail.bottom - list.top;
+      expect(list.height, lessThan(contentHeight * .5));
+      expect(detail.top, greaterThanOrEqualTo(list.bottom));
+      expect(detail.top - list.bottom, lessThanOrEqualTo(16));
+      expect(detail.height, greaterThan(list.height));
+      expect(
+        detail.bottom,
+        closeTo(tester.getRect(find.byType(QuestCenterPage)).bottom, 1),
+      );
+      await _openQuestDetail(tester, 201);
+      expect(find.byKey(const Key('quest-card-201')), findsOneWidget);
+      expect(find.byKey(const Key('quest-detail-panel')), findsOneWidget);
+      expect(find.text('details'), findsOneWidget);
+      expect(find.byKey(const Key('quest-back-to-list')), findsNothing);
+      expect(tester.takeException(), isNull);
       controller.dispose();
     },
   );
@@ -960,6 +1064,26 @@ void main() {
 
     expect(catalog.projectCalls, 1);
   });
+}
+
+Future<void> _tapQuestKey(WidgetTester tester, String key) async {
+  final target = find.byKey(Key(key));
+  await tester.ensureVisible(target);
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openQuestDetail(WidgetTester tester, int id) =>
+    _tapQuestKey(tester, 'quest-card-$id');
+
+Future<void> _openDetailTab(WidgetTester tester, String tab) =>
+    _tapQuestKey(tester, 'quest-detail-tab-$tab');
+
+Future<void> _applyQuestSearch(WidgetTester tester, String query) async {
+  await _tapQuestKey(tester, 'quest-search-button');
+  await tester.enterText(find.byKey(const Key('quest-search-field')), query);
+  await tester.pumpAndSettle();
+  await _tapQuestKey(tester, 'quest-query-apply');
 }
 
 Finder _questDetailText(String text) => find.descendant(

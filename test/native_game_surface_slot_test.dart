@@ -9,6 +9,65 @@ import 'package:yahagi_kancolle_browser/src/browser/native_game_webview_contract
 
 void main() {
   group('NativeGameSurfaceVisibility', () {
+    test(
+      'superseded visibility waiters settle after latest delivery',
+      () async {
+        final first = Completer<void>();
+        final latest = Completer<void>();
+        var calls = 0;
+        final visibility = NativeGameSurfaceVisibility((_) async {
+          calls++;
+          if (calls == 1) await first.future;
+          if (calls == 2) await latest.future;
+        });
+        final attach = visibility.setSlotAttached(true);
+        var hiddenSettled = false;
+        final hide = visibility
+            .setRouteVisible(false)
+            .then((_) => hiddenSettled = true);
+        final show = visibility.setRouteVisible(true);
+        first.complete();
+        await Future<void>.delayed(Duration.zero);
+        expect(calls, 2);
+        expect(hiddenSettled, isFalse);
+        latest.complete();
+        await Future.wait([attach, hide, show]);
+        expect(hiddenSettled, isTrue);
+        await visibility.dispose();
+      },
+    );
+
+    test(
+      'latest delivery failure reaches superseded visibility waiters',
+      () async {
+        final first = Completer<void>();
+        final latest = Completer<void>();
+        var calls = 0;
+        final visibility = NativeGameSurfaceVisibility((_) async {
+          calls++;
+          if (calls == 1) await first.future;
+          if (calls == 2) {
+            await latest.future;
+            throw StateError('injected latest delivery failure');
+          }
+        });
+        final attach = visibility.setSlotAttached(true);
+        final errors = <int>[];
+        final hide = visibility.setRouteVisible(false).catchError((Object _) {
+          errors.add(2);
+        });
+        final show = visibility.setRouteVisible(true).catchError((Object _) {
+          errors.add(3);
+        });
+        first.complete();
+        await Future<void>.delayed(Duration.zero);
+        latest.complete();
+        await Future.wait([attach, hide, show]);
+        expect(errors, [2, 3]);
+        await visibility.dispose();
+      },
+    );
+
     test('combines route app and slot visibility before reporting', () async {
       final reports = <bool>[];
       final visibility = NativeGameSurfaceVisibility((visible) async {
@@ -25,7 +84,7 @@ void main() {
     });
 
     test(
-      'serializes rapid changes and recovers after callback failure',
+      'coalesces superseded changes and recovers after callback failure',
       () async {
         final reports = <bool>[];
         final firstReport = Completer<void>();
@@ -48,7 +107,7 @@ void main() {
         await hide;
         await show;
 
-        expect(reports, <bool>[true, false, true]);
+        expect(reports, <bool>[true, true]);
       },
     );
 

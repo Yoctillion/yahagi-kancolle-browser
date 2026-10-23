@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'fleet_ui_strings.dart';
 
@@ -44,10 +45,13 @@ class FleetSwitcherBar extends StatelessWidget {
             width: 72,
             child: Text(
               _fleetSwitcherL10n(context).fleet,
-              style: const TextStyle(
-                color: Color(0xffe0b25c),
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: appColor(context, Color(0xffe0b25c)),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -95,7 +99,10 @@ class _FleetButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final phone = usesCompactFleetLayout(context);
     return Material(
-      color: selected ? const Color(0xff3a3020) : const Color(0xff102331),
+      color: appColor(
+        context,
+        selected ? const Color(0xff3a3020) : const Color(0xff102331),
+      ),
       borderRadius: BorderRadius.circular(9),
       child: InkWell(
         onTap: onTap,
@@ -109,9 +116,10 @@ class _FleetButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(9),
             border: Border.all(
-              color: selected
-                  ? const Color(0xff8d7040)
-                  : const Color(0xff294052),
+              color: appColor(
+                context,
+                selected ? const Color(0xff8d7040) : const Color(0xff294052),
+              ),
             ),
           ),
           child: Row(
@@ -125,12 +133,15 @@ class _FleetButton extends StatelessWidget {
                       child: Text(
                         fleet.name,
                         maxLines: 1,
-                        style: TextStyle(
-                          color: selected
-                              ? const Color(0xfff0c675)
-                              : const Color(0xffe1e9ed),
-                          fontWeight: FontWeight.w700,
-                          fontSize: phone ? 12 : 15,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            color: selected
+                                ? const Color(0xfff0c675)
+                                : const Color(0xffe1e9ed),
+                            fontWeight: FontWeight.w700,
+                            fontSize: phone ? 12 : 15,
+                          ),
                         ),
                       ),
                     ),
@@ -151,7 +162,7 @@ class _FleetButton extends StatelessWidget {
                             width: 7,
                             height: 7,
                             decoration: BoxDecoration(
-                              color: status.color,
+                              color: appColor(context, status.color),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -160,10 +171,13 @@ class _FleetButton extends StatelessWidget {
                             fleetText(context, status.label),
                             maxLines: 1,
                             softWrap: false,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: phone ? 9 : 11,
-                              fontWeight: FontWeight.w700,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: Colors.white,
+                                fontSize: phone ? 9 : 11,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],

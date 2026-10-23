@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'diagnostic_event.dart';
+import 'diagnostic_lifecycle.dart';
 import 'diagnostic_platform_port.dart';
 import 'diagnostic_recorder.dart';
 
@@ -67,7 +68,10 @@ final class DiagnosticPerformanceMonitor with WidgetsBindingObserver {
     DiagnosticWebViewHost Function()? webViewHost,
     DiagnosticGameRenderer Function()? renderer,
     int Function()? generationId,
+    this.gamePerformanceSnapshot,
     this.sampleInterval = const Duration(seconds: 60),
+    this.sampleTimeout = const Duration(seconds: 3),
+    this.resumeSampleDelay = const Duration(seconds: 2),
     DateTime Function()? now,
     Stopwatch? uptime,
   }) : webViewHost = webViewHost ?? _platformViewHost,
@@ -91,43 +95,112 @@ final class DiagnosticPerformanceMonitor with WidgetsBindingObserver {
   final DiagnosticWebViewHost Function() webViewHost;
   final DiagnosticGameRenderer Function() renderer;
   final int Function() generationId;
+  final Future<Map<Object?, Object?>?> Function()? gamePerformanceSnapshot;
   final Duration sampleInterval;
+  final Duration sampleTimeout;
+  final Duration resumeSampleDelay;
   final DateTime Function() _now;
   final Stopwatch _uptime;
   final DiagnosticFrameWindow _frames = DiagnosticFrameWindow();
   Timer? _timer;
+  Timer? _resumeSampleTimer;
+  Future<void>? _sampleFuture;
+  int _sampleEpoch = 0;
+  int _requestVersion = 0;
+  bool _foreground = true;
   bool _attached = false;
   late final TimingsCallback _timingsCallback = _onTimings;
 
   void attach() {
     if (_attached || !recorder.enabled) return;
     _attached = true;
+    final state = WidgetsBinding.instance.lifecycleState;
+    _foreground = state == null || state == AppLifecycleState.resumed;
+    _sampleEpoch++;
     WidgetsBinding.instance.addObserver(this);
     SchedulerBinding.instance.addTimingsCallback(_timingsCallback);
-    _timer = Timer.periodic(sampleInterval, (_) => unawaited(sample()));
+    if (_foreground) {
+      _timer = Timer.periodic(sampleInterval, (_) => unawaited(sample()));
+    }
   }
 
   void detach() {
     if (!_attached) return;
     _attached = false;
+    _sampleEpoch++;
+    _requestVersion++;
+    _sampleFuture = null;
     _timer?.cancel();
     _timer = null;
+    _resumeSampleTimer?.cancel();
+    _resumeSampleTimer = null;
     SchedulerBinding.instance.removeTimingsCallback(_timingsCallback);
     WidgetsBinding.instance.removeObserver(this);
     _frames.takeSnapshot();
   }
 
   void _onTimings(List<FrameTiming> timings) {
-    if (!_attached) return;
+    if (!_attached || !_foreground) return;
     for (final timing in timings) {
       _frames.add(timing.totalSpan);
     }
   }
 
-  Future<void> sample() async {
-    if (!_attached || !recorder.enabled) return;
+  Future<void> sample() {
+    if (!_attached || !recorder.enabled || !_foreground) {
+      return Future<void>.value();
+    }
+    final pending = _sampleFuture;
+    if (pending != null) return pending;
+    final epoch = _sampleEpoch;
+    final version = ++_requestVersion;
+    late final Future<void> operation;
+    operation =
+        Future.wait<void>([
+              _takeSample(epoch, version),
+              _takeGameSample(epoch, version),
+            ])
+            .then<void>((_) {})
+            .timeout(
+              sampleTimeout,
+              onTimeout: () {
+                if (_requestVersion == version) _requestVersion++;
+              },
+            )
+            .whenComplete(() {
+              if (identical(_sampleFuture, operation)) _sampleFuture = null;
+            });
+    _sampleFuture = operation;
+    return operation;
+  }
+
+  Future<void> _takeGameSample(int epoch, int version) async {
+    final read = gamePerformanceSnapshot;
+    if (read == null) return;
+    try {
+      final snapshot = await read();
+      if (snapshot == null || !_canRecord(epoch, version)) return;
+      recorder.record(
+        DiagnosticEvent.gameLoopSample(occurredAt: _now(), snapshot: snapshot),
+      );
+    } catch (_) {
+      // Unsupported or unavailable game sampling must not affect gameplay.
+    }
+  }
+
+  bool _canRecord(int epoch, int version) =>
+      _attached &&
+      recorder.enabled &&
+      _foreground &&
+      epoch == _sampleEpoch &&
+      version == _requestVersion;
+
+  Future<void> _takeSample(int epoch, int version) async {
     try {
       final runtime = await platform.runtimeSnapshot();
+      if (!_canRecord(epoch, version)) return;
+      final bytes = await databaseBytes();
+      if (!_canRecord(epoch, version)) return;
       final frames = _frames.takeSnapshot();
       recorder.record(
         DiagnosticEvent.performanceSample(
@@ -150,7 +223,7 @@ final class DiagnosticPerformanceMonitor with WidgetsBindingObserver {
           pendingApiEvents: pendingApiEvents(),
           activeApiPath: activeApiPath(),
           backgroundDecodeFallbacks: backgroundDecodeFallbacks(),
-          databaseBytes: await databaseBytes(),
+          databaseBytes: bytes,
         ),
       );
     } catch (_) {
@@ -161,17 +234,27 @@ final class DiagnosticPerformanceMonitor with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_attached) return;
+    final wasForeground = _foreground;
+    _foreground = state == AppLifecycleState.resumed;
+    _sampleEpoch++;
+    _requestVersion++;
+    _sampleFuture = null;
+    _recordLifecycle(diagnosticLifecycleState(state)!);
     if (state == AppLifecycleState.resumed) {
-      _recordLifecycle(DiagnosticLifecycleState.resumed);
       _timer ??= Timer.periodic(sampleInterval, (_) => unawaited(sample()));
+      if (!wasForeground) {
+        _resumeSampleTimer?.cancel();
+        _resumeSampleTimer = Timer(resumeSampleDelay, () {
+          _resumeSampleTimer = null;
+          unawaited(sample());
+        });
+      }
     } else {
-      _recordLifecycle(
-        state == AppLifecycleState.detached
-            ? DiagnosticLifecycleState.stopped
-            : DiagnosticLifecycleState.paused,
-      );
       _timer?.cancel();
       _timer = null;
+      _resumeSampleTimer?.cancel();
+      _resumeSampleTimer = null;
+      _frames.takeSnapshot();
       unawaited(recorder.flush());
     }
   }

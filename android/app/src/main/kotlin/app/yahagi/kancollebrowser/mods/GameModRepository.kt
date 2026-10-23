@@ -6,11 +6,15 @@ import com.google.gson.JsonParser
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.FilterOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.ByteArrayInputStream
+import java.io.OutputStreamWriter
 import java.net.URI
 import java.util.UUID
+
+private const val MAX_INDEX_BYTES = 64L * 1024 * 1024
 
 /** Private mod storage, durable drafts and immutable request sessions. */
 class GameModRepository @JvmOverloads constructor(root: File, private val progress: GameModProgress? = null) {
@@ -693,6 +697,11 @@ class GameModRepository @JvmOverloads constructor(root: File, private val progre
         file.delete()
     }
     private fun move(source: File, destination: File) {
+        // Some filesystems let rename replace an empty directory with a file.
+        // A damaged state/index path must fail without discarding that directory.
+        if (destination.exists() && source.isDirectory != destination.isDirectory) {
+            throw IOException("Cannot replace mod data with a different file type")
+        }
         // Android's same-filesystem rename replaces the destination atomically, including API 24.
         if (source.renameTo(destination)) return
         // Windows does not replace an existing File.renameTo target. Reflect NIO so API 24/25
@@ -735,10 +744,36 @@ class GameModRepository @JvmOverloads constructor(root: File, private val progre
         val temporary = child("state-${UUID.randomUUID()}.tmp")
         try {
             // Persist string-keyed maps so R8 cannot rename or remove JSON fields.
-            FileOutputStream(temporary).use { it.write(gson.toJson(stateMap(next)).toByteArray(Charsets.UTF_8)); it.fd.sync() }
+            FileOutputStream(temporary).use { output ->
+                val bounded = object : FilterOutputStream(output) {
+                    private var written = 0L
+                    override fun write(value: Int) {
+                        requireCapacity(1)
+                        out.write(value)
+                        written++
+                    }
+                    override fun write(bytes: ByteArray, offset: Int, length: Int) {
+                        requireCapacity(length)
+                        out.write(bytes, offset, length)
+                        written += length
+                    }
+                    private fun requireCapacity(length: Int) {
+                        if (length.toLong() > MAX_INDEX_BYTES - written) {
+                            throw GameModException("quota_exceeded", "Saved mod configuration cannot exceed 64 MiB")
+                        }
+                    }
+                }
+                // Count encoded bytes while writing, rather than allocating a second full
+                // JSON string/byte array. Never publish a file that readState would reject.
+                val writer = OutputStreamWriter(bounded, Charsets.UTF_8)
+                gson.toJson(stateMap(next), writer)
+                writer.flush()
+                output.fd.sync()
+            }
             return temporary
         } catch (error: Exception) {
             temporary.delete()
+            if (error is GameModException) throw error
             throw GameModException("storage_error", "Cannot prepare mod configuration: ${error.message ?: "write failed"}")
         }
     }
@@ -746,7 +781,7 @@ class GameModRepository @JvmOverloads constructor(root: File, private val progre
         val file = child("state.json")
         if (!file.exists()) return State()
         try {
-            if (file.length() > 64L * 1024 * 1024) throw IOException("Mod index is too large")
+            if (file.length() > MAX_INDEX_BYTES) throw IOException("Mod index is too large")
             val json = storedObject(JsonParser.parseString(file.readText()).asJsonObject,
                 listOf("version", "packages", "draft", "applied", "sessionId", "appliedPackages"))
             if (json["version"].asInt != 1) throw IOException("Unsupported mod index version")

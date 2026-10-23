@@ -186,12 +186,29 @@ class GameModLibraryCoordinator @JvmOverloads constructor(
     }
     @Suppress("UNCHECKED_CAST")
     private fun readPending(): Map<String, Any?>? = if (!pendingSync.isFile) null else try {
-        gson.fromJson(pendingSync.readText(Charsets.UTF_8), Map::class.java) as Map<String, Any?>
+        if (pendingSync.length() > GAME_MOD_LIBRARY_STATE_LIMIT) throw GameModException("quota_exceeded", "Library synchronization journal exceeds 64 MiB")
+        val bytes = pendingSync.inputStream().use { input ->
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(32 * 1024)
+            var total = 0L
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                if (count == 0) continue
+                total += count
+                if (total > GAME_MOD_LIBRARY_STATE_LIMIT) throw GameModException("quota_exceeded", "Library synchronization journal exceeds 64 MiB")
+                output.write(buffer, 0, count)
+            }
+            output.toByteArray()
+        }
+        gson.fromJson(bytes.toString(Charsets.UTF_8), Map::class.java) as Map<String, Any?>
     } catch (_: Exception) { throw GameModException("library_metadata_invalid", "The library synchronization journal is damaged") }
     private fun writePending(value: Map<String, Any?>) {
+        val bytes = gson.toJson(value).toByteArray(Charsets.UTF_8)
+        if (bytes.size > GAME_MOD_LIBRARY_STATE_LIMIT) throw GameModException("quota_exceeded", "Library synchronization journal exceeds 64 MiB")
         val temporary = File(workspace, "sync-${UUID.randomUUID()}.tmp")
         try {
-            FileOutputStream(temporary).use { stream -> stream.write(gson.toJson(value).toByteArray(Charsets.UTF_8)); stream.fd.sync() }
+            FileOutputStream(temporary).use { stream -> stream.write(bytes); stream.fd.sync() }
             atomicMove(temporary, pendingSync)
         } finally { temporary.delete() }
     }

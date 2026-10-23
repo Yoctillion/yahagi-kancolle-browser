@@ -1,3 +1,4 @@
+import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -69,8 +70,8 @@ class _ToolboxModeTabsState extends State<ToolboxModeTabs> {
       height: compact ? 36 : 38,
       padding: EdgeInsets.all(compact ? 1 : 3),
       decoration: BoxDecoration(
-        color: const Color(0xff0b202d),
-        border: Border.all(color: const Color(0xff315064)),
+        color: appColor(context, const Color(0xff0b202d)),
+        border: Border.all(color: appColor(context, const Color(0xff315064))),
         borderRadius: BorderRadius.circular(20),
       ),
       child: LayoutBuilder(
@@ -92,9 +93,12 @@ class _ToolboxModeTabsState extends State<ToolboxModeTabs> {
                       onTap: () => onChanged(value),
                       child: Material(
                         key: Key('toolbox-tab-${value.name}'),
-                        color: mode == value
-                            ? const Color(0xff8a6628)
-                            : Colors.transparent,
+                        color: appColor(
+                          context,
+                          mode == value
+                              ? const Color(0xff8a6628)
+                              : Colors.transparent,
+                        ),
                         borderRadius: BorderRadius.circular(16),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
@@ -104,12 +108,15 @@ class _ToolboxModeTabsState extends State<ToolboxModeTabs> {
                               label(value),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: mode == value
-                                    ? const Color(0xffffdc88)
-                                    : const Color(0xff9fb3bf),
-                                fontSize: compact ? 10 : 12,
-                                fontWeight: FontWeight.w800,
+                              style: appTextStyle(
+                                context,
+                                TextStyle(
+                                  color: mode == value
+                                      ? const Color(0xffffdc88)
+                                      : const Color(0xff9fb3bf),
+                                  fontSize: compact ? 10 : 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ),

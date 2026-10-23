@@ -1,3 +1,4 @@
+import '../../theme/app_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -597,7 +598,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
   Widget _buildPage(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: _ExpCalcPalette.background,
+      backgroundColor: appColor(context, _ExpCalcPalette.background),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 760;
@@ -652,8 +653,8 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
     key: ValueKey('exp-calc-panel-$title'),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: _ExpCalcPalette.surface,
-      border: Border.all(color: _ExpCalcPalette.border),
+      color: appColor(context, _ExpCalcPalette.surface),
+      border: Border.all(color: appColor(context, _ExpCalcPalette.border)),
       borderRadius: BorderRadius.circular(10),
     ),
     child: Column(
@@ -661,10 +662,13 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: _ExpCalcPalette.text,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: appColor(context, _ExpCalcPalette.text),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -676,34 +680,39 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
   Widget _label(String text, {Color color = _ExpCalcPalette.textMuted}) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: TextStyle(color: color, fontSize: 11)),
+        child: Text(
+          text,
+          style: appTextStyle(context, TextStyle(color: color, fontSize: 11)),
+        ),
       );
 
-  InputDecoration _inputDecoration({String? prefix, String? suffix}) =>
-      InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: _ExpCalcPalette.surfaceInset,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 12,
-        ),
-        prefixText: prefix,
-        suffixText: suffix,
-        prefixStyle: const TextStyle(color: _ExpCalcPalette.text, fontSize: 12),
-        suffixStyle: const TextStyle(
-          color: _ExpCalcPalette.textMuted,
-          fontSize: 10,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: _ExpCalcPalette.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: _ExpCalcPalette.gold),
-        ),
-      );
+  InputDecoration _inputDecoration({
+    String? prefix,
+    String? suffix,
+  }) => InputDecoration(
+    isDense: true,
+    filled: true,
+    fillColor: appColor(context, _ExpCalcPalette.surfaceInset),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+    prefixText: prefix,
+    suffixText: suffix,
+    prefixStyle: TextStyle(
+      color: appColor(context, _ExpCalcPalette.text),
+      fontSize: 12,
+    ),
+    suffixStyle: TextStyle(
+      color: appColor(context, _ExpCalcPalette.textMuted),
+      fontSize: 10,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(6),
+      borderSide: BorderSide(color: appColor(context, _ExpCalcPalette.border)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(6),
+      borderSide: BorderSide(color: appColor(context, _ExpCalcPalette.gold)),
+    ),
+  );
 
   Widget _dropdown<T>({
     required Key key,
@@ -715,8 +724,8 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
     height: 44,
     padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 10),
     decoration: BoxDecoration(
-      color: _ExpCalcPalette.surfaceInset,
-      border: Border.all(color: _ExpCalcPalette.border),
+      color: appColor(context, _ExpCalcPalette.surfaceInset),
+      border: Border.all(color: appColor(context, _ExpCalcPalette.border)),
       borderRadius: BorderRadius.circular(6),
     ),
     child: DropdownButtonHideUnderline(
@@ -728,15 +737,15 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
         isExpanded: true,
         isDense: true,
         menuMaxHeight: 380,
-        dropdownColor: _ExpCalcPalette.surface,
+        dropdownColor: appColor(context, _ExpCalcPalette.surface),
         icon: Icon(
           Icons.expand_more,
-          color: _ExpCalcPalette.textMuted,
+          color: appColor(context, _ExpCalcPalette.textMuted),
           size: compact ? 14 : 18,
         ),
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           fontFamily: _fontFamily,
-          color: _ExpCalcPalette.text,
+          color: appColor(context, _ExpCalcPalette.text),
           fontSize: 12,
         ),
       ),
@@ -763,16 +772,22 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _label(l10n.expCalcCurrentLevel, color: _ExpCalcPalette.text),
+                _label(
+                  l10n.expCalcCurrentLevel,
+                  color: appColor(context, _ExpCalcPalette.text),
+                ),
                 TextField(
                   key: const Key('exp-calc-current-level'),
                   controller: _curLevelController,
                   readOnly: _selectedShipInstanceId != null,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(
-                    color: _ExpCalcPalette.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.text),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   decoration: _inputDecoration(prefix: 'Lv. '),
                   onChanged: _onCurLevelInput,
@@ -780,10 +795,13 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                 const SizedBox(height: 6),
                 Text(
                   '$_currentExp EXP',
-                  style: const TextStyle(
-                    color: _ExpCalcPalette.goldSoft,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.goldSoft),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
+                    ),
                   ),
                 ),
               ],
@@ -796,15 +814,21 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _label(l10n.expCalcTargetLevel, color: _ExpCalcPalette.text),
+                _label(
+                  l10n.expCalcTargetLevel,
+                  color: appColor(context, _ExpCalcPalette.text),
+                ),
                 TextField(
                   key: const Key('exp-calc-target-level'),
                   controller: _targetLevelController,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(
-                    color: _ExpCalcPalette.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.text),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   decoration: _inputDecoration(prefix: 'Lv. ').copyWith(
                     suffixIconConstraints: const BoxConstraints(
@@ -824,7 +848,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                               : null,
                           tooltip: '${l10n.expCalcTargetLevel} −1',
                           icon: const Icon(Icons.remove, size: 16),
-                          color: _ExpCalcPalette.textMuted,
+                          color: appColor(context, _ExpCalcPalette.textMuted),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
                             minWidth: 26,
@@ -842,7 +866,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                               : null,
                           tooltip: '${l10n.expCalcTargetLevel} +1',
                           icon: const Icon(Icons.add, size: 16),
-                          color: _ExpCalcPalette.textMuted,
+                          color: appColor(context, _ExpCalcPalette.textMuted),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
                             minWidth: 26,
@@ -858,10 +882,13 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                 const SizedBox(height: 6),
                 Text(
                   '$_targetExp EXP',
-                  style: const TextStyle(
-                    color: _ExpCalcPalette.goldSoft,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.goldSoft),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
+                    ),
                   ),
                 ),
               ],
@@ -876,10 +903,13 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
         Expanded(
           child: Text(
             '${l10n.expCalcTargetGapLabel}  $_remainExp EXP',
-            style: const TextStyle(
-              color: _ExpCalcPalette.goldSoft,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.goldSoft),
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
             ),
           ),
         ),
@@ -933,14 +963,20 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
         children: [
           SizedBox(
             width: 54,
-            child: _label(l10n.expCalcNodePoint, color: _ExpCalcPalette.text),
+            child: _label(
+              l10n.expCalcNodePoint,
+              color: appColor(context, _ExpCalcPalette.text),
+            ),
           ),
           const SizedBox(width: 6),
           SizedBox(
             width: 58,
             child: Tooltip(
               message: _strings.roundedHint,
-              child: _label(_strings.base, color: _ExpCalcPalette.text),
+              child: _label(
+                _strings.base,
+                color: appColor(context, _ExpCalcPalette.text),
+              ),
             ),
           ),
           const SizedBox(width: 6),
@@ -949,7 +985,10 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
               alignment: Alignment.centerRight,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: _label(_strings.subtotal, color: _ExpCalcPalette.text),
+                child: _label(
+                  _strings.subtotal,
+                  color: appColor(context, _ExpCalcPalette.text),
+                ),
               ),
             ),
           ),
@@ -965,7 +1004,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
       PopupMenuButton<String>(
         key: const Key('exp-calc-add-node-button'),
         tooltip: _strings.addNode,
-        color: _ExpCalcPalette.surface,
+        color: appColor(context, _ExpCalcPalette.surface),
         onSelected: (id) =>
             _addRouteNode(map.nodes.firstWhere((point) => point.id == id)),
         itemBuilder: (context) => [
@@ -975,9 +1014,12 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
               value: point.id,
               child: Text(
                 '${point.name}   ·   ${point.baseExp == null ? '—' : formatExperience(point.baseExp!)} EXP',
-                style: const TextStyle(
-                  color: _ExpCalcPalette.text,
-                  fontSize: 13,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, _ExpCalcPalette.text),
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
@@ -985,19 +1027,31 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            border: Border.all(color: _ExpCalcPalette.border),
+            border: Border.all(
+              color: appColor(context, _ExpCalcPalette.border),
+            ),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.add, size: 16, color: _ExpCalcPalette.textMuted),
+              Icon(
+                Icons.add,
+                size: 16,
+                color: appColor(context, _ExpCalcPalette.textMuted),
+              ),
               const SizedBox(width: 6),
-              Text(
-                _strings.addNode,
-                style: const TextStyle(
-                  color: _ExpCalcPalette.textMuted,
-                  fontSize: 12,
+              Flexible(
+                child: Text(
+                  _strings.addNode,
+                  textAlign: TextAlign.center,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.textMuted),
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1014,14 +1068,23 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             Localizations.localeOf(context).languageCode == 'en'
                 ? '${_routeNodes.length} battle ${_routeNodes.length == 1 ? 'node' : 'nodes'}'
                 : '${_routeNodes.length} ${l10n.expCalcCombatNodesSuffix}',
-            style: const TextStyle(color: _ExpCalcPalette.text, fontSize: 11),
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontSize: 11,
+              ),
+            ),
           ),
           Text(
             '${_strings.perSortie}  ${_hasValidRoute ? _totalSortieExp : '—'} EXP',
-            style: const TextStyle(
-              color: _ExpCalcPalette.goldSoft,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.goldSoft),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -1056,8 +1119,10 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
           height: 38,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: const Color(0xff0b202d),
-            border: Border.all(color: const Color(0xff315064)),
+            color: appColor(context, const Color(0xff0b202d)),
+            border: Border.all(
+              color: appColor(context, const Color(0xff315064)),
+            ),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -1068,9 +1133,12 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                     button: true,
                     selected: rank == value,
                     child: Material(
-                      color: rank == value
-                          ? const Color(0xff8a6628)
-                          : Colors.transparent,
+                      color: appColor(
+                        context,
+                        rank == value
+                            ? const Color(0xff8a6628)
+                            : Colors.transparent,
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       child: InkWell(
                         key: Key('exp-calc-rank-${value.name}-$suffix'),
@@ -1079,12 +1147,15 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                         child: Center(
                           child: Text(
                             value.label,
-                            style: TextStyle(
-                              color: rank == value
-                                  ? const Color(0xffffdc88)
-                                  : const Color(0xff9fb3bf),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: rank == value
+                                    ? const Color(0xffffdc88)
+                                    : const Color(0xff9fb3bf),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ),
@@ -1210,9 +1281,12 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                   ),
                   textAlign: TextAlign.center,
                   textAlignVertical: TextAlignVertical.center,
-                  style: const TextStyle(
-                    color: _ExpCalcPalette.text,
-                    fontSize: 13,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.text),
+                      fontSize: 13,
+                    ),
                   ),
                   decoration: _inputDecoration().copyWith(
                     constraints: const BoxConstraints.tightFor(height: 44),
@@ -1233,10 +1307,13 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                   softWrap: false,
                   node.baseExp == null ? '—' : '${node.computeExp()} EXP',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: _ExpCalcPalette.goldSoft,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.goldSoft),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -1253,9 +1330,10 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                   node.expanded ? Icons.expand_less : Icons.tune,
                   size: 16,
                 ),
-                color: overridden
-                    ? _ExpCalcPalette.gold
-                    : _ExpCalcPalette.textMuted,
+                color: appColor(
+                  context,
+                  overridden ? _ExpCalcPalette.gold : _ExpCalcPalette.textMuted,
+                ),
               ),
             ),
             if (_routeNodes.length > 1)
@@ -1271,7 +1349,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                   ),
                   onPressed: () => _removeRouteNode(index),
                   icon: const Icon(Icons.close, size: 16),
-                  color: _ExpCalcPalette.textMuted,
+                  color: appColor(context, _ExpCalcPalette.textMuted),
                 ),
               ),
           ],
@@ -1295,9 +1373,12 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                 const SizedBox(height: 6),
                 Text(
                   '${_strings.roundedHint} · ${_strings.coverage(point.knownCount, point.totalCount)}',
-                  style: const TextStyle(
-                    color: _ExpCalcPalette.textFaint,
-                    fontSize: 10,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: appColor(context, _ExpCalcPalette.textFaint),
+                      fontSize: 10,
+                    ),
                   ),
                 ),
               ],
@@ -1318,13 +1399,17 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
       child: Material(
-        color: selected
-            ? _ExpCalcPalette.goldSurface
-            : _ExpCalcPalette.surfaceInset,
+        color: appColor(
+          context,
+          selected ? _ExpCalcPalette.goldSurface : _ExpCalcPalette.surfaceInset,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
           side: BorderSide(
-            color: selected ? _ExpCalcPalette.goldDark : _ExpCalcPalette.border,
+            color: appColor(
+              context,
+              selected ? _ExpCalcPalette.goldDark : _ExpCalcPalette.border,
+            ),
           ),
         ),
         child: InkWell(
@@ -1336,12 +1421,15 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             child: Center(
               child: Text(
                 label,
-                style: TextStyle(
-                  color: selected
-                      ? _ExpCalcPalette.goldSoft
-                      : _ExpCalcPalette.textMuted,
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: selected
+                        ? _ExpCalcPalette.goldSoft
+                        : _ExpCalcPalette.textMuted,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
                 ),
               ),
             ),
@@ -1386,17 +1474,26 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
     const SizedBox(height: 10),
     Text(
       _routeSummary,
-      style: const TextStyle(
-        color: _ExpCalcPalette.text,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
+      style: appTextStyle(
+        context,
+        TextStyle(
+          color: appColor(context, _ExpCalcPalette.text),
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
     if (!_canEstimate) ...[
       const SizedBox(height: 8),
       Text(
         _hasValidRoute ? _strings.zero : _strings.unavailable,
-        style: const TextStyle(color: _ExpCalcPalette.textMuted, fontSize: 11),
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, _ExpCalcPalette.textMuted),
+            fontSize: 11,
+          ),
+        ),
       ),
     ],
     const SizedBox(height: 10),
@@ -1406,10 +1503,13 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
           ? _addTrackItem
           : null,
       style: FilledButton.styleFrom(
-        backgroundColor: _ExpCalcPalette.gold,
-        foregroundColor: _ExpCalcPalette.background,
-        disabledBackgroundColor: _ExpCalcPalette.surfaceRaised,
-        disabledForegroundColor: _ExpCalcPalette.textFaint,
+        backgroundColor: appColor(context, _ExpCalcPalette.gold),
+        foregroundColor: appOnAccentColor(context, _ExpCalcPalette.background),
+        disabledBackgroundColor: appColor(
+          context,
+          _ExpCalcPalette.surfaceRaised,
+        ),
+        disabledForegroundColor: appColor(context, _ExpCalcPalette.textFaint),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         padding: const EdgeInsets.symmetric(vertical: 14),
       ),
@@ -1438,12 +1538,15 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
               label,
               maxLines: 1,
               softWrap: false,
-              style: TextStyle(
-                color: emphasis
-                    ? _ExpCalcPalette.goldSoft
-                    : _ExpCalcPalette.textMuted,
-                fontSize: 11,
-                fontWeight: emphasis ? FontWeight.w700 : FontWeight.normal,
+              style: appTextStyle(
+                context,
+                TextStyle(
+                  color: emphasis
+                      ? _ExpCalcPalette.goldSoft
+                      : _ExpCalcPalette.textMuted,
+                  fontSize: 11,
+                  fontWeight: emphasis ? FontWeight.w700 : FontWeight.normal,
+                ),
               ),
             ),
           ),
@@ -1456,17 +1559,26 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
           value,
           maxLines: 1,
           softWrap: false,
-          style: TextStyle(
-            color: emphasis ? _ExpCalcPalette.goldSoft : _ExpCalcPalette.text,
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
+          style: appTextStyle(
+            context,
+            TextStyle(
+              color: emphasis ? _ExpCalcPalette.goldSoft : _ExpCalcPalette.text,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
       const SizedBox(height: 3),
       Text(
         unit,
-        style: const TextStyle(color: _ExpCalcPalette.text, fontSize: 10),
+        style: appTextStyle(
+          context,
+          TextStyle(
+            color: appColor(context, _ExpCalcPalette.text),
+            fontSize: 10,
+          ),
+        ),
       ),
     ],
   );
@@ -1474,9 +1586,9 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
   Widget _buildTrackingTable(AppLocalizations l10n) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: _ExpCalcPalette.surface,
+      color: appColor(context, _ExpCalcPalette.surface),
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: _ExpCalcPalette.border),
+      border: Border.all(color: appColor(context, _ExpCalcPalette.border)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1486,10 +1598,13 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             Flexible(
               child: Text(
                 l10n.expCalcTrackListTitle,
-                style: const TextStyle(
-                  color: _ExpCalcPalette.text,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, _ExpCalcPalette.text),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -1523,9 +1638,12 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             child: Center(
               child: Text(
                 l10n.expCalcEmptyTrackList,
-                style: const TextStyle(
-                  color: _ExpCalcPalette.textFaint,
-                  fontSize: 13,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, _ExpCalcPalette.textFaint),
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
@@ -1547,16 +1665,16 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                     headingRowHeight: 36,
                     dataRowMinHeight: 36,
                     dataRowMaxHeight: 38,
-                    headingRowColor: const WidgetStatePropertyAll(
-                      Color(0xff244352),
+                    headingRowColor: WidgetStatePropertyAll(
+                      appColor(context, const Color(0xff244352)),
                     ),
-                    headingTextStyle: const TextStyle(
-                      color: Color(0xffc0d2dc),
+                    headingTextStyle: TextStyle(
+                      color: appColor(context, Color(0xffc0d2dc)),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                     border: TableBorder.all(
-                      color: const Color(0xff315064),
+                      color: appColor(context, Color(0xff315064)),
                       width: 0.5,
                     ),
                     columns: [
@@ -1595,7 +1713,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
     );
 
     return DataRow(
-      color: const WidgetStatePropertyAll(Color(0xff14313f)),
+      color: WidgetStatePropertyAll(appColor(context, const Color(0xff14313f))),
       cells: [
         DataCell(
           Text(
@@ -1605,70 +1723,91 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                   widget.state.ships[item.shipInstanceId]?.masterId ??
                   item.shipMasterId,
             ),
-            style: const TextStyle(
-              color: _ExpCalcPalette.text,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
         DataCell(
           Text(
             'Lv. $liveLv',
-            style: const TextStyle(
-              color: _ExpCalcPalette.text,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
         DataCell(
           Text(
             'Lv. ${item.targetLevel}',
-            style: const TextStyle(
-              color: _ExpCalcPalette.text,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
         DataCell(
           Text(
             routeText,
-            style: const TextStyle(
-              color: _ExpCalcPalette.text,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
         DataCell(
           Text(
             '${item.effectiveSortieExp} EXP',
-            style: const TextStyle(
-              color: _ExpCalcPalette.text,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
         DataCell(
           Text(
             '$remain',
-            style: const TextStyle(
-              color: _ExpCalcPalette.text,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
         DataCell(
           Text(
             isDone ? l10n.expCalcCompletedTag : '$battles 次',
-            style: const TextStyle(
-              color: _ExpCalcPalette.text,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: appColor(context, _ExpCalcPalette.text),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
@@ -1678,7 +1817,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
             tooltip: l10n.expCalcDelete,
             onPressed: () => _deleteTrackItem(item.id),
             icon: const Icon(Icons.cancel_outlined, size: 20),
-            color: const Color(0xffff7b82),
+            color: appColor(context, Color(0xffff7b82)),
             visualDensity: VisualDensity.compact,
           ),
         ),

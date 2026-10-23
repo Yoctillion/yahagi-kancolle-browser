@@ -85,13 +85,10 @@ void main() {
   });
 
   test('OOI mode 1 keeps its outer frame while fitting the visible game', () {
+    expect(gamePageAlignmentScript, contains("host === 'ooi.moe'"));
     expect(
       gamePageAlignmentScript,
-      contains("location.hostname === 'ooi.moe'"),
-    );
-    expect(
-      gamePageAlignmentScript,
-      contains("location.pathname === '/kancolle'"),
+      contains("['/kancolle', '/poi', '/flash', '/kcs2/index.php']"),
     );
     expect(gamePageAlignmentScript, contains("iframe#externalswf"));
     expect(gamePageAlignmentScript, contains('ooiBrowserFrameWidth = 1280'));

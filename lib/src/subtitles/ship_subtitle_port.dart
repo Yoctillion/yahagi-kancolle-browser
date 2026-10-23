@@ -54,13 +54,7 @@ final class MethodChannelShipSubtitlePort implements ShipSubtitlePort {
   @override
   Future<bool> isSupported() async {
     if (_disposed) return false;
-    try {
-      return await channel.invokeMethod<bool>('isSupported') ?? false;
-    } on MissingPluginException {
-      return false;
-    } on PlatformException {
-      return false;
-    }
+    return await channel.invokeMethod<bool>('isSupported') ?? false;
   }
 
   @override

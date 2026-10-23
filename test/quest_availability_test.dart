@@ -70,7 +70,7 @@ void main() {
     const Locale('ja'),
   ]) {
     for (final size in [const Size(740, 320), const Size(360, 640)]) {
-      testWidgets('quest filters fit $size with $locale and enlarged text', (
+      testWidgets('quest query fits $size with $locale and enlarged text', (
         tester,
       ) async {
         tester.view.devicePixelRatio = 1;
@@ -78,7 +78,9 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         addTearDown(tester.view.resetPhysicalSize);
         final controller = GameStateController();
+        final filters = QuestFilterController();
         addTearDown(controller.dispose);
+        addTearDown(filters.dispose);
         await tester.pumpWidget(
           MaterialApp(
             locale: locale,
@@ -94,26 +96,32 @@ void main() {
               controller: controller,
               catalog: QuestCatalog([]),
               mode: QuestCenterMode.all,
+              filterController: filters,
             ),
           ),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('quest-filter-button')));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        final completed = find.byKey(
-          const Key('quest-filter-unlock-completed'),
+        await _tapQueryControl(tester, 'quest-search-button');
+        expect(find.byKey(const Key('quest-filter-button')), findsNothing);
+        expect(find.byKey(const Key('quest-query-dialog')), findsOneWidget);
+        expect(
+          tester
+              .widget<TextField>(find.byKey(const Key('quest-search-field')))
+              .autofocus,
+          isFalse,
         );
-        await tester.ensureVisible(completed);
-        await tester.tap(completed);
-        await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        final acceptedOnly = find.byKey(
-          const Key('quest-filter-accepted-only'),
-        );
-        await tester.ensureVisible(acceptedOnly);
-        await tester.tap(acceptedOnly);
-        await tester.pumpAndSettle();
+        await _tapQueryControl(tester, 'quest-filter-status-completed');
+        expect(filters.status, isNull);
+        await _tapQueryControl(tester, 'quest-query-apply');
+        expect(filters.status, QuestStatus.completed);
+        expect(find.byKey(const Key('quest-query-dialog')), findsNothing);
+        expect(tester.takeException(), isNull);
+        await _tapQueryControl(tester, 'quest-search-button');
+        await _tapQueryControl(tester, 'quest-filter-status-unknown');
+        expect(filters.status, QuestStatus.completed);
+        await _tapQueryControl(tester, 'quest-query-cancel');
+        expect(filters.status, QuestStatus.completed);
         expect(tester.takeException(), isNull);
       });
     }
@@ -314,12 +322,17 @@ void main() {
       addTearDown(controller.dispose);
       addTearDown(filters.dispose);
       final catalog = QuestCatalog([
-        for (final id in [101, 102, 103, 104])
+        for (final id in [101, 102, 103, 104, 105, 106])
           QuestCatalogEntry(
             gameId: id,
             code: 'A$id',
             name: 'Quest $id',
             description: '',
+            prerequisites: switch (id) {
+              101 => const ['A105'],
+              106 => const ['A101'],
+              _ => const [],
+            },
           ),
       ]);
       controller.accept(
@@ -351,6 +364,8 @@ void main() {
       expect(find.byKey(const Key('quest-card-102')), findsOneWidget);
       expect(find.byKey(const Key('quest-card-103')), findsOneWidget);
       expect(find.byKey(const Key('quest-card-104')), findsNothing);
+      expect(find.byKey(const Key('quest-card-105')), findsNothing);
+      expect(find.byKey(const Key('quest-card-106')), findsNothing);
 
       for (final label in {101: '未接取', 102: '进行中', 103: '待领取'}.entries) {
         expect(
@@ -376,28 +391,77 @@ void main() {
       filters.setUnlockState(QuestUnlockState.locked);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('quest-card-104')), findsOneWidget);
+      expect(find.byKey(const Key('quest-card-106')), findsOneWidget);
       expect(find.byKey(const Key('quest-card-101')), findsNothing);
       filters.setUnlockState(QuestUnlockState.completed);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('quest-card-103')), findsOneWidget);
+      expect(find.byKey(const Key('quest-card-105')), findsOneWidget);
       expect(find.byKey(const Key('quest-card-102')), findsNothing);
       expect(find.byKey(const Key('quest-card-104')), findsNothing);
-      await tester.tap(find.byKey(const Key('quest-filter-button')));
-      await tester.pumpAndSettle();
       expect(
-        find.byKey(const Key('quest-filter-unlock-completed')),
+        find.descendant(
+          of: find.byKey(const Key('quest-card-status-105')),
+          matching: find.text('推算完成'),
+        ),
         findsOneWidget,
       );
-      await tester.tap(find.byKey(const Key('quest-filter-close')));
-      await tester.pumpAndSettle();
 
-      await tester.tap(find.text('进行中').first);
+      // The combined query exposes exact statuses; legacy unlock filters above
+      // retain their original grouped semantics for existing callers.
+      for (final status in <QuestStatus, int>{
+        QuestStatus.available: 101,
+        QuestStatus.inProgress: 102,
+        QuestStatus.claimable: 103,
+        QuestStatus.completed: 105,
+        QuestStatus.locked: 106,
+        QuestStatus.unknown: 104,
+      }.entries) {
+        final previous = filters.value;
+        await _tapQueryControl(tester, 'quest-search-button');
+        await _tapQueryControl(
+          tester,
+          'quest-filter-status-${status.key.name}',
+        );
+        expect(filters.value, previous, reason: 'status stays in the draft');
+        await _tapQueryControl(tester, 'quest-query-apply');
+        expect(filters.status, status.key);
+        expect(filters.unlockState, isNull);
+        for (final id in [101, 102, 103, 104, 105, 106]) {
+          expect(
+            find.byKey(Key('quest-card-$id')),
+            id == status.value ? findsOneWidget : findsNothing,
+            reason: '${status.key} matches only quest ${status.value}',
+          );
+        }
+      }
+
+      filters.clear();
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('quest-mode-tabs')),
+          matching: find.text(
+            lookupAppLocalizations(const Locale('zh')).questAccepted,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('quest-card-101')), findsNothing);
       expect(find.byKey(const Key('quest-card-102')), findsOneWidget);
       expect(find.byKey(const Key('quest-card-103')), findsOneWidget);
+      expect(find.byKey(const Key('quest-card-104')), findsNothing);
+      expect(find.byKey(const Key('quest-card-105')), findsNothing);
+      expect(find.byKey(const Key('quest-card-106')), findsNothing);
       await controller.clearQuestsCache();
       expect(controller.state.availableQuests, isEmpty);
     },
   );
+}
+
+Future<void> _tapQueryControl(WidgetTester tester, String key) async {
+  final control = find.byKey(Key(key));
+  await tester.ensureVisible(control);
+  await tester.tap(control);
+  await tester.pumpAndSettle();
 }
