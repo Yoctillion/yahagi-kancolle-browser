@@ -1438,5 +1438,13 @@
   "practiceRank8": "少佐",
   "practiceRank9": "中堅少佐",
   "practiceRank10": "新手少佐",
-  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}}
+  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}},
+  "smartPanelTitle": "動態",
+  "smartPanelAuto": "自動",
+  "smartPanelStateHome": "遠征/入渠",
+  "smartPanelStateSortieCheck": "出擊檢查",
+  "smartPanelStateBattle": "戰鬥",
+  "smartPanelStateQuests": "任務",
+  "smartPanelStateExpeditionCheck": "遠征檢查",
+  "smartPanelStatePractice": "演習"
 }

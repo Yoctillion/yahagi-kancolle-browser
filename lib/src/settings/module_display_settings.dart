@@ -6,6 +6,7 @@ import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import 'fleet_display_options.dart';
 import 'layout_settings_controller.dart';
+import 'smart_panel_settings.dart';
 
 FleetSelectorLabelMode _repairFleetSelectorLabelMode =
     FleetSelectorLabelMode.customName;
@@ -80,6 +81,53 @@ Widget displaySettingsGear(
   );
 }
 
+List<Widget> _smartPanelOptions(
+  BuildContext context,
+  LayoutSettingsController controller,
+) {
+  Widget section(String label) => Text(
+    fleetText(context, label),
+    style: TextStyle(
+      color: appColor(context, const Color(0xffd8ad60)),
+      fontWeight: FontWeight.w700,
+    ),
+  );
+  const styleLabels = {
+    SmartPanelHeaderStyle.dropdown: FleetUiKeys.smartHeaderDropdown,
+    SmartPanelHeaderStyle.tabs: FleetUiKeys.smartHeaderTabs,
+    SmartPanelHeaderStyle.icons: FleetUiKeys.smartHeaderIcons,
+  };
+  return [
+    const SizedBox(height: 12),
+    Divider(height: 1, color: appColor(context, const Color(0xff294052))),
+    const SizedBox(height: 8),
+    section(FleetUiKeys.smartHeaderStyle),
+    const SizedBox(height: 4),
+    Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        for (final entry in styleLabels.entries)
+          ChoiceChip(
+            key: Key('smart-header-style-${entry.key.name}'),
+            label: Text(fleetText(context, entry.value)),
+            selected: controller.smartPanelHeaderStyle == entry.key,
+            showCheckmark: false,
+            onSelected: (_) => controller.setSmartPanelHeaderStyle(entry.key),
+          ),
+      ],
+    ),
+    const SizedBox(height: 4),
+    SwitchListTile(
+      key: const Key('smart-auto-switch'),
+      contentPadding: EdgeInsets.zero,
+      title: section(FleetUiKeys.smartAutoSwitch),
+      value: controller.smartPanelAutoSwitch,
+      onChanged: controller.setSmartPanelAutoSwitch,
+    ),
+  ];
+}
+
 Future<void> showModuleDisplaySettings(
   BuildContext context,
   LayoutSettingsController controller,
@@ -137,6 +185,12 @@ Future<void> showModuleDisplaySettings(
                             controller.setRepairFleetSelectorLabelMode(
                               FleetSelectorLabelMode.customName,
                             );
+                          }
+                          if (module == 'smart') {
+                            controller.setSmartPanelHeaderStyle(
+                              SmartPanelHeaderStyle.dropdown,
+                            );
+                            controller.setSmartPanelAutoSwitch(true);
                           }
                         },
                       ),
@@ -220,6 +274,8 @@ Future<void> showModuleDisplaySettings(
                       ],
                     ),
                   ],
+                  if (module == 'smart')
+                    ..._smartPanelOptions(context, controller),
                   if (module == 'repair') ...[
                     const SizedBox(height: 12),
                     Divider(

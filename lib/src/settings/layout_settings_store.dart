@@ -8,6 +8,7 @@ import 'module_display_settings.dart';
 import 'fleet_display_options.dart';
 import 'hd_layout_settings.dart';
 import 'camera_avoidance_settings.dart';
+import 'smart_panel_settings.dart';
 
 enum FleetMoraleMetricMode { minimumCondition, recoveryCountdown }
 
@@ -170,6 +171,7 @@ class SharedPreferencesLayoutSettingsStore
         InformationPanelSideSettingsStore,
         WorkspaceMenuPositionStore,
         TopNoticeSettingsStore,
+        SmartPanelSettingsStore,
         AppThemeSettingsStore,
         CameraAvoidanceSettingsStore,
         UiLockSettingsStore {
@@ -673,6 +675,37 @@ class SharedPreferencesLayoutSettingsStore
     } else {
       await prefs.setString(_keyLocaleCode, localeCode);
     }
+  }
+
+  static const _keySmartPanelAutoSwitch = 'smart_panel_auto_switch';
+  static const _keySmartPanelHeaderStyle = 'smart_panel_header_style';
+
+  @override
+  Future<bool> loadSmartPanelAutoSwitch() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keySmartPanelAutoSwitch) ?? true;
+  }
+
+  @override
+  Future<void> saveSmartPanelAutoSwitch(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySmartPanelAutoSwitch, enabled);
+  }
+
+  @override
+  Future<SmartPanelHeaderStyle> loadSmartPanelHeaderStyle() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_keySmartPanelHeaderStyle);
+    return SmartPanelHeaderStyle.values.firstWhere(
+      (value) => value.name == saved,
+      orElse: () => SmartPanelHeaderStyle.dropdown,
+    );
+  }
+
+  @override
+  Future<void> saveSmartPanelHeaderStyle(SmartPanelHeaderStyle style) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keySmartPanelHeaderStyle, style.name);
   }
 
   static const _keyTopNoticeEnabled = 'top_notice_enabled';

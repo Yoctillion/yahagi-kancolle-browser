@@ -7309,6 +7309,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'新手少佐'**
   String get practiceRank10;
+
+  /// No description provided for @smartPanelTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态'**
+  String get smartPanelTitle;
+
+  /// No description provided for @smartPanelAuto.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get smartPanelAuto;
+
+  /// No description provided for @smartPanelStateHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'远征/入渠'**
+  String get smartPanelStateHome;
+
+  /// No description provided for @smartPanelStateSortieCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'出击检查'**
+  String get smartPanelStateSortieCheck;
+
+  /// No description provided for @smartPanelStateBattle.
+  ///
+  /// In zh, this message translates to:
+  /// **'战斗'**
+  String get smartPanelStateBattle;
+
+  /// No description provided for @smartPanelStateQuests.
+  ///
+  /// In zh, this message translates to:
+  /// **'任务'**
+  String get smartPanelStateQuests;
+
+  /// No description provided for @smartPanelStateExpeditionCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'远征检查'**
+  String get smartPanelStateExpeditionCheck;
+
+  /// No description provided for @smartPanelStatePractice.
+  ///
+  /// In zh, this message translates to:
+  /// **'演习'**
+  String get smartPanelStatePractice;
 }
 
 class _AppLocalizationsDelegate

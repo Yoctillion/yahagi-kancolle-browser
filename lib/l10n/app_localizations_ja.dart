@@ -3946,4 +3946,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get practiceRank10 => '新米少佐';
+
+  @override
+  String get smartPanelTitle => '動的パネル';
+
+  @override
+  String get smartPanelAuto => '自動';
+
+  @override
+  String get smartPanelStateHome => '遠征/入渠';
+
+  @override
+  String get smartPanelStateSortieCheck => '出撃チェック';
+
+  @override
+  String get smartPanelStateBattle => '戦闘';
+
+  @override
+  String get smartPanelStateQuests => '任務';
+
+  @override
+  String get smartPanelStateExpeditionCheck => '遠征チェック';
+
+  @override
+  String get smartPanelStatePractice => '演習';
 }

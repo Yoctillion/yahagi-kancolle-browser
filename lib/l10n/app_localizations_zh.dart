@@ -3901,6 +3901,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get practiceRank10 => '新手少佐';
+
+  @override
+  String get smartPanelTitle => '动态';
+
+  @override
+  String get smartPanelAuto => '自动';
+
+  @override
+  String get smartPanelStateHome => '远征/入渠';
+
+  @override
+  String get smartPanelStateSortieCheck => '出击检查';
+
+  @override
+  String get smartPanelStateBattle => '战斗';
+
+  @override
+  String get smartPanelStateQuests => '任务';
+
+  @override
+  String get smartPanelStateExpeditionCheck => '远征检查';
+
+  @override
+  String get smartPanelStatePractice => '演习';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -7802,4 +7826,28 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get practiceRank10 => '新手少佐';
+
+  @override
+  String get smartPanelTitle => '動態';
+
+  @override
+  String get smartPanelAuto => '自動';
+
+  @override
+  String get smartPanelStateHome => '遠征/入渠';
+
+  @override
+  String get smartPanelStateSortieCheck => '出擊檢查';
+
+  @override
+  String get smartPanelStateBattle => '戰鬥';
+
+  @override
+  String get smartPanelStateQuests => '任務';
+
+  @override
+  String get smartPanelStateExpeditionCheck => '遠征檢查';
+
+  @override
+  String get smartPanelStatePractice => '演習';
 }

@@ -1438,5 +1438,13 @@
   "practiceRank7": "新手中佐",
   "practiceRank8": "少佐",
   "practiceRank9": "中坚少佐",
-  "practiceRank10": "新手少佐"
+  "practiceRank10": "新手少佐",
+  "smartPanelTitle": "动态",
+  "smartPanelAuto": "自动",
+  "smartPanelStateHome": "远征/入渠",
+  "smartPanelStateSortieCheck": "出击检查",
+  "smartPanelStateBattle": "战斗",
+  "smartPanelStateQuests": "任务",
+  "smartPanelStateExpeditionCheck": "远征检查",
+  "smartPanelStatePractice": "演习"
 }

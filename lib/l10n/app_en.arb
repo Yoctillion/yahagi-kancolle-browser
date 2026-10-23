@@ -2032,5 +2032,13 @@
   "practiceRank8": "Lieutenant Commander",
   "practiceRank9": "Seasoned Lt. Commander",
   "practiceRank10": "Novice Lt. Commander",
-  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}}
+  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}},
+  "smartPanelTitle": "Smart panel",
+  "smartPanelAuto": "Auto",
+  "smartPanelStateHome": "Expeditions/Docks",
+  "smartPanelStateSortieCheck": "Sortie check",
+  "smartPanelStateBattle": "Battle",
+  "smartPanelStateQuests": "Quests",
+  "smartPanelStateExpeditionCheck": "Expedition check",
+  "smartPanelStatePractice": "Exercises"
 }

@@ -2032,5 +2032,13 @@
   "practiceRank8": "소좌",
   "practiceRank9": "중견 소좌",
   "practiceRank10": "신참 소좌",
-  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}}
+  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}},
+  "smartPanelTitle": "동적 패널",
+  "smartPanelAuto": "자동",
+  "smartPanelStateHome": "원정/입거",
+  "smartPanelStateSortieCheck": "출격 점검",
+  "smartPanelStateBattle": "전투",
+  "smartPanelStateQuests": "임무",
+  "smartPanelStateExpeditionCheck": "원정 점검",
+  "smartPanelStatePractice": "연습"
 }

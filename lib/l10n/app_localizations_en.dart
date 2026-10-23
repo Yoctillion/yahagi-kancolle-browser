@@ -4076,4 +4076,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get practiceRank10 => 'Novice Lt. Commander';
+
+  @override
+  String get smartPanelTitle => 'Smart panel';
+
+  @override
+  String get smartPanelAuto => 'Auto';
+
+  @override
+  String get smartPanelStateHome => 'Expeditions/Docks';
+
+  @override
+  String get smartPanelStateSortieCheck => 'Sortie check';
+
+  @override
+  String get smartPanelStateBattle => 'Battle';
+
+  @override
+  String get smartPanelStateQuests => 'Quests';
+
+  @override
+  String get smartPanelStateExpeditionCheck => 'Expedition check';
+
+  @override
+  String get smartPanelStatePractice => 'Exercises';
 }

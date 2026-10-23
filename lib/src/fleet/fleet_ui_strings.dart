@@ -16,6 +16,11 @@ abstract final class FleetUiKeys {
   static const capsuleAppearance = '胶囊外观';
   static const name = '名字';
   static const displayContent = '显示内容';
+  static const smartHeaderStyle = '头部样式';
+  static const smartHeaderDropdown = '下拉翻页';
+  static const smartHeaderTabs = '文字标签';
+  static const smartHeaderIcons = '图标条';
+  static const smartAutoSwitch = '自动切换';
   static const fleetSelectorName = '舰队切换名称';
   static const customFleetName = '自定义舰队名';
   static const shortFleetNumber = '1–4 简称';
@@ -84,6 +89,7 @@ abstract final class FleetUiKeys {
     },
     'battle': <String, String>{},
     'pre_sortie': <String, String>{},
+    'smart': <String, String>{},
   };
 
   static const moduleDisplayTitles = <String, String>{
@@ -94,6 +100,7 @@ abstract final class FleetUiKeys {
     'quests': '任务简报显示内容',
     'battle': '战斗简报显示内容',
     'pre_sortie': '出击准备显示内容',
+    'smart': '动态显示内容',
   };
 }
 
@@ -175,6 +182,42 @@ String fleetText(BuildContext context, String source) {
       "Sortie preparation display",
     ),
     "胶囊外观": ("胶囊外观", "膠囊外觀", "カプセルの外観", "캡슐 모양", "Capsule appearance"),
+    "动态显示内容": (
+      "动态显示内容",
+      "動態顯示內容",
+      "動的パネルの表示内容",
+      "동적 패널 표시 내용",
+      "Smart panel display",
+    ),
+    FleetUiKeys.smartHeaderStyle: (
+      "头部样式",
+      "頭部樣式",
+      "ヘッダーの形式",
+      "헤더 스타일",
+      "Header style",
+    ),
+    FleetUiKeys.smartHeaderDropdown: (
+      "下拉翻页",
+      "下拉翻頁",
+      "プルダウンとページ送り",
+      "드롭다운 + 넘기기",
+      "Dropdown + paging",
+    ),
+    FleetUiKeys.smartHeaderTabs: (
+      "文字标签",
+      "文字標籤",
+      "テキストタブ",
+      "텍스트 탭",
+      "Text tabs",
+    ),
+    FleetUiKeys.smartHeaderIcons: ("图标条", "圖示列", "アイコンバー", "아이콘 바", "Icon bar"),
+    FleetUiKeys.smartAutoSwitch: (
+      "自动切换",
+      "自動切換",
+      "自動切り替え",
+      "자동 전환",
+      "Auto switch",
+    ),
     "胶囊外观设置": (
       "胶囊外观设置",
       "膠囊外觀設定",

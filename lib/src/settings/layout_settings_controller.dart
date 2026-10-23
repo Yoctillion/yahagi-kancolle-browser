@@ -9,6 +9,7 @@ import 'fleet_display_options.dart';
 import 'module_display_settings.dart';
 import 'layout_settings_store.dart';
 import 'hd_layout_settings.dart';
+import 'smart_panel_settings.dart';
 import 'camera_avoidance_settings.dart';
 
 class LayoutSettingsController extends ChangeNotifier {
@@ -234,6 +235,13 @@ class LayoutSettingsController extends ChangeNotifier {
               module,
             );
       }
+    }
+    if (store is SmartPanelSettingsStore) {
+      final smartPanelStore = store as SmartPanelSettingsStore;
+      controller._smartPanelAutoSwitch = await smartPanelStore
+          .loadSmartPanelAutoSwitch();
+      controller._smartPanelHeaderStyle = await smartPanelStore
+          .loadSmartPanelHeaderStyle();
     }
     if (store is TopNoticeSettingsStore) {
       final topNoticeStore = store as TopNoticeSettingsStore;
@@ -481,6 +489,34 @@ class LayoutSettingsController extends ChangeNotifier {
   WorkspaceMenuSize get workspaceMenuSize => _uiDisplaySize;
   Future<void> setWorkspaceMenuSize(WorkspaceMenuSize size) =>
       setUiDisplaySize(size);
+
+  bool _smartPanelAutoSwitch = true;
+  SmartPanelHeaderStyle _smartPanelHeaderStyle = SmartPanelHeaderStyle.dropdown;
+
+  bool get smartPanelAutoSwitch => _smartPanelAutoSwitch;
+  SmartPanelHeaderStyle get smartPanelHeaderStyle => _smartPanelHeaderStyle;
+
+  Future<void> setSmartPanelAutoSwitch(bool enabled) async {
+    if (_smartPanelAutoSwitch == enabled) return;
+    _smartPanelAutoSwitch = enabled;
+    notifyListeners();
+    if (_store is SmartPanelSettingsStore) {
+      await (_store as SmartPanelSettingsStore).saveSmartPanelAutoSwitch(
+        enabled,
+      );
+    }
+  }
+
+  Future<void> setSmartPanelHeaderStyle(SmartPanelHeaderStyle style) async {
+    if (_smartPanelHeaderStyle == style) return;
+    _smartPanelHeaderStyle = style;
+    notifyListeners();
+    if (_store is SmartPanelSettingsStore) {
+      await (_store as SmartPanelSettingsStore).saveSmartPanelHeaderStyle(
+        style,
+      );
+    }
+  }
 
   bool _topNoticeEnabled = true;
   int _topNoticeDurationSeconds = 5;

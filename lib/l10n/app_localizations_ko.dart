@@ -3974,4 +3974,28 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get practiceRank10 => '신참 소좌';
+
+  @override
+  String get smartPanelTitle => '동적 패널';
+
+  @override
+  String get smartPanelAuto => '자동';
+
+  @override
+  String get smartPanelStateHome => '원정/입거';
+
+  @override
+  String get smartPanelStateSortieCheck => '출격 점검';
+
+  @override
+  String get smartPanelStateBattle => '전투';
+
+  @override
+  String get smartPanelStateQuests => '임무';
+
+  @override
+  String get smartPanelStateExpeditionCheck => '원정 점검';
+
+  @override
+  String get smartPanelStatePractice => '연습';
 }
