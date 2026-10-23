@@ -78,6 +78,7 @@ class SmartPanelCard extends StatelessWidget {
         ),
       );
       final tabs = headerStyle == SmartPanelHeaderStyle.tabs;
+      final dropdown = headerStyle == SmartPanelHeaderStyle.dropdown;
       return DashboardCard(
         title: tabs ? l10n.smartPanelTitle : label,
         icon: Icon(
@@ -88,40 +89,30 @@ class SmartPanelCard extends StatelessWidget {
         collapsed: collapsed,
         onToggleCollapse: onToggleCollapse,
         showLogo: showLogo,
-        showTitle: showTitle,
+        // The highlighted icon already names the state, and the strip needs
+        // the title's width to keep its buttons tappable.
+        showTitle: showTitle && headerStyle != SmartPanelHeaderStyle.icons,
+        onTitleTap: dropdown ? (anchor) => _openMenu(anchor, l10n) : null,
         collapsedSummary: collapsed ? label : null,
         headerAction: moduleDisplayGear(
           context,
           'smart',
           onOpenDisplaySettings,
         ),
-        titleBadge: switch (headerStyle) {
-          SmartPanelHeaderStyle.dropdown => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [_menu(context, l10n), ?auto],
-          ),
-          _ => auto,
-        },
+        titleBadge: dropdown
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [_dropdownMarker(context, l10n), ?auto],
+              )
+            : auto,
         trailing: switch (headerStyle) {
-          SmartPanelHeaderStyle.dropdown => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _HeaderButton(
-                key: const Key('smart-panel-prev'),
-                icon: Icons.chevron_left,
-                onPressed: () => _step(-1),
-              ),
-              _HeaderButton(
-                key: const Key('smart-panel-next'),
-                icon: Icons.chevron_right,
-                onPressed: () => _step(1),
-              ),
-            ],
-          ),
-          // The header row gives trailing unbounded width, so cap the six
-          // buttons to half the header (which is never laid out below 220).
+          SmartPanelHeaderStyle.dropdown => null,
+          // The card header row gives trailing unbounded width and is never
+          // narrower than 220; the flat header caps trailing itself.
           SmartPanelHeaderStyle.icons => ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: math.max(cardWidth, 220) / 2),
+            constraints: BoxConstraints(
+              maxWidth: math.max(cardWidth - 24, 220) - 60,
+            ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Row(
@@ -169,27 +160,42 @@ class SmartPanelCard extends StatelessWidget {
     },
   );
 
-  void _step(int delta) {
-    const states = SmartPanelState.values;
-    final next = (states.indexOf(controller.state) + delta) % states.length;
-    controller.select(states[next]);
+  Future<void> _openMenu(BuildContext anchor, AppLocalizations l10n) async {
+    final box = anchor.findRenderObject()! as RenderBox;
+    final overlay = Overlay.of(anchor).context.findRenderObject()! as RenderBox;
+    final selected = await showMenu<SmartPanelState>(
+      context: anchor,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          box.localToGlobal(
+            box.size.bottomLeft(Offset.zero),
+            ancestor: overlay,
+          ),
+          box.localToGlobal(
+            box.size.bottomRight(Offset.zero),
+            ancestor: overlay,
+          ),
+        ),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        for (final state in SmartPanelState.values)
+          PopupMenuItem(
+            value: state,
+            child: Text(smartPanelStateLabel(l10n, state)),
+          ),
+      ],
+    );
+    if (selected != null) controller.select(selected);
   }
 
-  Widget _menu(BuildContext context, AppLocalizations l10n) =>
-      PopupMenuButton<SmartPanelState>(
-        key: const Key('smart-panel-menu'),
-        padding: EdgeInsets.zero,
-        tooltip: l10n.smartPanelTitle,
-        onSelected: controller.select,
-        itemBuilder: (context) => [
-          for (final state in SmartPanelState.values)
-            PopupMenuItem(
-              value: state,
-              child: Text(smartPanelStateLabel(l10n, state)),
-            ),
-        ],
+  Widget _dropdownMarker(BuildContext context, AppLocalizations l10n) =>
+      Semantics(
+        button: true,
+        label: l10n.smartPanelTitle,
         child: Icon(
           Icons.arrow_drop_down,
+          key: const Key('smart-panel-menu'),
           size: PanelStyleScope.isFlat(context) ? flatActionIconSize : 20,
           color: appColor(context, flatAccentColor),
         ),
@@ -237,10 +243,11 @@ class _HeaderButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final flat = PanelStyleScope.isFlat(context);
-    final size = flat ? flatHeaderHeight : 28.0;
+    // The flat header fits trailing into 22 dp, so a taller button would shrink.
+    final height = flat ? 22.0 : 28.0;
     return IconButton(
       tooltip: tooltip,
-      constraints: BoxConstraints.tightFor(width: size, height: size),
+      constraints: BoxConstraints.tightFor(width: 26, height: height),
       style: const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
       padding: EdgeInsets.zero,
       icon: Icon(
