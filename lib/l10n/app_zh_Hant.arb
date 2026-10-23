@@ -1263,7 +1263,7 @@
       }
     }
   },
-  "noticePracticeExpCtBonus": "演習經驗（約）：S勝 {sExp} · A勝 {aExp} (練巡 +{bonus})",
+  "noticePracticeExpCtBonus": "演習經驗（約）：S勝 {sExp} · A勝 {aExp} (練巡 {bonus})",
   "@noticePracticeExpCtBonus": {
     "placeholders": {
       "sExp": {
@@ -1424,5 +1424,29 @@
   "questNoSuccessors": "資料未列出後續任務",
   "japaneseOriginal": "日文原文",
   "questQueryActive": "{count} 項查詢條件已生效",
-  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}}
+  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}},
+  "practicePanelEmpty": "打開演習畫面後顯示對手",
+  "practiceNotFought": "未演習",
+  "practiceBaseExpS": "S勝基礎經驗 {exp}",
+  "practiceRank1": "元帥",
+  "practiceRank2": "大將",
+  "practiceRank3": "中將",
+  "practiceRank4": "少將",
+  "practiceRank5": "大佐",
+  "practiceRank6": "中佐",
+  "practiceRank7": "新手中佐",
+  "practiceRank8": "少佐",
+  "practiceRank9": "中堅少佐",
+  "practiceRank10": "新手少佐",
+  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}},
+  "smartPanelTitle": "動態",
+  "smartPanelAuto": "自動",
+  "smartPanelStateHome": "遠征/入渠",
+  "smartPanelStateSortieCheck": "出擊檢查",
+  "smartPanelStateBattle": "戰鬥",
+  "smartPanelStateQuests": "任務",
+  "smartPanelStateExpeditionCheck": "遠征檢查",
+  "smartPanelStatePractice": "演習",
+  "practiceSubmarineExpS": "潛艇 S勝 {exp}",
+  "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

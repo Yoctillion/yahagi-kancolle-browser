@@ -1857,7 +1857,7 @@
       }
     }
   },
-  "noticePracticeExpCtBonus": "Exercise EXP (approx.): S win {sExp} · A win {aExp} (training cruiser +{bonus})",
+  "noticePracticeExpCtBonus": "Exercise EXP (approx.): S win {sExp} · A win {aExp} (training cruiser {bonus})",
   "@noticePracticeExpCtBonus": {
     "placeholders": {
       "sExp": {
@@ -2018,5 +2018,29 @@
   "questNoSuccessors": "No following quests listed in the data",
   "japaneseOriginal": "Japanese original",
   "questQueryActive": "{count} query conditions applied",
-  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}}
+  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}},
+  "practicePanelEmpty": "Open the exercise screen to see opponents",
+  "practiceNotFought": "Not fought",
+  "practiceBaseExpS": "S-rank base EXP {exp}",
+  "practiceRank1": "Marshal Admiral",
+  "practiceRank2": "Admiral",
+  "practiceRank3": "Vice Admiral",
+  "practiceRank4": "Rear Admiral",
+  "practiceRank5": "Captain",
+  "practiceRank6": "Commander",
+  "practiceRank7": "Novice Commander",
+  "practiceRank8": "Lieutenant Commander",
+  "practiceRank9": "Seasoned Lt. Commander",
+  "practiceRank10": "Novice Lt. Commander",
+  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}},
+  "smartPanelTitle": "Smart panel",
+  "smartPanelAuto": "Auto",
+  "smartPanelStateHome": "Expeditions/Docks",
+  "smartPanelStateSortieCheck": "Sortie check",
+  "smartPanelStateBattle": "Battle",
+  "smartPanelStateQuests": "Quests",
+  "smartPanelStateExpeditionCheck": "Expedition check",
+  "smartPanelStatePractice": "Exercises",
+  "practiceSubmarineExpS": "Submarine S-rank {exp}",
+  "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

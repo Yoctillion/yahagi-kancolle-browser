@@ -3511,7 +3511,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return '演习经验（约）：S胜 $sExp · A胜 $aExp (练巡 +$bonus)';
+    return '演习经验（约）：S胜 $sExp · A胜 $aExp (练巡 $bonus)';
   }
 
   @override
@@ -3859,6 +3859,76 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String questQueryActive(int count) {
     return '$count 项查询条件已生效';
+  }
+
+  @override
+  String get practicePanelEmpty => '打开演习画面后显示对手';
+
+  @override
+  String get practiceNotFought => '未演习';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S胜基础经验 $exp';
+  }
+
+  @override
+  String get practiceRank1 => '元帅';
+
+  @override
+  String get practiceRank2 => '大将';
+
+  @override
+  String get practiceRank3 => '中将';
+
+  @override
+  String get practiceRank4 => '少将';
+
+  @override
+  String get practiceRank5 => '大佐';
+
+  @override
+  String get practiceRank6 => '中佐';
+
+  @override
+  String get practiceRank7 => '新手中佐';
+
+  @override
+  String get practiceRank8 => '少佐';
+
+  @override
+  String get practiceRank9 => '中坚少佐';
+
+  @override
+  String get practiceRank10 => '新手少佐';
+
+  @override
+  String get smartPanelTitle => '动态';
+
+  @override
+  String get smartPanelAuto => '自动';
+
+  @override
+  String get smartPanelStateHome => '远征/入渠';
+
+  @override
+  String get smartPanelStateSortieCheck => '出击检查';
+
+  @override
+  String get smartPanelStateBattle => '战斗';
+
+  @override
+  String get smartPanelStateQuests => '任务';
+
+  @override
+  String get smartPanelStateExpeditionCheck => '远征检查';
+
+  @override
+  String get smartPanelStatePractice => '演习';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return '潜艇 S胜 $exp';
   }
 }
 
@@ -7371,7 +7441,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return '演習經驗（約）：S勝 $sExp · A勝 $aExp (練巡 +$bonus)';
+    return '演習經驗（約）：S勝 $sExp · A勝 $aExp (練巡 $bonus)';
   }
 
   @override
@@ -7719,5 +7789,75 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String questQueryActive(int count) {
     return '$count 項查詢條件已生效';
+  }
+
+  @override
+  String get practicePanelEmpty => '打開演習畫面後顯示對手';
+
+  @override
+  String get practiceNotFought => '未演習';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S勝基礎經驗 $exp';
+  }
+
+  @override
+  String get practiceRank1 => '元帥';
+
+  @override
+  String get practiceRank2 => '大將';
+
+  @override
+  String get practiceRank3 => '中將';
+
+  @override
+  String get practiceRank4 => '少將';
+
+  @override
+  String get practiceRank5 => '大佐';
+
+  @override
+  String get practiceRank6 => '中佐';
+
+  @override
+  String get practiceRank7 => '新手中佐';
+
+  @override
+  String get practiceRank8 => '少佐';
+
+  @override
+  String get practiceRank9 => '中堅少佐';
+
+  @override
+  String get practiceRank10 => '新手少佐';
+
+  @override
+  String get smartPanelTitle => '動態';
+
+  @override
+  String get smartPanelAuto => '自動';
+
+  @override
+  String get smartPanelStateHome => '遠征/入渠';
+
+  @override
+  String get smartPanelStateSortieCheck => '出擊檢查';
+
+  @override
+  String get smartPanelStateBattle => '戰鬥';
+
+  @override
+  String get smartPanelStateQuests => '任務';
+
+  @override
+  String get smartPanelStateExpeditionCheck => '遠征檢查';
+
+  @override
+  String get smartPanelStatePractice => '演習';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return '潛艇 S勝 $exp';
   }
 }

@@ -768,8 +768,6 @@
 "lib/src/improvement/improvement_planner_view.dart|六"
 "lib/src/improvement/improvement_planner_view.dart|四"
 "lib/src/improvement/improvement_planner_view.dart|日"
-"lib/src/notice/game_info_notice_controller.dart|香取"
-"lib/src/notice/game_info_notice_controller.dart|鹿島"
 "lib/src/settings/background_game_retention_controller.dart|后台保活状态同步失败：$error"
 "lib/src/settings/background_game_retention_controller.dart|后台保活设置失败：$error"
 "lib/src/settings/screen_settings_page.dart|功能区位置"

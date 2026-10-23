@@ -212,6 +212,12 @@ void main() {
     // Each entry is intentionally shared: product/game terminology, numerals,
     // protocol names, or a language self-name. Adding a key requires review.
     const reviewedZhHant = <String>{
+      // Admiral ranks below 少将 share the same Han spelling in both scripts.
+      'practiceRank5',
+      'practiceRank6',
+      'practiceRank7',
+      'practiceRank8',
+      'practiceRank10',
       // 提醒方式 has identical standard spelling in both Chinese scripts.
       'advanceWarningDisplayModeTitle',
       // These battle section labels share standard Chinese spelling.
@@ -412,6 +418,13 @@ void main() {
       'themeClassicDark',
     };
     const reviewedJa = <String>{
+      // In-game admiral ranks use the same kanji in Japanese.
+      'practiceRank2',
+      'practiceRank3',
+      'practiceRank4',
+      'practiceRank5',
+      'practiceRank6',
+      'practiceRank8',
       // The warning title uses shared game terminology.
       'postBattleWarningTitle',
       // The in-game instant construction material has the same Chinese spelling.

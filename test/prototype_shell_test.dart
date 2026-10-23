@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/main.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/live_battle_card.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/pre_sortie_check_summary.dart';
+import 'package:yahagi_kancolle_browser/src/settings/hd_layout_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_prediction_settings.dart';
 import 'package:yahagi_kancolle_browser/src/audio/game_audio_controller.dart';
 import 'package:yahagi_kancolle_browser/src/audio/game_audio_store.dart';
@@ -65,6 +69,9 @@ import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/ui_scale.dart';
 import 'package:yahagi_kancolle_browser/src/layout/hd_workspace_geometry.dart';
+import 'package:yahagi_kancolle_browser/src/practice/practice_opponent_controller.dart';
+import 'package:yahagi_kancolle_browser/src/practice/practice_opponent_panel.dart';
+import 'package:yahagi_kancolle_browser/src/smart_panel/smart_panel_controller.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
 const _phoneLandscape = Size(873, 393);
@@ -82,6 +89,8 @@ Future<LayoutSettingsController> _pumpMinimalShell(
   TopNoticeController? headerNoticeController,
   LayoutSettingsStore? layoutStore,
   String? localeCode,
+  SmartPanelController? smartPanelController,
+  PracticeOpponentController? practiceOpponentController,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -125,6 +134,8 @@ Future<LayoutSettingsController> _pumpMinimalShell(
       audioController: await GameAudioController.load(_MemoryAudioStore()),
       toolbarController: toolbarController ?? GameToolbarController(),
       headerNoticeController: headerNoticeController,
+      smartPanelController: smartPanelController,
+      practiceOpponentController: practiceOpponentController,
       gameSurface: gameSurface ?? const ColoredBox(color: Colors.black),
     ),
   );
@@ -151,6 +162,74 @@ Future<void> _tapWorkspaceNavigationItem(
 }
 
 void main() {
+  group('smart panel card', () {
+    final zh = lookupAppLocalizations(const Locale('zh'));
+    CapturedApiEvent event(String api, Object? data) => CapturedApiEvent(
+      path: '/kcsapi/$api',
+      responseBody: jsonEncode({'api_result': 1, 'api_data': data}),
+      source: CaptureSource.manual,
+      capturedAt: DateTime(2026, 10, 24),
+    );
+
+    for (final uiSize in [UiDisplaySize.minimal, UiDisplaySize.normal]) {
+      testWidgets('follows game screens in the detail area ($uiSize)', (
+        tester,
+      ) async {
+        final store = _MemoryLayoutSettingsStore()
+          .._dashboardCardOrder = ['smart', 'fleet', 'battle'];
+        final smart = SmartPanelController(
+          stateProvider: () => GameState.empty,
+          waitForGameState: () async {},
+          autoSwitchEnabled: () => true,
+        );
+        final practice = PracticeOpponentController();
+        await _pumpMinimalShell(
+          tester,
+          uiSize: uiSize,
+          layoutStore: store,
+          smartPanelController: smart,
+          practiceOpponentController: practice,
+        );
+        expect(find.text(zh.smartPanelStateHome), findsOneWidget);
+
+        smart.accept(event('api_get_member/mapinfo', {}));
+        await tester.pump();
+        expect(find.text(zh.smartPanelStateSortieCheck), findsOneWidget);
+        expect(find.byKey(const Key('smart-panel-auto')), findsOneWidget);
+        expect(find.byType(PreSortieCheckSummary), findsOneWidget);
+
+        smart.accept(event('api_req_map/start', {}));
+        await tester.pump();
+        expect(find.text(zh.smartPanelStateBattle), findsOneWidget);
+        expect(find.byType(LiveBattleCard), findsNWidgets(2));
+
+        final list = {
+          'api_list': [
+            {
+              'api_enemy_id': 7,
+              'api_enemy_name': '演习对手',
+              'api_enemy_level': 120,
+              'api_enemy_rank': '大佐',
+              'api_state': 0,
+            },
+          ],
+        };
+        smart.accept(event('api_get_member/practice', list));
+        practice.accept(event('api_get_member/practice', list));
+        await tester.pump();
+        expect(find.byType(PracticeOpponentPanel), findsOneWidget);
+        expect(find.text('演习对手'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    test('new card is registered for list and HD layouts', () {
+      expect(LayoutSettingsStore.defaultDashboardCardOrder.last, 'smart');
+      expect(HdLayoutSettings.moduleIds, contains('smart'));
+      expect(HdLayoutSettings.defaultSidebarOrder, contains('smart'));
+    });
+  });
+
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     // These shell scenarios assert Chinese UI; system-English behavior has its

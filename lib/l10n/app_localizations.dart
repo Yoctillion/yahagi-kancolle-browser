@@ -6605,7 +6605,7 @@ abstract class AppLocalizations {
   /// No description provided for @noticePracticeExpCtBonus.
   ///
   /// In zh, this message translates to:
-  /// **'演习经验（约）：S胜 {sExp} · A胜 {aExp} (练巡 +{bonus})'**
+  /// **'演习经验（约）：S胜 {sExp} · A胜 {aExp} (练巡 {bonus})'**
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus);
 
   /// No description provided for @noticeSortieShipFull.
@@ -7231,6 +7231,138 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{count} 项查询条件已生效'**
   String questQueryActive(int count);
+
+  /// No description provided for @practicePanelEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开演习画面后显示对手'**
+  String get practicePanelEmpty;
+
+  /// No description provided for @practiceNotFought.
+  ///
+  /// In zh, this message translates to:
+  /// **'未演习'**
+  String get practiceNotFought;
+
+  /// No description provided for @practiceBaseExpS.
+  ///
+  /// In zh, this message translates to:
+  /// **'S胜基础经验 {exp}'**
+  String practiceBaseExpS(int exp);
+
+  /// No description provided for @practiceRank1.
+  ///
+  /// In zh, this message translates to:
+  /// **'元帅'**
+  String get practiceRank1;
+
+  /// No description provided for @practiceRank2.
+  ///
+  /// In zh, this message translates to:
+  /// **'大将'**
+  String get practiceRank2;
+
+  /// No description provided for @practiceRank3.
+  ///
+  /// In zh, this message translates to:
+  /// **'中将'**
+  String get practiceRank3;
+
+  /// No description provided for @practiceRank4.
+  ///
+  /// In zh, this message translates to:
+  /// **'少将'**
+  String get practiceRank4;
+
+  /// No description provided for @practiceRank5.
+  ///
+  /// In zh, this message translates to:
+  /// **'大佐'**
+  String get practiceRank5;
+
+  /// No description provided for @practiceRank6.
+  ///
+  /// In zh, this message translates to:
+  /// **'中佐'**
+  String get practiceRank6;
+
+  /// No description provided for @practiceRank7.
+  ///
+  /// In zh, this message translates to:
+  /// **'新手中佐'**
+  String get practiceRank7;
+
+  /// No description provided for @practiceRank8.
+  ///
+  /// In zh, this message translates to:
+  /// **'少佐'**
+  String get practiceRank8;
+
+  /// No description provided for @practiceRank9.
+  ///
+  /// In zh, this message translates to:
+  /// **'中坚少佐'**
+  String get practiceRank9;
+
+  /// No description provided for @practiceRank10.
+  ///
+  /// In zh, this message translates to:
+  /// **'新手少佐'**
+  String get practiceRank10;
+
+  /// No description provided for @smartPanelTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态'**
+  String get smartPanelTitle;
+
+  /// No description provided for @smartPanelAuto.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get smartPanelAuto;
+
+  /// No description provided for @smartPanelStateHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'远征/入渠'**
+  String get smartPanelStateHome;
+
+  /// No description provided for @smartPanelStateSortieCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'出击检查'**
+  String get smartPanelStateSortieCheck;
+
+  /// No description provided for @smartPanelStateBattle.
+  ///
+  /// In zh, this message translates to:
+  /// **'战斗'**
+  String get smartPanelStateBattle;
+
+  /// No description provided for @smartPanelStateQuests.
+  ///
+  /// In zh, this message translates to:
+  /// **'任务'**
+  String get smartPanelStateQuests;
+
+  /// No description provided for @smartPanelStateExpeditionCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'远征检查'**
+  String get smartPanelStateExpeditionCheck;
+
+  /// No description provided for @smartPanelStatePractice.
+  ///
+  /// In zh, this message translates to:
+  /// **'演习'**
+  String get smartPanelStatePractice;
+
+  /// No description provided for @practiceSubmarineExpS.
+  ///
+  /// In zh, this message translates to:
+  /// **'潜艇 S胜 {exp}'**
+  String practiceSubmarineExpS(int exp);
 }
 
 class _AppLocalizationsDelegate

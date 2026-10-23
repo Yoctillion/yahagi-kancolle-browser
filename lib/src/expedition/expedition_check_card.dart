@@ -19,6 +19,7 @@ import 'expedition_selection_store.dart';
 import 'expedition_strings.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/panel_style.dart';
+import 'expedition_fleet_request.dart';
 
 class ExpeditionCheckContent extends StatefulWidget {
   const ExpeditionCheckContent({
@@ -27,12 +28,17 @@ class ExpeditionCheckContent extends StatefulWidget {
     required this.onOpenDetails,
     this.selectionStore,
     this.accountSession,
+    this.fleetRequest,
   });
 
   final GameStateController controller;
   final ValueChanged<int> onOpenDetails;
   final ExpeditionSelectionStore? selectionStore;
   final AccountSession? accountSession;
+
+  /// Applied on mount and whenever its serial changes; a manual pick made after
+  /// a request survives rebuilds that carry the same request.
+  final ExpeditionFleetRequest? fleetRequest;
 
   @override
   State<ExpeditionCheckContent> createState() => _ExpeditionCheckContentState();
@@ -45,6 +51,8 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
   int _fleetId = 2;
   int _missionId = 1;
   int _restoreGeneration = 0;
+  int _appliedRequestSerial = 0;
+  bool _selectionRestored = false;
   late final AccountSession _accountSession;
   late final ExpeditionSelectionStore _selectionStore;
 
@@ -58,7 +66,53 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
           accountSession: _accountSession,
         );
     _accountSession.addListener(_onAccountChanged);
+    _fleetId = widget.fleetRequest?.fleetId ?? _fleetId;
+    _appliedRequestSerial = widget.fleetRequest?.serial ?? 0;
     _restoreMissionForFleet(_fleetId);
+  }
+
+  // Only a keyed instance (the smart panel's) persists its fleet: an unkeyed
+  // one would share PageStorage's anonymous slot with other unkeyed widgets.
+  bool get _persistsSelection => widget.key is PageStorageKey;
+  static const _selectionStorageId = 'expedition-check-fleet';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_selectionRestored || !_persistsSelection) return;
+    _selectionRestored = true;
+    final stored = PageStorage.maybeOf(
+      context,
+    )?.readState(context, identifier: _selectionStorageId);
+    if (stored is! List<int> || stored.length != 2) return;
+    final [storedFleetId, storedSerial] = stored;
+    // A request newer than the remembered pick wins; otherwise the manual pick
+    // made before the panel switched away is kept.
+    if (_appliedRequestSerial > storedSerial || storedFleetId == _fleetId) {
+      return;
+    }
+    _appliedRequestSerial = storedSerial;
+    _fleetId = storedFleetId;
+    _missionId = expeditionRules.keys.first;
+    _restoreMissionForFleet(storedFleetId);
+  }
+
+  @override
+  void didUpdateWidget(covariant ExpeditionCheckContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final request = widget.fleetRequest;
+    if (request != null && request.serial != oldWidget.fleetRequest?.serial) {
+      _appliedRequestSerial = request.serial;
+      _selectFleet(request.fleetId);
+    }
+  }
+
+  void _rememberSelection() {
+    if (!_persistsSelection) return;
+    PageStorage.maybeOf(context)?.writeState(context, [
+      _fleetId,
+      _appliedRequestSerial,
+    ], identifier: _selectionStorageId);
   }
 
   Future<void> _restoreMissionForFleet(int fleetId) async {
@@ -85,6 +139,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
       _fleetId = fleetId;
       _missionId = expeditionRules.keys.first;
     });
+    _rememberSelection();
     _restoreMissionForFleet(fleetId);
   }
 

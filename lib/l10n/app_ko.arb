@@ -1857,7 +1857,7 @@
       }
     }
   },
-  "noticePracticeExpCtBonus": "연습 경험치 (약): S 승리 {sExp} · A 승리 {aExp} (연습순양함 +{bonus})",
+  "noticePracticeExpCtBonus": "연습 경험치 (약): S 승리 {sExp} · A 승리 {aExp} (연습순양함 {bonus})",
   "@noticePracticeExpCtBonus": {
     "placeholders": {
       "sExp": {
@@ -2018,5 +2018,29 @@
   "questNoSuccessors": "데이터에 후속 임무가 기재되어 있지 않습니다",
   "japaneseOriginal": "일본어 원문",
   "questQueryActive": "검색 조건 {count}개 적용 중",
-  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}}
+  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}},
+  "practicePanelEmpty": "연습 화면을 열면 상대가 표시됩니다",
+  "practiceNotFought": "미연습",
+  "practiceBaseExpS": "S승 기본 경험치 {exp}",
+  "practiceRank1": "원수",
+  "practiceRank2": "대장",
+  "practiceRank3": "중장",
+  "practiceRank4": "소장",
+  "practiceRank5": "대좌",
+  "practiceRank6": "중좌",
+  "practiceRank7": "신참 중좌",
+  "practiceRank8": "소좌",
+  "practiceRank9": "중견 소좌",
+  "practiceRank10": "신참 소좌",
+  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}},
+  "smartPanelTitle": "동적 패널",
+  "smartPanelAuto": "자동",
+  "smartPanelStateHome": "원정/입거",
+  "smartPanelStateSortieCheck": "출격 점검",
+  "smartPanelStateBattle": "전투",
+  "smartPanelStateQuests": "임무",
+  "smartPanelStateExpeditionCheck": "원정 점검",
+  "smartPanelStatePractice": "연습",
+  "practiceSubmarineExpS": "잠수함 S승 {exp}",
+  "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

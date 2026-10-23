@@ -3579,7 +3579,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String noticePracticeExpCtBonus(int sExp, int aExp, String bonus) {
-    return '연습 경험치 (약): S 승리 $sExp · A 승리 $aExp (연습순양함 +$bonus)';
+    return '연습 경험치 (약): S 승리 $sExp · A 승리 $aExp (연습순양함 $bonus)';
   }
 
   @override
@@ -3932,5 +3932,75 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String questQueryActive(int count) {
     return '검색 조건 $count개 적용 중';
+  }
+
+  @override
+  String get practicePanelEmpty => '연습 화면을 열면 상대가 표시됩니다';
+
+  @override
+  String get practiceNotFought => '미연습';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S승 기본 경험치 $exp';
+  }
+
+  @override
+  String get practiceRank1 => '원수';
+
+  @override
+  String get practiceRank2 => '대장';
+
+  @override
+  String get practiceRank3 => '중장';
+
+  @override
+  String get practiceRank4 => '소장';
+
+  @override
+  String get practiceRank5 => '대좌';
+
+  @override
+  String get practiceRank6 => '중좌';
+
+  @override
+  String get practiceRank7 => '신참 중좌';
+
+  @override
+  String get practiceRank8 => '소좌';
+
+  @override
+  String get practiceRank9 => '중견 소좌';
+
+  @override
+  String get practiceRank10 => '신참 소좌';
+
+  @override
+  String get smartPanelTitle => '동적 패널';
+
+  @override
+  String get smartPanelAuto => '자동';
+
+  @override
+  String get smartPanelStateHome => '원정/입거';
+
+  @override
+  String get smartPanelStateSortieCheck => '출격 점검';
+
+  @override
+  String get smartPanelStateBattle => '전투';
+
+  @override
+  String get smartPanelStateQuests => '임무';
+
+  @override
+  String get smartPanelStateExpeditionCheck => '원정 점검';
+
+  @override
+  String get smartPanelStatePractice => '연습';
+
+  @override
+  String practiceSubmarineExpS(int exp) {
+    return '잠수함 S승 $exp';
   }
 }
