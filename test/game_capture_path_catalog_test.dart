@@ -8,6 +8,7 @@ void main() {
       ...GameCapturePathCatalog.battle,
       ...GameCapturePathCatalog.senka,
       ...GameCapturePathCatalog.logbook,
+      ...GameCapturePathCatalog.smartPanel,
       ...GameCapturePathCatalog.kcwikiOnly,
     });
     expect(
@@ -34,6 +35,8 @@ void main() {
           '/kcsapi/api_req_air_corps/change_name',
           '/kcsapi/api_req_air_corps/cond_recovery',
           '/kcsapi/api_port/airCorpsCondRecoveryWithTimer',
+          '/kcsapi/api_get_member/mission',
+          '/kcsapi/api_get_member/practice',
         }),
       );
     },

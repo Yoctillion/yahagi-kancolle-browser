@@ -146,11 +146,18 @@ abstract final class GameCapturePathCatalog {
     '/kcsapi/api_req_kaisou/powerup',
   };
 
+  /// Screen-opening calls that only the smart panel listens to.
+  static const Set<String> smartPanel = <String>{
+    '/kcsapi/api_get_member/mission',
+    '/kcsapi/api_get_member/practice',
+  };
+
   static final Set<String> all = Set<String>.unmodifiable(<String>{
     ...gameState,
     ...battle,
     ...senka,
     ...logbook,
+    ...smartPanel,
     ...kcwikiOnly,
   });
 
