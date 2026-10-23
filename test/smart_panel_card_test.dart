@@ -49,6 +49,7 @@ void main() {
     WidgetTester tester,
     SmartPanelHeaderStyle style, {
     PanelStyle panel = PanelStyle.card,
+    double width = 360,
   }) => tester.pumpWidget(
     MaterialApp(
       locale: const Locale('zh'),
@@ -56,7 +57,7 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SizedBox(
-          width: 360,
+          width: width,
           child: PanelStyleScope(
             style: panel,
             child: SmartPanelCard(
@@ -129,6 +130,15 @@ void main() {
     expect(controller.state, SmartPanelState.battle);
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in const <double>[160, 185, 220, 240]) {
+    testWidgets('card-style headers fit at $width dp', (tester) async {
+      for (final style in SmartPanelHeaderStyle.values) {
+        await pump(tester, style, width: width);
+        expect(tester.takeException(), isNull, reason: '$style');
+      }
+    });
+  }
 
   testWidgets('auto marker shows after auto switch and hides after manual', (
     tester,

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -56,7 +58,11 @@ class SmartPanelCard extends StatelessWidget {
   final VoidCallback? onOpenDisplaySettings;
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => _build(context, constraints.maxWidth),
+  );
+
+  Widget _build(BuildContext context, double cardWidth) => AnimatedBuilder(
     animation: controller,
     builder: (context, _) {
       final l10n =
@@ -112,18 +118,26 @@ class SmartPanelCard extends StatelessWidget {
               ),
             ],
           ),
-          SmartPanelHeaderStyle.icons => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final entry in smartPanelStateIcons.entries)
-                _HeaderButton(
-                  key: Key('smart-panel-icon-${entry.key.name}'),
-                  icon: entry.value,
-                  tooltip: smartPanelStateLabel(l10n, entry.key),
-                  selected: entry.key == state,
-                  onPressed: () => controller.select(entry.key),
-                ),
-            ],
+          // The header row gives trailing unbounded width, so cap the six
+          // buttons to half the header (which is never laid out below 220).
+          SmartPanelHeaderStyle.icons => ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: math.max(cardWidth, 220) / 2),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final entry in smartPanelStateIcons.entries)
+                    _HeaderButton(
+                      key: Key('smart-panel-icon-${entry.key.name}'),
+                      icon: entry.value,
+                      tooltip: smartPanelStateLabel(l10n, entry.key),
+                      selected: entry.key == state,
+                      onPressed: () => controller.select(entry.key),
+                    ),
+                ],
+              ),
+            ),
           ),
           SmartPanelHeaderStyle.tabs => null,
         },
