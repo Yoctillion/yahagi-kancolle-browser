@@ -8,6 +8,8 @@ import 'dashboard_card.dart';
 import 'separated_wrap.dart';
 import '../layout/flat_empty_text.dart';
 import '../layout/flat_style.dart';
+import '../layout/flat_text_toggle.dart';
+import '../layout/flat_underline_tabs.dart';
 import '../layout/hd_dashboard_content.dart';
 import 'combat_mechanism.dart';
 import 'fleet_ship_minimal_row.dart';
@@ -97,10 +99,17 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
         final flat = PanelStyleScope.isFlat(context);
         void selectFleet(int id) => setState(() => _selectedFleetId = id);
         final fleetSwitcher = flat
-            ? _FleetUnderlineSwitcher(
-                fleets: state.fleets,
-                selectedFleetId: _selectedFleetId,
-                onSelected: selectFleet,
+            ? FlatUnderlineTabs(
+                key: const Key('fleet-summary-switcher'),
+                options: [
+                  for (final fleet in state.fleets.take(4))
+                    FlatTextToggleOption(
+                      key: Key('fleet-summary-selector-${fleet.id}'),
+                      label: _fleetSelectorLabel(fleet),
+                      selected: fleet.id == _selectedFleetId,
+                      onTap: () => selectFleet(fleet.id),
+                    ),
+                ],
               )
             : _FleetSegmentedSwitcher(
                 fleets: state.fleets,
@@ -343,62 +352,6 @@ String _fleetSelectorLabel(Fleet fleet) =>
         fleet.name.trim().isEmpty
     ? '${fleet.id}'
     : fleet.name;
-
-class _FleetUnderlineSwitcher extends StatelessWidget {
-  const _FleetUnderlineSwitcher({
-    required this.fleets,
-    required this.selectedFleetId,
-    required this.onSelected,
-  });
-
-  final List<Fleet> fleets;
-  final int selectedFleetId;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    key: const Key('fleet-summary-switcher'),
-    height: 22,
-    child: Row(
-      children: [
-        for (final fleet in fleets.take(4))
-          Expanded(
-            child: InkWell(
-              key: Key('fleet-summary-selector-${fleet.id}'),
-              onTap: () => onSelected(fleet.id),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      width: 2,
-                      color: fleet.id == selectedFleetId
-                          ? const Color(0xff8a6628)
-                          : Colors.transparent,
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    _fleetSelectorLabel(fleet),
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: fleet.id == selectedFleetId
-                          ? const Color(0xffffdc88)
-                          : const Color(0xff9fb3bf),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    ),
-  );
-}
 
 class _FleetSummaryMetrics extends StatelessWidget {
   const _FleetSummaryMetrics({

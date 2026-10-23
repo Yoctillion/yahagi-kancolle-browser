@@ -8,6 +8,7 @@ import '../game_state/game_state_controller.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/flat_style.dart';
 import '../layout/flat_text_toggle.dart';
+import '../layout/flat_underline_tabs.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
@@ -722,7 +723,9 @@ class _RepairFleetBody extends StatelessWidget {
       : Column(
           children: [
             selector,
-            const SizedBox(height: 8),
+            SizedBox(
+              height: PanelStyleScope.isFlat(context) ? flatRowSpacing : 8,
+            ),
             slots,
             const SizedBox(height: 2),
           ],
@@ -740,8 +743,27 @@ class _AnchorageFleetSelector extends StatelessWidget {
   final int selectedFleetId;
   final ValueChanged<int> onSelected;
 
+  String _label(Fleet fleet) =>
+      repairFleetSelectorLabelModeSetting == FleetSelectorLabelMode.number
+      ? '${fleet.id}'
+      : fleet.displayName;
+
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.isFlat(context)) {
+      return FlatUnderlineTabs(
+        key: const Key('repair-summary-fleet-selector'),
+        options: [
+          for (final fleet in fleets)
+            FlatTextToggleOption(
+              key: Key('repair-summary-fleet-${fleet.id}'),
+              label: _label(fleet),
+              selected: fleet.id == selectedFleetId,
+              onTap: () => onSelected(fleet.id),
+            ),
+        ],
+      );
+    }
     final vertical = HdModuleColumns.of(context) > 1;
     return Container(
       key: const Key('repair-summary-fleet-selector'),
@@ -771,10 +793,7 @@ class _AnchorageFleetSelector extends StatelessWidget {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        repairFleetSelectorLabelModeSetting ==
-                                FleetSelectorLabelMode.number
-                            ? '${fleet.id}'
-                            : fleet.displayName,
+                        _label(fleet),
                         maxLines: 1,
                         style: TextStyle(
                           color: fleet.id == selectedFleetId
