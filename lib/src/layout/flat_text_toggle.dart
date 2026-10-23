@@ -25,29 +25,33 @@ class FlatTextToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        for (final option in options)
-          InkWell(
-            key: option.key,
-            onTap: option.onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-              child: Text(
-                option.label,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: option.selected ? flatAccentColor : flatMutedColor,
-                  fontSize: flatSmallFontSize,
-                  fontWeight: FontWeight.w700,
+    // 自带透明 Material：否则按下高亮画在整屏 Material 上，被信息栏底色盖住。
+    return Material(
+      type: MaterialType.transparency,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final option in options)
+            InkWell(
+              key: option.key,
+              onTap: option.onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                child: Text(
+                  option.label,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: option.selected ? flatAccentColor : flatMutedColor,
+                    fontSize: flatSmallFontSize,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

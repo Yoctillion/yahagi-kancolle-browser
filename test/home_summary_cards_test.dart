@@ -15,6 +15,7 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dar
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_underline_tabs.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_store.dart';
 import 'package:yahagi_kancolle_browser/src/quest/pinned_quests_summary.dart';
@@ -1226,6 +1227,51 @@ void main() {
       await tester.pumpAndSettle();
       expect(labelColor('anchorage'), flatAccentColor);
       expect(find.byKey(const Key('repair-summary-dock-grid')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('泊地舰队切换与编队简报同为下划线标签并传递所选舰队', (tester) async {
+      final controller = GameStateController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(start2Event)
+        ..accept(portEvent)
+        ..accept(slotItemEvent);
+      await controller.idle;
+      RepairDestination? destination;
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenRepair: (value) => destination = value,
+        ),
+      );
+      await tester.tap(find.byKey(const Key('repair-summary-mode-anchorage')));
+      await tester.pumpAndSettle();
+
+      final selector = find.byKey(const Key('repair-summary-fleet-selector'));
+      expect(tester.widget(selector), isA<FlatUnderlineTabs>());
+      Color? labelColor(int fleetId) => tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(Key('repair-summary-fleet-$fleetId')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color;
+      expect(labelColor(1), flatAccentColor);
+      expect(labelColor(2), flatMutedColor);
+
+      await tester.tap(find.byKey(const Key('repair-summary-fleet-2')));
+      await tester.pumpAndSettle();
+      expect(labelColor(2), flatAccentColor);
+      await tester.tap(
+        find.byKey(const Key('repair-summary-anchorage-slot')).first,
+      );
+      expect(destination?.fleetId, 2);
       expect(tester.takeException(), isNull);
     });
 
