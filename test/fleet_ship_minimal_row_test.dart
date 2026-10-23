@@ -88,10 +88,18 @@ GameState _mechanismState() => GameState.empty.copyWith(
   ],
 );
 
-Widget _app(Widget child, {Locale locale = const Locale('zh')}) => MaterialApp(
+Widget _app(
+  Widget child, {
+  Locale locale = const Locale('zh'),
+  TextScaler textScaler = TextScaler.noScaling,
+}) => MaterialApp(
   locale: locale,
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
+  builder: (context, child) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+    child: child!,
+  ),
   home: Scaffold(
     body: Align(alignment: Alignment.topLeft, child: child),
   ),
@@ -103,8 +111,9 @@ Widget _row(
   Set<String> visible = defaultFields,
   ShipRepairStatus? repairStatus,
   EquipmentMechanismDisplay? specialAttack,
+  double width = 320,
 }) => SizedBox(
-  width: 320,
+  width: width,
   child: FleetShipMinimalRow(
     state: state,
     ship: state.ships[shipId]!,
@@ -116,6 +125,32 @@ Widget _row(
     specialAttack: specialAttack,
   ),
 );
+
+GameState _largeStatusState({bool hasMaster = true}) =>
+    GameState.empty.copyWith(
+      masterShips: {
+        if (hasMaster)
+          1: const MasterShip(
+            id: 1,
+            name: '艦娘',
+            shipTypeId: 2,
+            maxFuel: 9999,
+            maxAmmo: 8888,
+          ),
+      },
+      ships: {
+        1: const OwnedShip(
+          id: 1,
+          masterId: 1,
+          level: 1,
+          currentHp: 123,
+          maxHp: 999,
+          currentFuel: 4567,
+          currentAmmo: 2345,
+          condition: 49,
+        ),
+      },
+    );
 
 Future<GameStateController> _controller(GameState state) async {
   final controller = GameStateController(gameStateStore: _Store(state));
@@ -147,6 +182,362 @@ Widget _flatCard(
 );
 
 void main() {
+  testWidgets('morale chip stays content sized beside status tags', (
+    tester,
+  ) async {
+    final state = _mechanismState();
+    for (final width in [320.0, 640.0]) {
+      await tester.pumpWidget(_app(_row(state, 1, width: width)));
+      await tester.pump();
+
+      final info = tester.getRect(
+        find.byKey(const Key('minimal-status-info-1')),
+      );
+      final morale = tester.getRect(find.byKey(const Key('minimal-morale-1')));
+      expect(morale.width, inInclusiveRange(28, 50));
+      expect(morale.width, lessThan(info.width / 2));
+      for (final tag in [
+        find.text('高速'),
+        find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+      ]) {
+        final rect = tester.getRect(tag);
+        expect(rect.left, greaterThanOrEqualTo(morale.right));
+        expect(rect.center.dy, closeTo(morale.center.dy, .01));
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('status info remains one line in narrow cells', (tester) async {
+    final state = _mechanismState();
+    for (final width in [160.0, 190.0]) {
+      await tester.pumpWidget(
+        _app(_row(state, 1, width: width, repairStatus: ShipRepairStatus.dock)),
+      );
+      await tester.pump();
+
+      final info = tester.getRect(
+        find.byKey(const Key('minimal-status-info-1')),
+      );
+      final morale = tester.getRect(find.byKey(const Key('minimal-morale-1')));
+      for (final tag in [
+        find.text('高速'),
+        find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+        find.byKey(const Key('minimal-repair-1')),
+      ]) {
+        expect(tag, findsOneWidget);
+        final rect = tester.getRect(tag);
+        expect(rect.center.dy, closeTo(morale.center.dy, .01));
+        expect(rect.left, greaterThanOrEqualTo(morale.right));
+        expect(rect.right, lessThanOrEqualTo(info.right + .01));
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('fixed status grid keeps info above hp below identity', (
+    tester,
+  ) async {
+    final state = _mechanismState();
+    for (final width in [320.0, 640.0]) {
+      await tester.pumpWidget(
+        _app(_row(state, 1, width: width, repairStatus: ShipRepairStatus.dock)),
+      );
+      await tester.pump();
+
+      final name = tester.getRect(find.byKey(const Key('minimal-name-1')));
+      final hp = tester.getRect(find.byKey(const Key('minimal-hp-value-1')));
+      final level = tester.getRect(find.text('Lv76'));
+      expect(level.center.dy, closeTo(name.center.dy, .01));
+      for (final info in [
+        find.byKey(const Key('minimal-morale-1')),
+        find.text('高速'),
+        find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+        find.byKey(const Key('minimal-repair-1')),
+      ]) {
+        expect(info, findsOneWidget);
+        final rect = tester.getRect(info);
+        expect(rect.top, greaterThanOrEqualTo(name.bottom));
+        expect(rect.bottom, lessThanOrEqualTo(hp.top));
+        expect(
+          rect.right,
+          lessThanOrEqualTo(
+            tester
+                .getRect(find.byKey(const Key('minimal-status-info-1')))
+                .right,
+          ),
+        );
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('fixed status grid keeps supply stacked beside info and hp', (
+    tester,
+  ) async {
+    final state = demoState();
+    for (final width in [320.0, 640.0]) {
+      await tester.pumpWidget(_app(_row(state, 2, width: width)));
+      await tester.pump();
+
+      final fuel = tester.getRect(
+        find.byKey(const Key('minimal-supply-fuel-value-2')),
+      );
+      final ammo = tester.getRect(
+        find.byKey(const Key('minimal-supply-ammo-value-2')),
+      );
+      final hp = tester.getRect(find.byKey(const Key('minimal-hp-value-2')));
+      expect(fuel.left, closeTo(ammo.left, .01));
+      expect(fuel.bottom, lessThanOrEqualTo(ammo.top));
+      expect(hp.right, lessThan(fuel.left));
+      final infoCell = tester.getRect(
+        find.byKey(const Key('minimal-status-info-2')),
+      );
+      final hpCell = tester.getRect(
+        find.byKey(const Key('minimal-status-hp-2')),
+      );
+      final fuelCell = tester.getRect(
+        find.byKey(const Key('minimal-status-fuel-2')),
+      );
+      final ammoCell = tester.getRect(
+        find.byKey(const Key('minimal-status-ammo-2')),
+      );
+      expect(infoCell.top, closeTo(fuelCell.top, .01));
+      expect(hpCell.top, closeTo(ammoCell.top, .01));
+      expect(infoCell.bottom, lessThanOrEqualTo(hpCell.top));
+      expect(fuelCell.left, closeTo(ammoCell.left, .01));
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets(
+    'metadata stays visible when all numeric status fields are hidden',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(_row(_mechanismState(), 1, visible: {'shipSpeed', 'mechanisms'})),
+      );
+      await tester.pump();
+
+      final info = find.byKey(const Key('minimal-status-info-1'));
+      expect(info, findsOneWidget);
+      expect(
+        find.descendant(of: info, matching: find.text('高速')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: info,
+          matching: find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+        ),
+        findsOneWidget,
+      );
+      for (final field in ['hp', 'fuel', 'ammo']) {
+        expect(find.byKey(Key('minimal-status-$field-1')), findsNothing);
+      }
+      expect(find.byKey(const Key('minimal-morale-1')), findsNothing);
+      final row = tester.getRect(find.byKey(const Key('minimal-ship-row-1')));
+      expect(tester.getRect(info).left, closeTo(row.left + 2, .01));
+      expect(tester.getRect(info).right, closeTo(row.right - 2, .01));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('status meters fill available cells after icons and values', (
+    tester,
+  ) async {
+    final state = demoState();
+    var previousWidths = <double>[];
+    for (final width in [320.0, 640.0]) {
+      await tester.pumpWidget(
+        _app(
+          _row(
+            state,
+            2,
+            width: width,
+            visible: {'hp', 'fuel', 'ammo', 'morale', 'bars'},
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final rowRect = tester.getRect(
+        find.byKey(const Key('minimal-ship-row-2')),
+      );
+      final tracks = [
+        find.byKey(const Key('minimal-hp-track-2')),
+        find.byKey(const Key('minimal-supply-fuel-2')),
+        find.byKey(const Key('minimal-supply-ammo-2')),
+      ];
+      final values = [
+        find.byKey(const Key('minimal-hp-value-2')),
+        find.byKey(const Key('minimal-supply-fuel-value-2')),
+        find.byKey(const Key('minimal-supply-ammo-value-2')),
+      ];
+      final icons = [
+        find.byKey(const Key('minimal-hp-icon-2')),
+        find.byKey(const Key('minimal-supply-fuel-icon-2')),
+        find.byKey(const Key('minimal-supply-ammo-icon-2')),
+      ];
+      final fields = ['hp', 'fuel', 'ammo'];
+      final widths = <double>[];
+      for (var i = 0; i < tracks.length; i++) {
+        expect(icons[i], findsOneWidget);
+        expect(values[i], findsOneWidget);
+        expect(tracks[i], findsOneWidget);
+        final icon = tester.getRect(icons[i]);
+        final value = tester.getRect(values[i]);
+        final track = tester.getRect(tracks[i]);
+        expect(icon.right, lessThanOrEqualTo(value.left));
+        expect(value.right, lessThanOrEqualTo(track.left));
+        expect(track.left, greaterThanOrEqualTo(rowRect.left));
+        expect(track.right, lessThanOrEqualTo(rowRect.right));
+        final cell = tester.getRect(
+          find.byKey(Key('minimal-status-${fields[i]}-2')),
+        );
+        expect(track.right, closeTo(cell.right, .01));
+        widths.add(track.width);
+        if (previousWidths.isNotEmpty) {
+          expect(track.width, greaterThan(previousWidths[i]));
+        }
+      }
+      previousWidths = widths;
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('narrow status rows keep large numbers readable at text scales', (
+    tester,
+  ) async {
+    final state = _largeStatusState();
+    for (final scale in [1.0, 1.5, 2.0]) {
+      for (final width in [160.0, 190.0, 240.0, 300.0, 400.0]) {
+        await tester.pumpWidget(
+          _app(
+            _row(
+              state,
+              1,
+              width: width,
+              visible: {'hp', 'fuel', 'ammo', 'morale', 'bars'},
+            ),
+            textScaler: TextScaler.linear(scale),
+          ),
+        );
+        await tester.pump();
+
+        final rowRect = tester.getRect(
+          find.byKey(const Key('minimal-ship-row-1')),
+        );
+        for (final key in [
+          'minimal-hp-value-1',
+          'minimal-supply-fuel-value-1',
+          'minimal-supply-ammo-value-1',
+        ]) {
+          final value = find.byKey(Key(key));
+          expect(value, findsOneWidget);
+          final text = tester.widget<Text>(value);
+          final actual = tester.getRect(value);
+          final measured = TextPainter(
+            text: TextSpan(
+              text: text.data,
+              style: DefaultTextStyle.of(
+                tester.element(value),
+              ).style.merge(text.style),
+            ),
+            textDirection: TextDirection.ltr,
+            textScaler: TextScaler.linear(scale),
+            maxLines: text.maxLines,
+          )..layout(maxWidth: actual.width);
+          expect(actual.width, closeTo(measured.width, .05));
+          expect(actual.height, closeTo(measured.height, .05));
+          expect(actual.left, greaterThanOrEqualTo(rowRect.left));
+          expect(actual.right, lessThanOrEqualTo(rowRect.right));
+          expect(actual.bottom, lessThanOrEqualTo(rowRect.bottom));
+          expect(
+            find.ancestor(of: value, matching: find.byType(FittedBox)),
+            findsNothing,
+          );
+        }
+        // A track also fills its cell when a narrow value puts it below the label.
+        for (final field in ['hp', 'fuel', 'ammo']) {
+          final track = tester.getRect(
+            find.byKey(
+              Key(
+                field == 'hp'
+                    ? 'minimal-hp-track-1'
+                    : 'minimal-supply-$field-1',
+              ),
+            ),
+          );
+          final cell = tester.getRect(
+            find.byKey(Key('minimal-status-$field-1')),
+          );
+          expect(track.right, closeTo(cell.right, .01));
+        }
+        if (width <= 190) {
+          final hp = tester.getRect(
+            find.byKey(const Key('minimal-hp-value-1')),
+          );
+          final fuel = tester.getRect(
+            find.byKey(const Key('minimal-supply-fuel-value-1')),
+          );
+          expect(fuel.left, greaterThanOrEqualTo(hp.right));
+          expect(fuel.top, lessThan(hp.top));
+        }
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
+
+  testWidgets('missing masters and hidden status fields keep their contract', (
+    tester,
+  ) async {
+    final state = _largeStatusState(hasMaster: false);
+    await tester.pumpWidget(
+      _app(_row(state, 1, width: 190, visible: {'fuel', 'ammo', 'bars'})),
+    );
+    await tester.pump();
+    expect(find.text('4567/0'), findsOneWidget);
+    expect(find.text('2345/0'), findsOneWidget);
+    expect(find.byKey(const Key('minimal-hp-value-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-hp-icon-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-hp-track-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-morale-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-status-info-1')), findsNothing);
+    final supplyOnlyRow = tester.getRect(
+      find.byKey(const Key('minimal-ship-row-1')),
+    );
+    for (final field in ['fuel', 'ammo']) {
+      final cell = tester.getRect(find.byKey(Key('minimal-status-$field-1')));
+      expect(cell.left, closeTo(supplyOnlyRow.left + 2, .01));
+      expect(cell.right, closeTo(supplyOnlyRow.right - 2, .01));
+    }
+    expect(find.byType(DamagePulseGlow), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(
+      _app(_row(state, 1, width: 190, visible: {'hp', 'bars'})),
+    );
+    await tester.pump();
+    for (final field in ['fuel', 'ammo']) {
+      expect(find.byKey(Key('minimal-supply-$field-value-1')), findsNothing);
+      expect(find.byKey(Key('minimal-supply-$field-icon-1')), findsNothing);
+      expect(find.byKey(Key('minimal-supply-$field-1')), findsNothing);
+      expect(find.byKey(Key('minimal-status-$field-1')), findsNothing);
+    }
+    expect(find.byKey(const Key('minimal-morale-1')), findsNothing);
+    expect(find.byKey(const Key('minimal-hp-value-1')), findsOneWidget);
+    final hpOnlyRow = tester.getRect(
+      find.byKey(const Key('minimal-ship-row-1')),
+    );
+    final hpOnlyCell = tester.getRect(
+      find.byKey(const Key('minimal-status-hp-1')),
+    );
+    expect(hpOnlyCell.left, closeTo(hpOnlyRow.left + 2, .01));
+    expect(hpOnlyCell.right, closeTo(hpOnlyRow.right - 2, .01));
+    expect(find.byType(DamagePulseGlow), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('morale bands follow the game thresholds', () {
     expect(moraleBandOf(50), MoraleBand.sparkle);
     expect(moraleBandOf(49), MoraleBand.normal);
@@ -267,7 +658,14 @@ void main() {
         _row(
           state,
           2,
-          visible: defaultFields.difference({'hp', 'fuel', 'ammo', 'morale'}),
+          visible: defaultFields.difference({
+            'hp',
+            'fuel',
+            'ammo',
+            'morale',
+            'shipSpeed',
+            'mechanisms',
+          }),
         ),
       ),
     );
@@ -313,11 +711,24 @@ void main() {
     expect(find.byKey(const Key('minimal-morale-1')), findsOneWidget);
     expect(find.byKey(const Key('minimal-morale-2')), findsNothing);
     expect(find.byKey(const Key('minimal-morale-4')), findsOneWidget);
-    // 放在第一行，不挤动第二行血条的起点。
+    // 隐藏数值后的警告仍在左上信息格，位于舰名下方、HP 上方。
+    final morale = tester.getRect(find.byKey(const Key('minimal-morale-4')));
     expect(
-      tester.getRect(find.byKey(const Key('minimal-morale-4'))).bottom,
+      morale.top,
+      greaterThanOrEqualTo(
+        tester.getRect(find.byKey(const Key('minimal-name-4'))).bottom,
+      ),
+    );
+    expect(
+      morale.bottom,
       lessThanOrEqualTo(
-        tester.getRect(find.byKey(const Key('minimal-name-4'))).bottom + 1,
+        tester.getRect(find.byKey(const Key('minimal-status-hp-4'))).top,
+      ),
+    );
+    expect(
+      morale.right,
+      lessThan(
+        tester.getRect(find.byKey(const Key('minimal-status-fuel-4'))).left,
       ),
     );
 
@@ -326,7 +737,7 @@ void main() {
     expect(find.byKey(const Key('minimal-morale-4')), findsOneWidget);
   });
 
-  testWidgets('hiding bars turns the status line into plain values', (
+  testWidgets('fixed status grid keeps plain values when bars are hidden', (
     tester,
   ) async {
     final state = demoState();
@@ -361,7 +772,7 @@ void main() {
       expect(tester.widget<Text>(hp).data, '20/27');
       expect(tester.widget<Text>(fuel).data, '13/25');
       expect(tester.widget<Text>(ammo).data, '15/30');
-      // 数值紧跟疲劳块从左排，不留出血条的位置。
+      // 关条只隐藏条形，数值仍留在各自的格子中。
       expect(
         tester.getRect(hp).left,
         lessThan(tester.getRect(row).left + width * .3),
@@ -369,7 +780,18 @@ void main() {
       expect(tester.getRect(fuel).left, greaterThan(tester.getRect(hp).right));
       expect(
         tester.getRect(ammo).left,
-        greaterThan(tester.getRect(fuel).right),
+        closeTo(tester.getRect(fuel).left, .01),
+      );
+      expect(
+        tester.getRect(fuel).bottom,
+        lessThanOrEqualTo(tester.getRect(ammo).top),
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('minimal-status-hp-2'))).top,
+        closeTo(
+          tester.getRect(find.byKey(const Key('minimal-status-ammo-2'))).top,
+          .01,
+        ),
       );
       expect(tester.takeException(), isNull);
     }

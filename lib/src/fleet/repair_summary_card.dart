@@ -7,6 +7,7 @@ import 'fleet_ui_strings.dart';
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_portrait_backdrop.dart';
 import '../layout/flat_style.dart';
 import '../layout/flat_text_toggle.dart';
 import '../layout/flat_underline_tabs.dart';
@@ -147,25 +148,22 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
           selected: _mode == mode,
           onTap: () => setState(() => _mode = mode),
         );
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: FlatTextToggle(
-        key: const Key('repair-summary-mode-selector'),
-        options: [
-          option(
-            RepairCenterMode.dock,
-            english ? 'Dock' : fleetText(context, '入渠'),
-          ),
-          option(
-            RepairCenterMode.anchorage,
-            english ? 'Anch.' : fleetText(context, '泊地'),
-          ),
-          option(
-            RepairCenterMode.nosaki,
-            fleetText(context, FleetUiKeys.nosakiShort),
-          ),
-        ],
-      ),
+    return FlatUnderlineTabs(
+      key: const Key('repair-summary-mode-selector'),
+      options: [
+        option(
+          RepairCenterMode.dock,
+          english ? 'Dock' : fleetText(context, '入渠'),
+        ),
+        option(
+          RepairCenterMode.anchorage,
+          english ? 'Anch.' : fleetText(context, '泊地'),
+        ),
+        option(
+          RepairCenterMode.nosaki,
+          fleetText(context, FleetUiKeys.nosakiShort),
+        ),
+      ],
     );
   }
 
@@ -226,7 +224,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       state: state,
       master: master,
       name: _flat
-          ? (active ? '$position · $name' : '$position')
+          ? (active ? name : '')
           : widget.visible.contains('empty')
           ? name
           : '$position · $name',
@@ -742,7 +740,8 @@ class _RepairFleetBody extends StatelessWidget {
   final Widget selector;
   final Widget slots;
   @override
-  Widget build(BuildContext context) => HdModuleColumns.of(context) > 1
+  Widget build(BuildContext context) =>
+      HdModuleColumns.of(context) > 1 && !PanelStyleScope.isFlat(context)
       ? Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -883,16 +882,37 @@ class _RepairCapsule extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (PanelStyleScope.isFlat(context)) {
-      return FlatListRow(
+      final hasPortrait = showPortrait && master != null;
+      final shadows = hasPortrait ? flatOnImageShadows(context) : null;
+      final row = FlatListRow(
         key: contentKey,
         onTap: onTap,
         name: flatRowText(
           context,
           name,
           color: disabled ? const Color(0xff4a5c68) : Colors.white,
+          shadows: shadows,
         ),
-        trailing: flatRowTrailing(detail),
+        trailing: flatRowTrailing(
+          hasPortrait
+              ? DefaultTextStyle.merge(
+                  style: TextStyle(shadows: shadows),
+                  child: detail,
+                )
+              : detail,
+        ),
       );
+      return hasPortrait
+          ? FlatPortraitBackdrop(
+              image: (width, height) => ShipPortrait(
+                ship: master,
+                serverOrigin: state.serverOrigin,
+                width: width,
+                height: height,
+              ),
+              child: row,
+            )
+          : row;
     }
     return LayoutBuilder(
       builder: (context, constraints) {

@@ -569,6 +569,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
                     }
                     result.success(BattleDamageVibrator.alert(this, severity))
                 }
+                "cancel" -> result.success(BattleDamageVibrator.cancel(this))
                 else -> result.notImplemented()
             }
         }
@@ -1777,6 +1778,7 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
             viewportWidth,
             scalePercent,
             fixedCanvasContentWidth,
+            fixedCanvasContentHeight,
             isCurrent = {
                 !isFinishing && !isDestroyed && boundWebView === webView &&
                     webView.isAttachedToWindow && webView.width == viewportWidth &&
@@ -1785,7 +1787,10 @@ class MainActivity : FlutterActivity(), GadgetBypassManager.Host, DiagnosticExpo
         ) { outcome ->
             val completed = try {
                 if (outcome.getOrThrow()) {
-                    shipSubtitleBridge?.refreshDisplayScale(scalePercent / 100.0)
+                    shipSubtitleBridge?.refreshDisplayScale(minOf(
+                        viewportWidth.toDouble() / fixedCanvasContentWidth,
+                        viewportHeight.toDouble() / fixedCanvasContentHeight,
+                    ))
                 }
                 outcome
             } catch (error: RuntimeException) {

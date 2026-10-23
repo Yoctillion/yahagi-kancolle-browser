@@ -348,8 +348,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uiDisplaySizeTitle => '界面UI大小';
 
   @override
-  String get uiDisplaySizeDesc =>
-      '调整顶栏、导航栏与信息栏的显示密度；极简档保留顶部 Yahagi 入口与功能栏，信息栏采用扁平布局';
+  String get uiDisplaySizeDesc => '调整顶栏、导航栏与信息栏的显示密度';
 
   @override
   String get uiDisplaySizeNormal => '普通';
@@ -478,6 +477,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gameSafety => '大破提醒';
+
+  @override
+  String get battleSafetySectionTitle => '游戏安全';
 
   @override
   String get blockSortieTitle => '大破进击提醒';
@@ -766,7 +768,71 @@ class AppLocalizationsZh extends AppLocalizations {
   String get battleWarningOff => '关闭';
 
   @override
-  String get battleWarningConfirm => '弹框确认';
+  String get battleWarningConfirm => '开启提醒';
+
+  @override
+  String get advanceWarningDisplayModeTitle => '提醒方式';
+
+  @override
+  String get advanceWarningAlwaysConfirm => '始终确认';
+
+  @override
+  String get advanceWarningSmart => '智能提醒';
+
+  @override
+  String get advanceWarningSmartDescription => '大破舰损管均确认可用时顶部通知，否则弹窗。';
+
+  @override
+  String get advanceWarningAlwaysConfirmDescription => '检测到大破时弹窗确认。';
+
+  @override
+  String get advanceWarningTimingModeTitle => '提醒时机';
+
+  @override
+  String get advanceWarningTimingModeDescription => '修改从下次出击生效。';
+
+  @override
+  String get advanceWarningPostBattle => '结算后提醒';
+
+  @override
+  String get advanceWarningAfterAdvance => '进击后提醒';
+
+  @override
+  String get advanceWarningBothTimings => '两次都提醒';
+
+  @override
+  String get advanceWarningAfterAdvanceDescription => '进击成功后检查大破。';
+
+  @override
+  String get advanceWarningPostBattleDescription => '战斗结算后检查大破。';
+
+  @override
+  String get advanceWarningBothTimingsDescription => '结算后和进击成功后均检查大破。';
+
+  @override
+  String get advanceWarningTimingRequired => '至少保留一项提醒时机。';
+
+  @override
+  String get advanceWarningPostBattleOnlyWarning => '进击成功后将不再检查大破状态。';
+
+  @override
+  String get postBattleDamageControlEquippedBody => '战斗结算后存在大破舰娘，请确认舰船及剩余损管。';
+
+  @override
+  String get postBattleDamageControlDangerBody =>
+      '战斗结算后存在大破舰娘！请停止进击并核对游戏内状态，避免进入下一场战斗。';
+
+  @override
+  String get advanceWarningDamageControlActive => '大破舰已携带损管';
+
+  @override
+  String get advanceWarningReloadGame => '刷新游戏';
+
+  @override
+  String get advanceWarningReloadFrame => '框架刷新';
+
+  @override
+  String get advanceWarningRefreshFailed => '刷新未完成，请核对游戏状态与装备。';
 
   @override
   String get logoutSnackbar => '已退出登录并清除账号信息。';
@@ -1281,6 +1347,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get postBattleWarningTitle => '大破安全警告';
+
+  @override
+  String get advanceWarningMissingHeadline => '存在未携带损管的大破舰娘！';
+
+  @override
+  String get advanceWarningUnknownHeadline => '大破舰娘损管状态未知！';
+
+  @override
+  String get advanceWarningEquippedHeadline => '大破舰娘已携带损管，请确认剩余装备。';
+
+  @override
+  String get advanceWarningEquippedBody => '已在大破状态下选择进击，请确认舰船及剩余损管。';
+
+  @override
+  String get advanceWarningMissing => '未携带损管';
+
+  @override
+  String get advanceWarningUnknown => '损管状态未知，请核对游戏内装备';
+
+  @override
+  String advanceWarningEquipped(String items) {
+    return '携带：$items';
+  }
+
+  @override
+  String get advanceWarningPersonnel => '应急修理要员';
+
+  @override
+  String get advanceWarningGoddess => '应急修理女神';
+
+  @override
+  String advanceWarningShipPosition(int fleet, int position) {
+    return '第$fleet舰队·$position号舰';
+  }
+
+  @override
+  String get advanceWarningMuteSortie => '此次出击不再提醒';
 
   @override
   String get postBattleWarningHeadline => '出击舰队中存在大破舰娘！';
@@ -4104,8 +4207,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get uiDisplaySizeTitle => '介面UI大小';
 
   @override
-  String get uiDisplaySizeDesc =>
-      '調整頂欄、導航欄與資訊欄的顯示密度；極簡檔保留頂部 Yahagi 入口與功能列，資訊欄採用扁平佈局';
+  String get uiDisplaySizeDesc => '調整頂欄、導航欄與資訊欄的顯示密度';
 
   @override
   String get uiDisplaySizeNormal => '標準';
@@ -4234,6 +4336,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get gameSafety => '大破提醒';
+
+  @override
+  String get battleSafetySectionTitle => '遊戲安全';
 
   @override
   String get blockSortieTitle => '大破進擊提醒';
@@ -4522,7 +4627,71 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get battleWarningOff => '關閉';
 
   @override
-  String get battleWarningConfirm => '對話框確認';
+  String get battleWarningConfirm => '開啟提醒';
+
+  @override
+  String get advanceWarningDisplayModeTitle => '提醒方式';
+
+  @override
+  String get advanceWarningAlwaysConfirm => '始終確認';
+
+  @override
+  String get advanceWarningSmart => '智慧提醒';
+
+  @override
+  String get advanceWarningSmartDescription => '大破艦損管均確認可用時頂部通知，否則彈窗。';
+
+  @override
+  String get advanceWarningAlwaysConfirmDescription => '偵測到大破時彈窗確認。';
+
+  @override
+  String get advanceWarningTimingModeTitle => '提醒時機';
+
+  @override
+  String get advanceWarningTimingModeDescription => '修改從下次出擊生效。';
+
+  @override
+  String get advanceWarningPostBattle => '結算後提醒';
+
+  @override
+  String get advanceWarningAfterAdvance => '進擊後提醒';
+
+  @override
+  String get advanceWarningBothTimings => '兩次都提醒';
+
+  @override
+  String get advanceWarningAfterAdvanceDescription => '進擊成功後檢查大破。';
+
+  @override
+  String get advanceWarningPostBattleDescription => '戰鬥結算後檢查大破。';
+
+  @override
+  String get advanceWarningBothTimingsDescription => '結算後和進擊成功後均檢查大破。';
+
+  @override
+  String get advanceWarningTimingRequired => '至少保留一項提醒時機。';
+
+  @override
+  String get advanceWarningPostBattleOnlyWarning => '進擊成功後將不再檢查大破狀態。';
+
+  @override
+  String get postBattleDamageControlEquippedBody => '戰鬥結算後存在大破艦娘，請確認艦船及剩餘損管。';
+
+  @override
+  String get postBattleDamageControlDangerBody =>
+      '戰鬥結算後存在大破艦娘！請停止進擊並核對遊戲內狀態，避免進入下一場戰鬥。';
+
+  @override
+  String get advanceWarningDamageControlActive => '管損有效中';
+
+  @override
+  String get advanceWarningReloadGame => '重新整理遊戲';
+
+  @override
+  String get advanceWarningReloadFrame => '框架重新整理';
+
+  @override
+  String get advanceWarningRefreshFailed => '重新整理未完成，請核對遊戲狀態與裝備。';
 
   @override
   String get logoutSnackbar => '已登出並清除帳號資訊。';
@@ -5038,6 +5207,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get postBattleWarningTitle => '大破安全警告';
+
+  @override
+  String get advanceWarningMissingHeadline => '有未攜帶損管的大破艦娘！';
+
+  @override
+  String get advanceWarningUnknownHeadline => '大破艦娘的損管狀態未知！';
+
+  @override
+  String get advanceWarningEquippedHeadline => '大破艦娘已攜帶損管，請確認剩餘裝備。';
+
+  @override
+  String get advanceWarningEquippedBody => '已在大破狀態下選擇進擊，請確認艦船及剩餘損管。';
+
+  @override
+  String get advanceWarningMissing => '未攜帶損管';
+
+  @override
+  String get advanceWarningUnknown => '損管狀態未知，請核對遊戲內裝備';
+
+  @override
+  String advanceWarningEquipped(String items) {
+    return '攜帶：$items';
+  }
+
+  @override
+  String get advanceWarningPersonnel => '應急修理要員';
+
+  @override
+  String get advanceWarningGoddess => '應急修理女神';
+
+  @override
+  String advanceWarningShipPosition(int fleet, int position) {
+    return '第$fleet艦隊·$position號艦';
+  }
+
+  @override
+  String get advanceWarningMuteSortie => '此次出擊不再提醒';
 
   @override
   String get postBattleWarningHeadline => '出擊艦隊中有大破艦娘！';

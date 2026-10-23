@@ -27,6 +27,10 @@ abstract interface class GameCaptureRebindPort {
   void rebindWebView();
 }
 
+abstract interface class GameCaptureContinuityPort {
+  Stream<void> get interruptions;
+}
+
 abstract final class AndroidCaptureEvent {
   static Object? decode(Object? value) {
     if (value is! Map) {

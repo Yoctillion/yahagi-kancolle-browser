@@ -12,6 +12,7 @@ import '../battle/sortie_damage_control_ledger.dart';
 import '../performance/frame_notification_coalescer.dart';
 import 'game_state.dart';
 import 'game_api_event_pipeline.dart';
+import 'conservative_battle_hp_update.dart';
 import 'game_state_reducer.dart';
 import 'game_state_store.dart';
 import '../logbook/logbook_database.dart';
@@ -20,7 +21,7 @@ import '../fleet/global_game_timer.dart';
 import '../fleet/timer_mechanics_service.dart';
 
 final class GameStateController extends ChangeNotifier
-    implements GameApiEventConsumer {
+    implements GameApiEventConsumer, GameApiContinuityGuard {
   GameStateController({
     GameState? initialState,
     GameStateReducer? reducer,
@@ -58,6 +59,10 @@ final class GameStateController extends ChangeNotifier
       questProgress?.completedIds(DateTime.now().toUtc()) ?? const {};
   final GameStateStore? gameStateStore;
   final AccountSession? accountSession;
+  final Map<int, List<DamageControlEquipmentRef>> _sortieConsumptions = {};
+  int _captureContinuityGeneration = 0;
+  bool _captureContinuityInterrupted = false;
+  String? _sortieCaptureDocumentId;
   AccountScope? _accountScope;
   Timer? _expirationTimer;
   late final Future<void> _initialization;
@@ -79,6 +84,9 @@ final class GameStateController extends ChangeNotifier
     final scope = accountSession!.current;
     if (identical(scope, _accountScope)) return;
     _accountScope = scope;
+    _sortieConsumptions.clear();
+    _captureContinuityInterrupted = false;
+    _sortieCaptureDocumentId = null;
     _hasAcceptedLiveEvent = true;
     if (!scope.isKnown ||
         (_state.memberId > 0 && _state.memberId != scope.memberId)) {
@@ -243,6 +251,116 @@ final class GameStateController extends ChangeNotifier
   String? get lastLogbookError => _lastLogbookError;
 
   @override
+  void interruptCaptureContinuity() {
+    _captureContinuityGeneration++;
+    _captureContinuityInterrupted = true;
+  }
+
+  bool _preservesInterruptedConsumptions(CapturedApiEvent event) =>
+      _captureContinuityInterrupted &&
+      _sortieConsumptions.isNotEmpty &&
+      (event.captureDocumentId == null ||
+          _sortieCaptureDocumentId == null ||
+          event.captureDocumentId == _sortieCaptureDocumentId);
+
+  @override
+  bool allowsCaptureEvent(CapturedApiEvent event) {
+    if (!_preservesInterruptedConsumptions(event)) return true;
+    if (event.path == '/kcsapi/api_start2/getData') return false;
+    final data = event.decodedEnvelope?['api_data'];
+    if (event.path == '/kcsapi/api_get_member/basic') {
+      return data is Map &&
+          _captureInteger(data['api_member_id']) == _state.memberId;
+    }
+    if (event.path == '/kcsapi/api_get_member/require_info' &&
+        data is Map &&
+        data.containsKey('api_basic')) {
+      final basic = data['api_basic'];
+      return basic is Map &&
+          _captureInteger(basic['api_member_id']) == _state.memberId;
+    }
+    if (event.path != '/kcsapi/api_port/port') return true;
+    if (data is! Map) return false;
+    final basic = data['api_basic'];
+    final ships = data['api_ship'];
+    final decks = data.containsKey('api_deck_port')
+        ? data['api_deck_port']
+        : data['api_deck'];
+    if (basic is! Map ||
+        _captureInteger(basic['api_member_id']) <= 0 ||
+        (_state.memberId > 0 &&
+            _captureInteger(basic['api_member_id']) != _state.memberId) ||
+        ships is! List ||
+        ships.isEmpty ||
+        decks is! List ||
+        decks.isEmpty) {
+      return false;
+    }
+    final spentIds = <int>{
+      for (final refs in _sortieConsumptions.values)
+        for (final ref in refs) ref.instanceId,
+    };
+    final shipIds = <int>{};
+    for (final ship in ships) {
+      if (ship is! Map ||
+          _captureInteger(ship['api_id']) <= 0 ||
+          !shipIds.add(_captureInteger(ship['api_id'])) ||
+          !_isCaptureInteger(ship['api_nowhp']) ||
+          !_isCaptureInteger(ship['api_maxhp']) ||
+          (ship['api_maxhp'] as num) <= 0 ||
+          (ship['api_nowhp'] as num) < 0 ||
+          (ship['api_nowhp'] as num) > (ship['api_maxhp'] as num) ||
+          ship['api_slot'] is! List ||
+          !_isCaptureInteger(ship['api_slot_ex'])) {
+        return false;
+      }
+      final slots = ship['api_slot'] as List;
+      if (slots.any((slot) => !_isCaptureInteger(slot)) ||
+          slots.any((slot) => spentIds.contains(_captureInteger(slot))) ||
+          spentIds.contains(_captureInteger(ship['api_slot_ex']))) {
+        return false;
+      }
+    }
+    var hasFleetShip = false;
+    for (final deck in decks) {
+      if (deck is! Map ||
+          _captureInteger(deck['api_id']) <= 0 ||
+          deck['api_ship'] is! List) {
+        return false;
+      }
+      for (final shipId in deck['api_ship'] as List) {
+        if (!_isCaptureInteger(shipId) ||
+            (_captureInteger(shipId) > 0 &&
+                !shipIds.contains(_captureInteger(shipId)))) {
+          return false;
+        }
+        if (_captureInteger(shipId) > 0) hasFleetShip = true;
+      }
+    }
+    if (!hasFleetShip) return false;
+    if (data.containsKey('api_slot_item')) {
+      final items = data['api_slot_item'];
+      if (items is! List ||
+          items.any(
+            (item) =>
+                item is! Map ||
+                _captureInteger(item['api_id']) <= 0 ||
+                spentIds.contains(_captureInteger(item['api_id'])),
+          )) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static int _captureInteger(Object? value) => _isCaptureInteger(value)
+      ? (value! as num).toInt()
+      : int.tryParse('$value') ?? 0;
+
+  static bool _isCaptureInteger(Object? value) =>
+      value is num && value.isFinite && value == value.truncateToDouble();
+
+  @override
   bool supportsPath(String path) {
     return _reducer.supportsPath(path) ||
         _logbookRecorder.supports(path) ||
@@ -258,15 +376,20 @@ final class GameStateController extends ChangeNotifier
     }
     _hasAcceptedLiveEvent = true;
     final scope = accountSession?.current;
+    final continuityGeneration = _captureContinuityGeneration;
     final questBattle = questBattleSnapshot?.call();
     final questBattleIsTrusted = questBattleTrusted?.call() ?? false;
     _queue = _queue.then((_) async {
-      if (!_isCurrent(scope)) {
+      if (!_isCurrent(scope) ||
+          continuityGeneration != _captureContinuityGeneration) {
         return;
       }
       try {
         if (questProgress != null) await _initialization;
-        if (!_isCurrent(scope)) return;
+        if (!_isCurrent(scope) ||
+            continuityGeneration != _captureContinuityGeneration) {
+          return;
+        }
         final previous = _state;
         if (_logbookRecorder.supports(event.path)) {
           _logbookQueue = _logbookQueue.then((_) async {
@@ -279,6 +402,22 @@ final class GameStateController extends ChangeNotifier
           });
         }
         var next = _reducer.reduce(previous, event);
+        final resetsConsumptions =
+            event.path == '/kcsapi/api_port/port' ||
+            event.path == '/kcsapi/api_start2/getData' ||
+            (event.path == '/kcsapi/api_req_map/start' &&
+                !_preservesInterruptedConsumptions(event)) ||
+            next.memberId != previous.memberId;
+        if (!resetsConsumptions &&
+            next.combatState.isActive &&
+            _sortieConsumptions.isNotEmpty) {
+          next = _reducer.reconcileSortieConsumptions(
+            previous,
+            next,
+            _sortieConsumptions,
+            event.capturedAt,
+          );
+        }
         var hasAccountScopedQuests = false;
         if (accountSession != null &&
             next.memberId > 0 &&
@@ -303,7 +442,18 @@ final class GameStateController extends ChangeNotifier
             hasAccountScopedQuests: hasAccountScopedQuests,
           );
         }
-        if (!_isCurrent(scope)) return;
+        if (!_isCurrent(scope) ||
+            continuityGeneration != _captureContinuityGeneration) {
+          return;
+        }
+        if (resetsConsumptions) {
+          _sortieConsumptions.clear();
+          _captureContinuityInterrupted = false;
+          _sortieCaptureDocumentId = null;
+        }
+        if (next.combatState.isActive && event.captureDocumentId != null) {
+          _sortieCaptureDocumentId = event.captureDocumentId;
+        }
         if (!identical(next, previous)) {
           _timerService.observe(
             previousState: previous,
@@ -345,14 +495,26 @@ final class GameStateController extends ChangeNotifier
   void applyFriendlyBattleHp(Map<int, int> hpByShipId, DateTime capturedAt) {
     if (_disposed || hpByShipId.isEmpty) return;
     final scope = accountSession?.current;
+    final continuityGeneration = _captureContinuityGeneration;
     _queue = _queue.then((_) {
-      if (!_isCurrent(scope)) return;
+      if (!_isCurrent(scope) ||
+          continuityGeneration != _captureContinuityGeneration) {
+        return;
+      }
       final previous = _state;
       // A delayed prediction is not authoritative after returning to port.
       if (!previous.combatState.isActive) return;
+      final effectiveHp = hpByShipId is ConservativeBattleHpUpdate
+          ? <int, int>{
+              for (final entry in hpByShipId.entries)
+                if (previous.ships[entry.key] case final ship?
+                    when ship.currentHp > 0 && entry.value < ship.currentHp)
+                  entry.key: entry.value.clamp(1, ship.currentHp).toInt(),
+            }
+          : hpByShipId;
       final next = _reducer.applyFriendlyBattleHp(
         previous,
-        hpByShipId,
+        effectiveHp,
         capturedAt,
       );
       if (identical(next, previous)) return;
@@ -373,6 +535,10 @@ final class GameStateController extends ChangeNotifier
       final previous = _state;
       // A delayed prediction is not authoritative after returning to port.
       if (!previous.combatState.isActive) return;
+      for (final entry in consumedByShipId.entries) {
+        _sortieConsumptions[entry.key] =
+            List<DamageControlEquipmentRef>.unmodifiable(entry.value);
+      }
       final next = _reducer.applyDamageControlConsumption(
         previous,
         consumedByShipId,

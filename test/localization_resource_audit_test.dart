@@ -212,6 +212,8 @@ void main() {
     // Each entry is intentionally shared: product/game terminology, numerals,
     // protocol names, or a language self-name. Adding a key requires review.
     const reviewedZhHant = <String>{
+      // 提醒方式 has identical standard spelling in both Chinese scripts.
+      'advanceWarningDisplayModeTitle',
       // These battle section labels share standard Chinese spelling.
       'battlePredictionSection',
       'battleSectionOrderMoveDown',

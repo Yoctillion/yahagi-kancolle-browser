@@ -356,8 +356,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get uiDisplaySizeTitle => 'UI 크기';
 
   @override
-  String get uiDisplaySizeDesc =>
-      '상단 바, 탐색 바, 정보 바의 표시 밀도를 조정합니다. 미니멀은 상단 Yahagi 버튼과 도구 모음을 유지하고 정보 바를 평평한 레이아웃으로 표시합니다';
+  String get uiDisplaySizeDesc => '상단 바, 탐색 바, 정보 바의 표시 밀도를 조정합니다.';
 
   @override
   String get uiDisplaySizeNormal => '보통';
@@ -488,6 +487,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get gameSafety => '대파 경고';
+
+  @override
+  String get battleSafetySectionTitle => '게임 안전';
 
   @override
   String get blockSortieTitle => '대파 진격 경고';
@@ -778,7 +780,76 @@ class AppLocalizationsKo extends AppLocalizations {
   String get battleWarningOff => '끄기';
 
   @override
-  String get battleWarningConfirm => '확인 대화상자';
+  String get battleWarningConfirm => '알림 켜기';
+
+  @override
+  String get advanceWarningDisplayModeTitle => '경고 표시 방식';
+
+  @override
+  String get advanceWarningAlwaysConfirm => '항상 확인';
+
+  @override
+  String get advanceWarningSmart => '스마트 알림';
+
+  @override
+  String get advanceWarningSmartDescription =>
+      '모든 대파함의 남은 응급수리 장비가 확인되면 상단 알림, 그 외에는 확인창 표시.';
+
+  @override
+  String get advanceWarningAlwaysConfirmDescription => '대파 감지 시 확인창을 표시합니다.';
+
+  @override
+  String get advanceWarningTimingModeTitle => '알림 시점';
+
+  @override
+  String get advanceWarningTimingModeDescription => '변경은 다음 출격부터 적용됩니다.';
+
+  @override
+  String get advanceWarningPostBattle => '전투 결과 후 알림';
+
+  @override
+  String get advanceWarningAfterAdvance => '진격 후 알림';
+
+  @override
+  String get advanceWarningBothTimings => '두 시점 모두 알림';
+
+  @override
+  String get advanceWarningAfterAdvanceDescription => '진격 성공 후 대파를 확인합니다.';
+
+  @override
+  String get advanceWarningPostBattleDescription => '전투 결과 후 대파를 확인합니다.';
+
+  @override
+  String get advanceWarningBothTimingsDescription =>
+      '전투 결과 후와 진격 성공 후 대파를 확인합니다.';
+
+  @override
+  String get advanceWarningTimingRequired => '알림 시점을 하나 이상 선택해 주세요.';
+
+  @override
+  String get advanceWarningPostBattleOnlyWarning =>
+      '진격에 성공한 후에는 대파 상태를 확인하지 않습니다.';
+
+  @override
+  String get postBattleDamageControlEquippedBody =>
+      '전투 결과 확인 후 대파된 칸무스가 있습니다. 함선과 남은 응급수리 장비를 확인해 주세요.';
+
+  @override
+  String get postBattleDamageControlDangerBody =>
+      '전투 결과 확인 후 대파된 칸무스가 있습니다! 진격을 멈추고 다음 전투에 들어가기 전에 게임 내 상태를 확인해 주세요.';
+
+  @override
+  String get advanceWarningDamageControlActive => '응급수리 장비 유효';
+
+  @override
+  String get advanceWarningReloadGame => '게임 새로고침';
+
+  @override
+  String get advanceWarningReloadFrame => '프레임 새로고침';
+
+  @override
+  String get advanceWarningRefreshFailed =>
+      '새로고침이 완료되지 않았습니다. 게임 상태와 장비를 확인해 주세요.';
 
   @override
   String get logoutSnackbar => '로그아웃하고 계정 정보를 삭제했습니다.';
@@ -1300,6 +1371,47 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get postBattleWarningTitle => '대파 안전 경고';
+
+  @override
+  String get advanceWarningMissingHeadline => '응급수리 장비를 장착하지 않은 대파된 칸무스가 있습니다!';
+
+  @override
+  String get advanceWarningUnknownHeadline =>
+      '대파된 칸무스의 응급수리 장비 장착 여부를 알 수 없습니다!';
+
+  @override
+  String get advanceWarningEquippedHeadline =>
+      '대파된 칸무스가 응급수리 장비를 장착하고 있습니다. 남은 장비를 확인해 주세요.';
+
+  @override
+  String get advanceWarningEquippedBody =>
+      '대파 상태에서 진격을 선택했습니다. 함선과 남은 응급수리 장비를 확인해 주세요.';
+
+  @override
+  String get advanceWarningMissing => '응급수리 장비 미장착';
+
+  @override
+  String get advanceWarningUnknown =>
+      '응급수리 장비 장착 여부를 알 수 없습니다. 게임 내 장비를 확인해 주세요';
+
+  @override
+  String advanceWarningEquipped(String items) {
+    return '장착: $items';
+  }
+
+  @override
+  String get advanceWarningPersonnel => '응급수리요원';
+
+  @override
+  String get advanceWarningGoddess => '응급수리여신';
+
+  @override
+  String advanceWarningShipPosition(int fleet, int position) {
+    return '제$fleet함대 · $position번함';
+  }
+
+  @override
+  String get advanceWarningMuteSortie => '이번 출격에서는 다시 알리지 않기';
 
   @override
   String get postBattleWarningHeadline => '출격 함대에 대파된 칸무스가 있습니다!';

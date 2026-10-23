@@ -14,7 +14,6 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
-import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_underline_tabs.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_store.dart';
@@ -1194,7 +1193,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('维修模式切换是共用的文字切换，选中金色并可切换', (tester) async {
+    testWidgets('维修模式切换等分整行，选中金色并可切换', (tester) async {
       final controller = GameStateController(
         gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
       );
@@ -1210,7 +1209,7 @@ void main() {
         ),
       );
       final selector = find.byKey(const Key('repair-summary-mode-selector'));
-      expect(tester.widget(selector), isA<FlatTextToggle>());
+      expect(tester.widget(selector), isA<FlatUnderlineTabs>());
       Color? labelColor(String mode) => tester
           .widget<Text>(
             find.descendant(

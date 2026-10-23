@@ -651,6 +651,46 @@ class GameStateReducer {
     );
   }
 
+  GameState reconcileSortieConsumptions(
+    GameState previous,
+    GameState next,
+    Map<int, List<DamageControlEquipmentRef>> consumedByShipId,
+    DateTime capturedAt,
+  ) {
+    final consumed = <int, DamageControlEquipmentRef>{
+      for (final refs in consumedByShipId.values)
+        for (final ref in refs) ref.instanceId: ref,
+    };
+    final conflictingRefs = <int, List<DamageControlEquipmentRef>>{};
+    final preservedHp = <int, int>{};
+    for (final ship in next.ships.values) {
+      final refs = <DamageControlEquipmentRef>[
+        for (final instanceId in <int>[...ship.slotIds, ship.extraSlotId])
+          ?consumed[instanceId],
+      ];
+      if (refs.isEmpty) continue;
+      conflictingRefs[ship.id] = refs;
+      final previousShip = previous.ships[ship.id];
+      if (previousShip != null &&
+          previousShip.maxHp == ship.maxHp &&
+          previousShip.currentHp < ship.currentHp) {
+        preservedHp[ship.id] = previousShip.currentHp;
+      }
+    }
+    var reconciled = applyDamageControlConsumption(
+      next,
+      conflictingRefs,
+      capturedAt,
+    );
+    reconciled = applyFriendlyBattleHp(reconciled, preservedHp, capturedAt);
+    if (consumed.keys.any(reconciled.slotItems.containsKey)) {
+      final items = Map<int, OwnedSlotItem>.of(reconciled.slotItems)
+        ..removeWhere((instanceId, _) => consumed.containsKey(instanceId));
+      reconciled = reconciled.copyWith(slotItems: items);
+    }
+    return reconciled;
+  }
+
   GameState _charge(
     GameState state,
     Map<String, Object?> data,

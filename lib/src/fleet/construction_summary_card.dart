@@ -4,6 +4,7 @@ import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../layout/flat_list_row.dart';
+import '../layout/flat_portrait_backdrop.dart';
 import '../layout/flat_style.dart';
 import '../layout/module_summaries.dart';
 import '../layout/panel_style.dart';
@@ -140,27 +141,35 @@ class ConstructionSummaryCard extends StatelessWidget {
 
     if (PanelStyleScope.isFlat(context)) {
       final completed = active && dock != null && dock.isCompletedAt(now);
-      return FlatListRow(
-        key: Key('construction-summary-slot-$position'),
+      final hasPortrait = visible.contains('portrait') && master != null;
+      final shadows = hasPortrait ? flatOnImageShadows(context) : null;
+      final slotKey = Key('construction-summary-slot-$position');
+      final row = FlatListRow(
+        key: hasPortrait ? null : slotKey,
         onTap: onOpenConstruction,
         name: flatRowText(
           context,
-          active ? '$position · $name' : '$position',
+          active ? name : '',
           color: disabled ? const Color(0xff4a5c68) : Colors.white,
+          shadows: shadows,
         ),
         trailing: active && dock != null
             ? flatRowTrailing(
                 completed
                     ? Text(
                         fleetText(context, '已完成'),
-                        style: flatRowTextStyle(context, color: flatDoneColor),
+                        style: flatRowTextStyle(
+                          context,
+                          color: flatDoneColor,
+                          shadows: shadows,
+                        ),
                       )
                     : OperationCountdownText(
                         completionTime: dock.completionTime,
                         completedText: fleetText(context, '已完成'),
                         completedColor: flatDoneColor,
                         countingColor: flatAccentColor,
-                        style: flatRowTextStyle(context),
+                        style: flatRowTextStyle(context, shadows: shadows),
                       ),
               )
             : Text(
@@ -171,6 +180,17 @@ class ConstructionSummaryCard extends StatelessWidget {
                   color: disabled ? const Color(0xff4a5c68) : flatMutedColor,
                 ),
               ),
+      );
+      if (!hasPortrait) return row;
+      return FlatPortraitBackdrop(
+        key: slotKey,
+        image: (width, height) => ShipPortrait(
+          ship: master,
+          serverOrigin: state.serverOrigin,
+          width: width,
+          height: height,
+        ),
+        child: row,
       );
     }
 

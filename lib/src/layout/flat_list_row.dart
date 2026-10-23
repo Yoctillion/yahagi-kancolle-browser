@@ -6,8 +6,8 @@ import 'game_edge_tap_guard.dart';
 
 /// 极简档的模块行：无底色，左侧标签和名称，右侧右对齐的时间或状态。
 /// 标签按自身宽度排布且各自封顶，trailing 封顶一半宽度，名称独占其余空间。
-/// 两个标签和 trailing 都顶到封顶时，固定部分是 0.9 倍行宽加约 10dp 间隙，
-/// 行宽约 100dp 以下会溢出；信息栏常见宽度下只会截断名称。
+/// 两个标签和 trailing 都顶到封顶时占 0.9 倍行宽；极窄列只压缩标签间距，
+/// 避免剩余一成宽度放不下原来的 10dp 间隙。常见宽度仍保留原间距。
 const _tagMaxFraction = 0.2;
 
 class FlatListRow extends StatelessWidget {
@@ -31,30 +31,50 @@ class FlatListRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: flatRowSpacing / 2),
         child: LayoutBuilder(
-          builder: (context, constraints) => Row(
-            children: [
-              for (var index = 0; index < tags.length; index++) ...[
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: constraints.maxWidth * _tagMaxFraction,
+          builder: (context, constraints) {
+            final desiredSpacing = tags.isEmpty
+                ? 0.0
+                : (tags.length - 1) * 4.0 + 6;
+            final reservedWidth =
+                constraints.maxWidth * _tagMaxFraction * tags.length +
+                (trailing == null ? 0 : constraints.maxWidth * .5);
+            final spacingBudget = (constraints.maxWidth - reservedWidth).clamp(
+              0.0,
+              desiredSpacing,
+            );
+            final spacingScale =
+                desiredSpacing == 0 || spacingBudget >= desiredSpacing
+                ? 1.0
+                // Leave a tiny margin against rounding once the row is full.
+                : (spacingBudget - 1e-6).clamp(0.0, spacingBudget) /
+                      desiredSpacing;
+            return Row(
+              children: [
+                for (var index = 0; index < tags.length; index++) ...[
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth * _tagMaxFraction,
+                    ),
+                    child: tags[index],
                   ),
-                  child: tags[index],
-                ),
-                SizedBox(width: index == tags.length - 1 ? 6 : 4),
+                  SizedBox(
+                    width: (index == tags.length - 1 ? 6 : 4) * spacingScale,
+                  ),
+                ],
+                Expanded(child: name ?? const SizedBox.shrink()),
+                if (trailing != null)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth * 0.5,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: trailing,
+                    ),
+                  ),
               ],
-              Expanded(child: name ?? const SizedBox.shrink()),
-              if (trailing != null)
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: constraints.maxWidth * 0.5,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 6),
-                    child: trailing,
-                  ),
-                ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

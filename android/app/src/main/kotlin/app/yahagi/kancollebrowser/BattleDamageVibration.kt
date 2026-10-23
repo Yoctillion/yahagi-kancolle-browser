@@ -27,12 +27,7 @@ data class BattleDamageVibrationPattern(
 
 object BattleDamageVibrator {
     fun alert(context: Context, severity: String): Boolean {
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            context.getSystemService(VibratorManager::class.java)?.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        } ?: return false
+        val vibrator = findVibrator(context) ?: return false
         if (!vibrator.hasVibrator()) return false
 
         val pattern = BattleDamageVibrationPattern.forSeverity(severity)
@@ -50,4 +45,19 @@ object BattleDamageVibrator {
         }
         return true
     }
+
+    fun cancel(context: Context): Boolean {
+        val vibrator = findVibrator(context) ?: return false
+        if (!vibrator.hasVibrator()) return false
+        vibrator.cancel()
+        return true
+    }
+
+    private fun findVibrator(context: Context): Vibrator? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
 }

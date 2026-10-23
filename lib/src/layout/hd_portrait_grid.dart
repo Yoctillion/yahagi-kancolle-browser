@@ -4,9 +4,11 @@ import 'package:flutter/rendering.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/layout_settings_controller.dart';
 import '../settings/hd_layout_settings.dart';
+import '../settings/ui_display_size.dart';
 import '../widgets/top_notice.dart';
 import 'hd_dashboard_content.dart';
 import 'hd_home_editor.dart';
+import 'panel_style.dart';
 
 class HdPortraitGrid extends StatelessWidget {
   const HdPortraitGrid({
@@ -25,6 +27,7 @@ class HdPortraitGrid extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: controller,
     builder: (context, _) {
+      final flat = controller.uiDisplaySize.isMinimal;
       final settings = controller.hdSettings;
       final modules = settings.portrait.where(
         (e) => editing || !settings.portraitHidden.contains(e.id),
@@ -67,7 +70,7 @@ class HdPortraitGrid extends StatelessWidget {
         );
       }
 
-      return GestureDetector(
+      final grid = GestureDetector(
         onLongPress: editing
             ? null
             : () {
@@ -115,10 +118,15 @@ class HdPortraitGrid extends StatelessWidget {
                       RepaintBoundary(
                         key: ValueKey('hd-portrait-cell-${item.id}'),
                         child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: appColor(context, const Color(0xff142735)),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          decoration: flat
+                              ? const BoxDecoration()
+                              : BoxDecoration(
+                                  color: appColor(
+                                    context,
+                                    const Color(0xff142735),
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                           child: Align(
                             alignment: Alignment.topCenter,
                             heightFactor: 1,
@@ -132,6 +140,10 @@ class HdPortraitGrid extends StatelessWidget {
             ),
           ],
         ),
+      );
+      return PanelStyleScope(
+        style: flat ? PanelStyle.flat : PanelStyle.card,
+        child: grid,
       );
     },
   );

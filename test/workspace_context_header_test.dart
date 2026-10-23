@@ -10,6 +10,7 @@ import 'package:yahagi_kancolle_browser/src/layout/workspace_context_header.dart
 import 'package:yahagi_kancolle_browser/src/quest/quest_center_page.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_page.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_state.dart';
+import 'package:yahagi_kancolle_browser/src/settings/ui_display_size.dart';
 
 Widget _localizedApp({required Widget home, Locale? locale}) => MaterialApp(
   locale: locale ?? const Locale('zh'),
@@ -95,6 +96,45 @@ void main() {
     await tester.tap(find.byKey(const Key('header-resource-anchorage-timer')));
     await tester.pump();
     expect(anchorageTapCount, 1);
+  });
+
+  testWidgets('game header can flatten resources without changing their size', (
+    tester,
+  ) async {
+    Future<void> show({required bool flat}) => tester.pumpWidget(
+      _localizedApp(
+        home: Scaffold(
+          body: WorkspaceContextHeader(
+            workspaceIndex: 0,
+            state: state,
+            selectedFleetId: 1,
+            uiSize: UiDisplaySize.compact,
+            flatStyle: flat,
+          ),
+        ),
+      ),
+    );
+    final resource = find.byKey(const Key('header-resource-material-1'));
+    Finder capsules() => find.descendant(
+      of: resource,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration! as BoxDecoration).border != null,
+      ),
+    );
+    await show(flat: false);
+    expect(capsules(), findsOneWidget);
+    final originalSize = tester.getSize(resource);
+    await show(flat: true);
+    expect(capsules(), findsNothing);
+    expect(tester.getSize(resource), originalSize);
+    expect(
+      find.byKey(const Key('header-resource-divider-before-anchorage-timer')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(

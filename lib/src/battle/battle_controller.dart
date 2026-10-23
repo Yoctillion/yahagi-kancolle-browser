@@ -5,7 +5,9 @@ import '../account/account_session.dart';
 
 import '../bridge/captured_api_event.dart';
 import '../capture/game_capture_path_catalog.dart';
+import '../capture/sortie_warning_session.dart';
 import '../game_state/combat_state.dart';
+import '../game_state/conservative_battle_hp_update.dart';
 import '../game_state/game_api_decoder.dart';
 import '../game_state/game_api_event_pipeline.dart';
 import '../game_state/game_state.dart';
@@ -86,6 +88,7 @@ final class BattleController extends ChangeNotifier
   final BattleNodeLabelResolver nodeLabelResolver;
   final FormationMemoryController? formationMemory;
   final AccountSession? accountSession;
+  final SortieWarningSession warningSession = SortieWarningSession();
   AccountScope? _accountScope;
   int _memberId = 0;
   int _generation = 0;
@@ -112,6 +115,8 @@ final class BattleController extends ChangeNotifier
     _lastBattleCapturedAt = null;
     _lastError = null;
     _sortieDamageControls.endSortie();
+    _hasTrustedDamageControlBaseline = true;
+    warningSession.endSortie();
     _clearSortieMapProgress();
     _context = const BattleContext();
     _acceptedSequences.clear();
@@ -140,6 +145,7 @@ final class BattleController extends ChangeNotifier
   BattlePredictionEngine? _predictionEngine;
   final SortieDamageControlLedger _sortieDamageControls =
       SortieDamageControlLedger();
+  bool _hasTrustedDamageControlBaseline = true;
   LiveBattle? _current;
   SortieMapProgress? _sortieMapProgress;
   bool _sortieMapFallbackAllowed = true;
@@ -166,6 +172,8 @@ final class BattleController extends ChangeNotifier
   GameState get gameStateSnapshot => gameState();
   String? get lastError => _lastError;
   BattleSession? get session => _session;
+  bool get isDamageControlStateTrusted =>
+      _sortieDamageControls.isActive && _sortieDamageControls.isTrusted;
 
   SortieMapProgress? get sortieMapProgress {
     if (!_sortieMapFallbackAllowed ||
@@ -220,6 +228,20 @@ final class BattleController extends ChangeNotifier
   @override
   Future<void> get idle => _queue;
 
+  void invalidateCaptureContinuity() {
+    if (_disposed) return;
+    _generation++;
+    _acceptedSequences.clear();
+    _lastBattleCapturedAt = null;
+    _hasTrustedDamageControlBaseline = false;
+    _sortieDamageControls.beginSortie(
+      trusted: false,
+      reason: 'capture continuity interrupted',
+    );
+    warningSession.endSortie();
+    _captureNotifications.schedule(notifyListeners);
+  }
+
   void bindFriendlyHpUpdater(
     void Function(Map<int, int> hpByShipId, DateTime capturedAt) updater,
   ) {
@@ -228,7 +250,7 @@ final class BattleController extends ChangeNotifier
     if (current == null ||
         current.context.practice ||
         current.displayStage == BattleDisplayStage.navigation ||
-        _hasUntrustedPoiLedger) {
+        (_hasUntrustedPoiLedger && _lastBattleCapturedAt == null)) {
       return;
     }
     _emitFriendlyHp(current, _lastBattleCapturedAt ?? DateTime.now().toUtc());
@@ -355,11 +377,16 @@ final class BattleController extends ChangeNotifier
     if (event.path == '/kcsapi/api_port/port' ||
         event.path == '/kcsapi/api_start2/getData') {
       _map(data); // Do not clear a valid session for a malformed snapshot.
+      if (event.path == '/kcsapi/api_port/port' &&
+          _map(data)['api_ship'] is List) {
+        _hasTrustedDamageControlBaseline = true;
+      }
       _current = null;
       _archiveSession();
       _session = null;
       _predictionEngine = null;
       _sortieDamageControls.endSortie();
+      warningSession.endSortie();
       _clearSortieMapProgress();
       _context = const BattleContext();
       return;
@@ -385,8 +412,14 @@ final class BattleController extends ChangeNotifier
         _updateSortieMapProgress(map, event);
       }
       if (event.path == '/kcsapi/api_req_map/start') {
-        _sortieDamageControls.beginSortie();
+        warningSession.startSortie();
+        _sortieDamageControls.beginSortie(
+          trusted: _hasTrustedDamageControlBaseline,
+          reason:
+              'fresh ship equipment snapshot required after capture interruption',
+        );
       } else if (!_sortieDamageControls.isActive) {
+        warningSession.ensureSortie();
         _sortieDamageControls.beginSortie(
           trusted: false,
           reason: 'missing previous sortie node',
@@ -866,19 +899,16 @@ final class BattleController extends ChangeNotifier
         ship.withLatestFriendlyProficiency(state),
     ];
     if (!practice && !hasUntrustedPoiLedger) {
+      final settings = battleStatusEffectSettings?.call();
       final severity = detectFriendlyDamageAlert(
         before: <BattleShipSnapshot>[...friendMain, ...friendEscort],
         after: <BattleShipSnapshot>[...parsedFriendMain, ...parsedFriendEscort],
+        includeModerate: settings?.vibrates(ShipDamageLevel.moderate) == true,
+        includeHeavy:
+            !warningSession.isMuted &&
+            settings?.vibrates(ShipDamageLevel.heavy) == true,
       );
-      final level = switch (severity) {
-        BattleDamageAlertSeverity.moderate => ShipDamageLevel.moderate,
-        BattleDamageAlertSeverity.heavy => ShipDamageLevel.heavy,
-        null => ShipDamageLevel.none,
-      };
-      final settings = battleStatusEffectSettings?.call();
-      if (severity != null &&
-          settings?.vibrates(level) == true &&
-          damageAlertPort != null) {
+      if (severity != null && damageAlertPort != null) {
         unawaited(
           damageAlertPort!.alert(severity).catchError((Object error) {
             debugPrint('战斗受损震动提醒失败: $error');
@@ -933,18 +963,40 @@ final class BattleController extends ChangeNotifier
           : _predictedMvpPositions(parsed.friendMain, parsed.friendEscort),
     );
     _lastBattleCapturedAt = event.capturedAt;
-    if (!practice && !hasUntrustedPoiLedger) {
+    if (!practice) {
       _emitFriendlyHp(_current!, event.capturedAt);
-      _emitDamageControlConsumption(event.capturedAt);
+      if (!hasUntrustedPoiLedger) {
+        _emitDamageControlConsumption(event.capturedAt);
+      }
     }
   }
 
   void _emitFriendlyHp(LiveBattle battle, DateTime capturedAt) {
+    final hpByShipId = <int, int>{};
+    final untrusted = _hasUntrustedPoiLedger;
+    final ownedShips = untrusted ? gameState().ships : null;
+    for (final ship in battle.friendShips) {
+      final shipId = ship.ownedShipId;
+      if (shipId == null) continue;
+      if (!untrusted) {
+        hpByShipId[shipId] = ship.currentHp;
+        continue;
+      }
+      final ownedShip = ownedShips![shipId];
+      if (ownedShip == null || ownedShip.currentHp <= 0) continue;
+      final predictedHp = ship.usedDamageControlItemIds.isEmpty
+          ? ship.currentHp
+          : 1;
+      final conservativeHp = predictedHp.clamp(1, ownedShip.currentHp).toInt();
+      if (conservativeHp < ownedShip.currentHp) {
+        hpByShipId[shipId] = conservativeHp;
+      }
+    }
+    if (untrusted && hpByShipId.isEmpty) return;
     _friendlyHpUpdater?.call(
-      Map<int, int>.unmodifiable(<int, int>{
-        for (final ship in battle.friendShips)
-          if (ship.ownedShipId != null) ship.ownedShipId!: ship.currentHp,
-      }),
+      untrusted
+          ? ConservativeBattleHpUpdate(hpByShipId)
+          : Map<int, int>.unmodifiable(hpByShipId),
       capturedAt,
     );
   }
@@ -1282,12 +1334,19 @@ final class BattleController extends ChangeNotifier
       ];
     }
     final ownedShips = state.shipsForFleet(deckId);
+    final fleetShipIds =
+        state.fleets
+            .where((fleet) => fleet.id == deckId)
+            .firstOrNull
+            ?.shipIds ??
+        const <int>[];
     if (ownedShips.isEmpty && previous != null) {
       return _withHp(previous, nowHp, maxHp);
     }
     return <BattleShipSnapshot>[
       for (var index = 0; index < ownedShips.length; index++)
         () {
+          final position = fleetShipIds.indexOf(ownedShips[index].id);
           final isEscaped = escapedIds.contains(ownedShips[index].id);
           final equipped = state.equipmentForShip(ownedShips[index]);
           final consumed = _sortieDamageControls.consumptionsForShip(
@@ -1301,16 +1360,16 @@ final class BattleController extends ChangeNotifier
                 '舰娘 ${ownedShips[index].masterId}',
             side: BattleSide.friend,
             fleetRole: role,
-            position: index,
+            position: position,
             initialHp: _atNonNegative(
               nowHp,
-              index,
+              position,
               ownedShips[index].currentHp,
             ),
-            maxHp: _atPositive(maxHp, index, ownedShips[index].maxHp),
+            maxHp: _atPositive(maxHp, position, ownedShips[index].maxHp),
             currentHp: _atNonNegative(
               nowHp,
-              index,
+              position,
               ownedShips[index].currentHp,
             ),
             damageDealt: index < (previous?.length ?? 0)
@@ -1322,13 +1381,12 @@ final class BattleController extends ChangeNotifier
             condition: ownedShips[index].condition,
             details: BattleShipDetails.friendly(ownedShips[index], state),
             equipmentMasterIds: <int>[
+              for (final item in consumed) item.masterId,
               for (final equipment in equipped)
-                equipment.owned.masterSlotItemId,
-              for (final item in consumed)
-                if (!equipped.any(
-                  (eq) => eq.owned.instanceId == item.instanceId,
+                if (!consumed.any(
+                  (item) => item.instanceId == equipment.owned.instanceId,
                 ))
-                  item.masterId,
+                  equipment.owned.masterSlotItemId,
             ],
             isEscaped: isEscaped,
           );
@@ -1614,6 +1672,7 @@ final class BattleController extends ChangeNotifier
   void dispose() {
     _disposed = true;
     accountSession?.removeListener(_onAccountChanged);
+    warningSession.dispose();
     _captureNotifications.dispose();
     super.dispose();
   }

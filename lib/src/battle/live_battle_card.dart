@@ -187,7 +187,9 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
             'battle',
             widget.onOpenDisplaySettings,
           ),
-          titleBadge: idle ? const _IdleBadge() : _StatusBadge(battle: battle),
+          titleBadge: idle
+              ? (flat ? null : const _IdleBadge())
+              : _StatusBadge(battle: battle),
           trailing: _ModeSwitch(mode: _mode, onChanged: _setMode),
           child: Column(
             key: widget.collapsed

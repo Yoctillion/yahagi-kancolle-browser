@@ -4,6 +4,7 @@ import '../../l10n/app_localizations.dart';
 import 'dashboard_editing_scope.dart';
 import 'flat_style.dart';
 import 'panel_style.dart';
+import 'ui_scale.dart';
 
 /// Shared by the ordinary dashboard, HD sidebar and HD bottom row.
 class DashboardEditItem extends StatelessWidget {
@@ -58,12 +59,20 @@ class DashboardEditItem extends StatelessWidget {
               key: Key('dashboard-drag-region-$id'),
               data: id,
               maxSimultaneousDrags: 1,
-              feedback: Material(
-                color: appColor(context, Colors.transparent),
-                elevation: 6,
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  child: IgnorePointer(child: content),
+              // Feedback lives in the overlay, outside the scaled dashboard.
+              // Its anchor is measured there too, so use the displayed offset.
+              dragAnchorStrategy: (draggable, dragContext, position) =>
+                  childDragAnchorStrategy(draggable, dragContext, position) *
+                  UiScale.of(dragContext),
+              feedback: UiScale(
+                scale: UiScale.of(context),
+                child: Material(
+                  color: appColor(context, Colors.transparent),
+                  elevation: 6,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    child: IgnorePointer(child: content),
+                  ),
                 ),
               ),
               childWhenDragging: Opacity(opacity: .25, child: content),

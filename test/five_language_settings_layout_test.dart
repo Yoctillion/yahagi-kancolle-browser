@@ -21,6 +21,65 @@ void _expectReadableText(WidgetTester tester, Finder text, Rect bounds) {
   expect(textBounds.bottom, lessThanOrEqualTo(bounds.bottom + .1));
 }
 
+Future<void> _chooseWarningSetting(
+  WidgetTester tester, {
+  required String selectorKey,
+  required String dropdownKey,
+  required String currentLabel,
+  required String currentDescription,
+  required List<(String, String)> options,
+  required String selectedKey,
+  required String selectedLabel,
+  required String selectedDescription,
+  required double width,
+}) async {
+  final selector = find.byKey(Key(selectorKey));
+  final dropdown = find.byKey(Key(dropdownKey));
+  final selectedBefore = find.descendant(
+    of: dropdown,
+    matching: find.text(currentLabel),
+  );
+  expect(selectedBefore, findsOneWidget);
+  await tester.ensureVisible(selector);
+  await tester.pumpAndSettle();
+  _expectReadableText(tester, selectedBefore, tester.getRect(dropdown));
+  _expectReadableText(
+    tester,
+    find.descendant(of: selector, matching: find.text(currentDescription)),
+    tester.getRect(selector),
+  );
+  await tester.tap(dropdown);
+  await tester.pumpAndSettle();
+  for (final (key, label) in options) {
+    final option = find.byKey(Key(key)).last;
+    await tester.ensureVisible(option);
+    await tester.pumpAndSettle();
+    final text = find.descendant(of: option, matching: find.text(label));
+    expect(text, findsOneWidget);
+    _expectReadableText(tester, text, tester.getRect(option));
+    _expectReadableText(tester, text, Rect.fromLTWH(0, 0, width, 780));
+  }
+  final selectedOption = find.byKey(Key(selectedKey)).last;
+  await tester.ensureVisible(selectedOption);
+  await tester.pumpAndSettle();
+  await tester.tap(selectedOption);
+  await tester.pumpAndSettle();
+  expect(find.byKey(Key(selectedKey)), findsOneWidget);
+  final selectedAfter = find.descendant(
+    of: dropdown,
+    matching: find.text(selectedLabel),
+  );
+  expect(selectedAfter, findsOneWidget);
+  await tester.ensureVisible(selector);
+  await tester.pumpAndSettle();
+  _expectReadableText(tester, selectedAfter, tester.getRect(dropdown));
+  _expectReadableText(
+    tester,
+    find.descendant(of: selector, matching: find.text(selectedDescription)),
+    tester.getRect(selector),
+  );
+}
+
 void main() {
   for (final locale in AppLocalizations.supportedLocales) {
     for (final width in [320.0, 800.0]) {
@@ -31,9 +90,8 @@ void main() {
           tester.view.physicalSize = Size(width, 780);
           addTearDown(tester.view.resetDevicePixelRatio);
           addTearDown(tester.view.resetPhysicalSize);
-          final controller = await SafetySettingsController.load(
-            MemorySafetySettingsStore(),
-          );
+          final store = MemorySafetySettingsStore();
+          final controller = await SafetySettingsController.load(store);
           addTearDown(controller.dispose);
           controller.setBattleEffectDisplayScope(
             BattleEffectDisplayScope.predictionOnly,
@@ -61,13 +119,74 @@ void main() {
           );
           await tester.pumpAndSettle();
           final l10n = lookupAppLocalizations(locale);
-          expect(find.text(l10n.blockSortieTitle), findsOneWidget);
+          final warningSwitch = find.byKey(
+            const Key('battleWarningMasterSwitch'),
+          );
+          expect(tester.widget<Switch>(warningSwitch).value, isTrue);
+          final switchRow = find.byKey(const Key('battleWarningMasterRow'));
+          final switchLabel = find.text(l10n.gameSafety);
+          _expectReadableText(tester, switchLabel, tester.getRect(switchRow));
+          await _chooseWarningSetting(
+            tester,
+            selectorKey: 'advanceWarningTimingSelector',
+            dropdownKey: 'advanceWarningTimingDropdown',
+            currentLabel: l10n.advanceWarningAfterAdvance,
+            currentDescription: l10n.advanceWarningTimingModeDescription,
+            options: [
+              (
+                'advanceWarningTimingOptionAdvance',
+                l10n.advanceWarningAfterAdvance,
+              ),
+              (
+                'advanceWarningTimingOptionBattle',
+                l10n.advanceWarningPostBattle,
+              ),
+              (
+                'advanceWarningTimingOptionBoth',
+                l10n.advanceWarningBothTimings,
+              ),
+            ],
+            selectedKey: 'advanceWarningTimingOptionBoth',
+            selectedLabel: l10n.advanceWarningBothTimings,
+            selectedDescription: l10n.advanceWarningTimingModeDescription,
+            width: width,
+          );
+          expect(
+            controller.advanceWarningTimings,
+            AdvanceWarningTimingSettings.battleAndAdvance,
+          );
+          expect(
+            await store.loadAdvanceWarningTimings(),
+            AdvanceWarningTimingSettings.battleAndAdvance,
+          );
+          await _chooseWarningSetting(
+            tester,
+            selectorKey: 'advanceWarningDisplayModeSelector',
+            dropdownKey: 'advanceWarningDisplayModeDropdown',
+            currentLabel: l10n.advanceWarningAlwaysConfirm,
+            currentDescription: l10n.advanceWarningAlwaysConfirmDescription,
+            options: [
+              (
+                'advanceWarningDisplayOptionAlways',
+                l10n.advanceWarningAlwaysConfirm,
+              ),
+              ('advanceWarningDisplayOptionSmart', l10n.advanceWarningSmart),
+            ],
+            selectedKey: 'advanceWarningDisplayOptionSmart',
+            selectedLabel: l10n.advanceWarningSmart,
+            selectedDescription: l10n.advanceWarningSmartDescription,
+            width: width,
+          );
+          expect(
+            controller.advanceWarningDisplayMode,
+            AdvanceWarningDisplayMode.smart,
+          );
+          expect(
+            await store.loadAdvanceWarningDisplayMode(),
+            AdvanceWarningDisplayMode.smart,
+          );
           expect(tester.takeException(), isNull);
           for (final (dropdown, selectedLabel) in [
-            (
-              find.byType(DropdownButton<BattleWarningMode>),
-              l10n.battleWarningConfirm,
-            ),
             (
               find.byKey(const Key('battleEffectScopeDropdown')),
               l10n.battleEffectScopePredictionOnly,

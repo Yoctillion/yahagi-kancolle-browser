@@ -3,7 +3,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-enum TopNoticeTone { neutral, success, error, warning, info, quest, marriage }
+enum TopNoticeTone {
+  neutral,
+  success,
+  error,
+  warning,
+  info,
+  quest,
+  marriage,
+  damageControl,
+}
 
 const topNoticeKey = Key('top-notice');
 const topNoticeTextKey = Key('top-notice-text');
@@ -17,6 +26,7 @@ class TopNoticeData {
     this.customIcon,
     this.customColor,
     this.replacementKey,
+    this.showIcon = true,
   });
 
   final int id;
@@ -25,6 +35,7 @@ class TopNoticeData {
   final IconData? customIcon;
   final Color? customColor;
   final String? replacementKey;
+  final bool showIcon;
 }
 
 class TopNoticeController extends ChangeNotifier {
@@ -44,6 +55,7 @@ class TopNoticeController extends ChangeNotifier {
     Color? customColor,
     Duration appendWithin = Duration.zero,
     String? replacementKey,
+    bool showIcon = true,
   }) {
     _timer?.cancel();
     final now = DateTime.now();
@@ -61,6 +73,7 @@ class TopNoticeController extends ChangeNotifier {
       customIcon: customIcon,
       customColor: customColor,
       replacementKey: replacementKey,
+      showIcon: showIcon,
     );
     if (append) {
       if (replacementKey != null) {
@@ -137,10 +150,14 @@ abstract final class TopNotice {
     required String message,
     TopNoticeTone tone = TopNoticeTone.neutral,
     Duration duration = const Duration(seconds: 4),
+    bool showIcon = true,
   }) {
-    _controllerOf(
-      context,
-    )?.show(message: message, tone: tone, duration: duration);
+    _controllerOf(context)?.show(
+      message: message,
+      tone: tone,
+      duration: duration,
+      showIcon: showIcon,
+    );
   }
 
   static void hide(BuildContext context) {
@@ -291,8 +308,10 @@ class _NoticeCapsule extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 20, color: appColor(context, foreground)),
-                  const SizedBox(width: 8),
+                  if (notice.showIcon) ...[
+                    Icon(icon, size: 20, color: appColor(context, foreground)),
+                    const SizedBox(width: 8),
+                  ],
                   Flexible(
                     child: Text(
                       notice.message,
@@ -362,6 +381,12 @@ _TopNoticePalette _paletteFor(TopNoticeTone tone) {
       border: Color(0xffb83889),
       foreground: Color(0xfffbcfe8),
       icon: Icons.favorite_rounded,
+    ),
+    TopNoticeTone.damageControl => const _TopNoticePalette(
+      background: Color(0xff2d2417),
+      border: Color(0xffa7874f),
+      foreground: Color(0xfff7e2ba),
+      icon: Icons.shield_outlined,
     ),
   };
 }

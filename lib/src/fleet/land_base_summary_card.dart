@@ -8,6 +8,7 @@ import '../layout/flat_portrait_backdrop.dart';
 import '../layout/flat_style.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
+import 'fleet_ui_strings.dart';
 import '../layout/flat_empty_text.dart';
 import '../layout/flat_list_row.dart';
 import '../layout/flat_text_toggle.dart';
@@ -836,32 +837,13 @@ class _FlatLandBaseRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        FlatListRow(
-          tags: <Widget>[
-            flatRowText(
-              context,
-              _actionLabel(base.actionKind, l10n),
-              key: Key('land-base-action-chip-$keySuffix'),
-              color: _actionColor(base.actionKind),
-              shadows: shadows,
-            ),
-          ],
-          name: flatRowText(
-            context,
-            base.name,
-            key: Key('land-base-name-$keySuffix'),
-            shadows: shadows,
-          ),
-          trailing: flatRowTrailing(
-            _trailing(
-              context,
-              l10n,
-              damagedHp,
-              maximumHp,
-              shadows,
-              pulseValue: !meter,
-            ),
-          ),
+        _header(
+          context,
+          l10n,
+          damagedHp,
+          maximumHp,
+          shadows,
+          pulseValue: !meter,
         ),
         // 血条与行间距同高、互相替换，受损前后整行高度不变。
         if (meter)
@@ -904,8 +886,7 @@ class _FlatLandBaseRow extends StatelessWidget {
     );
   }
 
-  // trailing 被 FlatListRow 封顶半行宽，文字标签会把整段缩到看不清，所以只用图标 + 数值。
-  Widget _trailing(
+  Widget _header(
     BuildContext context,
     AppLocalizations l10n,
     int? damagedHp,
@@ -914,6 +895,129 @@ class _FlatLandBaseRow extends StatelessWidget {
     required bool pulseValue,
   }) {
     final airPower = LandBaseAirPower.calculate(state: state, base: base);
+    final airPowerLabel = '${l10n.airPower} ${airPower.displayValue}';
+    final rangeLabel =
+        '${fleetText(context, FleetUiKeys.landBaseRadiusShort)} ${base.effectiveDistance}';
+    var lineHeight = 10.0;
+    double textWidth(String value, TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: value,
+          style: DefaultTextStyle.of(context).style.merge(style),
+        ),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        locale: Localizations.maybeLocaleOf(context),
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      if (painter.height > lineHeight) lineHeight = painter.height;
+      painter.dispose();
+      return width;
+    }
+
+    final widths = <double>[
+      // 预留最大 HP 的宽度，受损提示出现或消失时名称位置保持稳定。
+      if (damagedHp != null ||
+          visible.contains('airPower') ||
+          visible.contains('range'))
+        11 +
+            textWidth(
+              '$maximumHp',
+              const TextStyle(
+                fontSize: flatRowFontSize,
+                fontWeight: FontWeight.w800,
+                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              ),
+            ),
+      if (visible.contains('airPower'))
+        11 + textWidth(airPowerLabel, flatRowTextStyle(context)),
+      if (visible.contains('range'))
+        11 + textWidth(rangeLabel, flatRowTextStyle(context)),
+    ];
+    final naturalWidth =
+        widths.fold(0.0, (total, width) => total + width) +
+        (widths.isEmpty ? 0 : widths.length - 1);
+    final actionLabel = _actionLabel(base.actionKind, l10n);
+    final actionWidth = textWidth(actionLabel, flatRowTextStyle(context));
+    final nameWidth = textWidth(base.name, flatRowTextStyle(context));
+    final trailing = flatRowTrailing(
+      _trailing(
+        context,
+        l10n,
+        damagedHp,
+        maximumHp,
+        shadows,
+        airPowerLabel: airPowerLabel,
+        rangeLabel: rangeLabel,
+        pulseValue: pulseValue,
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, box) {
+        // 单行内先给名称留可辨识的空间，再让指标使用其余宽度。
+        // 只压缩本行间距；其它模块仍沿用 FlatListRow 原来的排版。
+        final tagWidth = actionWidth.clamp(0.0, box.maxWidth * .2);
+        final minimumNameWidth = nameWidth.clamp(
+          0.0,
+          (box.maxWidth * .2).clamp(0.0, 24.0),
+        );
+        final available = (box.maxWidth - tagWidth - minimumNameWidth - 2)
+            .clamp(0.0, box.maxWidth);
+        final metricsWidth = naturalWidth.clamp(0.0, available);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: flatRowSpacing / 2),
+          child: SizedBox(
+            height: lineHeight,
+            child: Row(
+              children: <Widget>[
+                SizedBox(
+                  width: tagWidth,
+                  child: flatRowText(
+                    context,
+                    actionLabel,
+                    key: Key('land-base-action-chip-$keySuffix'),
+                    color: _actionColor(base.actionKind),
+                    shadows: shadows,
+                  ),
+                ),
+                const SizedBox(width: 1),
+                Expanded(
+                  child: flatRowText(
+                    context,
+                    base.name,
+                    key: Key('land-base-name-$keySuffix'),
+                    shadows: shadows,
+                  ),
+                ),
+                if (widths.isNotEmpty) ...<Widget>[
+                  const SizedBox(width: 1),
+                  SizedBox(
+                    width: metricsWidth,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: trailing,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _trailing(
+    BuildContext context,
+    AppLocalizations l10n,
+    int? damagedHp,
+    int maximumHp,
+    List<Shadow>? shadows, {
+    required String airPowerLabel,
+    required String rangeLabel,
+    required bool pulseValue,
+  }) {
     final items = <Widget>[
       if (damagedHp != null)
         _iconValue(
@@ -944,7 +1048,7 @@ class _FlatLandBaseRow extends StatelessWidget {
             shadows: shadows,
           ),
           value: Text(
-            airPower.displayValue,
+            airPowerLabel,
             style: flatRowTextStyle(
               context,
               color: const Color(0xffd4a74e),
@@ -963,7 +1067,7 @@ class _FlatLandBaseRow extends StatelessWidget {
             shadows: shadows,
           ),
           value: Text(
-            '${base.effectiveDistance}',
+            rangeLabel,
             style: flatRowTextStyle(
               context,
               color: const Color(0xff70b8d8),
@@ -977,7 +1081,7 @@ class _FlatLandBaseRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         for (var index = 0; index < items.length; index++) ...[
-          if (index > 0) const SizedBox(width: 6),
+          if (index > 0) const SizedBox(width: 1),
           items[index],
         ],
       ],
@@ -991,7 +1095,7 @@ class _FlatLandBaseRow extends StatelessWidget {
   }) => Row(
     key: key,
     mainAxisSize: MainAxisSize.min,
-    children: <Widget>[icon, const SizedBox(width: 2), value],
+    children: <Widget>[icon, const SizedBox(width: 1), value],
   );
 
   Widget _hpValue(
@@ -1116,8 +1220,8 @@ class _FlatSquadronCell extends StatelessWidget {
             EquipmentTypeIconImage(
               key: Key('land-base-slot-icon-$keySuffix'),
               iconId: iconId,
-              width: 14,
-              height: 14,
+              width: 18,
+              height: 18,
             ),
             if (proficiency > 0)
               Image.asset(

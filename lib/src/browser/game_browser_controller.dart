@@ -84,6 +84,7 @@ final class GameBrowserController extends ChangeNotifier {
   Uri get homeUri => _homeUri;
   String get displayAddress => _displayAddress;
   String? get errorMessage => _errorMessage;
+  bool get hasAttachedPort => _port != null;
   bool get isOfficialGamePage {
     final uri = Uri.tryParse(_displayAddress);
     if (uri == null || uri.scheme != 'https') return false;

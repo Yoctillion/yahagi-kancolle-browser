@@ -23,6 +23,7 @@ import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 import 'package:yahagi_kancolle_browser/src/settings/network_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/safety_settings_controller.dart';
+import 'package:yahagi_kancolle_browser/src/settings/safety_settings_store.dart';
 import 'package:yahagi_kancolle_browser/src/theme/app_theme.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
 
@@ -463,6 +464,10 @@ class _GadgetBypassControllerStub extends ChangeNotifier
 
 class _SafetySettingsControllerStub extends ChangeNotifier
     implements SafetySettingsController {
+  @override
+  AdvanceWarningDisplayMode get advanceWarningDisplayMode =>
+      AdvanceWarningDisplayMode.alwaysConfirm;
+
   @override
   dynamic noSuchMethod(Invocation invocation) => _unexpected(invocation);
 }

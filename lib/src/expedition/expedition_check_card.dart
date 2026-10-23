@@ -5,6 +5,7 @@ import '../account/account_session.dart';
 
 import '../layout/flat_style.dart';
 import '../layout/flat_text_toggle.dart';
+import '../layout/flat_underline_tabs.dart';
 import '../localization/ui_text.dart';
 import '../localization/game_name_localizations.dart';
 
@@ -307,7 +308,11 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     required List<FlatTextToggleOption> options,
     bool expandChildren = false,
   }) {
-    if (_flat) return FlatTextToggle(key: key, options: options);
+    if (_flat) {
+      return expandChildren
+          ? FlatUnderlineTabs(key: key, options: options)
+          : FlatTextToggle(key: key, options: options);
+    }
     return _cardSegmentGroup(
       key: key,
       expandChildren: expandChildren,

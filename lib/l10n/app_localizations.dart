@@ -742,7 +742,7 @@ abstract class AppLocalizations {
   /// No description provided for @uiDisplaySizeDesc.
   ///
   /// In zh, this message translates to:
-  /// **'调整顶栏、导航栏与信息栏的显示密度；极简档保留顶部 Yahagi 入口与功能栏，信息栏采用扁平布局'**
+  /// **'调整顶栏、导航栏与信息栏的显示密度'**
   String get uiDisplaySizeDesc;
 
   /// No description provided for @uiDisplaySizeNormal.
@@ -996,6 +996,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'大破提醒'**
   String get gameSafety;
+
+  /// No description provided for @battleSafetySectionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'游戏安全'**
+  String get battleSafetySectionTitle;
 
   /// No description provided for @blockSortieTitle.
   ///
@@ -1552,8 +1558,134 @@ abstract class AppLocalizations {
   /// No description provided for @battleWarningConfirm.
   ///
   /// In zh, this message translates to:
-  /// **'弹框确认'**
+  /// **'开启提醒'**
   String get battleWarningConfirm;
+
+  /// No description provided for @advanceWarningDisplayModeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'提醒方式'**
+  String get advanceWarningDisplayModeTitle;
+
+  /// No description provided for @advanceWarningAlwaysConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'始终确认'**
+  String get advanceWarningAlwaysConfirm;
+
+  /// No description provided for @advanceWarningSmart.
+  ///
+  /// In zh, this message translates to:
+  /// **'智能提醒'**
+  String get advanceWarningSmart;
+
+  /// No description provided for @advanceWarningSmartDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'大破舰损管均确认可用时顶部通知，否则弹窗。'**
+  String get advanceWarningSmartDescription;
+
+  /// No description provided for @advanceWarningAlwaysConfirmDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到大破时弹窗确认。'**
+  String get advanceWarningAlwaysConfirmDescription;
+
+  /// No description provided for @advanceWarningTimingModeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'提醒时机'**
+  String get advanceWarningTimingModeTitle;
+
+  /// No description provided for @advanceWarningTimingModeDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改从下次出击生效。'**
+  String get advanceWarningTimingModeDescription;
+
+  /// No description provided for @advanceWarningPostBattle.
+  ///
+  /// In zh, this message translates to:
+  /// **'结算后提醒'**
+  String get advanceWarningPostBattle;
+
+  /// No description provided for @advanceWarningAfterAdvance.
+  ///
+  /// In zh, this message translates to:
+  /// **'进击后提醒'**
+  String get advanceWarningAfterAdvance;
+
+  /// No description provided for @advanceWarningBothTimings.
+  ///
+  /// In zh, this message translates to:
+  /// **'两次都提醒'**
+  String get advanceWarningBothTimings;
+
+  /// No description provided for @advanceWarningAfterAdvanceDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'进击成功后检查大破。'**
+  String get advanceWarningAfterAdvanceDescription;
+
+  /// No description provided for @advanceWarningPostBattleDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'战斗结算后检查大破。'**
+  String get advanceWarningPostBattleDescription;
+
+  /// No description provided for @advanceWarningBothTimingsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'结算后和进击成功后均检查大破。'**
+  String get advanceWarningBothTimingsDescription;
+
+  /// No description provided for @advanceWarningTimingRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'至少保留一项提醒时机。'**
+  String get advanceWarningTimingRequired;
+
+  /// No description provided for @advanceWarningPostBattleOnlyWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'进击成功后将不再检查大破状态。'**
+  String get advanceWarningPostBattleOnlyWarning;
+
+  /// No description provided for @postBattleDamageControlEquippedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'战斗结算后存在大破舰娘，请确认舰船及剩余损管。'**
+  String get postBattleDamageControlEquippedBody;
+
+  /// No description provided for @postBattleDamageControlDangerBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'战斗结算后存在大破舰娘！请停止进击并核对游戏内状态，避免进入下一场战斗。'**
+  String get postBattleDamageControlDangerBody;
+
+  /// No description provided for @advanceWarningDamageControlActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'大破舰已携带损管'**
+  String get advanceWarningDamageControlActive;
+
+  /// No description provided for @advanceWarningReloadGame.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新游戏'**
+  String get advanceWarningReloadGame;
+
+  /// No description provided for @advanceWarningReloadFrame.
+  ///
+  /// In zh, this message translates to:
+  /// **'框架刷新'**
+  String get advanceWarningReloadFrame;
+
+  /// No description provided for @advanceWarningRefreshFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新未完成，请核对游戏状态与装备。'**
+  String get advanceWarningRefreshFailed;
 
   /// No description provided for @logoutSnackbar.
   ///
@@ -2561,6 +2693,72 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'大破安全警告'**
   String get postBattleWarningTitle;
+
+  /// No description provided for @advanceWarningMissingHeadline.
+  ///
+  /// In zh, this message translates to:
+  /// **'存在未携带损管的大破舰娘！'**
+  String get advanceWarningMissingHeadline;
+
+  /// No description provided for @advanceWarningUnknownHeadline.
+  ///
+  /// In zh, this message translates to:
+  /// **'大破舰娘损管状态未知！'**
+  String get advanceWarningUnknownHeadline;
+
+  /// No description provided for @advanceWarningEquippedHeadline.
+  ///
+  /// In zh, this message translates to:
+  /// **'大破舰娘已携带损管，请确认剩余装备。'**
+  String get advanceWarningEquippedHeadline;
+
+  /// No description provided for @advanceWarningEquippedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'已在大破状态下选择进击，请确认舰船及剩余损管。'**
+  String get advanceWarningEquippedBody;
+
+  /// No description provided for @advanceWarningMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'未携带损管'**
+  String get advanceWarningMissing;
+
+  /// No description provided for @advanceWarningUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'损管状态未知，请核对游戏内装备'**
+  String get advanceWarningUnknown;
+
+  /// No description provided for @advanceWarningEquipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'携带：{items}'**
+  String advanceWarningEquipped(String items);
+
+  /// No description provided for @advanceWarningPersonnel.
+  ///
+  /// In zh, this message translates to:
+  /// **'应急修理要员'**
+  String get advanceWarningPersonnel;
+
+  /// No description provided for @advanceWarningGoddess.
+  ///
+  /// In zh, this message translates to:
+  /// **'应急修理女神'**
+  String get advanceWarningGoddess;
+
+  /// No description provided for @advanceWarningShipPosition.
+  ///
+  /// In zh, this message translates to:
+  /// **'第{fleet}舰队·{position}号舰'**
+  String advanceWarningShipPosition(int fleet, int position);
+
+  /// No description provided for @advanceWarningMuteSortie.
+  ///
+  /// In zh, this message translates to:
+  /// **'此次出击不再提醒'**
+  String get advanceWarningMuteSortie;
 
   /// No description provided for @postBattleWarningHeadline.
   ///

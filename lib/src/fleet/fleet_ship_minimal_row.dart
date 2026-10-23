@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../battle/prophet_hp_bar.dart';
@@ -112,10 +114,9 @@ class _MoraleChipState extends State<MoraleChip>
   }
 
   Widget _chip(_MoraleStyle style, double glow) => Container(
-    height: 12,
+    height: math.max(12, MediaQuery.textScalerOf(context).scale(9)),
     constraints: const BoxConstraints(minWidth: 28),
     padding: const EdgeInsets.symmetric(horizontal: 2),
-    alignment: Alignment.center,
     decoration: BoxDecoration(
       color: appColor(context, style.background),
       borderRadius: BorderRadius.circular(3),
@@ -133,6 +134,7 @@ class _MoraleChipState extends State<MoraleChip>
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(style.icon, size: 9, color: appColor(context, style.foreground)),
         const SizedBox(width: 1),
@@ -211,17 +213,25 @@ class FleetShipMinimalRow extends StatelessWidget {
     final master = state.masterForShip(ship);
     final portrait = _show('portrait');
     final shadows = portrait ? flatOnImageShadows(context) : null;
-    final hasStatus = ['hp', 'fuel', 'ammo', 'morale'].any(_show);
+    final statusInfo = _statusInfo(context, master);
+    final hasStatus =
+        statusInfo.isNotEmpty || ['hp', 'fuel', 'ammo'].any(_show);
     final lines = Padding(
       padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: 14, child: _identityLine(context, master, shadows)),
+          SizedBox(
+            height: math.max(
+              16,
+              MediaQuery.textScalerOf(context).scale(11) * 16 / 11,
+            ),
+            child: _identityLine(context, master, shadows),
+          ),
           if (hasStatus) ...[
             const SizedBox(height: 1),
-            SizedBox(height: 12, child: _statusLine(context, master, shadows)),
+            _statusGrid(context, master, shadows, statusInfo),
           ],
         ],
       ),
@@ -255,37 +265,14 @@ class FleetShipMinimalRow extends StatelessWidget {
         : image;
   }
 
-  Widget _identityLine(
-    BuildContext context,
-    MasterShip? master,
-    List<Shadow>? shadows,
-  ) {
-    final typeLabel = _show('type')
-        ? fleetShipTypeShortLabel(context, state, master, shipTypeLabelMode) ??
-              fleetText(context, FleetUiKeys.unknownShipType)
-        : null;
-    final name =
-        (master == null
-            ? null
-            : gameNames(context).shipName(master.name, shipId: master.id)) ??
-        fleetText(context, FleetUiKeys.unknownShip);
+  List<Widget> _statusInfo(BuildContext context, MasterShip? master) {
     final mechanisms = [
       ...detectShipCombatMechanisms(state, ship),
       ?specialAttack,
-    ].where((_) => _show('mechanisms')).toList();
+    ].where((_) => _show('mechanisms'));
     final speed = ShipSpeedVisual.fromSpeed(ship.effectiveSpeed(master));
-    final meta = <Widget>[
-      if (!_show('morale') && _moraleWarns) _moraleChip(),
-      if (_show('level'))
-        Text(
-          'Lv${ship.level}',
-          style: TextStyle(
-            color: appColor(context, flatMutedColor),
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            shadows: shadows,
-          ),
-        ),
+    return [
+      if (_show('morale') || _moraleWarns) _moraleChip(),
       if (_show('shipSpeed'))
         _Tag(
           text: fleetText(context, speed.label),
@@ -302,7 +289,46 @@ class FleetShipMinimalRow extends StatelessWidget {
         _Tag(
           key: Key('minimal-repair-${ship.id}'),
           text: fleetText(context, repairStatus!.label),
-          color: const Color(0xffffc861),
+          color: switch (repairStatus!) {
+            ShipRepairStatus.dock ||
+            ShipRepairStatus.anchorage => const Color(0xff8edcff),
+            ShipRepairStatus.retreat => const Color(0xffcbd5e1),
+            ShipRepairStatus.nosakiSparkle => const Color(0xff65d493),
+          },
+          background: switch (repairStatus!) {
+            ShipRepairStatus.dock ||
+            ShipRepairStatus.anchorage => const Color(0xdd0b2738),
+            ShipRepairStatus.retreat => const Color(0xdd1e293b),
+            ShipRepairStatus.nosakiSparkle => const Color(0xdd0b2a1a),
+          },
+        ),
+    ];
+  }
+
+  Widget _identityLine(
+    BuildContext context,
+    MasterShip? master,
+    List<Shadow>? shadows,
+  ) {
+    final typeLabel = _show('type')
+        ? fleetShipTypeShortLabel(context, state, master, shipTypeLabelMode) ??
+              fleetText(context, FleetUiKeys.unknownShipType)
+        : null;
+    final name =
+        (master == null
+            ? null
+            : gameNames(context).shipName(master.name, shipId: master.id)) ??
+        fleetText(context, FleetUiKeys.unknownShip);
+    final meta = <Widget>[
+      if (_show('level'))
+        Text(
+          'Lv${ship.level}',
+          style: TextStyle(
+            color: appColor(context, flatMutedColor),
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            shadows: shadows,
+          ),
         ),
     ];
     final icons = _show('equipment')
@@ -313,8 +339,8 @@ class FleetShipMinimalRow extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 1),
                   child: EquipmentTypeIconImage(
                     iconId: eq.master!.type[3],
-                    width: 12,
-                    height: 12,
+                    width: 16,
+                    height: 16,
                   ),
                 ),
           ]
@@ -397,32 +423,108 @@ class FleetShipMinimalRow extends StatelessWidget {
     );
   }
 
-  Widget _statusLine(
+  Widget _statusGrid(
     BuildContext context,
     MasterShip? master,
     List<Shadow>? shadows,
+    List<Widget> statusInfo,
   ) {
     final currentHp = repairStatus == ShipRepairStatus.retreat
         ? 0
         : ship.currentHp;
     final hpRatio = _ratio(currentHp, ship.maxHp);
     final barColor = shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0);
-    if (!_show('bars')) {
-      return _valueLine(context, master, shadows, currentHp, hpRatio, barColor);
-    }
+    final showBars = _show('bars');
     final hpBar = ProphetHpBar(
+      key: Key('minimal-hp-track-${ship.id}'),
       value: hpRatio,
       color: appColor(context, barColor),
       backgroundColor: appColor(context, const Color(0xff294052)),
       height: 4,
     );
-    final showSupply = _show('fuel') || _show('ammo');
-    return Row(
-      children: [
-        if (_show('morale')) ...[_moraleChip(), const SizedBox(width: 4)],
-        if (_show('hp')) ...[
-          Expanded(
-            child: repairStatus == ShipRepairStatus.retreat
+    Size measure(
+      String text,
+      TextStyle style, {
+      double maxWidth = double.infinity,
+    }) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: DefaultTextStyle.of(context).style.merge(style),
+        ),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        locale: Localizations.maybeLocaleOf(context),
+        maxLines: maxWidth.isFinite ? null : 1,
+      )..layout(maxWidth: maxWidth);
+      final size = painter.size;
+      painter.dispose();
+      return size;
+    }
+
+    _StatusMetric metric({
+      required String field,
+      required Widget icon,
+      required String value,
+      required Color color,
+      required Widget? track,
+      required double minimumBarWidth,
+    }) {
+      final style = TextStyle(
+        color: appColor(context, color),
+        fontSize: 9,
+        fontWeight: FontWeight.w800,
+        fontFeatures: const [FontFeature.tabularFigures()],
+        shadows: shadows,
+      );
+      final size = measure(value, style);
+      Widget text = Text(
+        value,
+        key: Key(
+          field == 'hp'
+              ? 'minimal-hp-value-${ship.id}'
+              : 'minimal-supply-$field-value-${ship.id}',
+        ),
+        style: style,
+      );
+      if (field == 'hp' &&
+          !showBars &&
+          repairStatus != ShipRepairStatus.retreat) {
+        text = DamagePulseGlow(
+          currentHp: currentHp,
+          maxHp: ship.maxHp,
+          filter: damagePulseFilter,
+          normalColor: appColor(context, barColor),
+          child: text,
+        );
+      }
+      return _StatusMetric(
+        icon: icon,
+        value: text,
+        labelWidth: 12 + size.width.ceilToDouble(),
+        labelHeight: math.max(10, size.height),
+        valueHeightAtWidth: (width) =>
+            measure(value, style, maxWidth: width).height,
+        track: track,
+        minimumBarWidth: minimumBarWidth,
+      );
+    }
+
+    final hp = _show('hp')
+        ? metric(
+            field: 'hp',
+            icon: Icon(
+              Icons.favorite_rounded,
+              key: Key('minimal-hp-icon-${ship.id}'),
+              color: appColor(context, const Color(0xffef5a5a)),
+              size: 10,
+              shadows: shadows,
+            ),
+            value: '$currentHp/${ship.maxHp}',
+            color: shipHpValueColor(hpRatio, isZeroHp: currentHp <= 0),
+            track: !showBars
+                ? null
+                : repairStatus == ShipRepairStatus.retreat
                 ? hpBar
                 : DamagePulseGlow(
                     currentHp: currentHp,
@@ -432,146 +534,223 @@ class FleetShipMinimalRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                     child: hpBar,
                   ),
-          ),
-          const SizedBox(width: 4),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 40),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text(
-                '$currentHp/${ship.maxHp}',
-                key: Key('minimal-hp-value-${ship.id}'),
-                maxLines: 1,
-                style: TextStyle(
-                  color: appColor(
-                    context,
-                    shipHpValueColor(hpRatio, isZeroHp: currentHp <= 0),
+            minimumBarWidth: 24,
+          )
+        : null;
+    _StatusMetric supply(String field, int current, int max, String asset) {
+      final ratio = _ratio(current, max);
+      return metric(
+        field: field,
+        icon: Image.asset(
+          asset,
+          key: Key('minimal-supply-$field-icon-${ship.id}'),
+          width: 10,
+          height: 10,
+        ),
+        value: '$current/$max',
+        color: shipSupplyValueColor(ratio),
+        track: showBars
+            ? _SupplyBar(
+                key: Key('minimal-supply-$field-${ship.id}'),
+                ratio: ratio,
+              )
+            : null,
+        minimumBarWidth: 18,
+      );
+    }
+
+    var fuel = _show('fuel')
+        ? supply(
+            'fuel',
+            ship.currentFuel,
+            master?.maxFuel ?? 0,
+            'assets/images/material/01.png',
+          )
+        : null;
+    var ammo = _show('ammo')
+        ? supply(
+            'ammo',
+            ship.currentAmmo,
+            master?.maxAmmo ?? 0,
+            'assets/images/material/02.png',
+          )
+        : null;
+    if (fuel != null && ammo != null) {
+      final labelWidth = math.max(fuel.labelWidth, ammo.labelWidth);
+      fuel = fuel.withLabelWidth(labelWidth);
+      ammo = ammo.withLabelWidth(labelWidth);
+    }
+    final infoHeight = statusInfo.fold<double>(
+      math.max(12.0, MediaQuery.textScalerOf(context).scale(9)),
+      (height, item) => item is _Tag
+          ? math.max(
+              height,
+              measure(
+                    item.text,
+                    const TextStyle(
+                      fontSize: 8,
+                      height: 1.1,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ).height +
+                  2,
+            )
+          : height,
+    );
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        final hasLeft = statusInfo.isNotEmpty || hp != null;
+        final hasRight = fuel != null || ammo != null;
+        final gap = hasLeft && hasRight ? 6.0 : 0.0;
+        final available = box.maxWidth - gap;
+        final leftWidth = hasLeft ? available * (hasRight ? .56 : 1) : 0.0;
+        final rightWidth = hasRight ? available - leftWidth : 0.0;
+        Widget cell(String field, _StatusMetric? metric, double width) =>
+            metric == null
+            ? const SizedBox.shrink()
+            : SizedBox(
+                key: Key('minimal-status-$field-${ship.id}'),
+                width: width,
+                height: metric.heightAt(width),
+                child: metric.build(width),
+              );
+        final info = statusInfo.isEmpty
+            ? const SizedBox.shrink()
+            : SizedBox(
+                key: Key('minimal-status-info-${ship.id}'),
+                height: infoHeight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < statusInfo.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 3),
+                        statusInfo[i],
+                      ],
+                    ],
                   ),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  shadows: shadows,
                 ),
+              );
+        final topRow = statusInfo.isNotEmpty || fuel != null;
+        final bottomRow = hp != null || ammo != null;
+        // Fixed widths keep Table from requesting intrinsic sizes of its
+        // responsive children. Each row uses the taller of its two cells.
+        return Table(
+          columnWidths: {
+            0: FixedColumnWidth(leftWidth),
+            1: FixedColumnWidth(gap),
+            2: FixedColumnWidth(rightWidth),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.top,
+          children: [
+            if (topRow)
+              TableRow(
+                children: [
+                  info,
+                  const SizedBox.shrink(),
+                  cell('fuel', fuel, rightWidth),
+                ],
               ),
-            ),
-          ),
-        ] else
-          const Spacer(),
-        if (showSupply) ...[
-          const SizedBox(width: 4),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_show('fuel'))
-                _SupplyBar(
-                  key: Key('minimal-supply-fuel-${ship.id}'),
-                  ratio: _ratio(ship.currentFuel, master?.maxFuel ?? 0),
-                ),
-              if (_show('fuel') && _show('ammo')) const SizedBox(height: 1),
-              if (_show('ammo'))
-                _SupplyBar(
-                  key: Key('minimal-supply-ammo-${ship.id}'),
-                  ratio: _ratio(ship.currentAmmo, master?.maxAmmo ?? 0),
-                ),
-            ],
-          ),
-        ],
-      ],
+            if (topRow && bottomRow)
+              const TableRow(
+                children: [
+                  SizedBox(height: 1),
+                  SizedBox(height: 1),
+                  SizedBox(height: 1),
+                ],
+              ),
+            if (bottomRow)
+              TableRow(
+                children: [
+                  cell('hp', hp, leftWidth),
+                  const SizedBox.shrink(),
+                  cell('ammo', ammo, rightWidth),
+                ],
+              ),
+          ],
+        );
+      },
     );
   }
+}
 
-  // 与普通档关闭条状一致只剩数值；补给细条也随之换成数值，从左依次排开。
-  Widget _valueLine(
-    BuildContext context,
-    MasterShip? master,
-    List<Shadow>? shadows,
-    int currentHp,
-    double hpRatio,
-    Color barColor,
-  ) {
-    Widget value(String text, Color color, Key key) => Text(
-      text,
-      key: key,
-      maxLines: 1,
-      style: TextStyle(
-        color: appColor(context, color),
-        fontSize: 9,
-        fontWeight: FontWeight.w800,
-        fontFeatures: const [FontFeature.tabularFigures()],
-        shadows: shadows,
-      ),
+class _StatusMetric {
+  const _StatusMetric({
+    required this.icon,
+    required this.value,
+    required this.labelWidth,
+    required this.labelHeight,
+    required this.valueHeightAtWidth,
+    required this.track,
+    required this.minimumBarWidth,
+  });
+
+  final Widget icon;
+  final Widget value;
+  final double labelWidth;
+  final double labelHeight;
+  final double Function(double) valueHeightAtWidth;
+  final Widget? track;
+  final double minimumBarWidth;
+
+  _StatusMetric withLabelWidth(double width) => _StatusMetric(
+    icon: icon,
+    value: value,
+    labelWidth: width,
+    labelHeight: labelHeight,
+    valueHeightAtWidth: valueHeightAtWidth,
+    track: track,
+    minimumBarWidth: minimumBarWidth,
+  );
+
+  double get minimumWidth =>
+      labelWidth + (track == null ? 0 : 4 + minimumBarWidth);
+
+  double heightAt(double width) {
+    final height = math.max(
+      labelHeight,
+      valueHeightAtWidth(math.max(1, width - 12)),
     );
-    Widget item(Widget icon, Widget value) => Row(
+    if (track == null) return math.max(12, height);
+    return width < minimumWidth ? height + 6 : math.max(12, labelHeight);
+  }
+
+  Widget _label(double width) => SizedBox(
+    width: math.min(width, labelWidth),
+    child: Row(
       mainAxisSize: MainAxisSize.min,
-      children: [icon, const SizedBox(width: 2), value],
-    );
-    Widget supply(String key, String asset, int current, int max) => item(
-      Image.asset(asset, width: 10, height: 10),
-      value(
-        '$current/$max',
-        shipSupplyValueColor(_ratio(current, max)),
-        Key('minimal-supply-$key-value-${ship.id}'),
-      ),
-    );
-    final hpText = value(
-      '$currentHp/${ship.maxHp}',
-      shipHpValueColor(hpRatio, isZeroHp: currentHp <= 0),
-      Key('minimal-hp-value-${ship.id}'),
-    );
-    final items = <Widget>[
-      if (_show('hp'))
-        item(
-          Icon(
-            Icons.favorite_rounded,
-            color: appColor(context, const Color(0xffef5a5a)),
-            size: 10,
-            shadows: shadows,
-          ),
-          repairStatus == ShipRepairStatus.retreat
-              ? hpText
-              : DamagePulseGlow(
-                  currentHp: currentHp,
-                  maxHp: ship.maxHp,
-                  filter: damagePulseFilter,
-                  normalColor: appColor(context, barColor),
-                  child: hpText,
-                ),
-        ),
-      if (_show('fuel'))
-        supply(
-          'fuel',
-          'assets/images/material/01.png',
-          ship.currentFuel,
-          master?.maxFuel ?? 0,
-        ),
-      if (_show('ammo'))
-        supply(
-          'ammo',
-          'assets/images/material/02.png',
-          ship.currentAmmo,
-          master?.maxAmmo ?? 0,
-        ),
-    ];
+      children: [
+        icon,
+        const SizedBox(width: 2),
+        // 只有数字本身也放不下时才自然换行，不缩小或截断 current/max。
+        Flexible(child: value),
+      ],
+    ),
+  );
+
+  Widget build(double width) {
+    final bar = track;
+    if (bar == null) return _label(width);
+    if (width < minimumWidth) {
+      // 数字保留原字号；大字或窄面板里让条另起一行。
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _label(width),
+          const SizedBox(height: 2),
+          SizedBox(width: width, child: bar),
+        ],
+      );
+    }
     return Row(
       children: [
-        if (_show('morale')) ...[_moraleChip(), const SizedBox(width: 4)],
-        Flexible(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 6),
-                  items[i],
-                ],
-              ],
-            ),
-          ),
-        ),
+        _label(labelWidth),
+        const SizedBox(width: 4),
+        Expanded(child: bar),
       ],
     );
   }
@@ -616,7 +795,6 @@ class _SupplyBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 18,
     height: 3,
     alignment: Alignment.centerLeft,
     decoration: BoxDecoration(

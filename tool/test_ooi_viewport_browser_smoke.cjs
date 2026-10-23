@@ -19,7 +19,7 @@ function option(name, fallback) {
   return at < 0 ? fallback : args[at + 1];
 }
 if (args.includes('--help')) {
-  console.log('Usage: node tool/test_ooi_viewport_browser_smoke.cjs [--round 1] [--out DIRECTORY] [--quick | --access-probe | --ownership-probe]\nEnvironment: PLAYWRIGHT_MODULE, CHROME_PATH. --quick runs the route and scroll probes only.');
+  console.log('Usage: node tool/test_ooi_viewport_browser_smoke.cjs [--round 1] [--out DIRECTORY] [--quick | --access-probe | --ownership-probe | --lifecycle-probe]\nEnvironment: PLAYWRIGHT_MODULE, CHROME_PATH. --quick runs the route and scroll probes only. --lifecycle-probe tests local login/retry, viewport ownership and runtime reuse; it never authenticates with OOI.');
   process.exit(0);
 }
 const round = String(option('--round', '1'));
@@ -27,6 +27,7 @@ assert.match(round, /^[a-zA-Z0-9_-]+$/, 'Round must be safe as a filename');
 const quick = args.includes('--quick');
 const accessProbe = args.includes('--access-probe');
 const ownershipProbe = args.includes('--ownership-probe');
+const lifecycleProbe = args.includes('--lifecycle-probe');
 const repo = path.resolve(__dirname, '..');
 const sourceFile = path.join(repo, 'lib/src/browser/game_page_alignment_script.dart');
 const dart = fs.readFileSync(sourceFile, 'utf8');
@@ -49,7 +50,7 @@ try {
 }
 const report = {
   round, startedAt: new Date().toISOString(), sourceSha256: hash(dart),
-  mode: ownershipProbe ? 'ownership-probe' : accessProbe ? 'access-probe' : quick ? 'quick' : 'full', browser: null, checks: [], failures: [],
+  mode: lifecycleProbe ? 'lifecycle-probe' : ownershipProbe ? 'ownership-probe' : accessProbe ? 'access-probe' : quick ? 'quick' : 'full', browser: null, checks: [], failures: [],
   pageErrors: [], diagnostics: [], capabilityBoundaries: [], measurements: [],
   limits: {pages: 1, contexts: 1, rasterThreads: 2, maximumEmulatedPixels: 7000000, screenshots: 0},
   scope: 'Offline wrapper fixtures and Chromium device metrics; not live OOI, Android WebView, physical vivo, system UI, or native scale validation.',
@@ -295,6 +296,143 @@ async function scrollingOwnershipChecks() {
   }
 }
 
+async function lifecycleChecks() {
+  const original = [
+    'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
+    'WIDTH=1200; MINIMUM-SCALE=1; maximum-scale=2',
+  ];
+  const metadata = async () => page.evaluate(() => Array.from(document.querySelectorAll('meta[name]'))
+    .filter(meta => meta.getAttribute('name').toLowerCase() === 'viewport')
+    .map(meta => meta.getAttribute('content')));
+  async function boot(url, shape, tag = 'iframe', metaValues = original, runtime = source) {
+    await device(profiles[3]);
+    activeChildUrl = childUrl;
+    scrollableChild = false;
+    activeFixture = fixture(shape, tag, shape !== 'canvas');
+    const tags = metaValues.map(value => value === null ? '<meta name="viewport">' : `<meta name="viewport" content="${value}">`).join('');
+    activeFixture.html = activeFixture.html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">', tags);
+    await page.goto(url, {waitUntil:'load'});
+    await page.evaluate(runtime);
+    await settle();
+  }
+  async function blockingDialog(open) {
+    await page.evaluate(open => {
+      if(open) {const dialog=document.createElement('dialog');dialog.id='blocker';dialog.textContent='Fixture account login';document.body.append(dialog);dialog.showModal();}
+      else document.querySelector('#blocker')?.remove();
+    },open);
+    await settle();
+  }
+  for(const route of ['/poi','/flash','/kancolle']) for(const tag of ['iframe','embed']) {
+    await check(`lifecycle failed login retry delayed ${route}/${tag}`,async()=>{
+      await boot('https://ooi.moe'+route,'flash',tag);
+      assert.equal(await page.evaluate(()=>window.__yahagiMobileReadPresentation()),'pending');
+      await page.evaluate(()=>{document.querySelector('#flashWrap').innerHTML='<form id="login" method="post"><input type="email" name="login_id"><input type="password" name="password"><label><input type="radio" name="mode" value="browser">Browser fixture</label><label><input type="radio" name="mode" value="poi">POI fixture</label><label><input type="radio" name="mode" value="direct">Direct fixture</label><p>Local login form; no credentials or real authentication</p></form>';});
+      await settle();
+      assert.deepEqual(await metadata(),original,'A login form must retain its viewport exactly');
+      for(const mode of ['browser','poi','direct']) await page.locator(`input[name="mode"][value="${mode}"]`).check();
+      assert.equal(await page.locator('input[name="mode"][value="direct"]').isChecked(),true);
+      for(let failed=0;failed<2;failed++) {
+        await page.evaluate(failed=>{document.querySelector('#login').insertAdjacentHTML('beforeend',`<p class="login-failure">Fixture retry ${failed}</p>`);},failed);
+        await settle();
+        assert.equal(await page.evaluate(()=>window.__messages.some(m=>m.startsWith('game'))),false,'A failed local login must not request native game scaling');
+      }
+      const before=counts();
+      await page.evaluate(surface=>{setTimeout(()=>{document.querySelector('#flashWrap').innerHTML=surface;},40);},activeFixture.surface);
+      await page.waitForFunction(()=>window.__childReady>0&&!!document.querySelector('#__yahagi_mobile_ooi_browser__'));
+      await settle();
+      await geometryAndClicks(`local login recovered ${route}/${tag}`);
+      assert.deepEqual(await metadata(),original,'OOI wrappers must keep the original login viewport');
+      assert.equal(counts().mainNavigations,before.mainNavigations);
+      await page.locator('#externalswf').evaluate(frame=>{frame.setAttribute('width','640');frame.setAttribute('height','400');});
+      await device(profiles[3],873,393);await settle();
+      await geometryAndClicks(`width/resize ${route}/${tag}`);
+      await observerSettles(`login ${route}/${tag}/settled`,true);
+    });
+  }
+  for(const values of [original,[],[null]]) await check(`lifecycle standalone metadata ${JSON.stringify(values)}`,async()=>{
+    await boot('https://ooi.moe/kcs2/index.php','canvas','iframe',values);
+    const owned=await metadata();
+    assert.equal(owned.length,Math.max(values.length,1));
+    owned.forEach(content=>assert.match(content,/minimum-scale=0\.01, maximum-scale=10, user-scalable=yes/));
+    const before=counts();
+    for(let cycle=0;cycle<3;cycle++) {
+      await page.evaluate(source);await settle();
+      await blockingDialog(true);
+      assert.equal(await page.evaluate(()=>window.__yahagiMobileReadPresentation()),'web');
+      assert.deepEqual(await metadata(),values,'Dialog cleanup must restore exact original attributes');
+      await blockingDialog(false);
+      assert.equal(await page.evaluate(()=>window.__yahagiMobileReadPresentation()),'game');
+      assert.deepEqual(await metadata(),owned,'Returning to game must take a fresh identical viewport snapshot');
+    }
+    await observerSettles('standalone viewport stability',true);
+    assert.deepEqual(counts(),before,'Metadata ownership must not cause document requests');
+  });
+  for(const tag of ['iframe','embed']) await check(`lifecycle interleaved wrapper standalone dialog ${tag}`,async()=>{
+    await boot('https://ooi.moe/poi','canvas',tag);
+    const owned=await metadata();
+    await page.evaluate(surface=>{
+      const wrapper=document.createElement('div');wrapper.id='flashWrap';document.body.append(wrapper);
+      wrapper.innerHTML=surface;wrapper.replaceChildren();
+      const dialog=document.createElement('dialog');dialog.id='blocker';dialog.open=true;document.body.append(dialog);
+      window.__yahagiMobileSyncPresentation();
+    },fixture('flash',tag).surface);
+    await settle();
+    assert.equal(await page.evaluate(()=>window.__yahagiMobileReadPresentation()),'web');
+    assert.deepEqual(await metadata(),original);
+    await blockingDialog(false);
+    assert.deepEqual(await metadata(),owned);
+    await page.evaluate(surface=>{document.querySelector('canvas').remove();document.querySelector('#flashWrap').innerHTML=surface;},fixture('flash',tag).surface);
+    await page.waitForFunction(()=>window.__childReady>0);await settle();
+    await geometryAndClicks(`interleaved final wrapper ${tag}`);
+    assert.deepEqual(await metadata(),original,'Wrapper takeover must restore standalone viewport metadata');
+    assert.equal(await page.evaluate(()=>document.querySelectorAll('#__yahagi_mobile_fixed_canvas__').length),0);
+    await observerSettles('interleaved request settlement '+tag,true);
+  });
+  await check('lifecycle runtime 4 upgrade and runtime 5 reinjection snapshot',async()=>{
+    const git=(...args)=>require('node:child_process').execFileSync('git',args,{cwd:repo,encoding:'utf8'});
+    const revisions=git('log','-n','32','--format=%H','--','lib/src/browser/game_page_alignment_script.dart').trim().split(/\s+/);
+    let oldSource;
+    for(const revision of revisions) {
+      const oldDart=git('show',`${revision}:lib/src/browser/game_page_alignment_script.dart`);
+      const candidate=/gamePageAlignmentScript\s*=\s*r'''([\s\S]*?)''';/.exec(oldDart)?.[1];
+      if(candidate?.includes('const runtimeVersion = 4;')) {oldSource=candidate;report.diagnostics.push({label:'actual prior runtime fixture',revision,runtime:4});break;}
+    }
+    assert.match(oldSource,/const runtimeVersion = 4;/,'The retained runtime fixture must be the actual prior revision');
+    await boot('https://ooi.moe/kcs2/index.php','canvas','iframe',original,oldSource);
+    assert.equal(await page.evaluate(()=>window.__yahagiMobilePresentationRuntimeVersion),4);
+    await page.evaluate(source);await settle();
+    assert.equal(await page.evaluate(()=>window.__yahagiMobilePresentationRuntimeVersion),expectedRuntime);
+    const owned=await metadata();
+    await page.evaluate(source);await page.evaluate(source);await settle();
+    assert.deepEqual(await metadata(),owned);
+    await blockingDialog(true);assert.deepEqual(await metadata(),original);
+    await blockingDialog(false);await observerSettles('runtime upgrade settlement',true);
+  });
+  await check('lifecycle game account navigation failed login then restored game',async()=>{
+    await boot('https://play.games.dmm.com/game/kancolle/','canvas');
+    await nativeFit('pre-account game');
+    await boot('https://accounts.dmm.com/login','canvas');
+    assert.equal(await page.evaluate(()=>window.__yahagiMobileReadPresentation()),'web');
+    assert.deepEqual(await metadata(),original);
+    await page.evaluate(()=>{document.body.insertAdjacentHTML('beforeend','<p>Fixture login rejected, retry required</p>');});
+    await settle();assert.equal(await page.evaluate(()=>window.__messages.some(m=>m.startsWith('game'))),false);
+    await boot('https://play.games.dmm.com/game/kancolle/','canvas');
+    await nativeFit('post-account retry game');await blockingDialog(true);assert.deepEqual(await metadata(),original);
+  });
+  await check('lifecycle wheel touch and programmatic scroll locks',async()=>{
+    await boot('https://play.games.dmm.com/game/kancolle/','canvas');
+    await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:150,y:200}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:240,y:450}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await page.mouse.move(150,200);await page.mouse.wheel(160,400);
+    await page.evaluate(()=>window.scrollTo(80,150));await settle();
+    const locked=await page.evaluate(()=>({x:scrollX,y:scrollY,action:getComputedStyle(document.documentElement).touchAction}));
+    assert.deepEqual(locked,{x:0,y:0,action:'none'});
+    report.diagnostics.push({label:'trusted touch and wheel scroll lock',...locked});
+  });
+}
+
 async function run() {
   browser = await playwright.chromium.launch({headless: true, ...(process.env.CHROME_PATH ? {executablePath: process.env.CHROME_PATH} : {channel: 'msedge'}), args: ['--num-raster-threads=2', '--renderer-process-limit=2', '--disable-gpu', '--disable-extensions', '--disable-background-networking', '--disable-sync', '--no-first-run']});
   report.browser = browser.version();
@@ -309,6 +447,8 @@ async function run() {
   page.on('pageerror', error => report.pageErrors.push({url: page.url(), error: error.stack || error.message}));
   page.on('crash', () => { report.failures.push({name: 'browser page crashed', passed: false}); save(); });
   await context.route('**/*', route => route.fulfill({status: 200, contentType: 'text/html', body: route.request().frame() !== page.mainFrame() ? childHtml(scrollableChild) : activeFixture.html}));
+
+  if (lifecycleProbe) { await lifecycleChecks(); return; }
 
   if (ownershipProbe) { await scrollingOwnershipChecks(); return; }
 

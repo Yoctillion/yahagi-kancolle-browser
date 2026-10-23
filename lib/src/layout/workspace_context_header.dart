@@ -67,6 +67,7 @@ class WorkspaceContextHeader extends StatelessWidget {
     this.onToolboxModeChanged,
     this.layoutSettingsController,
     this.uiSize,
+    this.flatStyle = false,
   });
 
   final int workspaceIndex;
@@ -107,6 +108,7 @@ class WorkspaceContextHeader extends StatelessWidget {
   final ValueChanged<ToolboxMode>? onToolboxModeChanged;
   final LayoutSettingsController? layoutSettingsController;
   final UiDisplaySize? uiSize;
+  final bool flatStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +129,7 @@ class WorkspaceContextHeader extends StatelessWidget {
         onFrameRefreshTap: onFrameRefreshTap,
         settingsController: layoutSettingsController,
         uiSize: uiSize,
+        flatStyle: flatStyle,
       );
     }
     if (workspaceIndex == 1) {

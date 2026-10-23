@@ -28,6 +28,7 @@ class OoiViewportSmokeTest {
     private val pageFinishes = AtomicInteger()
     private val fits = AtomicInteger()
     private val scaleFailures = AtomicInteger()
+    @Volatile private var lastScaleError: String? = null
     private val applier = FixedCanvasScaleApplier()
     private lateinit var view: FailingScaleWebView
 
@@ -74,42 +75,44 @@ class OoiViewportSmokeTest {
     @Test
     fun originalScriptManualFitRetriesNativeScaleAfterResetAndException() = withWebView { script ->
         load("https://play.games.dmm.com/game/kancolle/", "<canvas width='1200' height='720'></canvas>")
-        eval(script)
-        settle()
+        fit(script)
         val finishes = pageFinishes.get()
         instrumentation.runOnMainSync {
             view.layout(0, 0, 700, 420)
             view.setInitialScale(100)
         }
-        eval(script)
-        settle()
-        assertScale(0.58f)
+        fit(script)
+        assertCanvasCorners()
         val beforeFailure = scaleFailures.get()
-        instrumentation.runOnMainSync { view.failNextScale = true }
-        eval(script)
+        instrumentation.runOnMainSync { view.zoomBy(1.25f) }
         settle()
+        instrumentation.runOnMainSync { view.failNextScale = true }
+        fit(script, allowFailure = true)
         assertEquals("One simulated Android scale error", beforeFailure + 1, scaleFailures.get())
         val beforeRetry = fits.get()
-        eval(script)
-        settle()
+        fit(script)
         assertTrue("Forced game-fit survives native state/scale deduplication", fits.get() > beforeRetry)
-        assertScale(0.58f)
+        assertCanvasCorners()
         assertEquals("Manual fit does not reload", finishes, pageFinishes.get())
     }
 
     @Test
-    fun productionHelperFitsRoundedSlotAndResetsEffectiveZoomWithoutReload() = withWebView { script ->
+    fun productionHelperPreciselyFitsRoundedSlotsAndResetsEffectiveZoomWithoutReload() = withWebView { script ->
         load("https://play.games.dmm.com/game/kancolle/", "<canvas width='1200' height='720'></canvas>")
-        eval(script)
-        settle()
-        instrumentation.runOnMainSync { view.layout(0, 0, 1590, 953) }
-        val beforeFirstFit = fits.get()
-        eval(script)
-        settle()
-        assertTrue("Rounded-slot manual fit applies a native request", fits.get() > beforeFirstFit)
-        assertScale(1.32f)
+        fit(script)
+        assertCanvasRemainsFitted()
         val finishes = pageFinishes.get()
-        assertCanvasCorners()
+        // Both 1609x966 and 1614x969 used the same truncated 134% request.
+        // The exact ratio must still update when bounds change within that percent.
+        for ((width, height) in listOf(1614 to 969, 700 to 420, 1590 to 953, 1609 to 966, 1614 to 969, 900 to 900)) {
+            instrumentation.runOnMainSync { view.layout(0, 0, width, height) }
+            val beforeFit = fits.get()
+            fit(script)
+            assertTrue("${width}x$height manual fit applies a native request", fits.get() > beforeFit)
+            assertCanvasRemainsFitted()
+        }
+        instrumentation.runOnMainSync { view.layout(0, 0, 1614, 969) }
+        fit(script)
         var baseline = 0f
         instrumentation.runOnMainSync { baseline = view.scale }
         instrumentation.runOnMainSync { view.zoomBy(1.25f) }
@@ -118,18 +121,14 @@ class OoiViewportSmokeTest {
         instrumentation.runOnMainSync { zoomed = view.scale }
         assertTrue("Effective zoom disturbance actually changes scale: $baseline -> $zoomed", zoomed > baseline * 1.05f)
         val beforeRestore = fits.get()
-        eval(script)
-        settle()
+        fit(script)
         assertTrue("Same-percent manual restore applies a new native request", fits.get() > beforeRestore)
-        assertScale(1.32f)
-        assertCanvasCorners()
+        assertCanvasRemainsFitted()
         repeat(3) {
             val beforeRepeat = fits.get()
-            eval(script)
-            settle()
+            fit(script)
             assertTrue("Repeated reinjection applies a native request", fits.get() > beforeRepeat)
-            assertScale(1.32f)
-            assertCanvasCorners()
+            assertCanvasRemainsFitted()
         }
         assertEquals("Repeated native fits preserve the document", finishes, pageFinishes.get())
         assertEquals("CSSOM changes retain the original script text", "true", eval("document.getElementById('__yahagi_mobile_fixed_canvas__').textContent.includes('min-width: 1200px')"))
@@ -138,15 +137,14 @@ class OoiViewportSmokeTest {
     @Test
     fun productionHelperCancelStaleAndWebPageCompleteWithoutNativeScaling() = withWebView { script ->
         load("https://play.games.dmm.com/game/kancolle/", "<canvas width='1200' height='720'></canvas>")
-        eval(script)
-        settle()
+        fit(script)
         val completed = CountDownLatch(1)
         val callbacks = AtomicInteger()
         var applied = true
         var nativeBefore = 0
         instrumentation.runOnMainSync {
-            nativeBefore = view.scaleSetterCalls
-            applier.apply(view, view.width, 100, 1200, { true }) { outcome ->
+            nativeBefore = view.nativeScaleCalls
+            applier.apply(view, view.width, 100, 1200, 720, { true }) { outcome ->
                 applied = outcome.getOrThrow()
                 callbacks.incrementAndGet()
                 completed.countDown()
@@ -157,17 +155,46 @@ class OoiViewportSmokeTest {
         settle()
         assertEquals("Cancellation completes false", false, applied)
         assertEquals("Late JS callback cannot complete twice", 1, callbacks.get())
-        assertEquals("Cancellation never applies 0/target", nativeBefore, view.scaleSetterCalls)
+        assertEquals("Cancellation never changes native scale", nativeBefore, view.nativeScaleCalls)
         val stale = applyAndWait(current = false)
         assertEquals("A stale view is skipped", false, stale.getOrThrow())
-        assertEquals("Stale request never scales", nativeBefore, view.scaleSetterCalls)
+        assertEquals("Stale request never scales", nativeBefore, view.nativeScaleCalls)
         load("https://ooi.moe/login", "<iframe id='externalswf' scrolling='auto'></iframe>")
         eval(script)
         settle()
-        nativeBefore = view.scaleSetterCalls
+        nativeBefore = view.nativeScaleCalls
         assertEquals("A web presentation is skipped", false, applyAndWait().getOrThrow())
-        assertEquals("Login never receives 0/target", nativeBefore, view.scaleSetterCalls)
+        assertEquals("Login never receives native scaling", nativeBefore, view.nativeScaleCalls)
         assertEquals("Login frame attribute is retained", "\"auto\"", eval("document.getElementById('externalswf').getAttribute('scrolling')"))
+    }
+
+    @Test
+    fun originalScriptRestoresViewportMetadataWhenCanvasBecomesOoiWrapper() = withWebView { script ->
+        val original = "width=device-width,initial-scale=1,minimum-scale=0.8,maximum-scale=1,user-scalable=no"
+        for (originalPresent in listOf(true, false)) {
+            instrumentation.runOnMainSync { view.layout(0, 0, 700, 420) }
+            load("https://ooi.moe/poi", "<canvas width='1200' height='720'></canvas>")
+            if (originalPresent) {
+                eval("window.__fixtureViewport=document.querySelector('meta[name=viewport]');window.__fixtureViewport.setAttribute('content',${JSONObject.quote(original)})")
+            } else {
+                eval("document.querySelectorAll('meta[name=viewport]').forEach(m=>m.remove())")
+            }
+            fit(script)
+            assertCanvasRemainsFitted()
+            val nativeBefore = view.nativeScaleCalls
+            eval("document.body.innerHTML=\"<div id='flashWrap'><iframe id='externalswf' width='1280' height='800'></iframe></div>\"")
+            eval(script)
+            settle()
+            assertEquals("OOI wrapper releases game presentation", "\"web\"", eval("window.__yahagiMobileReadPresentation()"))
+            if (originalPresent) {
+                assertEquals("Original viewport node is retained", "true", eval("document.querySelector('meta[name=viewport]')===window.__fixtureViewport"))
+                assertEquals("Original viewport content is restored exactly", JSONObject.quote(original), eval("document.querySelector('meta[name=viewport]').getAttribute('content')"))
+            } else {
+                assertEquals("A game-created viewport is removed on release", "0", eval("document.querySelectorAll('meta[name=viewport]').length"))
+            }
+            assertEquals("Game clipping is removed with its stylesheet", "\"none\"", eval("getComputedStyle(document.body).clipPath"))
+            assertEquals("Web presentation makes no native scale request", nativeBefore, view.nativeScaleCalls)
+        }
     }
 
     @Test
@@ -185,7 +212,7 @@ class OoiViewportSmokeTest {
         """.trimIndent())
         eval(script)
         settle()
-        assertEquals("Runtime upgrades cached v3 state", "4", eval("window.__yahagiMobilePresentationRuntimeVersion"))
+        assertEquals("Runtime upgrades cached v3 state", "5", eval("window.__yahagiMobilePresentationRuntimeVersion"))
         assertEquals("Upgrade replaces old OOI alignment closure", "0", eval("window.__staleOoiClosureCalls"))
         val finishes = pageFinishes.get()
         eval("document.getElementById('externalswf').contentWindow.scrollTo(113,157)")
@@ -226,11 +253,11 @@ class OoiViewportSmokeTest {
                                     val expectedView = view
                                     val expectedWidth = view.width
                                     val expectedHeight = view.height
-                                    applier.apply(view, expectedWidth, scale, 1200, {
+                                    applier.apply(view, expectedWidth, scale, 1200, 720, {
                                         view === expectedView && view.width == expectedWidth && view.height == expectedHeight
                                     }) { outcome ->
                                         outcome.onSuccess { applied -> if (applied) fits.incrementAndGet() }
-                                            .onFailure { scaleFailures.incrementAndGet() }
+                                            .onFailure { lastScaleError = it.toString(); scaleFailures.incrementAndGet() }
                                     }
                                 }
                             } else {
@@ -283,45 +310,78 @@ class OoiViewportSmokeTest {
 
     private fun settle() { Thread.sleep(300); instrumentation.waitForIdleSync() }
 
+    private fun fit(script: String, allowFailure: Boolean = false) {
+        val before = fits.get()
+        val failuresBefore = scaleFailures.get()
+        eval(script)
+        val deadline = android.os.SystemClock.uptimeMillis() + 5_500
+        while (fits.get() <= before && scaleFailures.get() == failuresBefore &&
+            android.os.SystemClock.uptimeMillis() < deadline) {
+            Thread.sleep(50)
+        }
+        assertTrue("Native fit callback completes", fits.get() > before || scaleFailures.get() > failuresBefore)
+        if (!allowFailure) assertEquals("Native fit completes without error: $lastScaleError", failuresBefore, scaleFailures.get())
+    }
+
     private fun applyAndWait(current: Boolean = true): Result<Boolean> {
         val completed = CountDownLatch(1)
         var outcome: Result<Boolean>? = null
         instrumentation.runOnMainSync {
-            applier.apply(view, view.width, 50, 1200, { current }) { result -> outcome = result; completed.countDown() }
+            applier.apply(view, view.width, 50, 1200, 720, { current }) { result -> outcome = result; completed.countDown() }
         }
         assertTrue("Native helper completes", completed.await(6, TimeUnit.SECONDS))
         return checkNotNull(outcome)
     }
 
     private fun assertCanvasCorners() {
-        val metrics = JSONObject(eval("""
-            (()=>{const r=document.querySelector('canvas').getBoundingClientRect(),v=visualViewport;
-            return {x:r.x-v.offsetLeft,y:r.y-v.offsetTop,right:r.right-v.offsetLeft,bottom:r.bottom-v.offsetTop,width:r.width,height:r.height,visualWidth:v.width};})()
-        """.trimIndent()))
         var width = 0
         var height = 0
         instrumentation.runOnMainSync { width = view.width; height = view.height }
-        val scale = width / metrics.getDouble("visualWidth")
+        val targetScale = minOf(width / 1200.0, height / 720.0)
+        fun readMetrics() = JSONObject(eval("""
+            (()=>{const r=document.querySelector('canvas').getBoundingClientRect(),v=visualViewport;
+            return {x:r.x-v.offsetLeft,y:r.y-v.offsetTop,right:r.right-v.offsetLeft,bottom:r.bottom-v.offsetTop,width:r.width,height:r.height,visualWidth:v.width,visualScale:v.scale,dpr:devicePixelRatio};})()
+        """.trimIndent()))
+        var metrics = readMetrics()
+        val deadline = android.os.SystemClock.uptimeMillis() + 2_000
+        while (kotlin.math.abs(metrics.getDouble("visualScale") * metrics.getDouble("dpr") - targetScale) > 0.5 / 1200.0 &&
+            android.os.SystemClock.uptimeMillis() < deadline) {
+            Thread.sleep(50)
+            metrics = readMetrics()
+        }
+        val scale = metrics.getDouble("visualScale") * metrics.getDouble("dpr")
         assertEquals("Canvas CSS width is preserved", 1200.0, metrics.getDouble("width"), 0.01)
         assertEquals("Canvas CSS height is preserved", 720.0, metrics.getDouble("height"), 0.01)
-        val targetPercent = (minOf(width / 1200f, height / 720f) * 100f).toInt()
-        assertEquals("Integer native fit scale is applied", targetPercent / 100.0, scale, 0.0025)
-        assertTrue("Left corner is visible", metrics.getDouble("x") * scale >= -0.5)
-        assertTrue("Top corner is visible", metrics.getDouble("y") * scale >= -0.5)
+        assertEquals("Exact proportional fit is applied at ${width}x$height", targetScale, scale, 0.5 / 1200.0)
+        assertEquals("Left edge is aligned", 0.0, metrics.getDouble("x") * scale, 0.5)
+        assertEquals("Top edge is aligned", 0.0, metrics.getDouble("y") * scale, 0.5)
+        assertEquals("Right edge has no rounding gap", 1200 * targetScale, metrics.getDouble("right") * scale, 0.5)
+        assertEquals("Bottom edge has no rounding gap", 720 * targetScale, metrics.getDouble("bottom") * scale, 0.5)
         assertTrue("Right corner is visible", metrics.getDouble("right") * scale <= width + 0.5)
         assertTrue("Bottom corner is visible", metrics.getDouble("bottom") * scale <= height + 0.5)
     }
 
-    @Suppress("DEPRECATION")
-    private fun assertScale(expected: Float) {
-        var actual = 0f
-        instrumentation.runOnMainSync { actual = view.scale }
-        assertEquals("Native game canvas fits", expected, actual, 0.025f)
+    private fun assertCanvasRemainsFitted() {
+        assertCanvasCorners()
+        Thread.sleep(150)
+        assertCanvasCorners()
+        Thread.sleep(350)
+        assertCanvasCorners()
     }
 
     private class FailingScaleWebView(context: Context) : WebView(context) {
         var failNextScale = false
         var scaleSetterCalls = 0
+        var zoomCalls = 0
+        val nativeScaleCalls get() = scaleSetterCalls + zoomCalls
+        override fun zoomBy(zoomFactor: Float) {
+            zoomCalls++
+            if (failNextScale) {
+                failNextScale = false
+                throw IllegalStateException("Intentional zoomBy failure")
+            }
+            super.zoomBy(zoomFactor)
+        }
         override fun setInitialScale(scaleInPercent: Int) {
             scaleSetterCalls++
             if (failNextScale) {

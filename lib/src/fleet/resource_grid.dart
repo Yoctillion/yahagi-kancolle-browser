@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../game_state/game_state.dart';
 import '../layout/display_corners.dart';
 import '../layout/flat_collapse_chevron.dart';
+import '../layout/ui_scale.dart';
 import '../settings/header_resource_settings.dart';
 import '../settings/layout_settings_controller.dart';
 import '../performance/second_tick_scope.dart';
@@ -129,6 +130,7 @@ class CompactResourceBar extends StatefulWidget {
     this.gridPadding = EdgeInsets.zero,
     this.gridCornerRadii = (left: 0, right: 0),
     this.uiSize,
+    this.flatStyle = false,
   });
 
   final GameState state;
@@ -152,6 +154,9 @@ class CompactResourceBar extends StatefulWidget {
 
   /// Overrides the settings size, e.g. HD lays minimal out as compact.
   final UiDisplaySize? uiSize;
+
+  /// Flat strip styling is independent of compact sizing; grids ignore it.
+  final bool flatStyle;
 
   @override
   State<CompactResourceBar> createState() => _CompactResourceBarState();
@@ -288,6 +293,7 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     final isCompact = uiSize.isCompactOrSmaller;
     final barHeight = headerCapsuleHeight(uiSize);
     final separatorWidth = isCompact && !uiSize.isMinimal ? 5.0 : 6.0;
+    final resourceScale = UiScale.of(context);
 
     final order = controller?.headerResourceOrder ?? allHeaderResourceIds;
     final visible =
@@ -313,114 +319,151 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
       );
     }
     if (widget.layout == ResourceBarLayout.staticStrip && !isEditing) {
-      return _buildStaticStrip(
-        ids,
-        controller: controller,
-        l10n: l10n,
-        uiSize: uiSize,
-        separatorWidth: separatorWidth,
+      return _HeaderFlatStripScope(
+        enabled: widget.flatStyle,
+        child: _buildStaticStrip(
+          ids,
+          controller: controller,
+          l10n: l10n,
+          uiSize: uiSize,
+          separatorWidth: separatorWidth,
+        ),
       );
     }
-    return Listener(
-      onPointerSignal: _onPointerSignal,
-      child: SizedBox(
-        height: barHeight,
-        child: isEditing
-            ? Row(
-                key: const Key('header-resource-edit-mode'),
-                children: [
-                  _EditButton(
-                    key: const Key('header-resource-reset'),
-                    icon: Icons.restart_alt_rounded,
-                    tooltip: l10n.restoreDefaultOrder,
-                    size: barHeight,
-                    iconSize: isCompact ? 16 : 18,
-                    onPressed: controller?.resetHeaderResources,
-                  ),
-                  const SizedBox(width: 4),
-                  _EditButton(
-                    key: const Key('header-resource-edit-done'),
-                    icon: Icons.check_rounded,
-                    tooltip: l10n.editDone,
-                    size: barHeight,
-                    iconSize: isCompact ? 16 : 18,
-                    onPressed: () => setState(() => _editing = false),
-                  ),
-                  const SizedBox(width: 4),
-                  _EditButton(
-                    key: const Key('header-resource-filter'),
-                    icon: Icons.filter_alt_rounded,
-                    tooltip: l10n.filterVisibleItems,
-                    size: barHeight,
-                    iconSize: isCompact ? 16 : 18,
-                    onPressed: controller == null
-                        ? null
-                        : () => _showResourceFilter(controller),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: ReorderableListView.builder(
-                      scrollController: _scrollController,
-                      padding: EdgeInsets.zero,
-                      scrollDirection: Axis.horizontal,
-                      buildDefaultDragHandles: false,
-                      itemCount: ids.length,
-                      onReorderItem: (oldIndex, newIndex) {
-                        if (controller == null) return;
-                        final reordered = List<String>.from(ids);
-                        final item = reordered.removeAt(oldIndex);
-                        reordered.insert(
-                          newIndex.clamp(0, reordered.length),
-                          item,
-                        );
-                        controller.setHeaderResourceOrder(reordered);
-                      },
-                      itemBuilder: (context, index) {
-                        final id = ids[index];
-                        return Padding(
-                          key: ValueKey('header-resource-edit-$id'),
-                          padding: EdgeInsets.only(
-                            right: index + 1 < ids.length ? separatorWidth : 0,
-                          ),
-                          child: ReorderableDelayedDragStartListener(
-                            index: index,
-                            child: _buildEditableItem(
-                              id,
-                              visible: visible.contains(id),
-                              uiSize: uiSize,
-                            ),
-                          ),
-                        );
-                      },
+    return _HeaderFlatStripScope(
+      enabled: widget.flatStyle,
+      child: Listener(
+        onPointerSignal: _onPointerSignal,
+        child: SizedBox(
+          height: barHeight,
+          child: isEditing
+              ? Row(
+                  key: const Key('header-resource-edit-mode'),
+                  children: [
+                    _EditButton(
+                      key: const Key('header-resource-reset'),
+                      icon: Icons.restart_alt_rounded,
+                      tooltip: l10n.restoreDefaultOrder,
+                      size: barHeight,
+                      iconSize: isCompact ? 16 : 18,
+                      onPressed: controller?.resetHeaderResources,
                     ),
+                    const SizedBox(width: 4),
+                    _EditButton(
+                      key: const Key('header-resource-edit-done'),
+                      icon: Icons.check_rounded,
+                      tooltip: l10n.editDone,
+                      size: barHeight,
+                      iconSize: isCompact ? 16 : 18,
+                      onPressed: () => setState(() => _editing = false),
+                    ),
+                    const SizedBox(width: 4),
+                    _EditButton(
+                      key: const Key('header-resource-filter'),
+                      icon: Icons.filter_alt_rounded,
+                      tooltip: l10n.filterVisibleItems,
+                      size: barHeight,
+                      iconSize: isCompact ? 16 : 18,
+                      onPressed: controller == null
+                          ? null
+                          : () => _showResourceFilter(controller),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      // ReorderableListView measures drag positions in physical
+                      // coordinates; scale its items rather than its viewport.
+                      child: UiScale(
+                        scale: 1,
+                        child: ReorderableListView.builder(
+                          scrollController: _scrollController,
+                          padding: EdgeInsets.zero,
+                          scrollDirection: Axis.horizontal,
+                          buildDefaultDragHandles: false,
+                          itemCount: ids.length,
+                          onReorderItem: (oldIndex, newIndex) {
+                            if (controller == null) return;
+                            final reordered = List<String>.from(ids);
+                            final item = reordered.removeAt(oldIndex);
+                            reordered.insert(
+                              newIndex.clamp(0, reordered.length),
+                              item,
+                            );
+                            controller.setHeaderResourceOrder(reordered);
+                          },
+                          itemBuilder: (context, index) {
+                            final id = ids[index];
+                            return UiScale(
+                              key: ValueKey('header-resource-edit-$id'),
+                              scale: resourceScale,
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  right: index + 1 < ids.length
+                                      ? separatorWidth
+                                      : 0,
+                                ),
+                                child: ReorderableDelayedDragStartListener(
+                                  index: index,
+                                  child: _buildEditableItem(
+                                    id,
+                                    visible: visible.contains(id),
+                                    uiSize: uiSize,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : ListView.separated(
+                  controller: _scrollController,
+                  key: const Key('header-resource-list'),
+                  padding: EdgeInsets.zero,
+                  primary: false,
+                  scrollDirection: Axis.horizontal,
+                  itemCount: ids.length,
+                  separatorBuilder: (context, index) => _stripSeparator(
+                    context,
+                    width: separatorWidth,
+                    nextId: ids[index + 1],
                   ),
-                ],
-              )
-            : ListView.separated(
-                controller: _scrollController,
-                key: const Key('header-resource-list'),
-                padding: EdgeInsets.zero,
-                primary: false,
-                scrollDirection: Axis.horizontal,
-                itemCount: ids.length,
-                separatorBuilder: (context, index) =>
-                    SizedBox(width: separatorWidth),
-                itemBuilder: (context, index) {
-                  final id = ids[index];
-                  return _buildInteractiveItem(
-                    id,
-                    controller: controller,
-                    l10n: l10n,
-                    uiSize: uiSize,
-                    width: uiSize.isMinimal
-                        ? _stripNaturalWidth(context, id, uiSize: uiSize)
-                        : _stripItemWidth(id, isCompact),
-                  );
-                },
-              ),
+                  itemBuilder: (context, index) {
+                    final id = ids[index];
+                    return _buildInteractiveItem(
+                      id,
+                      controller: controller,
+                      l10n: l10n,
+                      uiSize: uiSize,
+                      width: uiSize.isMinimal
+                          ? _stripNaturalWidth(context, id, uiSize: uiSize)
+                          : _stripItemWidth(id, isCompact),
+                    );
+                  },
+                ),
+        ),
       ),
     );
   }
+
+  Widget _stripSeparator(
+    BuildContext context, {
+    required double width,
+    required String nextId,
+  }) => SizedBox(
+    width: width,
+    child: widget.flatStyle
+        ? Center(
+            child: Container(
+              key: Key('header-resource-divider-before-$nextId'),
+              width: 1,
+              height: 14,
+              color: appColor(context, const Color(0xff315064)),
+            ),
+          )
+        : null,
+  );
 
   static const double _gridSpacing = 4;
   static const int _gridColumns = 4;
@@ -742,7 +785,12 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
             mainAxisSize: MainAxisSize.min,
             children: [
               for (var i = 0; i < ids.length; i++) ...[
-                if (i > 0) SizedBox(width: separatorWidth),
+                if (i > 0)
+                  _stripSeparator(
+                    context,
+                    width: separatorWidth,
+                    nextId: ids[i],
+                  ),
                 SizedBox(
                   height: height,
                   child: _buildInteractiveItem(
@@ -1243,6 +1291,16 @@ class _HeaderGridScope extends InheritedWidget {
   bool updateShouldNotify(_HeaderGridScope oldWidget) => false;
 }
 
+class _HeaderFlatStripScope extends InheritedWidget {
+  const _HeaderFlatStripScope({required this.enabled, required super.child});
+
+  final bool enabled;
+
+  @override
+  bool updateShouldNotify(_HeaderFlatStripScope oldWidget) =>
+      enabled != oldWidget.enabled;
+}
+
 bool _inHeaderGrid(BuildContext context) =>
     context.getInheritedWidgetOfExactType<_HeaderGridScope>() != null;
 
@@ -1353,7 +1411,14 @@ BoxDecoration? _headerPillDecoration(
   HeaderUiSize uiSize, {
   bool grid = false,
 }) {
-  if (grid || uiSize.isMinimal) return null;
+  if (grid ||
+      uiSize.isMinimal ||
+      context
+              .dependOnInheritedWidgetOfExactType<_HeaderFlatStripScope>()
+              ?.enabled ==
+          true) {
+    return null;
+  }
   return BoxDecoration(
     color: appColor(context, const Color(0xff142735)),
     borderRadius: BorderRadius.circular(uiSize.isCompactOrSmaller ? 7 : 8),

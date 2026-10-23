@@ -2,6 +2,7 @@ import '../theme/app_palette.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import '../widgets/top_notice.dart';
 
@@ -28,7 +29,7 @@ class QuestCompletionDrawerHost extends StatefulWidget {
     Duration? duration,
     Duration appendWithin = Duration.zero,
   }) {
-    context.getInheritedWidgetOfExactType<_DrawerScope>()?.notifier?.show(
+    context.getInheritedWidgetOfExactType<_DrawerScope>()?.controller.show(
       message: message,
       tone: tone,
       customIcon: icon,
@@ -39,14 +40,46 @@ class QuestCompletionDrawerHost extends StatefulWidget {
   }
 
   static void hide(BuildContext context) {
-    context.getInheritedWidgetOfExactType<_DrawerScope>()?.notifier?.hide();
+    context.getInheritedWidgetOfExactType<_DrawerScope>()?.controller.hide();
   }
 
   static void removeQuestNotices(BuildContext context) {
     context
         .getInheritedWidgetOfExactType<_DrawerScope>()
-        ?.notifier
-        ?.removeByTone(TopNoticeTone.quest);
+        ?.controller
+        .removeByTone(TopNoticeTone.quest);
+  }
+
+  static Future<bool> showDamageControlNotice(
+    BuildContext context,
+    String message, {
+    VoidCallback? onUnavailable,
+    VoidCallback? onDismissed,
+  }) async {
+    if (!context.mounted) return false;
+    final host = context.getInheritedWidgetOfExactType<_DrawerScope>()?.host;
+    if (host == null) return false;
+    return host._showDamageControlNotice(
+      message,
+      onUnavailable: onUnavailable,
+      onDismissed: onDismissed,
+    );
+  }
+
+  static void removeDamageControlNotice(BuildContext context) {
+    if (!context.mounted) return;
+    context
+        .getInheritedWidgetOfExactType<_DrawerScope>()
+        ?.host
+        ._removeDamageControlNotice();
+  }
+
+  static VoidCallback? damageControlNoticeRemover(BuildContext context) {
+    if (!context.mounted) return null;
+    return context
+        .dependOnInheritedWidgetOfExactType<_DrawerScope>()
+        ?.host
+        ._removeDamageControlNotice;
   }
 
   @override
@@ -58,7 +91,16 @@ class _QuestCompletionDrawerHostState extends State<QuestCompletionDrawerHost> {
   static const _nativeChannel = MethodChannel(
     'app.yahagi.kancollebrowser/game_fullscreen',
   );
-  late final TopNoticeController _controller;
+  static const _damageControlNoticeKey = 'damage-control';
+  late TopNoticeController _controller;
+  final _damageControlController = TopNoticeController();
+  late Listenable _noticeListenable;
+  final _headerSlots = <_QuestCompletionHeaderSlotState>{};
+  int _damageControlGeneration = 0;
+  int? _damageControlConfirmedGeneration;
+  VoidCallback? _damageControlUnavailable;
+  VoidCallback? _damageControlDismissed;
+  bool _damageControlMonitorScheduled = false;
   bool _ownsController = false;
   Future<void> _nativeNoticeQueue = Future<void>.value();
   String? _lastNativeMessage;
@@ -66,22 +108,137 @@ class _QuestCompletionDrawerHostState extends State<QuestCompletionDrawerHost> {
   @override
   void initState() {
     super.initState();
-    if (widget.controller != null) {
-      _controller = widget.controller!;
-    } else {
-      _controller = TopNoticeController();
-      _ownsController = true;
-    }
+    _damageControlController.addListener(_onDamageControlNoticeChanged);
+    _attachController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncNativeNotice();
+    });
+  }
+
+  void _attachController() {
+    _ownsController = widget.controller == null;
+    _controller = widget.controller ?? TopNoticeController();
     _controller.addListener(_syncNativeNotice);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncNativeNotice());
+    _noticeListenable = Listenable.merge([
+      _controller,
+      _damageControlController,
+    ]);
   }
 
   @override
   void didUpdateWidget(QuestCompletionDrawerHost oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      _controller.removeListener(_syncNativeNotice);
+      if (_ownsController) _controller.dispose();
+      _attachController();
+      _syncNativeNotice();
+    }
     if (oldWidget.fullscreen != widget.fullscreen ||
         oldWidget.nativeQuestOverlay != widget.nativeQuestOverlay) {
       _syncNativeNotice();
+    }
+  }
+
+  bool _damageControlDisplayAvailable(String message) =>
+      mounted &&
+      !(widget.fullscreen && widget.nativeQuestOverlay) &&
+      _headerSlots.any((slot) => slot._canDisplayMessage(message));
+
+  Future<bool> _showDamageControlNotice(
+    String message, {
+    VoidCallback? onUnavailable,
+    VoidCallback? onDismissed,
+  }) async {
+    if (message.isEmpty || !_damageControlDisplayAvailable(message)) {
+      return false;
+    }
+    final generation = ++_damageControlGeneration;
+    _damageControlConfirmedGeneration = null;
+    _damageControlUnavailable = null;
+    _damageControlDismissed = null;
+    _damageControlController.show(
+      message: message,
+      tone: TopNoticeTone.damageControl,
+      duration: const Duration(seconds: 10),
+      replacementKey: _damageControlNoticeKey,
+      showIcon: false,
+    );
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || generation != _damageControlGeneration) return false;
+    if (!_damageControlDisplayAvailable(message)) {
+      _removeDamageControlNotice();
+      return false;
+    }
+    if (_damageControlController.current?.replacementKey !=
+        _damageControlNoticeKey) {
+      return false;
+    }
+    _damageControlConfirmedGeneration = generation;
+    _damageControlUnavailable = onUnavailable;
+    _damageControlDismissed = onDismissed;
+    _monitorDamageControlDisplay();
+    return true;
+  }
+
+  void _onDamageControlNoticeChanged() {
+    if (_damageControlController.current != null) return;
+    final onDismissed = _damageControlDismissed;
+    _damageControlConfirmedGeneration = null;
+    _damageControlUnavailable = null;
+    _damageControlDismissed = null;
+    onDismissed?.call();
+  }
+
+  void _monitorDamageControlDisplay() {
+    if (_damageControlMonitorScheduled ||
+        !mounted ||
+        _damageControlConfirmedGeneration != _damageControlGeneration ||
+        _damageControlController.current == null) {
+      return;
+    }
+    _damageControlMonitorScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _damageControlMonitorScheduled = false;
+      if (!mounted ||
+          _damageControlConfirmedGeneration != _damageControlGeneration ||
+          _damageControlController.current == null) {
+        return;
+      }
+      if (!_damageControlDisplayAvailable(
+        _damageControlController.current!.message,
+      )) {
+        final onUnavailable = _damageControlUnavailable;
+        _removeDamageControlNotice();
+        onUnavailable?.call();
+        return;
+      }
+      _monitorDamageControlDisplay();
+    });
+  }
+
+  void _removeDamageControlNotice() {
+    if (!mounted) return;
+    final generation = ++_damageControlGeneration;
+    _damageControlConfirmedGeneration = null;
+    _damageControlUnavailable = null;
+    _damageControlDismissed = null;
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || generation != _damageControlGeneration) return;
+        _damageControlController.removeByKey(_damageControlNoticeKey);
+      });
+      return;
+    }
+    _damageControlController.removeByKey(_damageControlNoticeKey);
+  }
+
+  void _dismissDamageControlNotice(int id) {
+    if (_damageControlController.current?.id == id) {
+      final onDismissed = _damageControlDismissed;
+      _removeDamageControlNotice();
+      onDismissed?.call();
     }
   }
 
@@ -108,6 +265,9 @@ class _QuestCompletionDrawerHostState extends State<QuestCompletionDrawerHost> {
 
   @override
   void dispose() {
+    _damageControlGeneration++;
+    _damageControlDismissed = null;
+    _damageControlController.dispose();
     _controller.removeListener(_syncNativeNotice);
     if (widget.nativeQuestOverlay) {
       unawaited(
@@ -128,7 +288,10 @@ class _QuestCompletionDrawerHostState extends State<QuestCompletionDrawerHost> {
 
   @override
   Widget build(BuildContext context) => _DrawerScope(
-    notifier: _controller,
+    notifier: _noticeListenable,
+    controller: _controller,
+    damageControlController: _damageControlController,
+    host: this,
     child: Stack(
       fit: StackFit.expand,
       children: [
@@ -148,7 +311,7 @@ class _QuestCompletionDrawerHostState extends State<QuestCompletionDrawerHost> {
 
 /// Uses the same header space as the toolbar beside the Yahagi brand button.
 /// Task completion stays visible even while the game toolbar is expanded.
-class QuestCompletionHeaderSlot extends StatelessWidget {
+class QuestCompletionHeaderSlot extends StatefulWidget {
   const QuestCompletionHeaderSlot({
     super.key,
     required this.child,
@@ -167,6 +330,7 @@ class QuestCompletionHeaderSlot extends StatelessWidget {
       TopNoticeTone.info => Icons.insights_rounded,
       TopNoticeTone.quest => Icons.assignment_turned_in_outlined,
       TopNoticeTone.marriage => Icons.favorite_rounded,
+      TopNoticeTone.damageControl => Icons.shield_outlined,
     };
   }
 
@@ -180,19 +344,104 @@ class QuestCompletionHeaderSlot extends StatelessWidget {
       TopNoticeTone.info => const Color(0xff38bdf8),
       TopNoticeTone.quest => const Color(0xffd4a85f),
       TopNoticeTone.marriage => const Color(0xfff472b6),
+      TopNoticeTone.damageControl => const Color(0xffd4a85f),
     };
   }
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context
+  State<QuestCompletionHeaderSlot> createState() =>
+      _QuestCompletionHeaderSlotState();
+}
+
+class _QuestCompletionHeaderSlotState extends State<QuestCompletionHeaderSlot> {
+  _QuestCompletionDrawerHostState? _host;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final host = context
         .dependOnInheritedWidgetOfExactType<_DrawerScope>()
-        ?.notifier;
-    final notices = controller?.notices ?? const <TopNoticeData>[];
+        ?.host;
+    if (host == _host) return;
+    _host?._headerSlots.remove(this);
+    _host = host;
+    _host?._headerSlots.add(this);
+  }
+
+  bool _canDisplayMessage(String message) {
+    if (!mounted || !TickerMode.valuesOf(context).enabled) return false;
+    var hidden = false;
+    context.visitAncestorElements((element) {
+      final ancestor = element.widget;
+      if ((ancestor is Offstage && ancestor.offstage) ||
+          (ancestor is Visibility && !ancestor.visible) ||
+          (ancestor is Opacity && ancestor.opacity == 0) ||
+          (ancestor is AnimatedOpacity && ancestor.opacity == 0) ||
+          (ancestor is IgnorePointer && ancestor.ignoring) ||
+          (ancestor is AbsorbPointer && ancestor.absorbing)) {
+        hidden = true;
+        return false;
+      }
+      return true;
+    });
+    final renderObject = context.findRenderObject();
+    if (hidden ||
+        renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize ||
+        renderObject.size.height < _HeaderNoticeCapsule.height) {
+      return false;
+    }
+    final defaultStyle = DefaultTextStyle.of(context);
+    var textStyle = defaultStyle.style.merge(
+      _HeaderNoticeCapsule.textStyleFor(context),
+    );
+    if (MediaQuery.boldTextOf(context)) {
+      textStyle = textStyle.copyWith(fontWeight: FontWeight.bold);
+    }
+    final painter = TextPainter(
+      text: TextSpan(text: message, style: textStyle),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      locale: Localizations.maybeLocaleOf(context),
+      maxLines: 1,
+      textHeightBehavior: defaultStyle.textHeightBehavior,
+    )..layout();
+    final fits =
+        !painter.didExceedMaxLines &&
+        painter.width +
+                2 *
+                    (_HeaderNoticeCapsule.horizontalPadding +
+                        _HeaderNoticeCapsule.borderWidth) <=
+            renderObject.size.width &&
+        painter.height + 2 * _HeaderNoticeCapsule.borderWidth <=
+            _HeaderNoticeCapsule.height;
+    painter.dispose();
+    return fits;
+  }
+
+  @override
+  void dispose() {
+    _host?._headerSlots.remove(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<_DrawerScope>();
+    final controller = scope?.controller;
+    final notices = [
+      ...?scope?.damageControlController.notices,
+      ...?controller?.notices,
+    ];
     final visible =
         notices.isNotEmpty &&
-        (!toolbarVisible ||
-            notices.any((notice) => notice.tone == TopNoticeTone.quest));
+        (!widget.toolbarVisible ||
+            notices.any(
+              (notice) =>
+                  notice.tone == TopNoticeTone.quest ||
+                  notice.tone == TopNoticeTone.damageControl,
+            ));
 
     return Stack(
       alignment: Alignment.centerLeft,
@@ -202,41 +451,45 @@ class QuestCompletionHeaderSlot extends StatelessWidget {
           child: AnimatedOpacity(
             opacity: visible ? 0 : 1,
             duration: const Duration(milliseconds: 200),
-            child: child,
+            child: widget.child,
           ),
         ),
         IgnorePointer(
           ignoring: !visible,
-          child: !visible
-              ? const SizedBox.shrink()
-              : ClipRect(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 240),
-                    reverseDuration: const Duration(milliseconds: 200),
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position:
-                            Tween<Offset>(
-                              begin: const Offset(-0.2, 0),
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              ),
-                            ),
-                        child: child,
+          child: ClipRect(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 240),
+              reverseDuration: const Duration(milliseconds: 200),
+              layoutBuilder: (currentChild, previousChildren) => Stack(
+                alignment: Alignment.centerLeft,
+                children: [?currentChild],
+              ),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position:
+                      Tween<Offset>(
+                        begin: const Offset(-0.2, 0),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        ),
                       ),
-                    ),
-                    child: Semantics(
+                  child: child,
+                ),
+              ),
+              child: !visible
+                  ? const SizedBox.shrink(key: ValueKey('header-notice-empty'))
+                  : Semantics(
                       key: const Key('quest-completion-drawer'),
                       liveRegion: true,
                       button: true,
                       child: KeyedSubtree(
                         // Appending preserves position; a new batch starts at
                         // its first message instead of inheriting old offset.
-                        key: ValueKey(notices.first.id),
+                        key: ValueKey((notices.first.tone, notices.first.id)),
                         child: SingleChildScrollView(
                           key: const Key('header-notice-scroll'),
                           scrollDirection: Axis.horizontal,
@@ -252,7 +505,14 @@ class QuestCompletionHeaderSlot extends StatelessWidget {
                                 if (index > 0) const SizedBox(width: 6),
                                 _HeaderNoticeCapsule(
                                   notice: notices[index],
-                                  onTap: controller?.hide,
+                                  onTap:
+                                      notices[index].tone ==
+                                          TopNoticeTone.damageControl
+                                      ? () => scope?.host
+                                            ._dismissDamageControlNotice(
+                                              notices[index].id,
+                                            )
+                                      : controller?.hide,
                                 ),
                               ],
                             ],
@@ -260,8 +520,8 @@ class QuestCompletionHeaderSlot extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ),
-                ),
+            ),
+          ),
         ),
       ],
     );
@@ -271,8 +531,21 @@ class QuestCompletionHeaderSlot extends StatelessWidget {
 class _HeaderNoticeCapsule extends StatelessWidget {
   const _HeaderNoticeCapsule({required this.notice, this.onTap});
 
+  static const height = 34.0;
+  static const horizontalPadding = 10.0;
+  static const borderWidth = 1.0;
+
   final TopNoticeData notice;
   final VoidCallback? onTap;
+
+  static TextStyle textStyleFor(BuildContext context) => appTextStyle(
+    context,
+    TextStyle(
+      fontSize: 13,
+      color: appColor(context, const Color(0xffe0e6e9)),
+      fontWeight: FontWeight.w600,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -281,8 +554,8 @@ class _HeaderNoticeCapsule extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: height,
+        padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
         decoration: BoxDecoration(
           color: appColor(
             context,
@@ -290,30 +563,26 @@ class _HeaderNoticeCapsule extends StatelessWidget {
           ),
           border: Border.all(
             color: appColor(context, color.withValues(alpha: 0.35)),
+            width: borderWidth,
           ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              QuestCompletionHeaderSlot.iconFor(notice),
-              size: 16,
-              color: appColor(context, color),
-            ),
-            const SizedBox(width: 8),
+            if (notice.showIcon) ...[
+              Icon(
+                QuestCompletionHeaderSlot.iconFor(notice),
+                size: 16,
+                color: appColor(context, color),
+              ),
+              const SizedBox(width: 8),
+            ],
             Text(
               notice.message,
               maxLines: 1,
               softWrap: false,
-              style: appTextStyle(
-                context,
-                TextStyle(
-                  fontSize: 13,
-                  color: appColor(context, Color(0xffe0e6e9)),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              style: textStyleFor(context),
             ),
           ],
         ),
@@ -322,6 +591,16 @@ class _HeaderNoticeCapsule extends StatelessWidget {
   }
 }
 
-class _DrawerScope extends InheritedNotifier<TopNoticeController> {
-  const _DrawerScope({required super.notifier, required super.child});
+class _DrawerScope extends InheritedNotifier<Listenable> {
+  const _DrawerScope({
+    required super.notifier,
+    required super.child,
+    required this.controller,
+    required this.damageControlController,
+    required this.host,
+  });
+
+  final TopNoticeController controller;
+  final TopNoticeController damageControlController;
+  final _QuestCompletionDrawerHostState host;
 }

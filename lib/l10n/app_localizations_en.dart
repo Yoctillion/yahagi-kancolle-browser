@@ -368,7 +368,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uiDisplaySizeDesc =>
-      'Adjust the density of the top bar, navigation bar and info panel; Minimal keeps the top Yahagi button and toolbar and uses a flat info panel';
+      'Adjust the density of the top bar, navigation bar and info panel';
 
   @override
   String get uiDisplaySizeNormal => 'Normal';
@@ -503,6 +503,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gameSafety => 'Heavy damage alerts';
+
+  @override
+  String get battleSafetySectionTitle => 'Game safety';
 
   @override
   String get blockSortieTitle => 'Heavy damage advance warning';
@@ -804,7 +807,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get battleWarningOff => 'Off';
 
   @override
-  String get battleWarningConfirm => 'Confirmation dialog';
+  String get battleWarningConfirm => 'Alerts enabled';
+
+  @override
+  String get advanceWarningDisplayModeTitle => 'Warning display';
+
+  @override
+  String get advanceWarningAlwaysConfirm => 'Always confirm';
+
+  @override
+  String get advanceWarningSmart => 'Smart alerts';
+
+  @override
+  String get advanceWarningSmartDescription =>
+      'Top notice when all heavily damaged ships have confirmed remaining damage control; otherwise, a confirmation dialog.';
+
+  @override
+  String get advanceWarningAlwaysConfirmDescription =>
+      'Show a confirmation dialog when heavy damage is detected.';
+
+  @override
+  String get advanceWarningTimingModeTitle => 'Warning timing';
+
+  @override
+  String get advanceWarningTimingModeDescription =>
+      'Changes apply from the next sortie.';
+
+  @override
+  String get advanceWarningPostBattle => 'Alert after battle results';
+
+  @override
+  String get advanceWarningAfterAdvance => 'Alert after advancing';
+
+  @override
+  String get advanceWarningBothTimings => 'Alert at both stages';
+
+  @override
+  String get advanceWarningAfterAdvanceDescription =>
+      'Check for heavy damage after advancing successfully.';
+
+  @override
+  String get advanceWarningPostBattleDescription =>
+      'Check for heavy damage after battle results.';
+
+  @override
+  String get advanceWarningBothTimingsDescription =>
+      'Check after battle results and after advancing successfully.';
+
+  @override
+  String get advanceWarningTimingRequired =>
+      'Keep at least one warning timing selected.';
+
+  @override
+  String get advanceWarningPostBattleOnlyWarning =>
+      'Heavy damage will no longer be checked after advancing successfully.';
+
+  @override
+  String get postBattleDamageControlEquippedBody =>
+      'A heavily damaged ship remains after battle results. Check the ships and remaining damage control.';
+
+  @override
+  String get postBattleDamageControlDangerBody =>
+      'A heavily damaged ship remains after battle results! Stop advancing and check the in-game state before entering another battle.';
+
+  @override
+  String get advanceWarningDamageControlActive => 'Damage control active';
+
+  @override
+  String get advanceWarningReloadGame => 'Reload game';
+
+  @override
+  String get advanceWarningReloadFrame => 'Reload frame';
+
+  @override
+  String get advanceWarningRefreshFailed =>
+      'Refresh did not finish. Check the game state and equipment.';
 
   @override
   String get logoutSnackbar => 'Logged out and cleared account information.';
@@ -1331,6 +1408,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get postBattleWarningTitle => 'Heavy damage safety warning';
+
+  @override
+  String get advanceWarningMissingHeadline =>
+      'A heavily damaged ship has no damage control equipped!';
+
+  @override
+  String get advanceWarningUnknownHeadline =>
+      'Damage control status is unknown for a heavily damaged ship!';
+
+  @override
+  String get advanceWarningEquippedHeadline =>
+      'Heavily damaged ships have damage control equipped. Check their remaining equipment.';
+
+  @override
+  String get advanceWarningEquippedBody =>
+      'You selected advance with a heavily damaged ship. Check the ships and their remaining damage control.';
+
+  @override
+  String get advanceWarningMissing => 'No damage control equipped';
+
+  @override
+  String get advanceWarningUnknown =>
+      'Damage control status unknown. Check equipment in the game.';
+
+  @override
+  String advanceWarningEquipped(String items) {
+    return 'Equipped: $items';
+  }
+
+  @override
+  String get advanceWarningPersonnel => 'Emergency Repair Personnel';
+
+  @override
+  String get advanceWarningGoddess => 'Emergency Repair Goddess';
+
+  @override
+  String advanceWarningShipPosition(int fleet, int position) {
+    return 'Fleet $fleet · Ship $position';
+  }
+
+  @override
+  String get advanceWarningMuteSortie =>
+      'Do not remind me again during this sortie';
 
   @override
   String get postBattleWarningHeadline =>

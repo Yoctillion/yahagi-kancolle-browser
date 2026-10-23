@@ -16,22 +16,30 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
   let dialogOpen = false;
   let canvasVisible = false;
   let ooiVisible = false;
+  const metas = [];
+  let observerOptions;
+  let automaticMutations = false;
   const scheduled = new Map();
   let nextTask = 0;
   const listeners = new Map();
   const on = (name, fn) => { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn); };
   const off = (name, fn) => listeners.get(name)?.delete(fn);
   const properties = new Map();
-  const element = () => {
+  const notifyAttribute = name => {
+    if (automaticMutations && observerOptions?.attributeFilter.includes(name)) observer?.([]);
+  };
+  const element = (tagName = 'div') => {
     const attributes = new Map();
-    return {isConnected: true, style: {removeProperty(name) {writes++;properties.delete(name);},
+    let attributeWrites=0;
+    return {tagName: tagName.toUpperCase(), isConnected: true, get attributeWrites() {return attributeWrites;}, style: {removeProperty(name) {writes++;properties.delete(name);},
     setProperty(name, value) {writes++;properties.set(name, value);}, getPropertyValue: name => properties.get(name) || ''},
     getBoundingClientRect: () => ({width:1200,height:720}),
     getAttribute: name => attributes.get(name) ?? null,
-    setAttribute(name, value) {writes++;attributes.set(name, value);},
-    removeAttribute(name) {writes++;attributes.delete(name);},
-    remove() {writes++;}, contentWindow: {scrollTo() {scrolls++;}}};
+    setAttribute(name, value) {writes++;attributeWrites++;attributes.set(name, value);notifyAttribute(name);},
+    removeAttribute(name) {writes++;attributeWrites++;attributes.delete(name);notifyAttribute(name);},
+    remove() {writes++;this.isConnected=false;for(const [id,node] of elements)if(node===this)elements.delete(id);}, contentWindow: {scrollTo() {scrolls++;}}};
   };
+  const append = e => {writes++;e.isConnected=true;if(e.tagName==='META') metas.push(e);else elements.set(e.id,e);};
   elements.set('game_frame', element());
   const canvas = {...element(), width: 1200, height: 720};
   const ooiFrame = element();
@@ -45,13 +53,14 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
   ooiFrame.contentWindow = tag === 'iframe' ? frameWindow : undefined;
   const context = {location: {hostname, pathname}, getComputedStyle: () => ({display:'block',visibility:'visible'}),
     document: {readyState:'complete', documentElement: {}, body:{},
-      head: {appendChild(e) {writes++;elements.set(e.id,e);}}, createElement: element,
+      head: {appendChild:append}, createElement: element,
       addEventListener: on, removeEventListener: off,
       getElementById: id => elements.get(id), querySelector: selector => ooiVisible && matchesOoiFrame(selector) ? ooiFrame : null,
-      querySelectorAll: s => {scans++; return s === '#game_frame, #game-container' && visible ? [elements.get('game_frame')]
+      querySelectorAll: s => {scans++; return s === 'meta[name]' ? metas.filter(e=>e.isConnected&&e.getAttribute('name')!==null)
+        : s === '#game_frame, #game-container' && visible ? [elements.get('game_frame')]
         : s === 'canvas' && canvasVisible ? [canvas] : s === 'dialog[open]' && dialogOpen ? [element()]
         : ooiVisible && matchesOoiFrame(s) ? [ooiFrame] : [];}},
-    MutationObserver: class {constructor(cb) {observer=cb;observerCount++;} disconnect() {} observe() {}},
+    MutationObserver: class {constructor(cb) {observer=cb;observerCount++;} disconnect() {} observe(_target,options) {observerOptions=options;}},
     setTimeout: cb => {const id = ++nextTask; scheduled.set(id, {kind:'timer',callback:cb}); return id;},
     clearTimeout: id => scheduled.delete(id),
     window: {scrollTo() {scrolls++;}, addEventListener: on, removeEventListener: off,
@@ -72,11 +81,16 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
       context.window.__yahagiMobileAlignGame = context.window.__yahagiMobileOoiAlignGame;
     },
     emptyOoiContainer: () => elements.set('ooi-game', {...element(), querySelector: () => null}),
+    addMeta: (content, name = 'viewport') => {const meta=element('meta');meta.setAttribute('name',name);if(content!==null)meta.setAttribute('content',content);metas.push(meta);return meta;},
+    metas: () => metas.filter(meta=>meta.isConnected),
+    observeOwnMutations: () => {automaticMutations=true;},
+    observerAttributes: () => observerOptions?.attributeFilter,
+    oldViewportRuntime: restore => {context.window.__yahagiMobilePresentationRuntimeVersion=4;context.window.__yahagiMobileRestoreGameViewport=restore;},
     run: () => vm.runInContext(source, context), mutate: () => observer?.([]),
     emit: event => {for (const callback of [...(listeners.get(event) || [])]) callback();},
     flush: (kind) => {for (const id of [...scheduled.keys()]) {const task = scheduled.get(id); if(task && (!kind || task.kind === kind)) {scheduled.delete(id);task.callback();}}},
     emptyDocument: () => {context.document.documentElement = null;context.document.head = null;context.document.body = null;},
-    readyDocument: () => {context.document.documentElement = {};context.document.head = {appendChild(e) {elements.set(e.id,e);}};context.document.body = {};},
+    readyDocument: () => {context.document.documentElement = {};context.document.head = {appendChild:append};context.document.body = {};},
     noAnimationFrame: () => {delete context.window.requestAnimationFrame;},
     viewport: (width, height) => {context.window.visualViewport.width = width;context.window.visualViewport.height = height;},
     read: () => context.window.__yahagiMobileReadPresentation?.(),
@@ -259,3 +273,90 @@ upgradedOoi.show(false);upgradedOoi.ooi(true);upgradedOoi.viewport(600, 360);upg
 upgradedOoi.run();
 assert.equal(upgradedOoi.property('--yahagi-ooi-scale'), '0.5', 'A retained document must replace an older cached OOI alignment hook');
 assert.ok(upgradedOoi.frameScrolls() > 0, 'Runtime upgrade must use the new same-origin embed scroll repair');
+
+const viewportGame = page();
+const originalViewport = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+const primaryViewport = viewportGame.addMeta(originalViewport);
+const secondaryViewport = viewportGame.addMeta('WIDTH=1200; MINIMUM-SCALE=1; maximum-scale=2', 'VIEWPORT');
+const unrelatedMeta = viewportGame.addMeta('Keep this value', 'description');
+viewportGame.observeOwnMutations();
+viewportGame.run();
+for (const meta of [primaryViewport,secondaryViewport]) {
+  assert.match(meta.getAttribute('content'),/minimum-scale=0\.01/,'Game scaling must release the WebView minimum zoom constraint');
+  assert.match(meta.getAttribute('content'),/maximum-scale=10/);
+  assert.match(meta.getAttribute('content'),/user-scalable=yes/);
+  assert.equal((meta.getAttribute('content').match(/maximum-scale=/gi)||[]).length,1,'Old viewport zoom bounds must be replaced');
+}
+assert.match(primaryViewport.getAttribute('content'),/width=device-width/);
+assert.match(primaryViewport.getAttribute('content'),/initial-scale=1/);
+assert.match(primaryViewport.getAttribute('content'),/viewport-fit=cover/);
+assert.match(secondaryViewport.getAttribute('content'),/WIDTH=1200/);
+assert.equal(unrelatedMeta.getAttribute('content'),'Keep this value');
+assert.ok(viewportGame.observerAttributes().includes('content'));
+assert.ok(viewportGame.observerAttributes().includes('name'));
+const metaWrites = [primaryViewport.attributeWrites,secondaryViewport.attributeWrites];
+for(let repeat=0;repeat<20;repeat++) {viewportGame.run();viewportGame.emit('resize');viewportGame.flush();}
+assert.deepEqual([primaryViewport.attributeWrites,secondaryViewport.attributeWrites],metaWrites,'Resize/reinjection must not rewrite an already owned viewport');
+viewportGame.flush();
+assert.equal(viewportGame.effects().tasks,0,'Own viewport mutations must settle without a resynchronization loop');
+viewportGame.dialog(true);viewportGame.mutate();viewportGame.flush();
+assert.equal(primaryViewport.getAttribute('content'),originalViewport,'Dialog cleanup must restore the first original snapshot');
+assert.equal(secondaryViewport.getAttribute('content'),'WIDTH=1200; MINIMUM-SCALE=1; maximum-scale=2');
+viewportGame.dialog(false);viewportGame.mutate();viewportGame.flush();
+primaryViewport.setAttribute('content','width=1200, minimum-scale=2');
+viewportGame.flush();
+assert.match(primaryViewport.getAttribute('content'),/minimum-scale=0\.01/,'External viewport changes must restore game zoom bounds');
+viewportGame.dialog(true);viewportGame.mutate();viewportGame.flush();
+assert.equal(primaryViewport.getAttribute('content'),originalViewport,'An external update must not overwrite the entry snapshot');
+
+const generatedViewportPage = page();
+generatedViewportPage.run();
+assert.equal(generatedViewportPage.metas().length,1,'Create exactly one viewport when the document has none');
+generatedViewportPage.run();
+assert.equal(generatedViewportPage.metas().length,1,'Explicit fit must reuse the created viewport');
+generatedViewportPage.dialog(true);generatedViewportPage.run();
+assert.equal(generatedViewportPage.metas().length,0,'Leaving the game must remove an app-created viewport');
+
+const missingContentPage = page();
+const missingContentMeta = missingContentPage.addMeta(null);
+missingContentPage.run();
+assert.match(missingContentMeta.getAttribute('content'),/minimum-scale=0\.01/);
+missingContentPage.dialog(true);missingContentPage.run();
+assert.equal(missingContentMeta.getAttribute('content'),null,'Cleanup must preserve a missing content attribute');
+assert.equal(missingContentMeta.isConnected,true,'The original empty meta must remain in the document');
+
+const renamedMetaPage = page();
+const renamedMeta = renamedMetaPage.addMeta('width=1200, maximum-scale=1','description');
+renamedMetaPage.observeOwnMutations();renamedMetaPage.run();
+renamedMeta.setAttribute('name','viewport');renamedMetaPage.flush();
+assert.match(renamedMeta.getAttribute('content'),/minimum-scale=0\.01/,'A renamed viewport must be discovered through attribute changes');
+renamedMetaPage.dialog(true);renamedMetaPage.run();
+assert.equal(renamedMeta.getAttribute('content'),'width=1200, maximum-scale=1');
+assert.equal(renamedMetaPage.metas().length,1,'Cleanup must preserve the page meta and remove only the generated viewport');
+
+const removedViewportPage = page();
+const removedViewport = removedViewportPage.addMeta(originalViewport);
+removedViewportPage.run();removedViewport.remove();
+removedViewportPage.dialog(true);removedViewportPage.run();
+assert.equal(removedViewport.isConnected,false,'Cleanup must not reattach a page-removed viewport');
+
+const viewportOoi = page('ooi.moe','/poi');
+const ooiViewport = viewportOoi.addMeta('width=device-width, user-scalable=no');
+viewportOoi.show(false);viewportOoi.canvas(true);viewportOoi.run();
+assert.match(ooiViewport.getAttribute('content'),/minimum-scale=0\.01/);
+viewportOoi.ooi(true);viewportOoi.mutate();viewportOoi.flush();
+assert.equal(ooiViewport.getAttribute('content'),'width=device-width, user-scalable=no','OOI browser mode must restore the game viewport');
+const viewportLogin = page('accounts.dmm.com','/login');
+const loginViewport = viewportLogin.addMeta('width=device-width, maximum-scale=1');
+viewportLogin.run();
+assert.equal(loginViewport.getAttribute('content'),'width=device-width, maximum-scale=1','Accounts must retain their own viewport');
+
+const upgradedViewportPage = page();
+const upgradedViewportMeta = upgradedViewportPage.addMeta('minimum-scale=0.01, maximum-scale=10');
+let oldViewportRestores=0;
+upgradedViewportPage.oldViewportRuntime(() => {oldViewportRestores++;upgradedViewportMeta.setAttribute('content',originalViewport);});
+upgradedViewportPage.run();
+assert.equal(oldViewportRestores,1,'A runtime upgrade must release the previous viewport ownership hook');
+upgradedViewportPage.dialog(true);upgradedViewportPage.run();
+assert.equal(upgradedViewportMeta.getAttribute('content'),originalViewport,'Upgrade cleanup must retain the pre-takeover viewport');
+console.log('Game viewport ownership, multiple/missing metadata, idempotent resize, runtime upgrade and web/OOI cleanup passed');

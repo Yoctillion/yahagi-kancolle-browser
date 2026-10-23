@@ -795,6 +795,12 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
   Future<void>? _presentationInFlight;
   int? _presentationInFlightEpoch;
   bool _presentationRefreshRequested = false;
+  bool _presentationRuntimeRequested = false;
+  bool _presentationForceFitRequested = false;
+  static const _readPresentationScript = '''
+    (() => typeof window.__yahagiMobileReadPresentation === 'function'
+      ? window.__yahagiMobileReadPresentation() : null)();
+  ''';
 
   GameStartupState _startupState = GameStartupState.loadingSettings;
   String _startupErrorMessage = '';
@@ -855,7 +861,8 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       gameFrameReloadPort: MethodChannelGameFrameReloadPort(),
       compatibilityReady: _compatibilityReady,
       prepareForRealNavigation: _prepareCapture,
-      synchronizeGamePresentation: _synchronizeGamePresentation,
+      synchronizeGamePresentation: () =>
+          _synchronizeGamePresentation(forceNativeFit: true),
       beforeNavigation: _beginNavigation,
     );
     _bindings = GameWebViewBindingCoordinator(
@@ -883,12 +890,16 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       ..addJavaScriptChannel(
         'YahagiPresentation',
         onMessageReceived: (message) {
+          final forceFit = message.message == 'game-fit';
           final state = decodeGamePresentationState(message.message);
-          if (state == null) return;
+          if (!forceFit && state == null) return;
           // Re-read the current document instead of trusting a possibly stale
-          // message that was queued immediately before a navigation.
+          // message. A notification must not reinject the runtime: injection
+          // emits game-fit itself and would otherwise keep this queue alive.
           _synchronizeGamePresentation(
             refreshAfterCurrent: true,
+            readOnly: true,
+            forceNativeFit: forceFit,
           ).catchError((Object _) {});
         },
       )
@@ -1264,16 +1275,29 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
 
   Future<void> _synchronizeGamePresentation({
     bool refreshAfterCurrent = false,
+    bool readOnly = false,
+    bool forceNativeFit = false,
   }) {
     final navigationEpoch = _navigationEpoch;
     if (!_isUsableNavigation(navigationEpoch)) return Future<void>.value();
     if (_presentationInFlightEpoch == navigationEpoch &&
         _presentationInFlight != null) {
-      if (refreshAfterCurrent) _presentationRefreshRequested = true;
+      // A page-finish install must survive an earlier read-only message probe.
+      if (refreshAfterCurrent || forceNativeFit || !readOnly) {
+        _presentationRefreshRequested = true;
+        _presentationRuntimeRequested |= !readOnly;
+        _presentationForceFitRequested |= forceNativeFit;
+      }
       return _presentationInFlight!;
     }
     _presentationRefreshRequested = false;
-    final operation = _drainGamePresentation(navigationEpoch);
+    _presentationRuntimeRequested = !readOnly;
+    _presentationForceFitRequested = forceNativeFit;
+    // Publish the queue before a platform implementation can synchronously
+    // deliver the runtime's game-fit notification during script evaluation.
+    final operation = Future<void>.microtask(
+      () => _drainGamePresentation(navigationEpoch),
+    );
     _presentationInFlight = operation;
     _presentationInFlightEpoch = navigationEpoch;
     return operation.whenComplete(() {
@@ -1285,28 +1309,54 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _drainGamePresentation(int navigationEpoch) async {
+    if (!_isUsableNavigation(navigationEpoch)) return;
     do {
       _presentationRefreshRequested = false;
-      await _probeGamePresentation(navigationEpoch);
+      final runRuntime = _presentationRuntimeRequested;
+      final forceNativeFit = _presentationForceFitRequested;
+      _presentationRuntimeRequested = false;
+      _presentationForceFitRequested = false;
+      try {
+        await _probeGamePresentation(
+          navigationEpoch,
+          runRuntime: runRuntime,
+          forceNativeFit: forceNativeFit,
+        );
+      } catch (_) {
+        // A newer queued request still deserves its own attempt after an
+        // older probe or native fit fails. Never retry an idle or retired page.
+        if (!_isUsableNavigation(navigationEpoch) ||
+            !_presentationRefreshRequested) {
+          rethrow;
+        }
+      }
     } while (_isUsableNavigation(navigationEpoch) &&
         _presentationRefreshRequested);
   }
 
-  Future<void> _probeGamePresentation(int navigationEpoch) async {
+  Future<void> _probeGamePresentation(
+    int navigationEpoch, {
+    required bool runRuntime,
+    required bool forceNativeFit,
+  }) async {
     final gameSurfaceResult = await _startupCoordinator.waitForStage(
-      _webViewController.runJavaScriptReturningResult(gamePageAlignmentScript),
+      _webViewController.runJavaScriptReturningResult(
+        runRuntime ? gamePageAlignmentScript : _readPresentationScript,
+      ),
     );
     if (!_isUsableNavigation(navigationEpoch)) return;
     await _applyGamePresentation(
       decodeGamePresentationState(gameSurfaceResult),
       navigationEpoch,
+      forceNativeFit: forceNativeFit,
     );
   }
 
   Future<void> _applyGamePresentation(
     GamePresentationState? state,
-    int navigationEpoch,
-  ) async {
+    int navigationEpoch, {
+    bool forceNativeFit = false,
+  }) async {
     if (!_isUsableNavigation(navigationEpoch)) return;
     if (state != _presentationState) {
       _presentationState = state;
@@ -1332,7 +1382,8 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
           : GameSurfaceStage.login,
     );
     if (_webViewController.platform is AndroidWebViewController &&
-        state != _appliedPresentationState) {
+        (state != _appliedPresentationState ||
+            (forceNativeFit && state == GamePresentationState.game))) {
       switch (action) {
         case GamePresentationPlatformAction.bind:
           await _startupCoordinator.waitForStage(
@@ -1351,7 +1402,7 @@ class _GameWebViewState extends State<GameWebView> with WidgetsBindingObserver {
       if (!_isCurrentNavigation(navigationEpoch)) return;
     }
     if (state == GamePresentationState.game &&
-        state != _appliedPresentationState) {
+        (state != _appliedPresentationState || forceNativeFit)) {
       await _startupCoordinator.waitForStage(
         _webViewController.runJavaScript('''
           if (window.__yahagiMobileAlignGame) window.__yahagiMobileAlignGame();

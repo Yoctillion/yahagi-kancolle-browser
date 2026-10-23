@@ -12,6 +12,9 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_underline_tabs.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -184,6 +187,7 @@ void main() {
       required PanelStyle style,
       String languageCode = 'en',
       double width = 190,
+      ExpeditionSelectionStore? selectionStore,
     }) async {
       tester.view.physicalSize = Size(width, 900);
       tester.view.devicePixelRatio = 1;
@@ -214,6 +218,7 @@ void main() {
                 child: ExpeditionCheckContent(
                   controller: controller,
                   onOpenDetails: (_) {},
+                  selectionStore: selectionStore,
                 ),
               ),
             ),
@@ -236,8 +241,21 @@ void main() {
         final decoration = box.decoration;
         if (decoration is! BoxDecoration ||
             decoration.color != null ||
-            decoration.border != null ||
             decoration.borderRadius != null) {
+          count++;
+          continue;
+        }
+        final border = decoration.border;
+        if (border != null &&
+            !(border is Border &&
+                border.top == BorderSide.none &&
+                border.left == BorderSide.none &&
+                border.right == BorderSide.none &&
+                border.bottom.width == 2 &&
+                [
+                  flatAccentColor,
+                  Colors.transparent,
+                ].contains(border.bottom.color))) {
           count++;
         }
       }
@@ -258,7 +276,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('flat 下检查模式不含带底色、圆角或边框的方块', (tester) async {
+    testWidgets('flat 下检查模式除选中底线外不含底色、圆角或方框', (tester) async {
       await pumpFlat(tester, style: PanelStyle.flat);
       expect(decoratedBoxes(tester), 0);
       await openDetailedGreat(tester);
@@ -284,7 +302,74 @@ void main() {
     testWidgets('非 flat 仍保留方块装饰', (tester) async {
       await pumpFlat(tester, style: PanelStyle.card, width: 420);
       expect(decoratedBoxes(tester), greaterThan(0));
+      final group = find.byKey(const Key('expedition-fleet-segments'));
+      expect(tester.widget(group), isA<Container>());
+      expect(tester.getSize(group).height, 26);
+      expect(find.byType(FlatUnderlineTabs), findsNothing);
     });
+
+    for (final width in [300.0, 190.0]) {
+      testWidgets('flat 舰队切换等分整行并保留各队远征选择 ($width)', (tester) async {
+        final store = _MemoryExpeditionSelectionStore({1: 112, 2: 105});
+        await pumpFlat(
+          tester,
+          style: PanelStyle.flat,
+          width: width,
+          selectionStore: store,
+        );
+        final group = find.byKey(const Key('expedition-fleet-segments'));
+        expect(tester.widget(group), isA<FlatUnderlineTabs>());
+        final groupRect = tester.getRect(group);
+        expect(groupRect.width, width);
+        expect(groupRect.height, 22);
+        for (final id in [1, 2]) {
+          final rect = tester.getRect(find.byKey(Key('expedition-fleet-$id')));
+          expect(rect.width, closeTo(groupRect.width / 2, 0.01));
+          expect(
+            rect.left,
+            closeTo(groupRect.left + (id - 1) * groupRect.width / 2, 0.01),
+          );
+          expect(rect.top, groupRect.top);
+        }
+        Color lineColor(int id) =>
+            ((tester
+                                .widget<DecoratedBox>(
+                                  find.descendant(
+                                    of: find.byKey(Key('expedition-fleet-$id')),
+                                    matching: find.byType(DecoratedBox),
+                                  ),
+                                )
+                                .decoration
+                            as BoxDecoration)
+                        .border!
+                    as Border)
+                .bottom
+                .color;
+        String missionName() => tester
+            .widget<Text>(find.byKey(const Key('expedition-mission-name')))
+            .data!;
+        expect(lineColor(1), Colors.transparent);
+        expect(lineColor(2), flatAccentColor);
+        expect(missionName(), startsWith('A6'));
+        await tester.tap(find.byKey(const Key('expedition-fleet-1')));
+        await tester.pumpAndSettle();
+        expect(lineColor(1), flatAccentColor);
+        expect(lineColor(2), Colors.transparent);
+        expect(missionName(), startsWith('B3'));
+        await tester.tap(find.byKey(const Key('expedition-fleet-2')));
+        await tester.pumpAndSettle();
+        expect(lineColor(2), flatAccentColor);
+        expect(missionName(), startsWith('A6'));
+        for (final key in [
+          'expedition-mode-segments',
+          'expedition-success-segments',
+        ]) {
+          expect(tester.widget(find.byKey(Key(key))), isA<FlatTextToggle>());
+        }
+        expect(store.values, {1: 112, 2: 105});
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 
   testWidgets('首页远征检查默认选择远征 1', (tester) async {

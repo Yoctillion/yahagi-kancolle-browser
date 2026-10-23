@@ -387,6 +387,7 @@ void main() {
 
       await pumpCard(tester, controller, compact: false);
 
+      expect(find.text('待机'), findsNothing);
       expect(find.byKey(const Key('battle-idle-content')), findsOneWidget);
       expect(find.byKey(_mapSection), findsOneWidget);
       expect(mapSummary(tester), allOf(contains('2-5'), contains('当前')));

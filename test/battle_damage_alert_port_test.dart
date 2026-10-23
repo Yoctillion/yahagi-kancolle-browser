@@ -24,4 +24,25 @@ void main() {
     expect(received?.method, 'alert');
     expect(received?.arguments, <String, Object?>{'severity': 'heavy'});
   });
+
+  test('method channel cancels damage alerts without arguments', () async {
+    const channel = MethodChannel('test/battle_damage_alert');
+    MethodCall? received;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          received = call;
+          return false;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    const CancellableBattleDamageAlertPort port =
+        MethodChannelBattleDamageAlertPort(channel);
+    await port.cancel();
+
+    expect(received?.method, 'cancel');
+    expect(received?.arguments, isNull);
+  });
 }

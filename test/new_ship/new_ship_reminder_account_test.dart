@@ -226,17 +226,20 @@ void main() {
       final delayedStore = _DelayedAccountStore(preferences);
       final controller = reminder(storage: delayedStore);
       final events = pipeline(controller);
-      events.add(_construction(sequence: 150));
+      events.add(_forLogin(_construction(sequence: 150), login: 1));
       await delayedStore.started.future;
 
       events.add(
-        kcsapiEvent('/kcsapi/api_start2/getData', <String, Object?>{
-          'api_mst_ship': <Object?>[
-            <String, Object?>{'api_id': 4, 'api_name': '三日月', 'api_stype': 2},
-          ],
-        }, sequence: 151),
+        _forLogin(
+          kcsapiEvent('/kcsapi/api_start2/getData', <String, Object?>{
+            'api_mst_ship': <Object?>[
+              <String, Object?>{'api_id': 4, 'api_name': '三日月', 'api_stype': 2},
+            ],
+          }, sequence: 1),
+          login: 2,
+        ),
       );
-      events.add(_portFor(1001, sequence: 152));
+      events.add(_forLogin(_portFor(1001, sequence: 2), login: 2));
       await events.dispatchIdle;
       expect(game.state.memberId, 1001);
       delayedStore.release.complete();
@@ -245,7 +248,7 @@ void main() {
       expect(published, isEmpty);
       expect(controller.currentAlert, isNull);
 
-      events.add(_construction(sequence: 150));
+      events.add(_forLogin(_construction(sequence: 150), login: 2));
       await events.idle;
       expect(published, hasLength(1));
     },
@@ -256,13 +259,23 @@ void main() {
     () async {
       final controller = reminder();
       final events = pipeline(controller);
-      events.add(_construction(sequence: 160));
+      events.add(_forLogin(_construction(sequence: 160), login: 1));
       await events.idle;
       expect(published, hasLength(1));
       final firstKey = published.single.key;
 
-      events.add(_portFor(2002, sequence: 161));
-      events.add(_construction(sequence: 160));
+      events.add(
+        _forLogin(
+          kcsapiEvent('/kcsapi/api_start2/getData', <String, Object?>{
+            'api_mst_ship': <Object?>[
+              <String, Object?>{'api_id': 4, 'api_name': '三日月', 'api_stype': 2},
+            ],
+          }, sequence: 1),
+          login: 2,
+        ),
+      );
+      events.add(_forLogin(_portFor(2002, sequence: 2), login: 2));
+      events.add(_forLogin(_construction(sequence: 160), login: 2));
       await events.idle;
 
       expect(published, hasLength(2));
@@ -347,6 +360,24 @@ CapturedApiEvent _construction({required int sequence}) =>
         'api_locked': 0,
       },
     }, sequence: sequence);
+
+CapturedApiEvent _forLogin(CapturedApiEvent event, {required int login}) =>
+    CapturedApiEvent(
+      method: event.method,
+      path: event.path,
+      requestParams: event.requestParams,
+      responseBody: event.responseBody,
+      statusCode: event.statusCode,
+      source: event.source,
+      sourceOrigin: event.sourceOrigin,
+      capturedAt: event.capturedAt,
+      sequence: event.sequence,
+      responseByteLength: event.responseByteLength,
+      decodedEnvelope: event.decodedEnvelope,
+      captureSessionId: 'new-ship-capture-$login',
+      captureDocumentId: 'new-ship-document-$login',
+      captureDocumentStartedAtEpochMs: login * 1000.0,
+    );
 
 /// Mirrors the controller queue and uses the production reducer, without
 /// invoking the controller's database recorder or resource snapshot writer.

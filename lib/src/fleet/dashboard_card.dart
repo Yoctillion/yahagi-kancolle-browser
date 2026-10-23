@@ -41,7 +41,7 @@ class DashboardCard extends StatelessWidget {
   final Key? collapseButtonKey;
   final Widget? headerAction;
 
-  /// 只在扁平样式且折叠时显示在标题行右侧。
+  /// 保留调用方传入的折叠摘要；当前标题不再展示摘要文字。
   final String? collapsedSummary;
 
   @override
@@ -260,10 +260,6 @@ class DashboardCard extends StatelessWidget {
                       child: fit(titleBadge!, 22, Alignment.centerLeft),
                     ),
                   ],
-                  if (_showSummary(true)) ...[
-                    const SizedBox(width: 8),
-                    Expanded(child: _summary(context)),
-                  ],
                 ],
               ),
             ),
@@ -309,20 +305,6 @@ class DashboardCard extends StatelessWidget {
     color: const Color(0xffd4a85f),
     fontWeight: FontWeight.w700,
     fontSize: flat ? flatRowFontSize : 14,
-  );
-
-  bool _showSummary(bool flat) =>
-      flat && collapsed && (collapsedSummary?.isNotEmpty ?? false);
-
-  Widget _summary(BuildContext context) => Text(
-    collapsedSummary!,
-    key: const Key('dashboard-card-summary'),
-    maxLines: 1,
-    overflow: TextOverflow.ellipsis,
-    style: TextStyle(
-      color: appColor(context, flatMutedColor),
-      fontSize: flatSmallFontSize,
-    ),
   );
 
   Widget _englishHeader(BuildContext context) => Column(

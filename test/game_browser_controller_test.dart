@@ -6,6 +6,24 @@ import 'package:yahagi_kancolle_browser/src/browser/origin_cookie_manager_port.d
 import 'package:yahagi_kancolle_browser/src/settings/game_connector.dart';
 
 void main() {
+  test(
+    'manual warning refresh readiness follows the currently attached port',
+    () {
+      final controller = GameBrowserController();
+      final first = FakeGameBrowserPort();
+      final second = FakeGameBrowserPort();
+      addTearDown(controller.dispose);
+      expect(controller.hasAttachedPort, isFalse);
+      controller.attachPort(first);
+      expect(controller.hasAttachedPort, isTrue);
+      controller.attachPort(second);
+      controller.detachPort(first);
+      expect(controller.hasAttachedPort, isTrue);
+      controller.detachPort(second);
+      expect(controller.hasAttachedPort, isFalse);
+    },
+  );
+
   test('logout reports failure when WebView is unavailable', () async {
     var resets = 0;
     final controller = GameBrowserController(onSessionReset: () => resets++);

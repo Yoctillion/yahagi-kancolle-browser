@@ -141,6 +141,17 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
               cachedShips = null;
               cachedRepairStatuses = repairStatuses;
             }
+            Widget minimalShipAt(int index) => FleetShipMinimalRow(
+              state: state,
+              ship: ships[index],
+              visible: widget.visible,
+              shipTypeLabelMode: widget.shipTypeLabelMode,
+              damagePulseFilter: widget.damagePulseFilter,
+              moraleSparkleMode: widget.moraleSparkleMode,
+              repairStatus: repairStatuses[ships[index].id],
+              specialAttack: index == 0 ? specialAttack : null,
+              onTap: () => widget.onOpenFleet(_selectedFleetId),
+            );
             return DashboardCard(
               title: AppLocalizations.of(context)?.fleetBrief ?? '编队简报',
               collapsedSummary: widget.collapsed
@@ -167,11 +178,11 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                       ),
                       onPressed: widget.onOpenDisplaySettings!,
                     ),
-              trailing: twoColumns
+              trailing: twoColumns && !flat
                   ? SizedBox(width: 108, child: fleetSwitcher)
                   : null,
               child: _FleetSummaryBody(
-                switcher: twoColumns ? null : fleetSwitcher,
+                switcher: twoColumns && !flat ? null : fleetSwitcher,
                 metrics: summaryVisible.any(summaryFields.contains)
                     ? _FleetSummaryMetrics(
                         visible: summaryVisible,
@@ -200,31 +211,33 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
                               ),
                             )
                     : flat
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = 0; i < ships.length; i++) ...[
-                            if (i > 0)
-                              SizedBox(
-                                height: 1,
-                                child: ColoredBox(
-                                  color: appColor(context, flatDividerColor),
-                                ),
-                              ),
-                            FleetShipMinimalRow(
-                              state: state,
-                              ship: ships[i],
-                              visible: widget.visible,
-                              shipTypeLabelMode: widget.shipTypeLabelMode,
-                              damagePulseFilter: widget.damagePulseFilter,
-                              moraleSparkleMode: widget.moraleSparkleMode,
-                              repairStatus: repairStatuses[ships[i].id],
-                              specialAttack: i == 0 ? specialAttack : null,
-                              onTap: () => widget.onOpenFleet(_selectedFleetId),
-                            ),
-                          ],
-                        ],
-                      )
+                    ? twoColumns
+                          ? HdDashboardItems(
+                              spacing: 1,
+                              runSpacing: 1,
+                              children: [
+                                for (var i = 0; i < ships.length; i++)
+                                  minimalShipAt(i),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (var i = 0; i < ships.length; i++) ...[
+                                  if (i > 0)
+                                    SizedBox(
+                                      height: 1,
+                                      child: ColoredBox(
+                                        color: appColor(
+                                          context,
+                                          flatDividerColor,
+                                        ),
+                                      ),
+                                    ),
+                                  minimalShipAt(i),
+                                ],
+                              ],
+                            )
                     : HdDashboardItems(
                         children: [
                           for (final ship in ships)
@@ -270,7 +283,7 @@ class _FleetSummaryBody extends StatelessWidget {
   final Widget ships;
   @override
   Widget build(BuildContext context) {
-    if (HdModuleColumns.of(context) > 1) {
+    if (HdModuleColumns.of(context) > 1 && !PanelStyleScope.isFlat(context)) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -630,30 +643,51 @@ class _FlatSummaryMetric extends StatelessWidget {
     child: InkWell(
       key: Key('fleet-summary-metric-$id'),
       onTap: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            style: TextStyle(
-              color: appColor(context, const Color(0xff8197a5)),
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(width: 3),
-          Text(
-            value,
-            key: Key('fleet-summary-metric-$id-value'),
-            maxLines: 1,
-            style: TextStyle(
-              color: appColor(context, const Color(0xffdce6eb)),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final gap = constraints.maxWidth.clamp(0.0, 3.0);
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: appColor(context, const Color(0xff8197a5)),
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              SizedBox(width: gap),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth - gap,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    value,
+                    key: Key('fleet-summary-metric-$id-value'),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      color: appColor(context, const Color(0xffdce6eb)),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     ),
   );

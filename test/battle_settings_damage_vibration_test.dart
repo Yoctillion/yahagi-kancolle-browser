@@ -52,7 +52,40 @@ void main() {
     );
 
     expect(find.text('大破提醒'), findsOneWidget);
-    expect(find.text('大破进击提醒'), findsOneWidget);
+    expect(find.text('游戏安全'), findsOneWidget);
+    expect(
+      tester.widget(find.byKey(const Key('battleWarningMasterSwitch'))),
+      isA<Switch>(),
+    );
+    expect(find.byKey(const Key('battleWarningMasterRow')), findsOneWidget);
+    expect(
+      find.byKey(const Key('advanceWarningTimingSelector')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('advanceWarningDisplayModeSelector')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<DropdownButton<AdvanceWarningTimingSettings>>(
+            find.byKey(const Key('advanceWarningTimingDropdown')),
+          )
+          .value,
+      AdvanceWarningTimingSettings.advanceOnly,
+    );
+    expect(
+      tester
+          .widget<DropdownButton<AdvanceWarningDisplayMode>>(
+            find.byKey(const Key('advanceWarningDisplayModeDropdown')),
+          )
+          .value,
+      AdvanceWarningDisplayMode.alwaysConfirm,
+    );
+    expect(find.text('结算后提醒'), findsNothing);
+    expect(find.text('进击后提醒'), findsOneWidget);
+    expect(find.text('POI'), findsNothing);
+    expect(find.text('KCA'), findsNothing);
     expect(find.text('战斗状态效果'), findsOneWidget);
     expect(find.text('启用状态效果'), findsOneWidget);
     expect(find.text('画面显示范围'), findsOneWidget);

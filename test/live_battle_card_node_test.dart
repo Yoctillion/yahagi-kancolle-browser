@@ -1973,7 +1973,7 @@ void main() {
       );
       expect(tester.getSize(idle).height, lessThanOrEqualTo(20));
       expect(find.text('等待出击数据'), findsOneWidget);
-      expect(find.text('待机'), findsOneWidget);
+      expect(find.text('待机'), findsNothing);
       expect(filledContainer(const Color(0xff203443)), findsNothing);
     });
 
@@ -1992,6 +1992,7 @@ void main() {
         (idle.decoration! as BoxDecoration).color,
         const Color(0xff10212e),
       );
+      expect(find.text('待机'), findsOneWidget);
       expect(filledContainer(const Color(0xff203443)), findsOneWidget);
     });
 

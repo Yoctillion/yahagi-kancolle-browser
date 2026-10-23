@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'dart:convert';
 
 import '../bridge/captured_api_event.dart';
+import '../bridge/capture_event_sequence_gate.dart';
 import 'game_api_decoder.dart';
 
 typedef GameApiEnvelopeDecoder =
@@ -16,6 +17,12 @@ abstract interface class GameApiEventConsumer {
   void accept(CapturedApiEvent event);
 
   Future<void> get idle;
+}
+
+abstract interface class GameApiContinuityGuard {
+  void interruptCaptureContinuity();
+
+  bool allowsCaptureEvent(CapturedApiEvent event);
 }
 
 final class GameApiTiming {
@@ -82,7 +89,16 @@ final class GameApiEventPipeline {
   String? _activeDocumentId;
   double? _activeDocumentStartedAt;
   final Set<String> _retiredDocumentIds = {};
+  final CaptureEventSequenceGate _sequenceGate = CaptureEventSequenceGate();
+  final Expando<int> _acceptedEvents = Expando<int>();
   double? _maintenanceDocumentCutoff;
+
+  void invalidateQueuedEvents() {
+    _sessionGeneration++;
+    for (final guard in _consumers.whereType<GameApiContinuityGuard>()) {
+      guard.interruptCaptureContinuity();
+    }
+  }
 
   /// Called before leaving a login session, including while decoding an event.
   void invalidatePendingEvents({bool waitForLoginStart = false}) {
@@ -91,6 +107,7 @@ final class GameApiEventPipeline {
     _activeDocumentId = null;
     _activeDocumentStartedAt = null;
     _retiredDocumentIds.clear();
+    _sequenceGate.clear();
   }
 
   void pauseForMaintenance() {
@@ -132,7 +149,12 @@ final class GameApiEventPipeline {
       return _activeDocumentId == null;
     }
     if (event.path != '/kcsapi/api_start2/getData' || event.apiResult != 1) {
-      return _activeDocumentId == null;
+      if (_activeDocumentId != null) return false;
+      if (event.apiResult == 1) {
+        _activeDocumentId = documentId;
+        _activeDocumentStartedAt = startedAt;
+      }
+      return true;
     }
     // A late response from an older game document must not restart that login.
     if (_retiredDocumentIds.contains(documentId) ||
@@ -160,6 +182,12 @@ final class GameApiEventPipeline {
       !_awaitingLoginStart &&
       (_activeDocumentId == null ||
           event.captureDocumentId == _activeDocumentId);
+
+  bool wasEventAccepted(CapturedApiEvent event) =>
+      !_maintenancePaused &&
+      _acceptedEvents[event] == _sessionGeneration &&
+      event.apiResult == 1 &&
+      isCurrentDocument(event);
 
   void add(CapturedApiEvent event) {
     if (_maintenancePaused) return;
@@ -204,6 +232,9 @@ final class GameApiEventPipeline {
     try {
       if (generation == _sessionGeneration) {
         result = await _prepareAndDispatch(event, generation);
+        if (result.success && generation == _sessionGeneration) {
+          _acceptedEvents[event] = generation;
+        }
       }
     } finally {
       _pendingEventCount -= 1;
@@ -299,7 +330,11 @@ final class GameApiEventPipeline {
                   prepared.apiResult != 1)) ||
           (prepared.hasDecodedEnvelope &&
               prepared.decodedEnvelope!['api_result'].toString() != '1') ||
-          !_acceptDocument(prepared)) {
+          !_acceptDocument(prepared) ||
+          !_sequenceGate.accept(prepared) ||
+          !_consumers.whereType<GameApiContinuityGuard>().every(
+            (guard) => guard.allowsCaptureEvent(prepared),
+          )) {
         success = false;
       } else {
         _awaitingLoginStart = false;

@@ -352,8 +352,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get uiDisplaySizeTitle => 'UIの表示サイズ';
 
   @override
-  String get uiDisplaySizeDesc =>
-      '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでも上部のYahagiボタンとツールバーを維持し、情報バーをフラットに表示します';
+  String get uiDisplaySizeDesc => '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。';
 
   @override
   String get uiDisplaySizeNormal => '標準';
@@ -483,6 +482,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get gameSafety => '大破警告';
+
+  @override
+  String get battleSafetySectionTitle => 'ゲームの安全確認';
 
   @override
   String get blockSortieTitle => '大破進撃警告';
@@ -773,7 +775,74 @@ class AppLocalizationsJa extends AppLocalizations {
   String get battleWarningOff => 'オフ';
 
   @override
-  String get battleWarningConfirm => '確認ダイアログ';
+  String get battleWarningConfirm => '警告を有効化';
+
+  @override
+  String get advanceWarningDisplayModeTitle => '警告の表示方法';
+
+  @override
+  String get advanceWarningAlwaysConfirm => '常に確認';
+
+  @override
+  String get advanceWarningSmart => 'スマート通知';
+
+  @override
+  String get advanceWarningSmartDescription =>
+      '全大破艦の残存ダメコンを確認できれば上部通知、それ以外は確認ダイアログ。';
+
+  @override
+  String get advanceWarningAlwaysConfirmDescription => '大破を検出すると確認ダイアログを表示。';
+
+  @override
+  String get advanceWarningTimingModeTitle => '警告のタイミング';
+
+  @override
+  String get advanceWarningTimingModeDescription => '変更は次回の出撃から適用。';
+
+  @override
+  String get advanceWarningPostBattle => '戦闘結果後に警告';
+
+  @override
+  String get advanceWarningAfterAdvance => '進撃後に警告';
+
+  @override
+  String get advanceWarningBothTimings => '両方で警告';
+
+  @override
+  String get advanceWarningAfterAdvanceDescription => '進撃成功後に大破を確認。';
+
+  @override
+  String get advanceWarningPostBattleDescription => '戦闘結果後に大破を確認。';
+
+  @override
+  String get advanceWarningBothTimingsDescription => '戦闘結果後と進撃成功後に大破を確認。';
+
+  @override
+  String get advanceWarningTimingRequired => '警告のタイミングを少なくとも1つ選択してください。';
+
+  @override
+  String get advanceWarningPostBattleOnlyWarning => '進撃成功後は大破状態を確認しなくなります。';
+
+  @override
+  String get postBattleDamageControlEquippedBody =>
+      '戦闘結果の後に大破艦があります。艦船と残りのダメコンを確認してください。';
+
+  @override
+  String get postBattleDamageControlDangerBody =>
+      '戦闘結果の後に大破艦があります！進撃を止め、次の戦闘に入る前にゲーム内の状態を確認してください。';
+
+  @override
+  String get advanceWarningDamageControlActive => 'ダメコン有効中';
+
+  @override
+  String get advanceWarningReloadGame => 'ゲーム再読み込み';
+
+  @override
+  String get advanceWarningReloadFrame => 'フレーム再読み込み';
+
+  @override
+  String get advanceWarningRefreshFailed =>
+      '再読み込みが完了していません。ゲームの状態と装備を確認してください。';
 
   @override
   String get logoutSnackbar => 'ログアウトしてアカウント情報を消去しました。';
@@ -1293,6 +1362,45 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get postBattleWarningTitle => '大破安全警告';
+
+  @override
+  String get advanceWarningMissingHeadline => 'ダメコンを装備していない大破艦がいます！';
+
+  @override
+  String get advanceWarningUnknownHeadline => '大破艦のダメコン装備状況が不明です！';
+
+  @override
+  String get advanceWarningEquippedHeadline =>
+      '大破艦はダメコンを装備しています。残りの装備を確認してください。';
+
+  @override
+  String get advanceWarningEquippedBody =>
+      '大破艦がいる状態で進撃を選択しました。艦船と残りのダメコンを確認してください。';
+
+  @override
+  String get advanceWarningMissing => 'ダメコン未装備';
+
+  @override
+  String get advanceWarningUnknown => 'ダメコン装備状況不明。ゲーム内の装備を確認してください';
+
+  @override
+  String advanceWarningEquipped(String items) {
+    return '装備：$items';
+  }
+
+  @override
+  String get advanceWarningPersonnel => '応急修理要員';
+
+  @override
+  String get advanceWarningGoddess => '応急修理女神';
+
+  @override
+  String advanceWarningShipPosition(int fleet, int position) {
+    return '第$fleet艦隊・$position番艦';
+  }
+
+  @override
+  String get advanceWarningMuteSortie => '今回の出撃では再度通知しない';
 
   @override
   String get postBattleWarningHeadline => '出撃艦隊に大破艦がいます！';

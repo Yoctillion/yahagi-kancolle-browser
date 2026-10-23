@@ -279,10 +279,13 @@ void main() {
       OwnedSlotItem(instanceId: 501, masterSlotItemId: 42),
     ]);
     final published = <Map<int, int>>[];
+    var consumptionUpdates = 0;
     final controller = BattleController(
       gameState: () => state,
       predictionExecutor: FailOncePredictionExecutor(),
       onFriendlyHpUpdated: (hpByShipId, _) => published.add(hpByShipId),
+      onDamageControlConsumed: (consumedByShipId, capturedAt) =>
+          consumptionUpdates++,
     );
     addTearDown(controller.dispose);
 
@@ -320,17 +323,26 @@ void main() {
     expect(controller.lastError, isNull);
     expect(controller.session!.isConfirmed, isFalse);
     expect(controller.current!.rank, BattleRank.unknown);
-    expect(published, isEmpty);
+    expect(controller.isPredictionConfirmed, isFalse);
+    expect(controller.isDamageControlStateTrusted, isFalse);
+    expect(published, <Map<int, int>>[
+      <int, int>{1001: 1},
+    ]);
+    expect(consumptionUpdates, 0);
+    expect(state.slotItems[501]!.masterSlotItemId, 42);
   });
 
-  test('does not publish HP when the sortie ledger is untrusted', () async {
+  test('publishes conservative HP but no untrusted consumption', () async {
     final state = damageControlState(const <OwnedSlotItem>[
       OwnedSlotItem(instanceId: 501, masterSlotItemId: 42),
     ]);
     final published = <Map<int, int>>[];
+    var consumptionUpdates = 0;
     final controller = BattleController(
       gameState: () => state,
       onFriendlyHpUpdated: (hpByShipId, _) => published.add(hpByShipId),
+      onDamageControlConsumed: (consumedByShipId, capturedAt) =>
+          consumptionUpdates++,
     );
     addTearDown(controller.dispose);
 
@@ -345,12 +357,21 @@ void main() {
 
     expect(controller.session!.isConfirmed, isFalse);
     expect(controller.current!.rank, BattleRank.unknown);
-    expect(published, isEmpty);
+    expect(controller.isPredictionConfirmed, isFalse);
+    expect(controller.isDamageControlStateTrusted, isFalse);
+    expect(published, <Map<int, int>>[
+      <int, int>{1001: 1},
+    ]);
 
     controller.bindFriendlyHpUpdater(
       (hpByShipId, _) => published.add(hpByShipId),
     );
-    expect(published, isEmpty);
+    expect(published, <Map<int, int>>[
+      <int, int>{1001: 1},
+      <int, int>{1001: 1},
+    ]);
+    expect(consumptionUpdates, 0);
+    expect(state.slotItems[501]!.masterSlotItemId, 42);
   });
 
   test('parse issues make the POI damage control ledger untrusted', () async {

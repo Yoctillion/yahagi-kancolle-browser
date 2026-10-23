@@ -29,6 +29,7 @@ abstract final class FleetUiKeys {
   static const nosakiShort = '野埼功能简称';
   static const dockShort = '入渠模式简称';
   static const anchorageShort = '泊地模式简称';
+  static const landBaseRadiusShort = '半径';
 
   static const displayGroups = <String, Map<String, String>>{
     '外观与状态': {
@@ -112,6 +113,7 @@ String fleetText(BuildContext context, String source) {
     FleetUiKeys.nosakiShort: ("野埼", "野埼", "野埼", "노사키", "Nosaki"),
     FleetUiKeys.dockShort: ("入渠", "入渠", "入渠", "입거", "Dock"),
     FleetUiKeys.anchorageShort: ("泊地", "泊地", "泊地", "정박지", "Anch."),
+    FleetUiKeys.landBaseRadiusShort: ("半径", "半徑", "半径", "반경", "Radius"),
     "野崎刷闪中": ("野埼刷闪中", "野埼刷閃中", "野埼キラ付け中", "노사키 반짝이 작업 중", "Nosaki sparkling"),
     "泊地修理": ("泊地修理", "泊地修理", "泊地修理", "정박지 수리", "Anchorage repair"),
     "远征显示内容": ("远征显示内容", "遠征顯示內容", "遠征の表示内容", "원정 표시 항목", "Expedition display"),

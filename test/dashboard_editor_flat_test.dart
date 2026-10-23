@@ -46,6 +46,7 @@ Widget _host({
                   title: id,
                   icon: const Icon(Icons.sailing),
                   collapsed: true,
+                  collapsedSummary: id == 'fleet' ? '最低疲劳 49' : '进行中 2',
                   onToggleCollapse: () {},
                   headerAction: moduleDisplayGear(context, id, () {}),
                   child: const SizedBox(height: 20),
@@ -194,9 +195,18 @@ void main() {
     expect(tester.getTopLeft(find.byType(Checkbox).first).dx, 12);
   });
 
-  testWidgets('flat 编辑态卡片不显示折叠箭头', (tester) async {
+  testWidgets('flat 编辑态卡片不构建摘要或折叠箭头', (tester) async {
     await tester.pumpWidget(_host(style: PanelStyle.flat, calls: _Calls()));
     expect(find.byKey(const Key('card-fleet')), findsOneWidget);
+    expect(
+      find.byKey(const Key('dashboard-card-summary'), skipOffstage: false),
+      findsNothing,
+    );
+    expect(find.text('最低疲劳 49'), findsNothing);
+    expect(find.text('进行中 2'), findsNothing);
+    expect(find.text('fleet'), findsOneWidget);
+    expect(find.text('repair'), findsOneWidget);
+    expect(find.byIcon(Icons.sailing), findsNWidgets(2));
     expect(find.byType(FlatCollapseChevron), findsNothing);
   });
 

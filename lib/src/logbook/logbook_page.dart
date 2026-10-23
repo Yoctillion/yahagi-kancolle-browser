@@ -3,6 +3,7 @@ import '../localization/game_name_localizations.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../layout/ui_scale.dart';
 
 import '../localization/ui_text.dart';
 import '../battle/battle_detail_strings.dart';
@@ -123,8 +124,8 @@ class _LogbookPageState extends State<LogbookPage>
     // Keep only the part extending beyond the surrounding workspace chrome.
     return MediaQuery(
       data: media.copyWith(
-        padding: remaining(media.padding),
-        viewPadding: remaining(media.viewPadding),
+        padding: remaining(media.padding) / UiScale.of(context),
+        viewPadding: remaining(media.viewPadding) / UiScale.of(context),
       ),
       child: ListenableBuilder(
         listenable: LogbookDatabase.accountSession,

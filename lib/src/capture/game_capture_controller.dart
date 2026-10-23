@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../bridge/captured_api_event.dart';
+import '../bridge/capture_event_sequence_gate.dart';
 import '../bridge/native_game_capture_script.dart'
     show captureSessionIdPlaceholder;
 import 'game_capture_port.dart';
@@ -12,11 +13,13 @@ final class GameCaptureController extends ChangeNotifier {
   GameCaptureController({
     this.maxResponseBytes = 8 * 1024 * 1024,
     this.onAcceptedEvent,
+    this.onCaptureInterrupted,
     this.operationTimeout = const Duration(seconds: 10),
   }) : assert(maxResponseBytes > 0);
 
   final int maxResponseBytes;
   final ValueChanged<CapturedApiEvent>? onAcceptedEvent;
+  final VoidCallback? onCaptureInterrupted;
   final Duration operationTimeout;
   static int _sessionSequence = 0;
   static String _newSessionId() =>
@@ -26,10 +29,15 @@ final class GameCaptureController extends ChangeNotifier {
   String get _sessionScript =>
       _script.replaceAll(captureSessionIdPlaceholder, _captureSessionId);
   final ValueNotifier<int> _eventActivity = ValueNotifier<int>(0);
+  final CaptureEventSequenceGate _sequenceGate = CaptureEventSequenceGate();
+  String? _activeDocumentId;
+  double? _activeDocumentStartedAt;
+  final Set<String> _retiredDocumentIds = {};
 
   GameCapturePort? _port;
   GameCapturePort? _desiredPort;
   StreamSubscription<CapturedApiEvent>? _subscription;
+  StreamSubscription<void>? _interruptionSubscription;
   Future<void>? _configurationDrain;
   Completer<void> _configurationInvalidator = Completer<void>();
   int _configurationRevision = 0;
@@ -42,6 +50,7 @@ final class GameCaptureController extends ChangeNotifier {
   bool _disposed = false;
   bool _repairPending = false;
   bool _repairInFlight = false;
+  int _continuityGeneration = 0;
 
   GameCaptureState _state = GameCaptureState.disabled;
   bool? _configuredEnabled;
@@ -60,12 +69,22 @@ final class GameCaptureController extends ChangeNotifier {
   Listenable get eventActivity => _eventActivity;
   int get responseBytes => _responseBytes;
   String? get errorMessage => _errorMessage;
+  int get continuityGeneration => _continuityGeneration;
+
+  void _notifyCaptureInterrupted() {
+    _continuityGeneration++;
+    onCaptureInterrupted?.call();
+  }
 
   /// Invalidate the old document immediately, then install the new document-start
   /// script. Await this before navigating to the next login document.
   Future<void> invalidateSession() {
     if (_disposed) return Future<void>.value();
     _captureSessionId = _newSessionId();
+    _activeDocumentId = null;
+    _activeDocumentStartedAt = null;
+    _retiredDocumentIds.clear();
+    _sequenceGate.clear();
     clearCapturedEvents();
     return _enqueueConfiguration();
   }
@@ -74,6 +93,7 @@ final class GameCaptureController extends ChangeNotifier {
   /// Callers retaining a WebView must separately reject stale document events.
   void clearCapturedEvents() {
     if (_disposed) return;
+    _notifyCaptureInterrupted();
     _latestEvent = null;
     _responseBytes = 0;
     _capturedCount = 0;
@@ -87,6 +107,7 @@ final class GameCaptureController extends ChangeNotifier {
     String script = '',
   }) async {
     if (_disposed) return;
+    if (_desiredEnabled && !enabled) _notifyCaptureInterrupted();
     _script = script;
     _desiredPort = port;
     _desiredEnabled = enabled;
@@ -99,6 +120,7 @@ final class GameCaptureController extends ChangeNotifier {
     bool force = false,
   }) async {
     if (_disposed) return;
+    if (_desiredEnabled && !enabled) _notifyCaptureInterrupted();
     if (script != null) {
       _script = script;
     }
@@ -161,10 +183,15 @@ final class GameCaptureController extends ChangeNotifier {
       }
 
       if (!identical(_port, port)) {
+        if (_port != null) _notifyCaptureInterrupted();
         _streamEpoch += 1;
         _streamHealthy = false;
         try {
-          await _subscription?.cancel();
+          await Future.wait<void>([
+            if (_subscription != null) _subscription!.cancel(),
+            if (_interruptionSubscription != null)
+              _interruptionSubscription!.cancel(),
+          ]);
         } catch (error, stackTrace) {
           debugPrint(
             'Capture subscription cancellation failed: $error\n$stackTrace',
@@ -176,6 +203,7 @@ final class GameCaptureController extends ChangeNotifier {
         }
         _port = port;
         _subscription = null;
+        _interruptionSubscription = null;
         _configuredEnabled = null;
         _configuredScript = null;
         if (port != null) {
@@ -197,6 +225,16 @@ final class GameCaptureController extends ChangeNotifier {
                 );
               },
             );
+            if (port is GameCaptureContinuityPort) {
+              final continuityPort = port as GameCaptureContinuityPort;
+              _interruptionSubscription = continuityPort.interruptions.listen((
+                _,
+              ) {
+                if (_isCurrentStream(port, streamEpoch)) {
+                  _notifyCaptureInterrupted();
+                }
+              });
+            }
           } catch (error) {
             _handleStreamTerminal(port, streamEpoch, error);
           }
@@ -279,6 +317,7 @@ final class GameCaptureController extends ChangeNotifier {
       if (support.error case final error?) throw error;
       if (support.value != true) {
         if (!_isCurrentConfiguration(revision, port)) return;
+        _notifyCaptureInterrupted();
         _state = GameCaptureState.unsupported;
         notifyListeners();
         return;
@@ -309,6 +348,7 @@ final class GameCaptureController extends ChangeNotifier {
           : GameCaptureState.capturing;
     } catch (error) {
       if (!_isCurrentConfiguration(revision, port)) return;
+      _notifyCaptureInterrupted();
       // A failed binding cannot authorize delayed events from the old document
       // or turn the installation error back into a capturing state.
       _configuredEnabled = null;
@@ -363,6 +403,7 @@ final class GameCaptureController extends ChangeNotifier {
         command.script == desiredScript) {
       return;
     }
+    controller._notifyCaptureInterrupted();
     controller._configuredEnabled = null;
     controller._configuredScript = null;
     if (controller._repairPending || controller._repairInFlight) return;
@@ -391,6 +432,7 @@ final class GameCaptureController extends ChangeNotifier {
 
   void _handleStreamTerminal(GameCapturePort port, int epoch, Object error) {
     if (!_isCurrentStream(port, epoch)) return;
+    _notifyCaptureInterrupted();
     _streamHealthy = false;
     _configuredEnabled = null;
     _configuredScript = null;
@@ -414,6 +456,7 @@ final class GameCaptureController extends ChangeNotifier {
 
   void _onEvent(CapturedApiEvent event) {
     if (_disposed ||
+        !_desiredEnabled ||
         _configuredEnabled != true ||
         _state == GameCaptureState.disabled ||
         _state == GameCaptureState.unsupported) {
@@ -423,10 +466,12 @@ final class GameCaptureController extends ChangeNotifier {
         event.captureSessionId != _captureSessionId) {
       return;
     }
+    if (!_acceptDocument(event) || !_sequenceGate.accept(event)) return;
 
     final eventBytes =
         event.responseByteLength ?? utf8.encode(event.responseBody).length;
     if (eventBytes > maxResponseBytes) {
+      _notifyCaptureInterrupted();
       return;
     }
     final statusChanged =
@@ -444,6 +489,37 @@ final class GameCaptureController extends ChangeNotifier {
   String _safeError(Object error) {
     final type = error.runtimeType.toString();
     return '捕获配置失败（$type）';
+  }
+
+  bool _acceptDocument(CapturedApiEvent event) {
+    final documentId = event.captureDocumentId;
+    final startedAt = event.captureDocumentStartedAtEpochMs;
+    if (documentId != null && documentId == _activeDocumentId) return true;
+    if (documentId == null || startedAt == null) {
+      return _activeDocumentId == null;
+    }
+    if (event.path != '/kcsapi/api_start2/getData' || event.apiResult != 1) {
+      if (_activeDocumentId != null) return false;
+      if (event.apiResult == 1) {
+        _activeDocumentId = documentId;
+        _activeDocumentStartedAt = startedAt;
+      }
+      return true;
+    }
+    if (_retiredDocumentIds.contains(documentId) ||
+        (_activeDocumentStartedAt != null &&
+            startedAt <= _activeDocumentStartedAt!)) {
+      return false;
+    }
+    if (_activeDocumentId case final previous?) {
+      _retiredDocumentIds.add(previous);
+      if (_retiredDocumentIds.length > 64) {
+        _retiredDocumentIds.remove(_retiredDocumentIds.first);
+      }
+    }
+    _activeDocumentId = documentId;
+    _activeDocumentStartedAt = startedAt;
+    return true;
   }
 
   @override
@@ -467,6 +543,10 @@ final class GameCaptureController extends ChangeNotifier {
     final cancellation = _subscription?.cancel();
     if (cancellation != null) {
       unawaited(cancellation.catchError((Object _) {}));
+    }
+    final interruptionCancellation = _interruptionSubscription?.cancel();
+    if (interruptionCancellation != null) {
+      unawaited(interruptionCancellation.catchError((Object _) {}));
     }
     _eventActivity.dispose();
     super.dispose();

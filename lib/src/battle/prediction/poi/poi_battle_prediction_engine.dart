@@ -732,7 +732,7 @@ final class _PoiBattleSimulator {
   int _halfSunk(int count) =>
       const <int>[0, 1, 1, 2, 2, 3, 4, 4, 5, 6, 7, 7, 8][count.clamp(0, 12)];
   int _fleetRange(List<BattleShipSnapshot> fleet) => fleet.fold<int>(
-    0,
+    identical(fleet, _friendMain) && _friendEscort.isNotEmpty ? 6 : 0,
     (range, ship) => ship.position >= range ? ship.position + 1 : range,
   );
   List<Object?> _list(Object? value) =>

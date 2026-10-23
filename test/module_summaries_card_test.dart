@@ -11,7 +11,7 @@ import 'package:yahagi_kancolle_browser/src/performance/second_tick_scope.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
 void main() {
-  testWidgets('扁平折叠的远征简报逐秒刷新摘要里的剩余时间', (tester) async {
+  testWidgets('扁平折叠的远征简报在时钟刷新后也不显示摘要', (tester) async {
     var now = DateTime.utc(2030);
     final port =
         (jsonDecode(portEvent.responseBody) as Map)['api_data']
@@ -48,14 +48,11 @@ void main() {
         ),
       ),
     );
-    String? summary() => tester
-        .widget<Text>(find.byKey(const Key('dashboard-card-summary')))
-        .data;
-    expect(summary(), '进行中 1/3 · 最近 00:10:00');
+    expect(find.byKey(const Key('dashboard-card-summary')), findsNothing);
 
     now = now.add(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
-    expect(summary(), '进行中 1/3 · 最近 00:09:59');
+    expect(find.byKey(const Key('dashboard-card-summary')), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

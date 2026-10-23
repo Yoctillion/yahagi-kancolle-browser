@@ -2,9 +2,12 @@ import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/layout_settings_controller.dart';
+import '../settings/ui_display_size.dart';
 import '../widgets/top_notice.dart';
 import 'hd_home_editor.dart';
 import 'hd_dashboard_content.dart';
+import 'panel_style.dart';
+import 'ui_scale.dart';
 
 class HdBottomStrip extends StatelessWidget {
   const HdBottomStrip({
@@ -37,7 +40,7 @@ class HdBottomStrip extends StatelessWidget {
             : child;
       }
 
-      return GestureDetector(
+      final strip = GestureDetector(
         behavior: HitTestBehavior.opaque,
         onLongPress: editing
             ? null
@@ -168,6 +171,15 @@ class HdBottomStrip extends StatelessWidget {
               },
             ),
           ),
+        ),
+      );
+      return UiScale(
+        scale: controller.uiDisplaySize.isMinimal ? minimalUiScale : 1.0,
+        child: PanelStyleScope(
+          style: controller.uiDisplaySize.isMinimal
+              ? PanelStyle.flat
+              : PanelStyle.card,
+          child: strip,
         ),
       );
     },

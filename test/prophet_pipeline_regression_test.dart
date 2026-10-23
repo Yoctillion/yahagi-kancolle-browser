@@ -54,8 +54,15 @@ void main() {
       );
       pipeline
         ..add(start2Event)
-        ..add(portEvent)
+        ..add(
+          kcsapiEvent(
+            portEvent.path,
+            GameApiDecoder.decodeEventData(portEvent),
+            sequence: 2,
+          ),
+        )
         ..add(mapStartEvent);
+      var sequence = 20;
       for (final damage in [10, 5]) {
         pipeline.add(
           kcsapiEvent('/kcsapi/api_req_sortie/battle', {
@@ -75,7 +82,7 @@ void main() {
                 [damage],
               ],
             },
-          }, sequence: 700 + damage),
+          }, sequence: ++sequence),
         );
         await pipeline.idle;
         expect(battle.current!.enemyMain.single.currentHp, 20 - damage);
@@ -90,7 +97,7 @@ void main() {
                   'api_stage1': {'api_disp_seiku': 1},
                 },
               },
-            }, sequence: 720),
+            }, sequence: ++sequence),
           );
           await pipeline.idle;
           expect(battle.current!.enemyMain, isEmpty);
@@ -143,7 +150,7 @@ void main() {
         ];
         pipeline
           ..add(start2Event)
-          ..add(kcsapiEvent('/kcsapi/api_port/port', port, sequence: 500))
+          ..add(kcsapiEvent('/kcsapi/api_port/port', port, sequence: 2))
           ..add(mapStartEvent)
           ..add(
             kcsapiEvent('/kcsapi/api_req_combined_battle/battle_water', {

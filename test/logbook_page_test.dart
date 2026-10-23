@@ -7,6 +7,7 @@ import 'package:yahagi_kancolle_browser/src/battle/battle_models.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/resource_trend_page.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/layout/workspace_context_header.dart';
+import 'package:yahagi_kancolle_browser/src/layout/ui_scale.dart';
 import 'package:yahagi_kancolle_browser/src/logbook/logbook_database.dart';
 import 'package:yahagi_kancolle_browser/src/logbook/logbook_page.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/frozen_data_table.dart';
@@ -14,67 +15,82 @@ import 'package:yahagi_kancolle_browser/src/widgets/frozen_data_table.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  for (final occupied in [
-    const EdgeInsets.only(left: 41),
-    const EdgeInsets.only(right: 41),
-    const EdgeInsets.only(bottom: 41),
-  ]) {
-    testWidgets('logbook deducts occupied screen edges $occupied', (
-      tester,
-    ) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(915, 412);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.resetPhysicalSize);
-      final database = await LogbookDatabase.openForTesting();
-      addTearDown(database.close);
-      final controller = BattleController(gameState: () => GameState.empty);
-      addTearDown(controller.dispose);
+  for (final scale in [1.0, minimalUiScale]) {
+    for (final occupied in [
+      const EdgeInsets.only(left: 41),
+      const EdgeInsets.only(right: 41),
+      const EdgeInsets.only(bottom: 41),
+    ]) {
+      testWidgets(
+        'logbook deducts occupied screen edges $occupied at scale $scale',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = const Size(915, 412);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          final database = await LogbookDatabase.openForTesting();
+          addTearDown(database.close);
+          final controller = BattleController(gameState: () => GameState.empty);
+          addTearDown(controller.dispose);
 
-      // Exercise changing system insets without recreating the logbook state.
-      for (final inset in [0.0, 36.0, 60.0, 0.0]) {
-        await tester.pumpWidget(
-          MaterialApp(
-            locale: const Locale('zh'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: MediaQuery(
-                data: MediaQueryData(
-                  size: const Size(915, 412),
-                  padding: EdgeInsets.all(inset),
-                  viewPadding: EdgeInsets.all(inset),
-                ),
-                child: Padding(
-                  padding: occupied,
-                  child: LogbookPage(
-                    battleController: controller,
-                    database: database,
-                    occupiedInsets: occupied,
+          // Exercise changing system insets without recreating the logbook state.
+          for (final inset in [0.0, 36.0, 60.0, 0.0]) {
+            await tester.pumpWidget(
+              MaterialApp(
+                locale: const Locale('zh'),
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: Scaffold(
+                  body: MediaQuery(
+                    data: MediaQueryData(
+                      size: const Size(915, 412),
+                      padding: EdgeInsets.all(inset),
+                      viewPadding: EdgeInsets.all(inset),
+                    ),
+                    child: Padding(
+                      padding: occupied,
+                      child: UiScale(
+                        scale: scale,
+                        child: LogbookPage(
+                          battleController: controller,
+                          database: database,
+                          occupiedInsets: occupied,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-        final bounds = tester.getRect(find.byType(TabBarView));
-        expect(bounds.left, inset > occupied.left ? inset : occupied.left);
-        expect(
-          bounds.right,
-          915 - (inset > occupied.right ? inset : occupied.right),
-        );
-        expect(
-          bounds.bottom,
-          412 - (inset > occupied.bottom ? inset : occupied.bottom),
-        );
-        final table = tester.getRect(
-          find.byKey(const Key('logbook-table-sortie')),
-        );
-        expect(table.left, bounds.left + 12);
-        expect(tester.takeException(), isNull);
-      }
-    });
+            );
+            await tester.pumpAndSettle();
+            final bounds = tester.getRect(find.byType(TabBarView));
+            expect(
+              bounds.left,
+              closeTo(inset > occupied.left ? inset : occupied.left, .001),
+            );
+            expect(
+              bounds.right,
+              closeTo(
+                915 - (inset > occupied.right ? inset : occupied.right),
+                .001,
+              ),
+            );
+            expect(
+              bounds.bottom,
+              closeTo(
+                412 - (inset > occupied.bottom ? inset : occupied.bottom),
+                .001,
+              ),
+            );
+            final table = tester.getRect(
+              find.byKey(const Key('logbook-table-sortie')),
+            );
+            expect(table.left, closeTo(bounds.left + 12 * scale, .001));
+            expect(tester.takeException(), isNull);
+          }
+        },
+      );
+    }
   }
 
   for (final inset in [0.0, 36.0]) {

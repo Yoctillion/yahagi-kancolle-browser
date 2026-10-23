@@ -19,7 +19,10 @@ GameCapturePort createPlatformGameCapturePort() {
 }
 
 final class MethodChannelGameCapturePort
-    implements GameCapturePort, GameCaptureRebindPort {
+    implements
+        GameCapturePort,
+        GameCaptureRebindPort,
+        GameCaptureContinuityPort {
   MethodChannelGameCapturePort({
     this.channel = _defaultGameCaptureChannel,
     this.configurationTimeout = const Duration(seconds: 10),
@@ -27,7 +30,7 @@ final class MethodChannelGameCapturePort
          channel.name,
          () => _CaptureConfigurationArbiter(channel.name),
        ) {
-    _configurationArbiter.claim(_handlerOwner);
+    _configurationArbiter.claim(_handlerOwner, _notifyCaptureInterrupted);
     _handlerOwners[channel.name] = _handlerOwner;
     channel.setMethodCallHandler(_onMethodCall);
   }
@@ -62,10 +65,15 @@ final class MethodChannelGameCapturePort
   final _CaptureConfigurationArbiter _configurationArbiter;
   final StreamController<CapturedApiEvent> _events =
       StreamController<CapturedApiEvent>.broadcast();
+  final StreamController<void> _interruptions =
+      StreamController<void>.broadcast();
   bool _disposed = false;
 
   @override
   Stream<CapturedApiEvent> get events => _events.stream;
+
+  @override
+  Stream<void> get interruptions => _interruptions.stream;
 
   @override
   Future<bool> isSupported() async {
@@ -110,15 +118,26 @@ final class MethodChannelGameCapturePort
     if (call.method != 'onCaptureEvent' || _events.isClosed) {
       return;
     }
+    final arguments = call.arguments;
+    if (arguments is Map &&
+        arguments['version'] == 1 &&
+        arguments['kind'] == 'capture_interrupted') {
+      _notifyCaptureInterrupted();
+      return;
+    }
     try {
-      final decoded = AndroidCaptureEvent.decode(call.arguments);
+      final decoded = AndroidCaptureEvent.decode(arguments);
       if (decoded is CapturedApiEvent) {
         _events.add(decoded);
       }
     } on FormatException {
-      // Native validation is repeated in Dart. Invalid messages are ignored
-      // without logging their potentially sensitive response body.
+      _notifyCaptureInterrupted();
     }
+  }
+
+  void _notifyCaptureInterrupted() {
+    if (_disposed || _interruptions.isClosed) return;
+    _interruptions.add(null);
   }
 
   @override
@@ -141,6 +160,7 @@ final class MethodChannelGameCapturePort
       },
     );
     unawaited(_events.close());
+    unawaited(_interruptions.close());
   }
 }
 
@@ -155,12 +175,14 @@ final class _CaptureConfigurationArbiter {
   _CaptureConfigurationCommand? _desired;
   Completer<void>? _activeWebViewInvalidator;
   void Function()? _onIdle;
+  void Function()? _onCaptureInterrupted;
 
-  void claim(Object owner) {
+  void claim(Object owner, void Function() onCaptureInterrupted) {
     _activeOwner = owner;
     _revision += 1;
     _desired = null;
     _onIdle = null;
+    _onCaptureInterrupted = onCaptureInterrupted;
   }
 
   void rebindWebView(Object owner) {
@@ -263,6 +285,7 @@ final class _CaptureConfigurationArbiter {
   void _replayCurrent() {
     final current = _desired;
     if (current == null || !_isCurrent(current)) return;
+    _onCaptureInterrupted?.call();
     // A queued current install will run after the stale command. Replacing it
     // would complete its waiter before the replacement install has replied.
     if (!current.started) return;
@@ -279,6 +302,7 @@ final class _CaptureConfigurationArbiter {
     if (!identical(_activeOwner, owner)) return;
     _activeOwner = null;
     _desired = null;
+    _onCaptureInterrupted = null;
     _revision += 1;
     if (_pending == 0) {
       onIdle();

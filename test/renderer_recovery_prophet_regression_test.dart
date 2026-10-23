@@ -55,6 +55,7 @@ void main() {
         final predictedBattle = fixture.battle.current;
         final gameState = fixture.state.state;
         final timingCount = fixture.observer.timings.length;
+        final capturedCount = fixture.capture.capturedCount;
         fixture.port.deliverQueuedResponse(
           retiredDocument,
           start2Event,
@@ -74,16 +75,14 @@ void main() {
 
         expect(fixture.battle.current, same(predictedBattle));
         expect(fixture.state.state, same(gameState));
-        expect(
-          fixture.observer.timings.skip(timingCount).map((e) => e.success),
-          [false, false, false],
-        );
+        expect(fixture.observer.timings.skip(timingCount), isEmpty);
+        expect(fixture.capture.capturedCount, capturedCount);
         fixture.expectPrediction(damage: 4 + recovery, node: recovery + 1);
       }
 
       expect(fixture.port.factoryCount, 1);
       expect(fixture.port.subscriptionCount, 1);
-      expect(fixture.capture.capturedCount, 4 + recoveryCount * 7);
+      expect(fixture.capture.capturedCount, 4 + recoveryCount * 4);
       expect(fixture.pipeline.pendingEventCount, 0);
     });
   }

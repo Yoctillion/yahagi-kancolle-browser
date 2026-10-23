@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
+import 'package:yahagi_kancolle_browser/src/layout/dashboard_editing_scope.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 
@@ -11,6 +12,7 @@ Widget _host({
   required PanelStyle? style,
   required bool collapsed,
   String? summary,
+  bool editing = false,
 }) {
   Widget card = DashboardCard(
     title: '舰队',
@@ -21,6 +23,7 @@ Widget _host({
     trailing: const Text('切换器', key: Key('card-trailing')),
     child: const SizedBox(height: 20),
   );
+  if (editing) card = DashboardEditingScope(child: card);
   if (style != null) card = PanelStyleScope(style: style, child: card);
   return MaterialApp(
     locale: const Locale('zh'),
@@ -59,21 +62,50 @@ void main() {
     expect(header.height, lessThanOrEqualTo(26));
   });
 
-  testWidgets('flat 折叠时显示摘要', (tester) async {
+  testWidgets('flat 折叠时保留标题但不显示摘要', (tester) async {
     await tester.pumpWidget(
       _host(style: PanelStyle.flat, collapsed: true, summary: '3 队 · 满血'),
     );
-    final text = tester.widget<Text>(
-      find.byKey(const Key('dashboard-card-summary')),
-    );
-    expect(text.data, '3 队 · 满血');
+    expect(find.byKey(const Key('dashboard-card-summary')), findsNothing);
+    expect(find.text('3 队 · 满血'), findsNothing);
+    expect(find.text('舰队'), findsOneWidget);
   });
 
-  testWidgets('card 样式折叠时不显示摘要', (tester) async {
-    await tester.pumpWidget(
-      _host(style: null, collapsed: true, summary: '3 队 · 满血'),
-    );
-    expect(find.byKey(const Key('dashboard-card-summary')), findsNothing);
+  testWidgets('flat 编辑前后均不构建摘要', (tester) async {
+    const summary = '最低疲劳 49 · 出击/防空 · 进行中 3 · 警告 2';
+    for (final editing in [false, true, false]) {
+      await tester.pumpWidget(
+        _host(
+          style: PanelStyle.flat,
+          collapsed: true,
+          summary: summary,
+          editing: editing,
+        ),
+      );
+      final summaries = find.byKey(
+        const Key('dashboard-card-summary'),
+        skipOffstage: false,
+      );
+      expect(summaries, findsNothing);
+      expect(find.text(summary), findsNothing);
+      expect(find.text('舰队'), findsOneWidget);
+      expect(find.byIcon(Icons.sailing), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('card 样式编辑前后都不显示折叠摘要', (tester) async {
+    for (final editing in [false, true]) {
+      await tester.pumpWidget(
+        _host(
+          style: null,
+          collapsed: true,
+          summary: '3 队 · 满血',
+          editing: editing,
+        ),
+      );
+      expect(find.byKey(const Key('dashboard-card-summary')), findsNothing);
+    }
   });
 
   Widget tallChildren({required bool collapsed, required double width}) =>

@@ -72,7 +72,10 @@ internal class OrderedCaptureEventDispatcher(
                     validate()
                 } catch (_: RuntimeException) {
                     null
-                } ?: return@execute
+                } ?: mapOf(
+                    "version" to 1,
+                    "kind" to "capture_interrupted",
+                )
                 if (!isCurrent(submittedGeneration)) return@execute
                 postToMain(
                     Runnable {

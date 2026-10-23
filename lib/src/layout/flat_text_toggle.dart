@@ -17,7 +17,7 @@ class FlatTextToggleOption {
   final VoidCallback onTap;
 }
 
-/// 极简档（扁平面板）下的模式切换：纯文字，选中金色，无底色无边框。
+/// 极简档（扁平面板）下的模式切换：文字与选中底线，无底色。
 /// 放不下时换行；放在标题行的 FittedBox 里则始终一行、整体缩小。
 class FlatTextToggle extends StatelessWidget {
   const FlatTextToggle({super.key, required this.options});
@@ -36,20 +36,35 @@ class FlatTextToggle extends StatelessWidget {
             InkWell(
               key: option.key,
               onTap: option.onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                child: Text(
-                  option.label,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: appColor(
-                      context,
-                      option.selected ? flatAccentColor : flatMutedColor,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      width: 2,
+                      color: option.selected
+                          ? appColor(context, flatAccentColor)
+                          : Colors.transparent,
                     ),
-                    fontSize: flatSmallFontSize,
-                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 3,
+                  ),
+                  child: Text(
+                    option.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: appColor(
+                        context,
+                        option.selected ? flatAccentColor : flatMutedColor,
+                      ),
+                      fontSize: flatSmallFontSize,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),

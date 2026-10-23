@@ -32,68 +32,89 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            buildSectionTitle(l10n.gameSafety),
+            buildSectionTitle(l10n.battleSafetySectionTitle),
             buildCard(
               child: AnimatedBuilder(
                 animation: safetySettingsController,
-                builder: (context, _) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) => Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        Text(
-                          l10n.blockSortieTitle,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        _fitDropdown(
-                          maxWidth: constraints.maxWidth,
-                          child: DropdownButton<BattleWarningMode>(
-                            value: safetySettingsController.battleWarningMode,
-                            underline: const SizedBox(),
-                            alignment: AlignmentDirectional.centerEnd,
-                            isExpanded: true,
-                            itemHeight: null,
-                            items: [
-                              DropdownMenuItem(
-                                value: BattleWarningMode.off,
-                                alignment: AlignmentDirectional.centerEnd,
-                                child: Text(
-                                  l10n.battleWarningOff,
-                                  textAlign: TextAlign.end,
-                                ),
-                              ),
-                              DropdownMenuItem(
-                                value: BattleWarningMode.confirm,
-                                alignment: AlignmentDirectional.centerEnd,
-                                child: Text(
-                                  l10n.battleWarningConfirm,
-                                  textAlign: TextAlign.end,
-                                ),
-                              ),
-                            ],
+                builder: (context, _) {
+                  final enabled =
+                      safetySettingsController.battleWarningMode ==
+                      BattleWarningMode.confirm;
+                  return Column(
+                    children: <Widget>[
+                      MergeSemantics(
+                        child: InkWell(
+                          key: const Key('battleWarningMasterRow'),
+                          onTap: () {
+                            safetySettingsController.setBattleWarningMode(
+                              enabled
+                                  ? BattleWarningMode.off
+                                  : BattleWarningMode.confirm,
+                            );
+                          },
+                          child: buildSwitchTile(
+                            switchKey: const Key('battleWarningMasterSwitch'),
+                            title: l10n.gameSafety,
+                            value: enabled,
                             onChanged: (value) {
-                              if (value != null) {
-                                safetySettingsController.setBattleWarningMode(
-                                  value,
-                                );
-                              }
+                              safetySettingsController.setBattleWarningMode(
+                                value
+                                    ? BattleWarningMode.confirm
+                                    : BattleWarningMode.off,
+                              );
                             },
                           ),
                         ),
+                      ),
+                      if (enabled) ...<Widget>[
+                        Divider(
+                          height: 1,
+                          color: appColor(context, const Color(0xff294052)),
+                        ),
+                        _AdvanceWarningTimingOptions(
+                          controller: safetySettingsController,
+                        ),
+                        Divider(
+                          height: 1,
+                          color: appColor(context, const Color(0xff294052)),
+                        ),
+                        _WarningDropdownRow<AdvanceWarningDisplayMode>(
+                          key: const Key('advanceWarningDisplayModeSelector'),
+                          dropdownKey: const Key(
+                            'advanceWarningDisplayModeDropdown',
+                          ),
+                          title: l10n.advanceWarningDisplayModeTitle,
+                          subtitle:
+                              safetySettingsController
+                                      .advanceWarningDisplayMode ==
+                                  AdvanceWarningDisplayMode.smart
+                              ? l10n.advanceWarningSmartDescription
+                              : l10n.advanceWarningAlwaysConfirmDescription,
+                          value: safetySettingsController
+                              .advanceWarningDisplayMode,
+                          choices: [
+                            _WarningChoice(
+                              key: const Key(
+                                'advanceWarningDisplayOptionAlways',
+                              ),
+                              value: AdvanceWarningDisplayMode.alwaysConfirm,
+                              label: l10n.advanceWarningAlwaysConfirm,
+                            ),
+                            _WarningChoice(
+                              key: const Key(
+                                'advanceWarningDisplayOptionSmart',
+                              ),
+                              value: AdvanceWarningDisplayMode.smart,
+                              label: l10n.advanceWarningSmart,
+                            ),
+                          ],
+                          onChanged: safetySettingsController
+                              .setAdvanceWarningDisplayMode,
+                        ),
                       ],
-                    ),
-                  ),
-                ),
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 24),
@@ -280,6 +301,124 @@ class BattleSettingsPage extends StatelessWidget with SettingsUIHelpers {
             const SizedBox(height: 40),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AdvanceWarningTimingOptions extends StatelessWidget {
+  const _AdvanceWarningTimingOptions({required this.controller});
+
+  final SafetySettingsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final settings = controller.advanceWarningTimings;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _WarningDropdownRow<AdvanceWarningTimingSettings>(
+          key: const Key('advanceWarningTimingSelector'),
+          dropdownKey: const Key('advanceWarningTimingDropdown'),
+          title: l10n.advanceWarningTimingModeTitle,
+          subtitle: l10n.advanceWarningTimingModeDescription,
+          value: settings,
+          choices: [
+            _WarningChoice(
+              key: const Key('advanceWarningTimingOptionAdvance'),
+              value: AdvanceWarningTimingSettings.advanceOnly,
+              label: l10n.advanceWarningAfterAdvance,
+            ),
+            _WarningChoice(
+              key: const Key('advanceWarningTimingOptionBattle'),
+              value: AdvanceWarningTimingSettings.battleOnly,
+              label: l10n.advanceWarningPostBattle,
+            ),
+            _WarningChoice(
+              key: const Key('advanceWarningTimingOptionBoth'),
+              value: AdvanceWarningTimingSettings.battleAndAdvance,
+              label: l10n.advanceWarningBothTimings,
+            ),
+          ],
+          onChanged: controller.setAdvanceWarningTimings,
+        ),
+        if (settings.postBattle && !settings.afterAdvance)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              l10n.advanceWarningPostBattleOnlyWarning,
+              key: const Key('advanceWarningPostBattleOnlyWarning'),
+              style: appTextStyle(
+                context,
+                SettingsTileTypography.description.copyWith(
+                  color: appColor(context, const Color(0xffd4a85f)),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _WarningChoice<T> {
+  const _WarningChoice({
+    required this.key,
+    required this.value,
+    required this.label,
+  });
+
+  final Key key;
+  final T value;
+  final String label;
+}
+
+class _WarningDropdownRow<T> extends StatelessWidget {
+  const _WarningDropdownRow({
+    super.key,
+    required this.dropdownKey,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.choices,
+    required this.onChanged,
+  });
+
+  final Key dropdownKey;
+  final String title;
+  final String subtitle;
+  final T value;
+  final List<_WarningChoice<T>> choices;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StatusEffectRow(
+      title: title,
+      subtitle: subtitle,
+      enabled: true,
+      trailing: DropdownButton<T>(
+        key: dropdownKey,
+        value: value,
+        underline: const SizedBox(),
+        alignment: AlignmentDirectional.centerEnd,
+        isExpanded: true,
+        itemHeight: null,
+        items: [
+          for (final choice in choices)
+            DropdownMenuItem<T>(
+              key: choice.key,
+              value: choice.value,
+              alignment: AlignmentDirectional.centerEnd,
+              child: Text(choice.label, textAlign: TextAlign.end),
+            ),
+        ],
+        onChanged: (selection) {
+          if (selection != null) onChanged(selection);
+        },
       ),
     );
   }

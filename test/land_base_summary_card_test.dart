@@ -42,10 +42,17 @@ void main() {
       find.descendant(of: switcher, matching: find.byType(DecoratedBox)),
     )) {
       final d = box.decoration;
-      expect(
-        d is BoxDecoration && (d.color != null || d.border != null),
-        isFalse,
-      );
+      if (d is BoxDecoration) {
+        expect(d.color, isNull);
+        if (d.border case final Border border) {
+          expect(border.top, BorderSide.none);
+          expect(border.left, BorderSide.none);
+          expect(border.right, BorderSide.none);
+          expect(border.bottom.width, 2);
+        } else {
+          expect(d.border, isNull);
+        }
+      }
     }
     final selector = find.byKey(const Key('land-base-area-selector-62'));
     await tester.tap(selector);
@@ -54,6 +61,22 @@ void main() {
       find.descendant(of: selector, matching: find.byType(Text)),
     );
     expect(selected.style?.color, const Color(0xffd4a85f));
+    final selectedDecoration =
+        tester
+                .widget<DecoratedBox>(
+                  find
+                      .descendant(
+                        of: selector,
+                        matching: find.byType(DecoratedBox),
+                      )
+                      .first,
+                )
+                .decoration
+            as BoxDecoration;
+    expect(
+      (selectedDecoration.border! as Border).bottom.color,
+      const Color(0xffd4a85f),
+    );
   });
 
   testWidgets('HD land bases follow bottom span and reflow live', (
@@ -701,7 +724,7 @@ void main() {
       )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
     });
 
-    testWidgets('flat 下宽 190 时四格等宽、无溢出且整行高度 <=40', (tester) async {
+    testWidgets('flat 下宽 190 时名称指标同排、四格等宽且整行高度 <=40', (tester) async {
       final base = _base(currentHp: 150, conditions: const <int>[1, 1, 1, 1]);
       tester.view.physicalSize = const Size(190, 600);
       tester.view.devicePixelRatio = 1;
@@ -732,6 +755,35 @@ void main() {
           .getSize(find.byKey(const Key('land-base-row-62-1')))
           .height;
       expect(damagedHeight, lessThanOrEqualTo(40));
+      final identityRect = tester.getRect(
+        find.byKey(const Key('land-base-identity-line-62-1')),
+      );
+      final nameRect = tester.getRect(
+        find.byKey(const Key('land-base-name-62-1')),
+      );
+      expect(identityRect.center.dy, closeTo(nameRect.center.dy, .01));
+      expect(nameRect.width, greaterThanOrEqualTo(24));
+      expect(
+        tester
+            .getRect(find.byKey(const Key('land-base-action-chip-62-1')))
+            .center
+            .dy,
+        closeTo(nameRect.center.dy, .01),
+      );
+      for (final key in const <String>[
+        'land-base-air-power-chip-62-1',
+        'land-base-range-chip-62-1',
+      ]) {
+        final metric = tester.getRect(find.byKey(Key(key)));
+        expect(metric.center.dy, closeTo(nameRect.center.dy, .01), reason: key);
+        expect(metric.left, greaterThanOrEqualTo(nameRect.right), reason: key);
+      }
+      expect(
+        tester
+            .getRect(find.byKey(const Key('land-base-squadron-strip-62-1')))
+            .top,
+        greaterThanOrEqualTo(identityRect.bottom),
+      );
 
       final healthy = _base(
         currentHp: 200,
@@ -749,6 +801,34 @@ void main() {
         damagedHeight,
       );
 
+      for (final width in [210.0, 280.0]) {
+        tester.view.physicalSize = Size(width, 600);
+        await tester.pumpWidget(
+          _flatRow(
+            base: base,
+            width: width,
+            visible: const <String>{'bars', 'airPower', 'range'},
+          ),
+        );
+        final height = tester
+            .getSize(find.byKey(const Key('land-base-row-62-1')))
+            .height;
+        await tester.pumpWidget(
+          _flatRow(
+            base: healthy,
+            width: width,
+            visible: const <String>{'bars', 'airPower', 'range'},
+          ),
+        );
+        expect(
+          tester.getSize(find.byKey(const Key('land-base-row-62-1'))).height,
+          height,
+          reason: 'healthy/damaged at $width',
+        );
+        expect(tester.takeException(), isNull);
+      }
+
+      tester.view.physicalSize = const Size(190, 600);
       await tester.pumpWidget(
         _flatRow(
           base: base,

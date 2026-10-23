@@ -5,11 +5,11 @@ import 'package:yahagi_kancolle_browser/src/layout/minimal_layout.dart';
 import 'package:yahagi_kancolle_browser/src/settings/ui_display_size.dart';
 
 void main() {
-  test('minimal size values', () {
+  test('minimal chrome uses compact size values', () {
     const size = UiDisplaySize.minimal;
-    expect(workspaceNavigationExtent(size), 34.0);
-    expect(topHeaderHeight(size), 28.0);
-    expect(headerCapsuleHeight(size), 22.0);
+    expect(workspaceNavigationExtent(size), 41.0);
+    expect(topHeaderHeight(size), 36.0);
+    expect(headerCapsuleHeight(size), 26.0);
     expect(browserToolbarHeight(size), 30.0);
   });
 
@@ -27,18 +27,22 @@ void main() {
     expect(shell(UiDisplaySize.minimal, true, false), isTrue);
     expect(shell(UiDisplaySize.minimal, false, false), isFalse);
     expect(shell(UiDisplaySize.minimal, true, true), isFalse);
+    expect(shell(UiDisplaySize.minimal, false, true), isFalse);
     expect(shell(UiDisplaySize.compact, true, false), isFalse);
   });
 
   test('usesFlatPanel', () {
     expect(usesFlatPanel(size: UiDisplaySize.minimal, hd: false), isTrue);
-    expect(usesFlatPanel(size: UiDisplaySize.minimal, hd: true), isFalse);
-    expect(usesFlatPanel(size: UiDisplaySize.compact, hd: false), isFalse);
+    expect(usesFlatPanel(size: UiDisplaySize.minimal, hd: true), isTrue);
+    for (final size in [UiDisplaySize.normal, UiDisplaySize.compact]) {
+      expect(usesFlatPanel(size: size, hd: false), isFalse);
+      expect(usesFlatPanel(size: size, hd: true), isFalse);
+    }
   });
-  test('effectiveUiDisplaySize treats minimal as compact under HD', () {
+  test('effectiveUiDisplaySize preserves the selected size under HD', () {
     expect(
       effectiveUiDisplaySize(UiDisplaySize.minimal, hd: true),
-      UiDisplaySize.compact,
+      UiDisplaySize.minimal,
     );
     expect(
       effectiveUiDisplaySize(UiDisplaySize.minimal, hd: false),
@@ -58,7 +62,7 @@ void main() {
       bottomRight: 40,
     );
 
-    test('vertical rail clears its own corners and the bottom inset', () {
+    test('vertical rail below header clears only bottom corners and inset', () {
       expect(
         minimalNavigationInsets(
           corners: corners,
@@ -66,7 +70,7 @@ void main() {
           horizontal: false,
           onRight: false,
         ),
-        EdgeInsets.only(top: cornerInset(10), bottom: cornerInset(30)),
+        EdgeInsets.only(bottom: cornerInset(30)),
       );
       expect(
         minimalNavigationInsets(
@@ -75,7 +79,7 @@ void main() {
           horizontal: false,
           onRight: true,
         ),
-        EdgeInsets.only(top: cornerInset(20), bottom: 48),
+        const EdgeInsets.only(bottom: 48),
       );
     });
 

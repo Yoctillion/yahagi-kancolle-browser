@@ -1,6 +1,6 @@
 const String gamePageAlignmentScript = r'''
 (() => {
-  const runtimeVersion = 4;
+  const runtimeVersion = 5;
   if (
     window.__yahagiMobilePresentationRuntimeVersion === runtimeVersion &&
     typeof window.__yahagiMobileSyncPresentation === 'function' &&
@@ -8,6 +8,8 @@ const String gamePageAlignmentScript = r'''
   ) {
     return window.__yahagiMobileSyncPresentation(true);
   }
+  // Release snapshots held by a previous runtime before taking ownership again.
+  window.__yahagiMobileRestoreGameViewport?.();
   const styleId = '__yahagi_mobile_fixed_canvas__';
   const ooiBrowserStyleId = '__yahagi_mobile_ooi_browser__';
   const ooiBrowserFrameWidth = 1280;
@@ -19,6 +21,42 @@ const String gamePageAlignmentScript = r'''
     '#ooi-page #ooi-game > embed#externalswf, ' +
     '#flashWrap > iframe#externalswf, #flashWrap > embed#externalswf';
   const ooiFrameScrolling = new Map();
+  const gameViewportMetas = new Map();
+  const restoreGameViewport = () => {
+    for (const [meta, original] of gameViewportMetas) {
+      if (original.created) meta.remove();
+      else if (original.content === null) {
+        if (meta.getAttribute('content') !== null) meta.removeAttribute('content');
+      } else if (meta.getAttribute('content') !== original.content) {
+        meta.setAttribute('content', original.content);
+      }
+    }
+    gameViewportMetas.clear();
+  };
+  window.__yahagiMobileRestoreGameViewport = restoreGameViewport;
+  const applyGameViewport = () => {
+    const metas = Array.from(document.querySelectorAll('meta[name]')).filter(
+      (meta) => meta.getAttribute('name')?.toLowerCase() === 'viewport',
+    );
+    if (metas.length === 0) {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'viewport');
+      gameViewportMetas.set(meta, {content: null, created: true});
+      document.head.appendChild(meta);
+      metas.push(meta);
+    }
+    for (const meta of metas) {
+      if (!gameViewportMetas.has(meta)) {
+        gameViewportMetas.set(meta, {content: meta.getAttribute('content'), created: false});
+      }
+      const preserved = (meta.getAttribute('content') || '').split(/[,;]/).filter(
+        (part) => !/^\s*(minimum-scale|maximum-scale|user-scalable)\s*=/i.test(part),
+      ).map((part) => part.trim()).filter(Boolean);
+      const content = [...preserved, 'minimum-scale=0.01', 'maximum-scale=10', 'user-scalable=yes'].join(', ');
+      // A same-value viewport write may reset Chromium's current page scale.
+      if (meta.getAttribute('content') !== content) meta.setAttribute('content', content);
+    }
+  };
   const fixedCanvasCss = `
     html, body {
       margin: 0 !important;
@@ -156,6 +194,7 @@ const String gamePageAlignmentScript = r'''
   };
 
   const cleanupGamePresentation = () => {
+    restoreGameViewport();
     document.getElementById(styleId)?.remove();
 
     if (window.__yahagiMobileScrollLock) {
@@ -240,6 +279,7 @@ const String gamePageAlignmentScript = r'''
   };
 
   const applyGamePresentation = () => {
+    applyGameViewport();
     let style = document.getElementById(styleId);
     if (!style) {
       style = document.createElement('style');
@@ -455,7 +495,7 @@ const String gamePageAlignmentScript = r'''
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'hidden', 'style', 'width', 'height', 'id', 'open'],
+      attributeFilter: ['class', 'hidden', 'style', 'width', 'height', 'id', 'open', 'content', 'name'],
     });
     window.addEventListener('resize', scheduleSync, {passive: true});
     window.visualViewport?.addEventListener('resize', scheduleSync, {passive: true});

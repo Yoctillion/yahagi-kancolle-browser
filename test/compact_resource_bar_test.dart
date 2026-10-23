@@ -855,13 +855,100 @@ void main() {
     expect(tester.getSize(fuelPill).width, 74);
   });
 
-  testWidgets('minimal resource items have no capsule border', (tester) async {
+  testWidgets(
+    'flat topbar removes capsules and keeps original resource icons',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final controller = await LayoutSettingsController.load(
+        SharedPreferencesLayoutSettingsStore(),
+      );
+      await controller.setUiDisplaySize(UiDisplaySize.compact);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: CompactResourceBar(
+              state: const GameState(),
+              settingsController: controller,
+              flatStyle: true,
+            ),
+          ),
+        ),
+      );
+
+      final item = find.byKey(const Key('header-resource-material-1'));
+      expect(item, findsOneWidget);
+      expect(tester.getSize(item), const Size(74, 26));
+      final icon = tester.widget<Image>(
+        find.descendant(of: item, matching: find.byType(Image)),
+      );
+      expect(
+        (icon.image as AssetImage).assetName,
+        'assets/images/material/01.png',
+      );
+      expect(icon.width, 15);
+      expect(icon.height, 15);
+      final decorations = <Decoration?>[
+        for (final box in tester.widgetList<Container>(
+          find.descendant(of: item, matching: find.byType(Container)),
+        ))
+          box.decoration,
+        for (final box in tester.widgetList<DecoratedBox>(
+          find.descendant(of: item, matching: find.byType(DecoratedBox)),
+        ))
+          box.decoration,
+      ];
+      for (final decoration in decorations) {
+        expect(decoration is BoxDecoration ? decoration.border : null, isNull);
+        expect(decoration is BoxDecoration ? decoration.color : null, isNull);
+      }
+      final divider = find.byKey(
+        const Key('header-resource-divider-before-anchorage-timer'),
+      );
+      expect(divider, findsOneWidget);
+      expect(tester.getSize(divider), const Size(1, 14));
+      expect(
+        find.byKey(const Key('header-resource-divider-before-senka')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('flat topbar preserves actions, filtering and custom order', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 350);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final controller = await LayoutSettingsController.load(
       SharedPreferencesLayoutSettingsStore(),
     );
-    await controller.setUiDisplaySize(UiDisplaySize.minimal);
-
+    const selectedIds = <String>[
+      headerSenkaId,
+      headerAnchorageTimerId,
+      headerNosakiTimerId,
+      headerFrameRefreshId,
+      headerFurnitureCoinId,
+      'material-1',
+    ];
+    await controller.setUiDisplaySize(UiDisplaySize.compact);
+    await controller.setHeaderResourceOrder(selectedIds);
+    for (final id in allHeaderResourceIds) {
+      if (controller.visibleHeaderResourceIds.contains(id) !=
+          selectedIds.contains(id)) {
+        await controller.toggleHeaderResourceVisible(id);
+      }
+    }
+    var senkaTaps = 0;
+    var anchorageTaps = 0;
+    var nosakiTaps = 0;
+    var refreshTaps = 0;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('zh'),
@@ -869,29 +956,79 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CompactResourceBar(
-            state: const GameState(),
+            flatStyle: true,
+            state: const GameState(
+              furnitureCoins: 183854,
+              hasFurnitureCoinData: true,
+              useItems: <int, int>{10: 12, 11: 7, 12: 3},
+              hasUseItemData: true,
+            ),
             settingsController: controller,
+            onSenkaTap: () => senkaTaps++,
+            onAnchorageTimerTap: () => anchorageTaps++,
+            onNosakiTimerTap: () => nosakiTaps++,
+            onFrameRefreshTap: () => refreshTaps++,
           ),
         ),
       ),
     );
-
-    final item = find.byKey(const Key('header-resource-material-1'));
-    expect(item, findsOneWidget);
-    final decorations = <Decoration?>[
-      for (final box in tester.widgetList<Container>(
-        find.descendant(of: item, matching: find.byType(Container)),
-      ))
-        box.decoration,
-      for (final box in tester.widgetList<DecoratedBox>(
-        find.descendant(of: item, matching: find.byType(DecoratedBox)),
-      ))
-        box.decoration,
-    ];
-    for (final decoration in decorations) {
-      expect(decoration is BoxDecoration ? decoration.border : null, isNull);
-      expect(decoration is BoxDecoration ? decoration.color : null, isNull);
+    Finder item(String id) => find.byKey(Key('header-resource-$id'));
+    Finder dividers() => find.byWidgetPredicate(
+      (widget) =>
+          widget.key is ValueKey<String> &&
+          (widget.key! as ValueKey<String>).value.startsWith(
+            'header-resource-divider-before-',
+          ),
+    );
+    expect(dividers(), findsNWidgets(selectedIds.length - 1));
+    for (final id in selectedIds.take(4)) {
+      await tester.tap(item(id));
+      await tester.pump();
     }
+    expect([senkaTaps, anchorageTaps, nosakiTaps, refreshTaps], [1, 1, 1, 1]);
+    await tester.tap(item(headerFurnitureCoinId));
+    await tester.pump();
+    expect(find.text('≈191154'), findsOneWidget);
+
+    await tester.longPress(item(headerSenkaId));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('header-resource-edit-mode')), findsOneWidget);
+    final reorder = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    reorder.onReorderItem!(
+      controller.headerResourceOrder.indexOf('material-1'),
+      0,
+    );
+    await tester.pumpAndSettle();
+    expect(controller.headerResourceOrder.first, 'material-1');
+    await tester.tap(find.byKey(const Key('header-resource-filter')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('header-resource-visible-senka')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('header-resource-filter-done')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('header-resource-edit-done')));
+    await tester.pumpAndSettle();
+    expect(item(headerSenkaId), findsNothing);
+    expect(dividers(), findsNWidgets(selectedIds.length - 2));
+    expect(
+      find.byKey(const Key('header-resource-divider-before-material-1')),
+      findsNothing,
+    );
+    expect(
+      tester.getRect(item('material-1')).right,
+      lessThan(tester.getRect(item(headerAnchorageTimerId)).left),
+    );
+    expect(find.text('≈191154'), findsOneWidget);
+
+    for (final id in selectedIds.skip(1).take(4)) {
+      await controller.toggleHeaderResourceVisible(id);
+    }
+    await tester.pump();
+    expect(dividers(), findsNothing);
+    expect(item('material-1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   Future<LayoutSettingsController> loadGridController() async {
