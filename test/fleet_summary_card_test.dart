@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/separated_wrap.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/morale_recovery_timer_controller.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/notification/notification_timer_anchor_store.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
 
@@ -139,6 +141,35 @@ void main() {
     expect(find.byType(FleetShipStatusCapsule), findsNothing);
   });
 
+  testWidgets('flat 下空舰队的无数据是 11 号摘要灰且不居中', (tester) async {
+    final controller = await _controllerWithPortData();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_flatSummary(controller, 300));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('fleet-summary-selector-3')));
+    await tester.pump();
+
+    final text = find.text('无数据');
+    expect(text, findsOneWidget);
+    final style = tester.widget<Text>(text).style;
+    expect(style?.fontSize, 11);
+    expect(style?.color, const Color(0xff8197a5));
+    final padding =
+        tester
+                .widget<Padding>(
+                  find.ancestor(of: text, matching: find.byType(Padding)).first,
+                )
+                .padding
+            as EdgeInsets;
+    expect(padding.horizontal / 2, lessThanOrEqualTo(6));
+    expect(padding.vertical / 2, lessThanOrEqualTo(4));
+    expect(
+      find.ancestor(of: text, matching: find.byType(Center)),
+      findsNothing,
+    );
+  });
+
   testWidgets('repeating ship animations do not block finite-frame tests', (
     tester,
   ) async {
@@ -150,6 +181,122 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(FleetShipStatusCapsule), findsNWidgets(2));
+  });
+
+  testWidgets('flat summary separator never dangles at a wrapped line end', (
+    tester,
+  ) async {
+    final controller = await _controllerWithPortData();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 150,
+              child: PanelStyleScope(
+                style: PanelStyle.flat,
+                child: FleetSummaryCard(
+                  controller: controller,
+                  collapsed: false,
+                  onToggleCollapse: () {},
+                  onOpenFleet: (_) {},
+                  visible: defaultFields,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    const ids = ['speed', 'total-level', 'air-power', 'line-of-sight'];
+    final rows = {
+      for (final id in ids)
+        tester.getTopLeft(find.byKey(Key('fleet-summary-metric-$id'))).dy,
+    };
+    expect(rows.length, greaterThan(1), reason: 'metrics must wrap at 150dp');
+    final wrap = tester.renderObject<RenderSeparatedWrap>(
+      find.byType(SeparatedWrap),
+    );
+    final metrics = find.byKey(const Key('fleet-summary-metrics'));
+    final left = tester.getTopLeft(metrics).dx;
+    final right = tester.getTopRight(metrics).dx;
+    final rects = [
+      for (final id in ids)
+        tester.getRect(find.byKey(Key('fleet-summary-metric-$id'))),
+    ];
+    for (final rect in rects) {
+      expect(rect.right, lessThanOrEqualTo(right + 0.5));
+    }
+    final separators = wrap.debugSeparatorRects
+        .map((r) => r.shift(tester.getTopLeft(metrics)))
+        .toList();
+    // Each separator sits between two metrics of its own line.
+    for (final sep in separators) {
+      final before = rects.where(
+        (r) => (r.center.dy - sep.center.dy).abs() < 1 && r.right <= sep.left,
+      );
+      final after = rects.where(
+        (r) => (r.center.dy - sep.center.dy).abs() < 1 && r.left >= sep.right,
+      );
+      expect(before, isNotEmpty, reason: 'separator at line start');
+      expect(after, isNotEmpty, reason: 'separator at line end');
+    }
+    // One separator per adjacent pair on the same line.
+    var sameLinePairs = 0;
+    for (var i = 1; i < rects.length; i++) {
+      if ((rects[i].center.dy - rects[i - 1].center.dy).abs() < 1) {
+        sameLinePairs++;
+      }
+    }
+    expect(separators.length, sameLinePairs);
+    expect(sameLinePairs, lessThan(ids.length - 1));
+    expect(rects.map((r) => r.left).reduce((a, b) => a < b ? a : b), left);
+  });
+
+  testWidgets('flat summary paints one separator between each metric', (
+    tester,
+  ) async {
+    final controller = await _controllerWithPortData();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_flatSummary(controller, 600));
+    await tester.pump();
+
+    final wrap = tester.renderObject<RenderSeparatedWrap>(
+      find.byType(SeparatedWrap),
+    );
+    final count = tester
+        .widgetList(
+          find.descendant(
+            of: find.byType(SeparatedWrap),
+            matching: find.byType(InkWell),
+          ),
+        )
+        .length;
+    expect(count, greaterThan(1));
+    expect(wrap.debugSeparatorRects.length, count - 1);
+  });
+
+  testWidgets('flat summary metrics stay tappable inside SeparatedWrap', (
+    tester,
+  ) async {
+    final controller = await _controllerWithPortData();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_flatSummary(controller, 300));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('fleet-summary-metric-air-power')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('制空详情'), findsOneWidget);
   });
 
   testWidgets('fleet selectors use names above metrics at matching width', (
@@ -333,3 +480,28 @@ Widget _card({
     ),
   ),
 );
+
+Widget _flatSummary(GameStateController controller, double width) =>
+    MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: width,
+            child: PanelStyleScope(
+              style: PanelStyle.flat,
+              child: FleetSummaryCard(
+                controller: controller,
+                collapsed: false,
+                onToggleCollapse: () {},
+                onOpenFleet: (_) {},
+                visible: defaultFields,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );

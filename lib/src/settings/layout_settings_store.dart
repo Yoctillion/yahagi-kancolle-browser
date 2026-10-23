@@ -121,6 +121,16 @@ abstract interface class WorkspaceMenuSizeSettingsStore {
   Future<void> saveWorkspaceMenuSize(WorkspaceMenuSize size);
 }
 
+abstract interface class MinimalResourcePositionSettingsStore {
+  Future<MinimalResourcePosition> loadMinimalResourcePosition();
+  Future<void> saveMinimalResourcePosition(MinimalResourcePosition position);
+}
+
+abstract interface class MinimalCollapsedResourceSettingsStore {
+  Future<List<String>?> loadCollapsedPanelResourceIds();
+  Future<void> saveCollapsedPanelResourceIds(List<String>? ids);
+}
+
 abstract interface class UiLockSettingsStore {
   Future<bool> loadUiLocked();
   Future<void> saveUiLocked(bool locked);
@@ -151,6 +161,8 @@ class SharedPreferencesLayoutSettingsStore
         FleetMoraleMetricSettingsStore,
         HeaderResourceSettingsStore,
         UiDisplaySizeSettingsStore,
+        MinimalResourcePositionSettingsStore,
+        MinimalCollapsedResourceSettingsStore,
         HeaderUiSizeSettingsStore,
         WorkspaceMenuSizeSettingsStore,
         WorkspaceMenuOrderSettingsStore,
@@ -676,6 +688,45 @@ class SharedPreferencesLayoutSettingsStore
   Future<void> saveTopNoticeEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyTopNoticeEnabled, enabled);
+  }
+
+  static const _keyMinimalResourcePosition = 'layout_minimal_resource_position';
+
+  @override
+  Future<MinimalResourcePosition> loadMinimalResourcePosition() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_keyMinimalResourcePosition);
+    return MinimalResourcePosition.values.firstWhere(
+      (value) => value.name == saved,
+      orElse: () => MinimalResourcePosition.panel,
+    );
+  }
+
+  @override
+  Future<void> saveMinimalResourcePosition(
+    MinimalResourcePosition position,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMinimalResourcePosition, position.name);
+  }
+
+  static const _keyMinimalCollapsedResourceIds =
+      'layout_minimal_collapsed_resource_ids';
+
+  @override
+  Future<List<String>?> loadCollapsedPanelResourceIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_keyMinimalCollapsedResourceIds);
+  }
+
+  @override
+  Future<void> saveCollapsedPanelResourceIds(List<String>? ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (ids == null) {
+      await prefs.remove(_keyMinimalCollapsedResourceIds);
+    } else {
+      await prefs.setStringList(_keyMinimalCollapsedResourceIds, ids);
+    }
   }
 
   static const _keyUiLocked = 'layout_ui_locked';

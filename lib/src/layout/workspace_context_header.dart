@@ -19,6 +19,7 @@ import '../improvement/improvement_planner_controller.dart';
 import '../logbook/logbook_page.dart';
 import '../quest/quest_center_page.dart';
 import '../settings/layout_settings_controller.dart';
+import '../settings/ui_display_size.dart';
 import '../senka/senka_page.dart' show SenkaCenterMode, senkaCenterModeLabel;
 import '../senka/senka_state.dart';
 import '../toolbox/toolbox_mode.dart';
@@ -65,6 +66,7 @@ class WorkspaceContextHeader extends StatelessWidget {
     this.toolboxMode = ToolboxMode.export,
     this.onToolboxModeChanged,
     this.layoutSettingsController,
+    this.uiSize,
   });
 
   final int workspaceIndex;
@@ -104,6 +106,7 @@ class WorkspaceContextHeader extends StatelessWidget {
   final ToolboxMode toolboxMode;
   final ValueChanged<ToolboxMode>? onToolboxModeChanged;
   final LayoutSettingsController? layoutSettingsController;
+  final UiDisplaySize? uiSize;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +126,7 @@ class WorkspaceContextHeader extends StatelessWidget {
         onNosakiTimerTap: onNosakiTimerTap,
         onFrameRefreshTap: onFrameRefreshTap,
         settingsController: layoutSettingsController,
+        uiSize: uiSize,
       );
     }
     if (workspaceIndex == 1) {

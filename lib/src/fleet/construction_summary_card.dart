@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
+import '../layout/flat_list_row.dart';
+import '../layout/flat_style.dart';
+import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
 import 'dashboard_card.dart';
 import '../settings/module_display_settings.dart';
@@ -41,30 +45,43 @@ class ConstructionSummaryCard extends StatelessWidget {
       builder: (context, _) {
         final state = controller.state;
         final docks = state.constructionDocks;
-        return DashboardCard(
-          headerAction: moduleDisplayGear(
-            context,
-            'construction',
-            onOpenDisplaySettings,
-          ),
-          title: AppLocalizations.of(context)?.constructionBrief ?? '建造简报',
-          icon: const Icon(Icons.handyman_outlined),
-          collapsed: collapsed,
-          onToggleCollapse: onToggleCollapse,
-          showLogo: showLogo,
-          showTitle: showTitle,
-          child: ModuleSlotGrid(
-            emptyLabel: '暂无建造',
-            children: [
-              for (var i = 0; i < 4; i++)
-                if (visible.contains('empty') ||
-                    (docks.length > i && docks[i].isBuilding))
-                  _buildConstructionSlot(
-                    docks.length > i ? docks[i] : null,
+        // 倒计时只在扁平折叠摘要里需要逐秒刷新。
+        return SecondTickBuilder(
+          enabled: collapsed && PanelStyleScope.isFlat(context),
+          builder: (context, now, _) => DashboardCard(
+            collapsedSummary: collapsed
+                ? constructionSummary(
+                    AppLocalizations.of(context) ??
+                        lookupAppLocalizations(const Locale('zh')),
                     state,
-                    i + 1,
-                  ),
-            ],
+                    now,
+                  )
+                : null,
+            headerAction: moduleDisplayGear(
+              context,
+              'construction',
+              onOpenDisplaySettings,
+            ),
+            title: AppLocalizations.of(context)?.constructionBrief ?? '建造简报',
+            icon: const Icon(Icons.handyman_outlined),
+            collapsed: collapsed,
+            onToggleCollapse: onToggleCollapse,
+            showLogo: showLogo,
+            showTitle: showTitle,
+            child: ModuleSlotGrid(
+              runSpacing: PanelStyleScope.isFlat(context) ? 0 : 8,
+              emptyLabel: '暂无建造',
+              children: [
+                for (var i = 0; i < 4; i++)
+                  if (visible.contains('empty') ||
+                      (docks.length > i && docks[i].isBuilding))
+                    _buildConstructionSlot(
+                      docks.length > i ? docks[i] : null,
+                      state,
+                      i + 1,
+                    ),
+              ],
+            ),
           ),
         );
       },
@@ -119,6 +136,42 @@ class ConstructionSummaryCard extends StatelessWidget {
         disabled = false;
         active = true;
       }
+    }
+
+    if (PanelStyleScope.isFlat(context)) {
+      final completed = active && dock != null && dock.isCompletedAt(now);
+      return FlatListRow(
+        key: Key('construction-summary-slot-$position'),
+        onTap: onOpenConstruction,
+        name: flatRowText(
+          context,
+          active ? '$position · $name' : '$position',
+          color: disabled ? const Color(0xff4a5c68) : Colors.white,
+        ),
+        trailing: active && dock != null
+            ? flatRowTrailing(
+                completed
+                    ? Text(
+                        fleetText(context, '已完成'),
+                        style: flatRowTextStyle(context, color: flatDoneColor),
+                      )
+                    : OperationCountdownText(
+                        completionTime: dock.completionTime,
+                        completedText: fleetText(context, '已完成'),
+                        completedColor: flatDoneColor,
+                        countingColor: flatAccentColor,
+                        style: flatRowTextStyle(context),
+                      ),
+              )
+            : Text(
+                fleetText(context, disabled ? '锁' : '闲置'),
+                maxLines: 1,
+                style: flatRowTextStyle(
+                  context,
+                  color: disabled ? const Color(0xff4a5c68) : flatMutedColor,
+                ),
+              ),
+      );
     }
 
     return LayoutBuilder(

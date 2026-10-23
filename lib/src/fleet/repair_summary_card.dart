@@ -6,6 +6,12 @@ import 'fleet_ui_strings.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
+import '../layout/flat_list_row.dart';
+import '../layout/flat_style.dart';
+import '../layout/flat_text_toggle.dart';
+import '../layout/flat_underline_tabs.dart';
+import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import '../performance/second_tick_scope.dart';
 import 'anchorage_repair_calculator.dart';
 import 'anchorage_repair_view.dart';
@@ -58,8 +64,11 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         Localizations.localeOf(context);
         Widget? dockCard;
         int? previousDockMask;
+        // 扁平折叠态的摘要带倒计时，需要继续逐秒刷新且不能复用缓存。
+        final summaryTicks =
+            widget.collapsed && PanelStyleScope.isFlat(context);
         return SecondTickBuilder(
-          enabled: !widget.collapsed,
+          enabled: !widget.collapsed || summaryTicks,
           builder: (context, now, _) {
             _now = now;
             // Countdown texts tick independently. Rebuild the dock card only
@@ -70,7 +79,9 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
               for (var i = 0; i < state.repairDocks.length; i++) {
                 if (_isDockActive(state.repairDocks[i])) mask |= 1 << i;
               }
-              if (dockCard != null && previousDockMask == mask) {
+              if (!summaryTicks &&
+                  dockCard != null &&
+                  previousDockMask == mask) {
                 return dockCard!;
               }
               previousDockMask = mask;
@@ -89,19 +100,24 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     final strings =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
-    final modeSelector = _RepairSummaryModeSelector(
-      mode: _mode,
-      dockLabel: fleetText(context, '入渠修理'),
-      anchorageLabel: fleetText(context, '泊地修理'),
-      nosakiLabel: fleetText(context, '野埼刷闪'),
-      onChanged: (mode) => setState(() => _mode = mode),
-    );
+    final modeSelector = _flat
+        ? _flatModeSelector()
+        : _RepairSummaryModeSelector(
+            mode: _mode,
+            dockLabel: fleetText(context, '入渠修理'),
+            anchorageLabel: fleetText(context, '泊地修理'),
+            nosakiLabel: fleetText(context, '野埼刷闪'),
+            onChanged: (mode) => setState(() => _mode = mode),
+          );
     final content = switch (_mode) {
       RepairCenterMode.dock => _buildDockGrid(state, strings),
       RepairCenterMode.anchorage => _buildAnchorageSummary(state, strings),
       RepairCenterMode.nosaki => _buildNosakiSummary(state, strings),
     };
     return DashboardCard(
+      collapsedSummary: widget.collapsed
+          ? repairSummary(strings, state, now)
+          : null,
       headerAction: moduleDisplayGear(
         context,
         'repair',
@@ -120,6 +136,39 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     );
   }
 
+  bool get _flat => PanelStyleScope.isFlat(context);
+
+  Widget _flatModeSelector() {
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    FlatTextToggleOption option(RepairCenterMode mode, String label) =>
+        FlatTextToggleOption(
+          key: Key('repair-summary-mode-${mode.name}'),
+          label: label,
+          selected: _mode == mode,
+          onTap: () => setState(() => _mode = mode),
+        );
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FlatTextToggle(
+        key: const Key('repair-summary-mode-selector'),
+        options: [
+          option(
+            RepairCenterMode.dock,
+            english ? 'Dock' : fleetText(context, '入渠'),
+          ),
+          option(
+            RepairCenterMode.anchorage,
+            english ? 'Anch.' : fleetText(context, '泊地'),
+          ),
+          option(
+            RepairCenterMode.nosaki,
+            fleetText(context, FleetUiKeys.nosakiShort),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool _isDockActive(RepairDock? dock) =>
       dock != null &&
       dock.isRepairing &&
@@ -129,6 +178,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
     final docks = {for (final dock in state.repairDocks) dock.id: dock};
     return ModuleSlotGrid(
       key: const Key('repair-summary-dock-grid'),
+      runSpacing: _flat ? 0 : 8,
       emptyLabel: '暂无修理',
       children: [
         for (var id = 1; id <= 4; id++)
@@ -175,7 +225,11 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       key: Key('repair-summary-dock-slot-$position'),
       state: state,
       master: master,
-      name: widget.visible.contains('empty') ? name : '$position · $name',
+      name: _flat
+          ? (active ? '$position · $name' : '$position')
+          : widget.visible.contains('empty')
+          ? name
+          : '$position · $name',
       disabled: disabled,
       fitFullName: true,
       dotColor: active ? const Color(0xffffc940) : null,
@@ -186,9 +240,11 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
               child: OperationCountdownText(
                 completionTime: dock.completionTime,
                 completedText: strings.completed,
-                completedColor: const Color(0xff4caf50),
+                completedColor: _flat ? flatDoneColor : const Color(0xff4caf50),
                 countingColor: const Color(0xffd4a85f),
-                style: operationSummaryTimeStyle,
+                style: _flat
+                    ? flatRowTextStyle(context)
+                    : operationSummaryTimeStyle,
                 maxLines: 1,
               ),
             )
@@ -237,6 +293,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         onSelected: (id) => setState(() => _selectedFleetId = id),
       ),
       slots: ModuleSlotGrid(
+        runSpacing: _flat ? 0 : 8,
         columns: HdModuleColumns.of(context) > 1
             ? HdModuleColumns.of(context)
             : 2,
@@ -354,6 +411,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         onSelected: (id) => setState(() => _selectedFleetId = id),
       ),
       slots: ModuleSlotGrid(
+        runSpacing: _flat ? 0 : 8,
         columns: HdModuleColumns.of(context) > 1
             ? HdModuleColumns.of(context)
             : 2,
@@ -696,7 +754,9 @@ class _RepairFleetBody extends StatelessWidget {
       : Column(
           children: [
             selector,
-            const SizedBox(height: 8),
+            SizedBox(
+              height: PanelStyleScope.isFlat(context) ? flatRowSpacing : 8,
+            ),
             slots,
             const SizedBox(height: 2),
           ],
@@ -714,8 +774,27 @@ class _AnchorageFleetSelector extends StatelessWidget {
   final int selectedFleetId;
   final ValueChanged<int> onSelected;
 
+  String _label(Fleet fleet) =>
+      repairFleetSelectorLabelModeSetting == FleetSelectorLabelMode.number
+      ? '${fleet.id}'
+      : fleet.displayName;
+
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.isFlat(context)) {
+      return FlatUnderlineTabs(
+        key: const Key('repair-summary-fleet-selector'),
+        options: [
+          for (final fleet in fleets)
+            FlatTextToggleOption(
+              key: Key('repair-summary-fleet-${fleet.id}'),
+              label: _label(fleet),
+              selected: fleet.id == selectedFleetId,
+              onTap: () => onSelected(fleet.id),
+            ),
+        ],
+      );
+    }
     final vertical = HdModuleColumns.of(context) > 1;
     return Container(
       key: const Key('repair-summary-fleet-selector'),
@@ -748,10 +827,7 @@ class _AnchorageFleetSelector extends StatelessWidget {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        repairFleetSelectorLabelModeSetting ==
-                                FleetSelectorLabelMode.number
-                            ? '${fleet.id}'
-                            : fleet.displayName,
+                        _label(fleet),
                         maxLines: 1,
                         style: appTextStyle(
                           context,
@@ -806,6 +882,18 @@ class _RepairCapsule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.isFlat(context)) {
+      return FlatListRow(
+        key: contentKey,
+        onTap: onTap,
+        name: flatRowText(
+          context,
+          name,
+          color: disabled ? const Color(0xff4a5c68) : Colors.white,
+        ),
+        trailing: flatRowTrailing(detail),
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         // Keep the name and countdown readable before allocating a portrait.

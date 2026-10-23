@@ -10,11 +10,44 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_repair_status.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_status_visuals.dart';
+import 'package:yahagi_kancolle_browser/src/layout/hd_dashboard_content.dart';
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 
 class _SampleStore extends GameStateStore {
   @override
   Future<GameState> load() async => demoState();
+}
+
+class _MechanismStore extends GameStateStore {
+  @override
+  Future<GameState> load() async => GameState.empty.copyWith(
+    hasPortData: true,
+    masterShips: {
+      141: const MasterShip(
+        id: 141,
+        name: '五十鈴改二',
+        shipTypeId: 3,
+        maxFuel: 25,
+        maxAmmo: 30,
+      ),
+    },
+    ships: {
+      1: const OwnedShip(
+        id: 1,
+        masterId: 141,
+        level: 80,
+        currentHp: 44,
+        maxHp: 44,
+        condition: 49,
+        currentFuel: 25,
+        currentAmmo: 30,
+      ),
+    },
+    fleets: const [
+      Fleet(id: 1, name: '第一舰队', shipIds: [1]),
+    ],
+  );
 }
 
 void main() {
@@ -109,14 +142,122 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
   test(
-    'saved settings migrate mechanisms and enforce a maximum of five metrics',
+    'saved settings preserve mechanisms and enforce a maximum of five metrics',
     () {
+      expect(defaultFields, contains('mechanisms'));
+      expect(compactFields, contains('mechanisms'));
       expect(normalizeDisplayFields({'asw', 'night'}), {'mechanisms'});
+      expect(normalizeDisplayFields({'mechanisms', 'hp'}), {
+        'mechanisms',
+        'hp',
+      });
+      expect(
+        allFields.intersection({'asw', 'aaci', 'rocket', 'night', 'special'}),
+        isEmpty,
+      );
       final restored = normalizeDisplayFields(allFields);
       expect(restored.intersection(summaryFields).length, 5);
       expect(normalizeDisplayFields({}), isEmpty);
     },
   );
+  testWidgets('all fleet layouts use the combined mechanism switch', (
+    tester,
+  ) async {
+    final controller = GameStateController(gameStateStore: _MechanismStore());
+    await controller.initialize();
+    addTearDown(controller.dispose);
+    for (final layout in [
+      (
+        name: 'ordinary',
+        width: 560.0,
+        columns: 1,
+        style: PanelStyle.card,
+        fields: defaultFields,
+      ),
+      (
+        name: 'compact',
+        width: 320.0,
+        columns: 1,
+        style: PanelStyle.card,
+        fields: compactFields,
+      ),
+      (
+        name: 'HD',
+        width: 760.0,
+        columns: 2,
+        style: PanelStyle.card,
+        fields: defaultFields,
+      ),
+      (
+        name: 'minimal',
+        width: 360.0,
+        columns: 1,
+        style: PanelStyle.flat,
+        fields: defaultFields,
+      ),
+    ]) {
+      for (final enabled in [true, false]) {
+        final visible = {
+          ...layout.fields.difference({
+            'portrait',
+            'mechanisms',
+            'asw',
+            'aaci',
+            'rocket',
+            'night',
+            'special',
+          }),
+          if (enabled) 'mechanisms',
+        };
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(
+                    width: layout.width,
+                    child: PanelStyleScope(
+                      style: layout.style,
+                      child: HdModuleColumns(
+                        columns: layout.columns,
+                        child: FleetSummaryCard(
+                          controller: controller,
+                          collapsed: false,
+                          onToggleCollapse: () {},
+                          onOpenFleet: (_) {},
+                          visible: visible,
+                          damagePulseFilter: DamagePulseFilter.off,
+                          moraleSparkleMode: MoraleSparkleMode.off,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        final mechanism = find.byKey(
+          Key(
+            layout.style == PanelStyle.flat
+                ? 'minimal-mechanism-1-openingAsw'
+                : 'fleet-focus-mechanism-1',
+          ),
+        );
+        expect(
+          mechanism,
+          enabled ? findsOneWidget : findsNothing,
+          reason: '${layout.name}, mechanisms=$enabled',
+        );
+        expect(tester.takeException(), isNull);
+      }
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('hidden fields return width to name and all combinations fit', (
     tester,
   ) async {

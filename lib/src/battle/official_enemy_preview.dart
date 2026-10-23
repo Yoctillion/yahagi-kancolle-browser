@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../fleet/ship_portrait.dart';
 import '../game_state/game_state.dart';
+import '../layout/panel_style.dart';
+import 'battle_fleet_block.dart';
 import 'battle_models.dart';
 
 class OfficialEnemyPreview extends StatelessWidget {
@@ -30,84 +32,74 @@ class OfficialEnemyPreview extends StatelessWidget {
     final mainShips = ships
         .where((ship) => ship.fleetRole == BattleFleetRole.main)
         .toList();
-    return Container(
+    final flat = PanelStyleScope.isFlat(context);
+    const cardRowPadding = EdgeInsets.symmetric(horizontal: 9, vertical: 4);
+    const flatRowPadding = EdgeInsets.symmetric(vertical: 2);
+    return BattleFleetBlock(
       key: const Key('official-enemy-preview'),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff10212e)),
-        borderRadius: BorderRadius.circular(8),
+      title: Text(
+        '敌方部队（战前预测）',
+        key: const Key('official-enemy-preview-title'),
+        style: appTextStyle(
+          context,
+          battleFleetTitleStyle.copyWith(color: const Color(0xffff8c78)),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.fromLTRB(9, 7, 9, 5),
-            child: Text(
-              '敌方部队（战前预测）',
-              key: Key('official-enemy-preview-title'),
-              style: appTextStyle(
-                context,
-                TextStyle(
-                  color: Color(0xffff8c78),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-          if (!combined)
-            for (var index = 0; index < ships.length; index++) ...<Widget>[
-              if (index > 0)
-                Divider(height: 1, color: appColor(context, Color(0xff203746))),
-              _nameCell(
-                context,
-                ships[index],
-                index: index,
-                portraitWidth: 52,
-                portraitHeight: 24,
-                key: Key('official-enemy-preview-row-$index'),
-              ),
-            ]
-          else
-            for (var index = 0; index < 3; index++) ...<Widget>[
-              if (index > 0)
-                Divider(height: 1, color: appColor(context, Color(0xff203746))),
-              Row(
-                key: Key('official-enemy-preview-row-$index'),
-                children: <Widget>[
-                  Expanded(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          right: BorderSide(
-                            color: appColor(context, Color(0xff203746)),
-                          ),
-                        ),
-                      ),
-                      child: _nameCell(
-                        context,
-                        _shipAt(escortShips, index),
-                        index: index,
-                        portraitWidth: 52,
-                        portraitHeight: 24,
-                        key: Key('official-enemy-preview-escort-$index'),
+      rows: <Widget>[
+        if (!combined)
+          for (var index = 0; index < ships.length; index++)
+            _nameCell(
+              context,
+              ships[index],
+              index: index,
+              portraitWidth: 52,
+              portraitHeight: 24,
+              padding: flat ? flatRowPadding : cardRowPadding,
+              key: Key('official-enemy-preview-row-$index'),
+            )
+        else
+          for (var index = 0; index < 3; index++)
+            Row(
+              key: Key('official-enemy-preview-row-$index'),
+              children: <Widget>[
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(color: battleDividerColor(context)),
                       ),
                     ),
-                  ),
-                  Expanded(
                     child: _nameCell(
                       context,
-                      _shipAt(mainShips, index),
-                      index: index + 3,
+                      _shipAt(escortShips, index),
+                      index: index,
                       portraitWidth: 52,
                       portraitHeight: 24,
-                      key: Key('official-enemy-preview-main-$index'),
+                      // Without a block edge the column divider is the only
+                      // separator, so keep text off it.
+                      padding: flat
+                          ? flatRowPadding.copyWith(right: 6)
+                          : cardRowPadding,
+                      key: Key('official-enemy-preview-escort-$index'),
                     ),
                   ),
-                ],
-              ),
-            ],
-        ],
-      ),
+                ),
+                Expanded(
+                  child: _nameCell(
+                    context,
+                    _shipAt(mainShips, index),
+                    index: index + 3,
+                    portraitWidth: 52,
+                    portraitHeight: 24,
+                    padding: flat
+                        ? flatRowPadding.copyWith(left: 6)
+                        : cardRowPadding,
+                    key: Key('official-enemy-preview-main-$index'),
+                  ),
+                ),
+              ],
+            ),
+      ],
     );
   }
 
@@ -120,6 +112,7 @@ class OfficialEnemyPreview extends StatelessWidget {
     required int index,
     required double portraitWidth,
     required double portraitHeight,
+    required EdgeInsets padding,
     required Key key,
   }) {
     final name = preview == null
@@ -138,7 +131,7 @@ class OfficialEnemyPreview extends StatelessWidget {
           );
     return Padding(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: padding,
       child: Row(
         children: <Widget>[
           if (showPortraits && portraitUri != null) ...<Widget>[

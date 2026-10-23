@@ -2,8 +2,12 @@ import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
 
+import 'battle_detail_strings.dart';
 import 'battle_ui_text.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import '../layout/flat_list_row.dart';
+import '../layout/flat_style.dart';
+import '../layout/module_summaries.dart';
 
 import 'battle_controller.dart';
 import 'battle_models.dart';
@@ -14,6 +18,8 @@ import '../fleet/dashboard_card.dart';
 import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
+import '../layout/flat_text_toggle.dart';
+import '../layout/panel_style.dart';
 import '../game_state/game_state.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
@@ -108,7 +114,10 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
     )?.writeState(context, _mapExpanded, identifier: _mapExpansionStorageId);
   }
 
-  SortieMapSection? _buildMapSection(LiveBattle? battle) {
+  SortieMapSection? _buildMapSection(
+    LiveBattle? battle, {
+    required bool showCurrentNode,
+  }) {
     // DashboardCard does not mount its child while collapsed. Avoid even the
     // first lazy geometry parse until the map can be shown.
     if (widget.collapsed || battle?.context.practice == true) {
@@ -133,6 +142,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
         identical(cached.progress, progress) &&
         identical(cached.geometry, geometry) &&
         cached.currentNodeLabel == currentNodeLabel &&
+        cached.showCurrentNode == showCurrentNode &&
         cached.expanded == _mapExpanded) {
       return cached;
     }
@@ -144,19 +154,28 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
       expanded: _mapExpanded,
       onToggleExpanded: _toggleMapExpanded,
       currentNodeLabel: currentNodeLabel,
+      showCurrentNode: showCurrentNode,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
         final battle = widget.controller.current;
         final idle = battle == null || battle.friendShips.isEmpty;
-        final mapSection = _buildMapSection(battle);
+        // Flat battle and navigation headers already name the current node.
+        final mapSection = _buildMapSection(
+          battle,
+          showCurrentNode: !flat || idle,
+        );
         return DashboardCard(
           key: const Key('live-battle-card'),
+          collapsedSummary: widget.collapsed
+              ? battleSummary(BattleDetailStrings.of(context), battle)
+              : null,
           title: AppLocalizations.of(context)?.forecast ?? '未卜先知',
           icon: const Icon(Icons.remove_red_eye_outlined),
           collapsed: widget.collapsed,
@@ -179,24 +198,21 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
               if (!widget.controller.isPredictionConfirmed)
                 Padding(
                   key: const Key('battle-unconfirmed-warning'),
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: flat ? flatSectionGap : 8),
                   child: Text(
                     (AppLocalizations.of(context) ??
                             lookupAppLocalizations(const Locale('zh')))
                         .battlePredictionUnconfirmed,
-                    style: appTextStyle(
-                      context,
-                      TextStyle(
-                        color: appColor(context, Color(0xffffc95c)),
-                        fontSize: 12,
-                      ),
+                    style: TextStyle(
+                      color: appColor(context, const Color(0xffffc95c)),
+                      fontSize: flat ? flatRowFontSize : 12,
                     ),
                   ),
                 ),
               if (idle) ...[
                 if (mapSection != null) ...[
                   mapSection,
-                  const SizedBox(height: 9),
+                  SizedBox(height: flat ? flatSectionGap : 9),
                 ],
                 const _IdleBattleContent(),
               ] else if (_mode == BattlePanelMode.detailed)
@@ -241,6 +257,31 @@ class _ModeSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
+    if (flat) {
+      // BattleUiText 在显示时按语言本地化标签，共享组件只渲染 Text，所以这里先转换。
+      final strings = BattleDetailStrings.of(context);
+      return FlatTextToggle(
+        options: [
+          FlatTextToggleOption(
+            key: const Key('battle-mode-compact'),
+            label: strings.localize(
+              AppLocalizations.of(context)?.compact ?? '紧凑',
+            ),
+            selected: mode == BattlePanelMode.compact,
+            onTap: () => onChanged(BattlePanelMode.compact),
+          ),
+          FlatTextToggleOption(
+            key: const Key('battle-mode-detailed'),
+            label: strings.localize(
+              AppLocalizations.of(context)?.detailed ?? '完整',
+            ),
+            selected: mode == BattlePanelMode.detailed,
+            onTap: () => onChanged(BattlePanelMode.detailed),
+          ),
+        ],
+      );
+    }
     return Container(
       height: 26,
       padding: const EdgeInsets.all(2),
@@ -336,59 +377,56 @@ class _CompactBattlePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = isPhoneDensity(context);
+    final flat = PanelStyleScope.isFlat(context);
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     if (navigation) {
       final navigationHeader = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-        decoration: BoxDecoration(
-          color: appColor(context, Color(0xff10212e)),
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.explore_outlined,
-              size: 18,
-              color: appColor(context, Color(0xff70c7bc)),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: BattleUiText(
-                battle.context.forecastNodeLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+        key: const Key('battle-navigation-header'),
+        padding: flat
+            ? const EdgeInsets.symmetric(vertical: 2)
+            : const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        decoration: flat
+            ? null
+            : BoxDecoration(
+                color: appColor(context, const Color(0xff10212e)),
+                borderRadius: BorderRadius.circular(7),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: Wrap(
-                spacing: 5,
-                runSpacing: 4,
-                alignment: WrapAlignment.end,
-                children: <Widget>[
-                  if (showLastFormationHint && battle.lastFormation != null)
-                    LastFormationPill(formation: battle.lastFormation!),
-                  if (battle.context.combinedFleetType !=
-                      CombinedFleetType.none)
-                    MetaChip(
-                      label: battle.context.combinedFleetType.label,
-                      color: const Color(0xff70c7bc),
+        child: flat
+            ? FlatNavigationHeader(
+                battle: battle,
+                showLastFormationHint: showLastFormationHint,
+              )
+            : Row(
+                children: [
+                  Icon(
+                    Icons.explore_outlined,
+                    size: 18,
+                    color: appColor(context, const Color(0xff70c7bc)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: BattleUiText(
+                      battle.context.forecastNodeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  if (battle.resourceChanges.isNotEmpty)
-                    ResourceChangesPill(changes: battle.resourceChanges),
-                  if (battle.rewardItems.isNotEmpty)
-                    RewardItemsPill(items: battle.rewardItems),
-                  if (battle.resourceChanges.isEmpty &&
-                      battle.rewardItems.isEmpty)
-                    for (final label in battle.context.nodeTypeLabels)
-                      NodeTypePill(label: label),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: Wrap(
+                      spacing: 5,
+                      runSpacing: 4,
+                      alignment: WrapAlignment.end,
+                      children: navigationHeaderPills(
+                        battle,
+                        showLastFormationHint: showLastFormationHint,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
       );
       final raid = battle.landBaseRaid;
       final previewShips =
@@ -406,7 +444,7 @@ class _CompactBattlePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           navigationHeader,
-          const SizedBox(height: 7),
+          SizedBox(height: flat ? flatSectionGap : 7),
           BattlePredictionSections(
             order: sectionOrder,
             legacyEnemyPreviewPosition: enemyPreviewPosition,
@@ -417,7 +455,7 @@ class _CompactBattlePanel extends StatelessWidget {
               children: [
                 if (raid != null) ...[
                   LandBaseRaidPanel(result: raid, compact: true),
-                  const SizedBox(height: 9),
+                  SizedBox(height: flat ? flatSectionGap : 9),
                 ],
                 friendlyFleets,
               ],
@@ -444,7 +482,8 @@ class _CompactBattlePanel extends StatelessWidget {
     final enemyName = rawEnemyName;
     final enemyCombined =
         battle.enemyEscort.isNotEmpty || rawEnemyName.contains('联合舰队');
-    final metaChips = _compactMetaChips(battle);
+    // Flat shows the engagement on the formation line above the fleets.
+    final metaChips = _compactMetaChips(battle, includeEngagement: !flat);
     final statusPills = <Widget>[
       for (final label in battle.context.nodeTypeLabels)
         NodeTypePill(label: label),
@@ -468,8 +507,8 @@ class _CompactBattlePanel extends StatelessWidget {
               Row(
                 children: [
                   if (battle.rank != BattleRank.unknown) ...<Widget>[
-                    _RankBadge(rank: battle.rank, phone: phone),
-                    const SizedBox(width: 11),
+                    _RankBadge(rank: battle.rank, phone: phone, flat: flat),
+                    SizedBox(width: flat ? 8 : 11),
                   ],
                   Expanded(
                     child: Column(
@@ -477,10 +516,11 @@ class _CompactBattlePanel extends StatelessWidget {
                       children: [
                         AdaptiveBattleHeader(
                           nodeLabel: battle.context.forecastNodeLabel,
+                          nodeFontSize: flat ? 12 : 16,
                           enemyName: enemyName,
                           enemyNameIsFallback: battle.enemyFleetName.isEmpty,
                           enemyStyle: TextStyle(
-                            fontSize: phone ? 13 : 14,
+                            fontSize: flat ? 11 : (phone ? 13 : 14),
                             fontWeight: FontWeight.w600,
                             color: appColor(
                               context,
@@ -488,7 +528,18 @@ class _CompactBattlePanel extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (statusPills.isNotEmpty) ...<Widget>[
+                        if (flat) ...<Widget>[
+                          const SizedBox(height: 2),
+                          BattleTagLine(
+                            battle: battle,
+                            nodeLabel: battle.context.forecastNodeLabel,
+                            metaLabels: [for (final chip in metaChips) chip.$1],
+                          ),
+                          BattleDropLine(
+                            dropEntries: dropEntries,
+                            rewardItems: battle.rewardItems,
+                          ),
+                        ] else if (statusPills.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 5),
                           Wrap(
                             spacing: 4,
@@ -496,7 +547,7 @@ class _CompactBattlePanel extends StatelessWidget {
                             children: statusPills,
                           ),
                         ],
-                        if (battle.rewardItems.isNotEmpty) ...<Widget>[
+                        if (!flat && battle.rewardItems.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 4),
                           RewardItemsPill(items: battle.rewardItems),
                         ],
@@ -505,7 +556,7 @@ class _CompactBattlePanel extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: flat ? flatSectionGap : 8),
               _CompactFleetGrid(
                 battle: battle,
                 damagePulseMode: damagePulseMode,
@@ -529,6 +580,7 @@ class _CompactFleetGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
     final friendCombined = battle.friendEscort.isNotEmpty;
     final enemyCombined = battle.enemyEscort.isNotEmpty;
     final mvpPositions = battle.mvpPositions;
@@ -596,80 +648,200 @@ class _CompactFleetGrid extends StatelessWidget {
         ),
       );
     }
-    return Row(
+    Widget side(
+      String keyName,
+      String title,
+      Color color,
+      List<Widget> columns,
+    ) => Expanded(
+      flex: columns.length,
+      child: Container(
+        padding: flat ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        decoration: flat
+            ? null
+            : BoxDecoration(
+                color: appColor(context, const Color(0xff10212e)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (!flat) ...<Widget>[
+              _CompactFleetSideTitle(
+                keyName: keyName,
+                title: title,
+                color: appColor(context, color),
+              ),
+              const SizedBox(height: 4),
+            ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                for (
+                  var index = 0;
+                  index < columns.length;
+                  index++
+                ) ...<Widget>[
+                  if (index > 0) const SizedBox(width: 7),
+                  Expanded(child: columns[index]),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    final grid = Row(
       key: const Key('compact-fleet-grid'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Expanded(
-          flex: friendColumns.length,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-            decoration: BoxDecoration(
-              color: appColor(context, Color(0xff10212e)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                _CompactFleetSideTitle(
-                  keyName: 'friend',
-                  title: '我方舰队$friendFormation',
-                  color: appColor(context, const Color(0xff70c7bc)),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    for (
-                      var index = 0;
-                      index < friendColumns.length;
-                      index++
-                    ) ...<Widget>[
-                      if (index > 0) const SizedBox(width: 7),
-                      Expanded(child: friendColumns[index]),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
+        side(
+          'friend',
+          '我方舰队$friendFormation',
+          const Color(0xff70c7bc),
+          friendColumns,
         ),
-        const SizedBox(width: 7),
-        Expanded(
-          flex: enemyColumns.length,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-            decoration: BoxDecoration(
-              color: appColor(context, const Color(0xff10212e)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                _CompactFleetSideTitle(
-                  keyName: 'enemy',
-                  title: '敌方舰队$enemyFormation',
-                  color: appColor(context, const Color(0xffff8c78)),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    for (
-                      var index = 0;
-                      index < enemyColumns.length;
-                      index++
-                    ) ...<Widget>[
-                      if (index > 0) const SizedBox(width: 7),
-                      Expanded(child: enemyColumns[index]),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
+        SizedBox(width: flat ? 6 : 7),
+        side(
+          'enemy',
+          '敌方舰队$enemyFormation',
+          const Color(0xffff8c78),
+          enemyColumns,
         ),
       ],
+    );
+    if (!flat) return grid;
+    final strings = BattleDetailStrings.of(context);
+    final formationLine = _FlatFormationLine(
+      key: const Key('compact-formation-line'),
+      friend: battle.friendFormation > 0
+          ? strings.localize(formationLabel(battle.friendFormation))
+          : null,
+      engagement: battle.engagement > 0
+          ? strings.localize(engagementLabel(battle.engagement))
+          : null,
+      enemy: battle.enemyFormation > 0
+          ? strings.localize(formationLabel(battle.enemyFormation))
+          : null,
+    );
+    if (formationLine.isEmpty) return grid;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[formationLine, const SizedBox(height: 2), grid],
+    );
+  }
+}
+
+/// Replaces the two flat side titles: friend formation, engagement and enemy
+/// formation in one line, falling back to centered wrapping text rather than
+/// truncating any of them.
+class _FlatFormationLine extends StatelessWidget {
+  const _FlatFormationLine({
+    super.key,
+    required this.friend,
+    required this.engagement,
+    required this.enemy,
+  });
+
+  final String? friend;
+  final String? engagement;
+  final String? enemy;
+
+  bool get isEmpty => friend == null && engagement == null && enemy == null;
+
+  static const double _gap = 8;
+  static const TextStyle _baseStyle = TextStyle(
+    fontSize: 10.5,
+    fontWeight: FontWeight.w700,
+  );
+  static const TextStyle _friendStyle = TextStyle(color: Color(0xff70c7bc));
+  static const TextStyle _engagementStyle = TextStyle(color: Color(0xffdfe8ee));
+  static const TextStyle _enemyStyle = TextStyle(color: Color(0xffff8c78));
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final locale = Localizations.maybeLocaleOf(context);
+    final textDirection = Directionality.of(context);
+    final measureStyle = DefaultTextStyle.of(context).style.merge(_baseStyle);
+    double widthOf(String? text) {
+      if (text == null) return 0;
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: measureStyle),
+        textDirection: textDirection,
+        textScaler: textScaler,
+        locale: locale,
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    Widget label(String? text, TextStyle style) => text == null
+        ? const SizedBox.shrink()
+        : Text(text, maxLines: 1, style: _baseStyle.merge(style));
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final friendWidth = widthOf(friend);
+        final enemyWidth = widthOf(enemy);
+        if (engagement != null) {
+          // Equal side slots keep the engagement centered on the line even
+          // when one formation is missing or the two differ in width.
+          final side = (maxWidth - widthOf(engagement)) / 2 - _gap;
+          if (friendWidth <= side && enemyWidth <= side) {
+            return Row(
+              children: <Widget>[
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: label(friend, _friendStyle),
+                  ),
+                ),
+                const SizedBox(width: _gap),
+                label(engagement, _engagementStyle),
+                const SizedBox(width: _gap),
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: label(enemy, _enemyStyle),
+                  ),
+                ),
+              ],
+            );
+          }
+        } else if (friendWidth + _gap + enemyWidth <= maxWidth) {
+          return Row(
+            children: <Widget>[
+              label(friend, _friendStyle),
+              const Spacer(),
+              label(enemy, _enemyStyle),
+            ],
+          );
+        }
+        final segments = <(String, TextStyle)>[
+          if (friend != null) (friend!, _friendStyle),
+          if (engagement != null) (engagement!, _engagementStyle),
+          if (enemy != null) (enemy!, _enemyStyle),
+        ];
+        return Text.rich(
+          appTextSpan(
+            context,
+            TextSpan(
+              style: _baseStyle,
+              children: <InlineSpan>[
+                for (var index = 0; index < segments.length; index++) ...[
+                  if (index > 0) flatSegmentSeparator,
+                  TextSpan(text: segments[index].$1, style: segments[index].$2),
+                ],
+              ],
+            ),
+          ),
+          textAlign: TextAlign.center,
+        );
+      },
     );
   }
 }
@@ -760,6 +932,7 @@ class _CompactBarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
     final isEscaped = ship.isEscaped;
     final ratio = ship.maxHp <= 0
         ? 0.0
@@ -816,6 +989,7 @@ class _CompactBarRow extends StatelessWidget {
           value: ratio,
           color: appColor(context, hpBarColor),
           backgroundColor: appColor(context, const Color(0xff263e4d)),
+          height: flat ? 4 : 6,
         ),
       );
       final content = Column(
@@ -859,7 +1033,9 @@ class _CompactBarRow extends StatelessWidget {
         ship.currentHp * 4 <= ship.maxHp * 3;
     return Padding(
       key: Key('compact-bar-$keyName-$index'),
-      padding: const EdgeInsets.fromLTRB(6, 3, 6, 3),
+      padding: flat
+          ? const EdgeInsets.symmetric(vertical: 1)
+          : const EdgeInsets.fromLTRB(6, 3, 6, 3),
       child: shouldPulse
           ? DamagePulseBuilder(
               currentHp: ship.currentHp,
@@ -877,13 +1053,16 @@ class _CompactBarRow extends StatelessWidget {
   }
 }
 
-List<(String, Color)> _compactMetaChips(LiveBattle battle) {
+List<(String, Color)> _compactMetaChips(
+  LiveBattle battle, {
+  required bool includeEngagement,
+}) {
   return <(String, Color)>[
     if (battle.context.combinedFleetType != CombinedFleetType.none)
       (battle.context.combinedFleetType.label, const Color(0xff70c7bc)),
     if (!battle.context.nodeTypeLabels.contains(battle.phaseLabel))
       (battle.phaseLabel, battlePhaseChipColor(battle.phaseLabel)),
-    if (battle.engagement > 0)
+    if (includeEngagement && battle.engagement > 0)
       (
         engagementLabel(battle.engagement),
         engagementChipColor(battle.engagement),
@@ -891,30 +1070,50 @@ List<(String, Color)> _compactMetaChips(LiveBattle battle) {
   ];
 }
 
+/// 标题行右侧的状态徽章：卡片档是胶囊，扁平档只留文字。
+class _HeaderBadge extends StatelessWidget {
+  const _HeaderBadge({
+    required this.color,
+    required this.background,
+    required this.label,
+  });
+
+  final Color color;
+  final Color background;
+  final Widget Function(TextStyle style) label;
+
+  @override
+  Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
+    final text = label(
+      TextStyle(
+        color: appColor(context, color),
+        fontSize: flat ? flatSmallFontSize : 11,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    if (flat) return text;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: appColor(context, background),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: text,
+    );
+  }
+}
+
 class _IdleBadge extends StatelessWidget {
   const _IdleBadge();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff203443)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        AppLocalizations.of(context)?.standby ?? '待机',
-        style: appTextStyle(
-          context,
-          TextStyle(
-            color: Color(0xff9db2bf),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _HeaderBadge(
+    color: const Color(0xff9db2bf),
+    background: const Color(0xff203443),
+    label: (style) =>
+        Text(AppLocalizations.of(context)?.standby ?? '待机', style: style),
+  );
 }
 
 class _IdleBattleContent extends StatelessWidget {
@@ -922,7 +1121,27 @@ class _IdleBattleContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
+    final text = AppLocalizations.of(context)?.waitingForSortieData ?? '等待出击数据';
+    if (flat) {
+      return Padding(
+        key: const Key('battle-idle-content'),
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: FlatIconLine(
+          icon: Icons.explore_outlined,
+          color: const Color(0xff70c7bc),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: appColor(context, flatMutedColor),
+              fontSize: flatRowFontSize,
+            ),
+          ),
+        ),
+      );
+    }
     return Container(
+      key: const Key('battle-idle-content'),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: appColor(context, Color(0xff10212e)),
@@ -938,13 +1157,10 @@ class _IdleBattleContent extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              AppLocalizations.of(context)?.waitingForSortieData ?? '等待出击数据',
-              style: appTextStyle(
-                context,
-                TextStyle(
-                  color: appColor(context, Color(0xff9db2bf)),
-                  fontWeight: FontWeight.w600,
-                ),
+              text,
+              style: TextStyle(
+                color: appColor(context, const Color(0xff9db2bf)),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -978,39 +1194,31 @@ class _StatusBadge extends StatelessWidget {
         : forecast
         ? const Color(0xff4a3b21)
         : const Color(0xff183e38);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: appColor(context, background),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: BattleUiText(
-        label,
-        style: appTextStyle(
-          context,
-          TextStyle(
-            color: foreground,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+    return _HeaderBadge(
+      color: foreground,
+      background: background,
+      label: (style) => BattleUiText(label, style: style),
     );
   }
 }
 
 class _RankBadge extends StatelessWidget {
-  const _RankBadge({required this.rank, required this.phone});
+  const _RankBadge({
+    required this.rank,
+    required this.phone,
+    required this.flat,
+  });
 
   final BattleRank rank;
   final bool phone;
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
     return BattleRankBadge(
       rank: rank,
-      size: phone ? 50 : 48,
-      fontSize: phone ? 21 : 20,
+      size: flat ? 28 : (phone ? 50 : 48),
+      fontSize: flat ? 12 : (phone ? 21 : 20),
     );
   }
 }

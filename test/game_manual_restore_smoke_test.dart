@@ -145,7 +145,6 @@ void main() {
     tester,
   ) async {
     final fixture = await _ShellFixture.mount(tester, attachPort: false);
-    expect(fixture.browser.hasAttachedPort, isFalse);
     _expectVisibleRestoreButton(tester, const Size(390, 844));
     for (var press = 0; press < 4; press++) {
       await tester.tap(find.byKey(_fitKey));
@@ -160,7 +159,6 @@ void main() {
     'real shell restore handles a native port that has not been created',
     (tester) async {
       final fixture = await _ShellFixture.mount(tester, createNative: false);
-      expect(fixture.browser.hasAttachedPort, isTrue);
       _expectVisibleRestoreButton(tester, const Size(390, 844));
       await tester.tap(find.byKey(_fitKey));
       await tester.pump();

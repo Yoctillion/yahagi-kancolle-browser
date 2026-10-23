@@ -1,10 +1,13 @@
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
+import '../layout/flat_list_row.dart';
+import '../layout/flat_style.dart';
 import 'battle_ui_text.dart';
 import 'battle_detail_strings.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../game_state/game_state.dart';
 import 'battle_models.dart';
 
 const double _battlePillHeight = 20;
@@ -22,18 +25,20 @@ class AdaptiveBattleHeader extends StatelessWidget {
     required this.enemyName,
     required this.enemyStyle,
     this.enemyNameIsFallback = false,
+    this.nodeFontSize = 16,
   });
 
   final String nodeLabel;
   final String enemyName;
   final TextStyle enemyStyle;
   final bool enemyNameIsFallback;
+  final double nodeFontSize;
 
   @override
   Widget build(BuildContext context) {
     final nodeStyle = TextStyle(
       color: appColor(context, Color(0xffffd65c)),
-      fontSize: 16,
+      fontSize: nodeFontSize,
       fontWeight: FontWeight.w800,
     );
     final enemyTitle = enemyNameIsFallback
@@ -57,6 +62,293 @@ class AdaptiveBattleHeader extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(child: enemyTitle),
       ],
+    );
+  }
+}
+
+const Color _flatAirColor = Color(0xff7fd6c8);
+const Color _flatGainColor = Color(0xff83d5c8);
+const Color _flatLossColor = Color(0xffff8c78);
+
+const TextSpan flatSegmentSeparator = TextSpan(
+  text: ' · ',
+  style: TextStyle(color: flatMutedColor),
+);
+
+/// Flat-style replacement for the status pill row: plain text with only the
+/// air state colored. Drops and rewards live in [BattleDropLine].
+class BattleTagLine extends StatelessWidget {
+  const BattleTagLine({
+    super.key = const Key('battle-tag-line'),
+    required this.battle,
+    required this.nodeLabel,
+    this.metaLabels = const <String>[],
+  });
+
+  final LiveBattle battle;
+  final String nodeLabel;
+  final List<String> metaLabels;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final strings = BattleDetailStrings.of(context);
+    final segments = <(String, Color)>[
+      for (final label in battle.context.nodeTypeLabels)
+        // Whole-word match so a node named "B" does not hide "Boss 战".
+        if (!nodeLabel.contains(label) &&
+            !label.split(' ').contains(nodeLabel.trim()))
+          (strings.localize(label), flatMutedColor),
+      if (battle.airSuperiority != null)
+        (
+          l10n.airStateLabel(strings.localize(battle.airSuperiority!)),
+          _flatAirColor,
+        ),
+      for (final label in metaLabels) (strings.localize(label), flatMutedColor),
+    ];
+    const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
+    return Text.rich(
+      appTextSpan(
+        context,
+        TextSpan(
+          style: style,
+          children: <InlineSpan>[
+            for (
+              var index = 0;
+              index < segments.length;
+              index++
+            ) ...<InlineSpan>[
+              if (index > 0) flatSegmentSeparator,
+              TextSpan(
+                text: segments[index].$1,
+                style: TextStyle(color: segments[index].$2),
+              ),
+            ],
+          ],
+        ),
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+/// Drops and rewards split out of [BattleTagLine] so they wrap instead of
+/// being cut off by its ellipsis. Carries its own top gap so an empty line
+/// takes no space.
+class BattleDropLine extends StatelessWidget {
+  const BattleDropLine({
+    super.key = const Key('battle-drop-line'),
+    required this.dropEntries,
+    required this.rewardItems,
+  });
+
+  final List<String> dropEntries;
+  final List<BattleRewardItem> rewardItems;
+
+  @override
+  Widget build(BuildContext context) {
+    if (dropEntries.isEmpty && rewardItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        <String>[
+          ...dropEntries,
+          if (rewardItems.isNotEmpty) _rewardItemsText(rewardItems),
+        ].join(' · '),
+        style: TextStyle(
+          color: appColor(context, flatAccentColor),
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+String _rewardItemsText(List<BattleRewardItem> items) =>
+    items.map((item) => '${item.name} ×${item.count}').join('、');
+
+/// What the navigation header shows after the node name. The pill row and
+/// the flat text line both render this list, so they share one set of
+/// visibility rules and one order.
+sealed class NavigationHeaderSegment {
+  const NavigationHeaderSegment();
+}
+
+final class LastFormationHeaderSegment extends NavigationHeaderSegment {
+  const LastFormationHeaderSegment(this.formation);
+  final int formation;
+}
+
+final class CombinedFleetHeaderSegment extends NavigationHeaderSegment {
+  const CombinedFleetHeaderSegment(this.type);
+  final CombinedFleetType type;
+}
+
+final class ResourceChangesHeaderSegment extends NavigationHeaderSegment {
+  const ResourceChangesHeaderSegment(this.changes);
+  final List<BattleResourceChange> changes;
+}
+
+final class RewardItemsHeaderSegment extends NavigationHeaderSegment {
+  const RewardItemsHeaderSegment(this.items);
+  final List<BattleRewardItem> items;
+}
+
+final class NodeTypeHeaderSegment extends NavigationHeaderSegment {
+  const NodeTypeHeaderSegment(this.label);
+  final String label;
+}
+
+List<NavigationHeaderSegment> navigationHeaderSegments(
+  LiveBattle battle, {
+  required bool showLastFormationHint,
+}) => <NavigationHeaderSegment>[
+  if (showLastFormationHint && battle.lastFormation != null)
+    LastFormationHeaderSegment(battle.lastFormation!),
+  if (battle.context.combinedFleetType != CombinedFleetType.none)
+    CombinedFleetHeaderSegment(battle.context.combinedFleetType),
+  if (battle.resourceChanges.isNotEmpty)
+    ResourceChangesHeaderSegment(battle.resourceChanges),
+  if (battle.rewardItems.isNotEmpty)
+    RewardItemsHeaderSegment(battle.rewardItems),
+  if (battle.resourceChanges.isEmpty && battle.rewardItems.isEmpty)
+    for (final label in battle.context.nodeTypeLabels)
+      NodeTypeHeaderSegment(label),
+];
+
+/// Pill row contents of the card-style navigation header.
+List<Widget> navigationHeaderPills(
+  LiveBattle battle, {
+  required bool showLastFormationHint,
+}) => <Widget>[
+  for (final segment in navigationHeaderSegments(
+    battle,
+    showLastFormationHint: showLastFormationHint,
+  ))
+    switch (segment) {
+      LastFormationHeaderSegment(:final formation) => LastFormationPill(
+        formation: formation,
+      ),
+      CombinedFleetHeaderSegment(:final type) => MetaChip(
+        label: type.label,
+        color: const Color(0xff70c7bc),
+      ),
+      ResourceChangesHeaderSegment(:final changes) => ResourceChangesPill(
+        changes: changes,
+      ),
+      RewardItemsHeaderSegment(:final items) => RewardItemsPill(items: items),
+      NodeTypeHeaderSegment(:final label) => NodeTypePill(label: label),
+    },
+];
+
+/// Flat-style navigation header: the node name and the navigation pill
+/// contents as one run of text.
+class FlatNavigationHeader extends StatelessWidget {
+  const FlatNavigationHeader({
+    super.key,
+    required this.battle,
+    required this.showLastFormationHint,
+  });
+
+  final LiveBattle battle;
+  final bool showLastFormationHint;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final strings = BattleDetailStrings.of(context);
+    List<InlineSpan> spansOf(
+      NavigationHeaderSegment segment,
+    ) => switch (segment) {
+      LastFormationHeaderSegment(:final formation) => [
+        TextSpan(
+          text: l10n.battleLastFormation(
+            strings.localize(formationLabel(formation)),
+          ),
+          style: const TextStyle(color: flatMutedColor),
+        ),
+      ],
+      CombinedFleetHeaderSegment(:final type) => [
+        TextSpan(
+          text: strings.localize(type.label),
+          style: const TextStyle(color: flatMutedColor),
+        ),
+      ],
+      ResourceChangesHeaderSegment(:final changes) => [
+        for (var index = 0; index < changes.length; index++) ...[
+          if (index > 0) const TextSpan(text: ' '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Image.asset(
+              'assets/images/material/${changes[index].type.apiId.toString().padLeft(2, '0')}.png',
+              key: Key('battle-resource-icon-${changes[index].type.apiId}'),
+              width: 11,
+              height: 11,
+              fit: BoxFit.contain,
+            ),
+          ),
+          TextSpan(
+            text: _signed(changes[index].amount),
+            style: TextStyle(
+              color: changes[index].amount < 0
+                  ? _flatLossColor
+                  : _flatGainColor,
+            ),
+          ),
+        ],
+      ],
+      RewardItemsHeaderSegment(:final items) => [
+        TextSpan(
+          text: _rewardItemsText(items),
+          style: const TextStyle(color: flatAccentColor),
+        ),
+      ],
+      NodeTypeHeaderSegment(:final label) => [
+        TextSpan(
+          text: strings.localize(label),
+          style: TextStyle(color: nodeTypePillColors(label).foreground),
+        ),
+      ],
+    };
+    return FlatIconLine(
+      icon: Icons.explore_outlined,
+      color: const Color(0xff70c7bc),
+      child: Text.rich(
+        key: const Key('battle-navigation-tag-line'),
+        appTextSpan(
+          context,
+          TextSpan(
+            style: const TextStyle(
+              fontSize: flatSmallFontSize,
+              fontWeight: FontWeight.w600,
+            ),
+            children: <InlineSpan>[
+              TextSpan(
+                text: strings.localize(battle.context.forecastNodeLabel),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: flatRowFontSize,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              for (final segment in navigationHeaderSegments(
+                battle,
+                showLastFormationHint: showLastFormationHint,
+              )) ...[flatSegmentSeparator, ...spansOf(segment)],
+            ],
+          ),
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }

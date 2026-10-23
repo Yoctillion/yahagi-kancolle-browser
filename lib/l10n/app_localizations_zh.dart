@@ -348,13 +348,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uiDisplaySizeTitle => '界面UI大小';
 
   @override
-  String get uiDisplaySizeDesc => '调整顶部状态栏与导航菜单栏的显示尺寸';
+  String get uiDisplaySizeDesc =>
+      '调整顶栏、导航栏与信息栏的显示密度；极简档保留顶部 Yahagi 入口与功能栏，信息栏采用扁平布局';
 
   @override
   String get uiDisplaySizeNormal => '普通';
 
   @override
   String get uiDisplaySizeCompact => '紧凑';
+
+  @override
+  String get uiDisplaySizeMinimal => '极简';
+
+  @override
+  String get panelResourcesExpand => '展开资源';
+
+  @override
+  String get panelResourcesCollapse => '折叠资源';
+
+  @override
+  String get panelResourcesCollapsedItems => '折叠时显示';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => '恢复默认';
+
+  @override
+  String get minimalResourcePositionTitle => '资源位置';
+
+  @override
+  String get minimalResourcePositionDesc =>
+      '极简档手机横屏游戏页的资源显示在信息栏顶部、游戏上方的细横栏，或屏幕底部的细横栏';
+
+  @override
+  String get minimalResourcePositionPanel => '信息栏';
+
+  @override
+  String get minimalResourcePositionTopBar => '顶部横栏';
+
+  @override
+  String get minimalResourcePositionBottomBar => '底部横栏';
 
   @override
   String get gameAreaRatio => '游戏区域占比';
@@ -3614,6 +3646,77 @@ class AppLocalizationsZh extends AppLocalizations {
   String get customFontPreviewRetry => '重新预览';
 
   @override
+  String get browserMenuMute => '静音';
+
+  @override
+  String get browserMenuUnmute => '开声音';
+
+  @override
+  String get browserMenuScreenshot => '截图';
+
+  @override
+  String get browserMenuFit => '修复显示';
+
+  @override
+  String get browserMenuFullscreen => '全屏';
+
+  @override
+  String get browserMenuHome => '主页';
+
+  @override
+  String get browserMenuDismissHint => '点击空白处关闭';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return '大破 $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return '中破 $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return '最低疲劳 $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return '进行中 $active/3 · 最近 $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return '使用中 $busy/$total · 最近 $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return '使用中 $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return '完成 $done · 建造中 $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return '可完成 $done · 进行中 $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return '出击 $sortie · 防空 $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return '警告 $count';
+  }
+
+  @override
   String get questQueryTitle => '搜索与筛选任务';
 
   @override
@@ -4001,13 +4104,45 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get uiDisplaySizeTitle => '介面UI大小';
 
   @override
-  String get uiDisplaySizeDesc => '調整頂部狀態列與導航選單欄的顯示尺寸';
+  String get uiDisplaySizeDesc =>
+      '調整頂欄、導航欄與資訊欄的顯示密度；極簡檔保留頂部 Yahagi 入口與功能列，資訊欄採用扁平佈局';
 
   @override
   String get uiDisplaySizeNormal => '標準';
 
   @override
   String get uiDisplaySizeCompact => '緊湊';
+
+  @override
+  String get uiDisplaySizeMinimal => '極簡';
+
+  @override
+  String get panelResourcesExpand => '展開資源';
+
+  @override
+  String get panelResourcesCollapse => '摺疊資源';
+
+  @override
+  String get panelResourcesCollapsedItems => '摺疊時顯示';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => '恢復預設';
+
+  @override
+  String get minimalResourcePositionTitle => '資源位置';
+
+  @override
+  String get minimalResourcePositionDesc =>
+      '極簡檔手機橫屏遊戲頁的資源顯示在資訊欄頂部、遊戲上方的細橫欄，或螢幕底部的細橫欄';
+
+  @override
+  String get minimalResourcePositionPanel => '資訊欄';
+
+  @override
+  String get minimalResourcePositionTopBar => '頂部橫欄';
+
+  @override
+  String get minimalResourcePositionBottomBar => '底部橫欄';
 
   @override
   String get gameAreaRatio => '遊戲區域佔比';
@@ -7266,6 +7401,77 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get customFontPreviewRetry => '重新預覽';
+
+  @override
+  String get browserMenuMute => '靜音';
+
+  @override
+  String get browserMenuUnmute => '開聲音';
+
+  @override
+  String get browserMenuScreenshot => '截圖';
+
+  @override
+  String get browserMenuFit => '修復顯示';
+
+  @override
+  String get browserMenuFullscreen => '全螢幕';
+
+  @override
+  String get browserMenuHome => '主頁';
+
+  @override
+  String get browserMenuDismissHint => '點擊空白處關閉';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return '大破 $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return '中破 $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return '最低疲勞 $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return '進行中 $active/3 · 最近 $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return '使用中 $busy/$total · 最近 $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return '使用中 $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return '完成 $done · 建造中 $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return '可完成 $done · 進行中 $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return '出擊 $sortie · 防空 $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return '警告 $count';
+  }
 
   @override
   String get questQueryTitle => '搜尋與篩選任務';

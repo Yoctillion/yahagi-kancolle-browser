@@ -742,7 +742,7 @@ abstract class AppLocalizations {
   /// No description provided for @uiDisplaySizeDesc.
   ///
   /// In zh, this message translates to:
-  /// **'调整顶部状态栏与导航菜单栏的显示尺寸'**
+  /// **'调整顶栏、导航栏与信息栏的显示密度；极简档保留顶部 Yahagi 入口与功能栏，信息栏采用扁平布局'**
   String get uiDisplaySizeDesc;
 
   /// No description provided for @uiDisplaySizeNormal.
@@ -756,6 +756,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'紧凑'**
   String get uiDisplaySizeCompact;
+
+  /// No description provided for @uiDisplaySizeMinimal.
+  ///
+  /// In zh, this message translates to:
+  /// **'极简'**
+  String get uiDisplaySizeMinimal;
+
+  /// No description provided for @panelResourcesExpand.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开资源'**
+  String get panelResourcesExpand;
+
+  /// No description provided for @panelResourcesCollapse.
+  ///
+  /// In zh, this message translates to:
+  /// **'折叠资源'**
+  String get panelResourcesCollapse;
+
+  /// No description provided for @panelResourcesCollapsedItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'折叠时显示'**
+  String get panelResourcesCollapsedItems;
+
+  /// No description provided for @panelResourcesCollapsedItemsReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get panelResourcesCollapsedItemsReset;
+
+  /// No description provided for @minimalResourcePositionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'资源位置'**
+  String get minimalResourcePositionTitle;
+
+  /// No description provided for @minimalResourcePositionDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'极简档手机横屏游戏页的资源显示在信息栏顶部、游戏上方的细横栏，或屏幕底部的细横栏'**
+  String get minimalResourcePositionDesc;
+
+  /// No description provided for @minimalResourcePositionPanel.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息栏'**
+  String get minimalResourcePositionPanel;
+
+  /// No description provided for @minimalResourcePositionTopBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'顶部横栏'**
+  String get minimalResourcePositionTopBar;
+
+  /// No description provided for @minimalResourcePositionBottomBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'底部横栏'**
+  String get minimalResourcePositionBottomBar;
 
   /// No description provided for @gameAreaRatio.
   ///
@@ -6799,6 +6859,108 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重新预览'**
   String get customFontPreviewRetry;
+
+  /// No description provided for @browserMenuMute.
+  ///
+  /// In zh, this message translates to:
+  /// **'静音'**
+  String get browserMenuMute;
+
+  /// No description provided for @browserMenuUnmute.
+  ///
+  /// In zh, this message translates to:
+  /// **'开声音'**
+  String get browserMenuUnmute;
+
+  /// No description provided for @browserMenuScreenshot.
+  ///
+  /// In zh, this message translates to:
+  /// **'截图'**
+  String get browserMenuScreenshot;
+
+  /// No description provided for @browserMenuFit.
+  ///
+  /// In zh, this message translates to:
+  /// **'修复显示'**
+  String get browserMenuFit;
+
+  /// No description provided for @browserMenuFullscreen.
+  ///
+  /// In zh, this message translates to:
+  /// **'全屏'**
+  String get browserMenuFullscreen;
+
+  /// No description provided for @browserMenuHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'主页'**
+  String get browserMenuHome;
+
+  /// No description provided for @browserMenuDismissHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击空白处关闭'**
+  String get browserMenuDismissHint;
+
+  /// No description provided for @summaryFleetHeavy.
+  ///
+  /// In zh, this message translates to:
+  /// **'大破 {count}'**
+  String summaryFleetHeavy(int count);
+
+  /// No description provided for @summaryFleetMedium.
+  ///
+  /// In zh, this message translates to:
+  /// **'中破 {count}'**
+  String summaryFleetMedium(int count);
+
+  /// No description provided for @summaryFleetMinMorale.
+  ///
+  /// In zh, this message translates to:
+  /// **'最低疲劳 {value}'**
+  String summaryFleetMinMorale(int value);
+
+  /// No description provided for @summaryExpedition.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中 {active}/3 · 最近 {time}'**
+  String summaryExpedition(int active, String time);
+
+  /// No description provided for @summaryRepair.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用中 {busy}/{total} · 最近 {time}'**
+  String summaryRepair(int busy, int total, String time);
+
+  /// No description provided for @summaryRepairBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用中 {busy}/{total}'**
+  String summaryRepairBusy(int busy, int total);
+
+  /// No description provided for @summaryConstruction.
+  ///
+  /// In zh, this message translates to:
+  /// **'完成 {done} · 建造中 {building}'**
+  String summaryConstruction(int done, int building);
+
+  /// No description provided for @summaryQuests.
+  ///
+  /// In zh, this message translates to:
+  /// **'可完成 {done} · 进行中 {active}'**
+  String summaryQuests(int done, int active);
+
+  /// No description provided for @summaryLandBase.
+  ///
+  /// In zh, this message translates to:
+  /// **'出击 {sortie} · 防空 {defense}'**
+  String summaryLandBase(int sortie, int defense);
+
+  /// No description provided for @summaryWarnings.
+  ///
+  /// In zh, this message translates to:
+  /// **'警告 {count}'**
+  String summaryWarnings(int count);
 
   /// No description provided for @questQueryTitle.
   ///

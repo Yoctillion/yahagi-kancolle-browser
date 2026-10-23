@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../settings/battle_status_effect_settings.dart';
+import 'equipment_display.dart';
 import 'ship_damage_level.dart';
 
 const yahagiStatusRed = Color(0xffd33d17);
@@ -8,6 +9,21 @@ const yahagiStatusOrange = Color(0xfff57c00);
 const yahagiStatusYellow = Color(0xffffc940);
 const yahagiStatusGreen = Color(0xff29a634);
 const yahagiStatusZeroHp = Color(0xff71818b);
+
+Color mechanismToneColor(MechanismTone tone) => switch (tone) {
+  MechanismTone.antiAir => const Color(0xffffc861),
+  MechanismTone.specialAttack => const Color(0xffff8b88),
+  MechanismTone.nightAttack => const Color(0xffbfa4ff),
+  MechanismTone.neutral ||
+  MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
+};
+
+const shipRetreatGrayscale = ColorFilter.matrix(<double>[
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0, 0, 0, 1, 0, //
+]);
 
 @immutable
 class DamagePulseVisualSpec {

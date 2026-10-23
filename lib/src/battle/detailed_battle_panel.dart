@@ -9,8 +9,11 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
+import '../layout/flat_style.dart';
+import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
+import 'battle_fleet_block.dart';
 import 'battle_models.dart';
 import 'battle_pills.dart';
 import 'battle_prediction_sections.dart';
@@ -45,6 +48,7 @@ class DetailedBattlePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     final enemyPreviewShips =
         battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
@@ -77,7 +81,7 @@ class DetailedBattlePanel extends StatelessWidget {
               battle: battle,
               showLastFormationHint: showLastFormationHint,
             ),
-            const SizedBox(height: 7),
+            SizedBox(height: flat ? flatSectionGap : 7),
           ],
           BattlePredictionSections(
             order: sectionOrder,
@@ -189,6 +193,15 @@ class _NavigationOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.isFlat(context)) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: FlatNavigationHeader(
+          battle: battle,
+          showLastFormationHint: showLastFormationHint,
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
@@ -223,23 +236,10 @@ class _NavigationOverview extends StatelessWidget {
               spacing: 6,
               runSpacing: 4,
               alignment: WrapAlignment.end,
-              children: [
-                if (showLastFormationHint && battle.lastFormation != null)
-                  LastFormationPill(formation: battle.lastFormation!),
-                if (battle.context.combinedFleetType != CombinedFleetType.none)
-                  MetaChip(
-                    label: battle.context.combinedFleetType.label,
-                    color: const Color(0xff70c7bc),
-                  ),
-                if (battle.resourceChanges.isNotEmpty)
-                  ResourceChangesPill(changes: battle.resourceChanges),
-                if (battle.rewardItems.isNotEmpty)
-                  RewardItemsPill(items: battle.rewardItems),
-                if (battle.resourceChanges.isEmpty &&
-                    battle.rewardItems.isEmpty)
-                  for (final label in battle.context.nodeTypeLabels)
-                    NodeTypePill(label: label),
-              ],
+              children: navigationHeaderPills(
+                battle,
+                showLastFormationHint: showLastFormationHint,
+              ),
             ),
           ),
         ],
@@ -406,45 +406,27 @@ class _FleetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff10212e)),
-        borderRadius: BorderRadius.circular(8),
+    return BattleFleetBlock(
+      title: BattleUiText(
+        title,
+        style: battleFleetTitleStyle.copyWith(
+          color: title.startsWith('敌')
+              ? const Color(0xffff8c78)
+              : const Color(0xff70c7bc),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(9, 7, 9, 5),
-            child: BattleUiText(
-              title,
-              style: appTextStyle(
-                context,
-                TextStyle(
-                  color: title.startsWith('敌')
-                      ? const Color(0xffff8c78)
-                      : const Color(0xff70c7bc),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+      rows: [
+        for (var index = 0; index < ships.length; index++)
+          BattleShipDetailsTap(
+            ship: ships[index],
+            child: _BattleShipRow(
+              ship: ships[index],
+              absolutePosition: index + positionOffset,
+              isMvp: mvpPositions.contains(index + positionOffset),
+              damagePulseMode: damagePulseMode,
             ),
           ),
-          for (var index = 0; index < ships.length; index++) ...[
-            if (index > 0)
-              Divider(height: 1, color: appColor(context, Color(0xff203746))),
-            BattleShipDetailsTap(
-              ship: ships[index],
-              child: _BattleShipRow(
-                ship: ships[index],
-                absolutePosition: index + positionOffset,
-                isMvp: mvpPositions.contains(index + positionOffset),
-                damagePulseMode: damagePulseMode,
-              ),
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }
@@ -464,6 +446,7 @@ class _BattleShipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
     final isEscaped = ship.isEscaped;
     final side = ship.side == BattleSide.friend ? 'friend' : 'enemy';
     final ratio = ship.maxHp <= 0
@@ -539,7 +522,9 @@ class _BattleShipRow extends StatelessWidget {
         if (background != null) Positioned.fill(child: background),
         Padding(
           key: Key('battle-ship-$side-$absolutePosition'),
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          padding: flat
+              ? const EdgeInsets.symmetric(vertical: 2)
+              : const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
