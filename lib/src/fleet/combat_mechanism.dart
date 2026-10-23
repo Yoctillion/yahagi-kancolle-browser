@@ -21,6 +21,7 @@ List<EquipmentMechanismDisplay> detectShipCombatMechanisms(
         shortLabel: '先反',
         description: '开幕雷击前先进行一次对潜攻击。当前舰娘的舰种、对潜值和装备组合满足 Yahagi 的先制对潜静态判定。',
         tone: MechanismTone.antiSubmarine,
+        kind: CombatMechanismKind.openingAsw,
       ),
     );
   }
@@ -31,6 +32,7 @@ List<EquipmentMechanismDisplay> detectShipCombatMechanisms(
         shortLabel: '对空',
         description: '当前装备组合可触发对空弹幕（对空 Cut-in）。实际触发类型和击坠效果由舰娘与装备组合决定。',
         tone: MechanismTone.antiAir,
+        kind: CombatMechanismKind.antiAirCutIn,
       ),
     );
   }
@@ -45,6 +47,7 @@ List<EquipmentMechanismDisplay> detectShipCombatMechanisms(
         description:
             '当前舰种装备了 12cm 30连装喷进炮改二，可在航空战中判定对空喷进弹幕。当前配装预估发动概率约为 $percent%。',
         tone: MechanismTone.antiAir,
+        kind: CombatMechanismKind.rocketBarrage,
       ),
     );
   }
@@ -55,6 +58,7 @@ List<EquipmentMechanismDisplay> detectShipCombatMechanisms(
         shortLabel: '夜袭',
         description: '搭载夜间飞机（夜战/夜攻）及夜间作战航空要员或自带夜战起飞能力，可在夜战中发动空母夜间航空攻击（夜袭 CI）。',
         tone: MechanismTone.nightAttack,
+        kind: CombatMechanismKind.nightCarrierAttack,
       ),
     );
   }
@@ -96,6 +100,7 @@ EquipmentMechanismDisplay? detectFleetSpecialAttack(
       description:
           '$summary $percentText当前仅表示编成与耐久等静态条件匹配；实际发动还受阵型、联合舰队状态和本次出击中的使用次数限制。',
       tone: MechanismTone.specialAttack,
+      kind: CombatMechanismKind.fleetSpecialAttack,
     );
   }
 

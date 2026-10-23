@@ -253,6 +253,18 @@ class LayoutSettingsController extends ChangeNotifier {
           await (store as WorkspaceMenuSizeSettingsStore)
               .loadWorkspaceMenuSize();
     }
+    if (store is MinimalResourcePositionSettingsStore) {
+      controller._minimalResourcePosition =
+          await (store as MinimalResourcePositionSettingsStore)
+              .loadMinimalResourcePosition();
+    }
+    if (store is MinimalCollapsedResourceSettingsStore) {
+      final saved = await (store as MinimalCollapsedResourceSettingsStore)
+          .loadCollapsedPanelResourceIds();
+      controller._collapsedPanelResourceIds = saved == null
+          ? null
+          : _normalizeCollapsedPanelResourceIds(saved);
+    }
     if (store is UiLockSettingsStore) {
       controller._uiLocked = await (store as UiLockSettingsStore)
           .loadUiLocked();
@@ -419,6 +431,49 @@ class LayoutSettingsController extends ChangeNotifier {
       }
     }
   }
+
+  MinimalResourcePosition _minimalResourcePosition =
+      MinimalResourcePosition.panel;
+  MinimalResourcePosition get minimalResourcePosition =>
+      _minimalResourcePosition;
+
+  Future<void> setMinimalResourcePosition(
+    MinimalResourcePosition position,
+  ) async {
+    if (_minimalResourcePosition == position) return;
+    _minimalResourcePosition = position;
+    notifyListeners();
+    if (_store is MinimalResourcePositionSettingsStore) {
+      await (_store as MinimalResourcePositionSettingsStore)
+          .saveMinimalResourcePosition(position);
+    }
+  }
+
+  List<String>? _collapsedPanelResourceIds;
+
+  /// 信息栏资源区折叠时显示的项；null 表示用户没配置过，由网格按默认规则取。
+  List<String>? get collapsedPanelResourceIds =>
+      _collapsedPanelResourceIds == null
+      ? null
+      : List<String>.unmodifiable(_collapsedPanelResourceIds!);
+
+  Future<void> setCollapsedPanelResourceIds(List<String>? ids) async {
+    _collapsedPanelResourceIds = ids == null
+        ? null
+        : _normalizeCollapsedPanelResourceIds(ids);
+    notifyListeners();
+    if (_store is MinimalCollapsedResourceSettingsStore) {
+      await (_store as MinimalCollapsedResourceSettingsStore)
+          .saveCollapsedPanelResourceIds(_collapsedPanelResourceIds);
+    }
+  }
+
+  static List<String> _normalizeCollapsedPanelResourceIds(
+    Iterable<String> ids,
+  ) => [
+    for (final id in {...ids})
+      if (allHeaderResourceIds.contains(id)) id,
+  ];
 
   HeaderUiSize get headerUiSize => _uiDisplaySize;
   Future<void> setHeaderUiSize(HeaderUiSize size) => setUiDisplaySize(size);

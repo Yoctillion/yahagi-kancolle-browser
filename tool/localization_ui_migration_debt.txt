@@ -750,7 +750,6 @@
 "lib/src/fleet/fleet_summary_card.dart|对空"
 "lib/src/fleet/fleet_summary_card.dart|恢复倒计时"
 "lib/src/fleet/fleet_summary_card.dart|火力"
-"lib/src/fleet/fleet_summary_card.dart|编队简报显示内容"
 "lib/src/fleet/fleet_summary_card.dart|雷装"
 "lib/src/fleet/header_resource_catalog.dart|家具コイン"
 "lib/src/fleet/repair_summary_card.dart|入渠"

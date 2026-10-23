@@ -162,6 +162,33 @@ void main() {
       expect(rect.top, greaterThanOrEqualTo(padding.top));
       expect(rect.bottom, lessThanOrEqualTo(containerHeight - padding.bottom));
     });
+
+    test('minimal centers contain rect above bottom inset', () {
+      const ratio = 1200.0 / 720.0;
+      const padding = EdgeInsets.only(bottom: 16);
+
+      final wide = GameSurfaceViewport.computeContainGameRect(
+        containerWidth: 629,
+        containerHeight: 393,
+        aspectRatio: ratio,
+        padding: padding,
+      );
+      expect(wide.left, closeTo(0.33, 0.01));
+      expect(wide.top, 0.0);
+      expect(wide.width, closeTo(628.33, 0.01));
+      expect(wide.height, closeTo(377, 0.001));
+
+      final narrow = GameSurfaceViewport.computeContainGameRect(
+        containerWidth: 500,
+        containerHeight: 393,
+        aspectRatio: ratio,
+        padding: padding,
+      );
+      expect(narrow.left, 0.0);
+      expect(narrow.width, closeTo(500, 0.001));
+      expect(narrow.height, closeTo(300, 0.001));
+      expect(narrow.top, closeTo(38.5, 0.001));
+    });
   });
 
   group('GameSurfaceViewport widget rendering', () {
@@ -443,5 +470,43 @@ void main() {
         }
       },
     );
+
+    testWidgets('minimal centers contain rect above bottom inset', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final (size, expected) in [
+        (const Size(629, 393), const Rect.fromLTWH(0.33, 0, 628.33, 377)),
+        (const Size(500, 393), const Rect.fromLTWH(0, 38.5, 500, 300)),
+      ]) {
+        tester.view.physicalSize = size;
+        await tester.pumpWidget(
+          MediaQuery(
+            data: MediaQueryData(
+              size: size,
+              viewPadding: const EdgeInsets.only(left: 30, bottom: 16),
+            ),
+            child: const Directionality(
+              textDirection: TextDirection.ltr,
+              child: GameSurfaceViewport(
+                isLandscape: true,
+                centerAboveBottomInset: true,
+                child: SizedBox.expand(key: Key('test-game-surface')),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final rect = tester.getRect(find.byKey(const Key('test-game-surface')));
+        expect(rect.left, closeTo(expected.left, 0.01));
+        expect(rect.top, closeTo(expected.top, 0.01));
+        expect(rect.width, closeTo(expected.width, 0.01));
+        expect(rect.height, closeTo(expected.height, 0.01));
+      }
+    });
   });
 }

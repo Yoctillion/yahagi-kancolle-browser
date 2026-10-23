@@ -356,13 +356,45 @@ class AppLocalizationsKo extends AppLocalizations {
   String get uiDisplaySizeTitle => 'UI 크기';
 
   @override
-  String get uiDisplaySizeDesc => '상단 상태 표시줄과 탐색 메뉴의 표시 크기를 조정합니다';
+  String get uiDisplaySizeDesc =>
+      '상단 바, 탐색 바, 정보 바의 표시 밀도를 조정합니다. 미니멀은 휴대폰 가로 모드에서 기본적으로 게임 페이지의 상단 바를 숨깁니다';
 
   @override
   String get uiDisplaySizeNormal => '보통';
 
   @override
   String get uiDisplaySizeCompact => '작게';
+
+  @override
+  String get uiDisplaySizeMinimal => '미니멀';
+
+  @override
+  String get panelResourcesExpand => '자원 펼치기';
+
+  @override
+  String get panelResourcesCollapse => '자원 접기';
+
+  @override
+  String get panelResourcesCollapsedItems => '접었을 때 표시';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => '기본값으로 복원';
+
+  @override
+  String get minimalResourcePositionTitle => '자원 위치';
+
+  @override
+  String get minimalResourcePositionDesc =>
+      '미니멀에서 휴대폰 가로 모드일 때 게임 페이지의 자원을 정보 바 상단, 게임 위의 얇은 바, 또는 화면 하단의 얇은 바에 표시합니다';
+
+  @override
+  String get minimalResourcePositionPanel => '정보 바';
+
+  @override
+  String get minimalResourcePositionTopBar => '상단 바';
+
+  @override
+  String get minimalResourcePositionBottomBar => '하단 바';
 
   @override
   String get gameAreaRatio => '게임 영역 비율';
@@ -3676,6 +3708,77 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get customFontPreviewRetry => '미리보기 다시 시도';
+
+  @override
+  String get browserMenuMute => '음소거';
+
+  @override
+  String get browserMenuUnmute => '소리 켜기';
+
+  @override
+  String get browserMenuScreenshot => '스크린샷';
+
+  @override
+  String get browserMenuFit => '화면 맞춤';
+
+  @override
+  String get browserMenuFullscreen => '전체 화면';
+
+  @override
+  String get browserMenuHome => '홈';
+
+  @override
+  String get browserMenuDismissHint => '바깥을 눌러 닫기';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return '대파 $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return '중파 $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return '최저 피로도 $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return '진행 중 $active/3 · 최근 $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return '사용 중 $busy/$total · 최근 $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return '사용 중 $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return '완료 $done · 건조 중 $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return '완료 가능 $done · 진행 중 $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return '출격 $sortie · 방공 $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return '경고 $count';
+  }
 
   @override
   String get questQueryTitle => '임무 검색 및 필터';

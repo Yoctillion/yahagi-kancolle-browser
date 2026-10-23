@@ -1,6 +1,9 @@
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import 'dashboard_editing_scope.dart';
+import 'flat_style.dart';
+import 'panel_style.dart';
 
 /// Shared by the ordinary dashboard, HD sidebar and HD bottom row.
 class DashboardEditItem extends StatelessWidget {
@@ -20,22 +23,33 @@ class DashboardEditItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final content = Row(
+      final flat = PanelStyleScope.isFlat(context);
+      Widget content = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Checkbox(
-            value: !hidden,
-            activeColor: appColor(context, const Color(0xffd4a85f)),
-            checkColor: appOnAccentColor(context, Colors.black),
-            side: BorderSide(
-              color: appColor(context, Color(0xff8fa8b6)),
-              width: 2,
+          if (flat)
+            _FlatVisibilityIcon(id: id, visible: !hidden)
+          else
+            Checkbox(
+              value: !hidden,
+              activeColor: appColor(context, const Color(0xffd4a85f)),
+              checkColor: appOnAccentColor(context, Colors.black),
+              side: BorderSide(
+                color: appColor(context, const Color(0xff8fa8b6)),
+                width: 2,
+              ),
+              onChanged: (_) => onToggle(),
             ),
-            onChanged: (_) => onToggle(),
-          ),
-          Expanded(child: child),
+          Expanded(child: DashboardEditingScope(child: child)),
         ],
       );
+      // 扁平档的勾选框只有图标大小，按常见复选框的习惯整行都可点；齿轮自己吃掉点击。
+      if (flat) {
+        content = Semantics(
+          checked: !hidden,
+          child: InkWell(onTap: onToggle, child: content),
+        );
+      }
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -61,6 +75,24 @@ class DashboardEditItem extends StatelessWidget {
         ],
       );
     },
+  );
+}
+
+/// Material 的 Checkbox 固定占 48，比扁平档的编辑行还高，放进去对不齐。
+class _FlatVisibilityIcon extends StatelessWidget {
+  const _FlatVisibilityIcon({required this.id, required this.visible});
+  final String id;
+  final bool visible;
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    key: Key('dashboard-visibility-$id'),
+    width: flatHeaderHeight,
+    height: flatEditRowHeight,
+    child: Icon(
+      visible ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+      size: flatActionIconSize,
+      color: appColor(context, visible ? flatAccentColor : flatMutedColor),
+    ),
   );
 }
 
@@ -157,52 +189,128 @@ class DashboardEditor extends StatelessWidget {
   final void Function(String, String?, bool) onMove;
   final VoidCallback onReset, onDone;
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final flat = PanelStyleScope.isFlat(context);
+    return Column(
+      children: [
+        if (flat) _flatBar(context) else _cardBar(context),
+        Expanded(
+          child: ListView(
+            primary: false,
+            padding: flat
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(horizontal: 12),
+            children: [
+              for (final id in modules)
+                DashboardDropTarget(
+                  key: Key('dashboard-target-$id'),
+                  id: id,
+                  onMove: (data, after) => onMove(data, id, after),
+                  child: DashboardEditItem(
+                    id: id,
+                    hidden: hidden.contains(id),
+                    onToggle: () => onToggle(id),
+                    child: cardBuilder(id),
+                  ),
+                ),
+              DashboardDropTarget(
+                key: const Key('dashboard-target-end'),
+                onMove: (id, _) => onMove(id, null, false),
+                child: const SizedBox(height: 64, width: double.infinity),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _cardBar(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      Row(
+      IconButton(
+        key: const Key('dashboard-edit-reset'),
+        tooltip: AppLocalizations.of(context)!.restoreDefaultOrder,
+        onPressed: onReset,
+        icon: const Icon(Icons.settings_backup_restore_rounded),
+        color: appColor(context, const Color(0xff8197a5)),
+      ),
+      IconButton(
+        key: const Key('dashboard-edit-done'),
+        tooltip: AppLocalizations.of(context)!.editDone,
+        onPressed: onDone,
+        icon: const Icon(Icons.check_rounded),
+        color: appColor(context, const Color(0xffd4a85f)),
+      ),
+    ],
+  );
+
+  // 放不下时先省略「还原」：「完成」是退出编辑的唯一入口，最多占满整行。
+  Widget _flatBar(BuildContext context) => SizedBox(
+    key: const Key('dashboard-edit-bar'),
+    height: flatHeaderHeight,
+    child: LayoutBuilder(
+      builder: (context, constraints) => Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          IconButton(
-            key: const Key('dashboard-edit-reset'),
-            tooltip: AppLocalizations.of(context)!.restoreDefaultOrder,
-            onPressed: onReset,
-            icon: const Icon(Icons.settings_backup_restore_rounded),
-            color: appColor(context, const Color(0xff8197a5)),
+          Flexible(
+            child: _FlatTextButton(
+              key: const Key('dashboard-edit-reset'),
+              label: AppLocalizations.of(context)!.restoreDefaultOrder,
+              color: flatMutedColor,
+              onTap: onReset,
+            ),
           ),
-          IconButton(
-            key: const Key('dashboard-edit-done'),
-            tooltip: AppLocalizations.of(context)!.editDone,
-            onPressed: onDone,
-            icon: const Icon(Icons.check_rounded),
-            color: appColor(context, const Color(0xffd4a85f)),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+            child: _FlatTextButton(
+              key: const Key('dashboard-edit-done'),
+              label: AppLocalizations.of(context)!.editDone,
+              color: flatAccentColor,
+              bold: true,
+              onTap: onDone,
+            ),
           ),
         ],
       ),
-      Expanded(
-        child: ListView(
-          primary: false,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          children: [
-            for (final id in modules)
-              DashboardDropTarget(
-                key: Key('dashboard-target-$id'),
-                id: id,
-                onMove: (data, after) => onMove(data, id, after),
-                child: DashboardEditItem(
-                  id: id,
-                  hidden: hidden.contains(id),
-                  onToggle: () => onToggle(id),
-                  child: cardBuilder(id),
-                ),
-              ),
-            DashboardDropTarget(
-              key: const Key('dashboard-target-end'),
-              onMove: (id, _) => onMove(id, null, false),
-              child: const SizedBox(height: 64, width: double.infinity),
+    ),
+  );
+}
+
+class _FlatTextButton extends StatelessWidget {
+  const _FlatTextButton({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.bold = false,
+  });
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool bold;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: appColor(context, color),
+              fontSize: flatRowFontSize,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
             ),
-          ],
+          ),
         ),
       ),
-    ],
+    ),
   );
 }

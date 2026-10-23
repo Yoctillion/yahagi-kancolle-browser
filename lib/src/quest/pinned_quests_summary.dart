@@ -4,7 +4,12 @@ import 'package:flutter/material.dart';
 import '../game_state/game_state_controller.dart';
 import '../game_state/game_state.dart';
 import '../fleet/dashboard_card.dart';
+import '../layout/flat_empty_text.dart';
+import '../layout/flat_style.dart';
 import '../layout/hd_dashboard_content.dart';
+import '../layout/flat_list_row.dart';
+import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import '../settings/module_display_settings.dart';
 import 'quest_catalog_controller.dart';
 
@@ -51,8 +56,10 @@ class PinnedQuestsSummary extends StatelessWidget {
         final l10n =
             AppLocalizations.of(context) ??
             lookupAppLocalizations(const Locale('zh'));
+        final flat = PanelStyleScope.isFlat(context);
 
         return DashboardCard(
+          collapsedSummary: collapsed ? questSummary(l10n, state) : null,
           headerAction: moduleDisplayGear(
             context,
             'quests',
@@ -69,241 +76,282 @@ class PinnedQuestsSummary extends StatelessWidget {
             children: [
               if (pinnedQuests.isEmpty &&
                   (!state.hasQuestData || state.activeQuestCount == 0))
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Center(
-                    child: Text(
-                      state.hasQuestData
-                          ? l10n.noPinnedQuests
-                          : l10n.questsNeedSync,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, Color(0xff8197a5)),
-                          fontSize: 13,
+                flat
+                    ? FlatEmptyText(
+                        state.hasQuestData
+                            ? l10n.noPinnedQuests
+                            : l10n.questsNeedSync,
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Center(
+                          child: Text(
+                            state.hasQuestData
+                                ? l10n.noPinnedQuests
+                                : l10n.questsNeedSync,
+                            style: TextStyle(
+                              color: appColor(context, const Color(0xff8197a5)),
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                )
+                      )
               else ...<Widget>[
                 if (visible.isNotEmpty)
                   HdDashboardItems(
-                    spacing: 3,
-                    runSpacing: 3,
+                    spacing: flat ? 0 : 3,
+                    runSpacing: flat ? 0 : 3,
                     children: pinnedQuests
                         .map(
-                          (q) => Material(
-                            key: Key('quest-summary-item-${q.id}'),
-                            color: appColor(context, Colors.transparent),
-                            child: InkWell(
-                              onTap: () => onOpenQuest(q.id),
-                              borderRadius: BorderRadius.circular(6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: appColor(
-                                    context,
-                                    const Color(0xff0d1a26),
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    final english =
-                                        Localizations.maybeLocaleOf(
+                          (q) => flat
+                              ? _flatRow(context, l10n, q)
+                              : Material(
+                                  key: Key('quest-summary-item-${q.id}'),
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => onOpenQuest(q.id),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: appColor(
                                           context,
-                                        )?.languageCode ==
-                                        'en';
-                                    // Narrow cards and enlarged text need room
-                                    // for the name and confirmation label.
-                                    final wrapping =
-                                        english ||
-                                        constraints.maxWidth < 320 ||
-                                        MediaQuery.textScalerOf(
-                                              context,
-                                            ).scale(12) >
-                                            12;
-                                    final children = <Widget>[
-                                      if (visible.contains('type')) ...[
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: appColor(
-                                              context,
-                                              q.categoryColor.withValues(
-                                                alpha: 0.2,
-                                              ),
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            switch (q.category) {
-                                              1 => l10n.questFormation,
-                                              2 ||
-                                              8 ||
-                                              9 ||
-                                              10 => l10n.questSortie,
-                                              3 => l10n.questExercise,
-                                              4 => l10n.expedition,
-                                              5 => l10n.questSupplyRepair,
-                                              6 || 11 => l10n.questFactory,
-                                              7 => l10n.questRemodeling,
-                                              _ => l10n.questOther,
-                                            },
-                                            style: appTextStyle(
-                                              context,
-                                              TextStyle(
-                                                color: q.categoryColor,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
+                                          const Color(0xff0d1a26),
                                         ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      if (visible.contains('number')) ...[
-                                        Container(
-                                          key: Key(
-                                            'quest-summary-number-${q.id}',
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: appColor(
-                                              context,
-                                              q.categoryColor.withValues(
-                                                alpha: 0.2,
-                                              ),
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            catalogController?.catalog
-                                                    .byGameId(q.id)
-                                                    ?.code ??
-                                                '#${q.id}',
-                                            style: appTextStyle(
-                                              context,
-                                              TextStyle(
-                                                color: q.categoryColor,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      if (visible.contains('name'))
-                                        if (wrapping)
-                                          Text(
-                                            gameNames(
-                                              context,
-                                            ).entityText(q.title),
-                                            style: appTextStyle(
-                                              context,
-                                              TextStyle(
-                                                color: appColor(
-                                                  context,
-                                                  Color(0xffecf3f5),
-                                                ),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          )
-                                        else
-                                          Expanded(
-                                            child: Text(
-                                              gameNames(
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          final english =
+                                              Localizations.maybeLocaleOf(
                                                 context,
-                                              ).entityText(q.title),
-                                              style: appTextStyle(
-                                                context,
-                                                TextStyle(
+                                              )?.languageCode ==
+                                              'en';
+                                          // Narrow cards and enlarged text need room
+                                          // for the name and confirmation label.
+                                          final wrapping =
+                                              english ||
+                                              constraints.maxWidth < 320 ||
+                                              MediaQuery.textScalerOf(
+                                                    context,
+                                                  ).scale(12) >
+                                                  12;
+                                          final children = <Widget>[
+                                            if (visible.contains('type')) ...[
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
                                                   color: appColor(
                                                     context,
-                                                    Color(0xffecf3f5),
+                                                    q.categoryColor.withValues(
+                                                      alpha: 0.2,
+                                                    ),
                                                   ),
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w700,
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  _categoryLabel(l10n, q),
+                                                  style: TextStyle(
+                                                    color: appColor(
+                                                      context,
+                                                      q.categoryColor,
+                                                    ),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
                                                 ),
                                               ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                      if (!visible.contains('name') &&
-                                          !wrapping)
-                                        const Spacer(),
-                                      if (visible.contains('progress')) ...[
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _getProgressText(q, l10n),
-                                          style: appTextStyle(
-                                            context,
-                                            TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: _getProgressColor(q),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ];
-                                    return wrapping
-                                        ? Wrap(
-                                            runSpacing: 4,
-                                            crossAxisAlignment:
-                                                WrapCrossAlignment.center,
-                                            children: children,
-                                          )
-                                        : Row(children: children);
-                                  },
+                                              const SizedBox(width: 8),
+                                            ],
+                                            if (visible.contains('number')) ...[
+                                              Container(
+                                                key: Key(
+                                                  'quest-summary-number-${q.id}',
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: appColor(
+                                                    context,
+                                                    q.categoryColor.withValues(
+                                                      alpha: 0.2,
+                                                    ),
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  catalogController?.catalog
+                                                          .byGameId(q.id)
+                                                          ?.code ??
+                                                      '#${q.id}',
+                                                  style: TextStyle(
+                                                    color: appColor(
+                                                      context,
+                                                      q.categoryColor,
+                                                    ),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                            ],
+                                            if (visible.contains('name'))
+                                              if (wrapping)
+                                                Text(
+                                                  gameNames(
+                                                    context,
+                                                  ).entityText(q.title),
+                                                  style: TextStyle(
+                                                    color: appColor(
+                                                      context,
+                                                      const Color(0xffecf3f5),
+                                                    ),
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                )
+                                              else
+                                                Expanded(
+                                                  child: Text(
+                                                    gameNames(
+                                                      context,
+                                                    ).entityText(q.title),
+                                                    style: TextStyle(
+                                                      color: appColor(
+                                                        context,
+                                                        const Color(0xffecf3f5),
+                                                      ),
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                            if (!visible.contains('name') &&
+                                                !wrapping)
+                                              const Spacer(),
+                                            if (visible.contains(
+                                              'progress',
+                                            )) ...[
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                _getProgressText(q, l10n),
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: appColor(
+                                                    context,
+                                                    _getProgressColor(q),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ];
+                                          return wrapping
+                                              ? Wrap(
+                                                  runSpacing: 4,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment.center,
+                                                  children: children,
+                                                )
+                                              : Row(children: children);
+                                        },
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
                         )
                         .toList(),
                   ),
                 for (var index = 0; index < missingQuestCount; index++)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Text(
-                      l10n.questsNeedSync,
-                      textAlign: TextAlign.center,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, Color(0xff8197a5)),
-                          fontSize: 12,
+                  flat
+                      ? FlatEmptyText(l10n.questsNeedSync)
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: Text(
+                            l10n.questsNeedSync,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: appColor(context, const Color(0xff8197a5)),
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
               ],
               const SizedBox(height: 2),
             ],
           ),
         );
       },
+    );
+  }
+
+  String _categoryLabel(AppLocalizations l10n, GameQuest q) =>
+      switch (q.category) {
+        1 => l10n.questFormation,
+        2 || 8 || 9 || 10 => l10n.questSortie,
+        3 => l10n.questExercise,
+        4 => l10n.expedition,
+        5 => l10n.questSupplyRepair,
+        6 || 11 => l10n.questFactory,
+        7 => l10n.questRemodeling,
+        _ => l10n.questOther,
+      };
+
+  Widget _flatRow(BuildContext context, AppLocalizations l10n, GameQuest q) {
+    Widget tag(Key? key, String text) =>
+        flatRowText(context, text, key: key, color: q.categoryColor);
+    final showType = visible.contains('type');
+    final showNumber = visible.contains('number');
+    final progress = visible.contains('progress')
+        ? _getProgressText(q, l10n)
+        : '';
+    return KeyedSubtree(
+      key: Key('quest-summary-item-${q.id}'),
+      child: FlatListRow(
+        onTap: () => onOpenQuest(q.id),
+        tags: [
+          if (showType) tag(null, _categoryLabel(l10n, q)),
+          if (showNumber)
+            tag(
+              Key('quest-summary-number-${q.id}'),
+              catalogController?.catalog.byGameId(q.id)?.code ?? '#${q.id}',
+            ),
+        ],
+        name: visible.contains('name')
+            ? flatRowText(
+                context,
+                gameNames(context).entityText(q.title),
+                color: const Color(0xffecf3f5),
+              )
+            : null,
+        trailing: progress.isEmpty
+            ? null
+            : flatRowText(
+                context,
+                progress,
+                color: q.isCompleted ? flatDoneColor : _getProgressColor(q),
+              ),
+      ),
     );
   }
 

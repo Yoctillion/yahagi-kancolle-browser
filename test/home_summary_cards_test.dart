@@ -3,14 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import 'package:yahagi_kancolle_browser/l10n/app_localizations_en.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/construction_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/anchorage_repair_view.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/expedition_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/operation_progress.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/pre_sortie_check_summary.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/repair_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_underline_tabs.dart';
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/quest/quest_store.dart';
 import 'package:yahagi_kancolle_browser/src/quest/pinned_quests_summary.dart';
 import 'package:yahagi_kancolle_browser/src/settings/fleet_display_options.dart';
@@ -1058,6 +1064,485 @@ void main() {
     await tester.pump();
     expect(find.text('5/5 · 已达成（待确认）'), findsOneWidget);
     expect(find.text('完成'), findsNothing);
+  });
+  group('极简档扁平行列表', () {
+    Future<void> pumpFlat(WidgetTester tester, Widget child) async {
+      tester.view.physicalSize = const Size(210, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SizedBox(
+                width: 210,
+                child: PanelStyleScope(style: PanelStyle.flat, child: child),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    const tileColor = Color(0xff0d1a26);
+    Finder tileBoxes() => find.byWidgetPredicate(
+      (w) =>
+          w is Container &&
+          w.decoration is BoxDecoration &&
+          (w.decoration! as BoxDecoration).color == tileColor,
+    );
+
+    testWidgets('远征行没有 tile 底色且点击跳转', (tester) async {
+      final now = DateTime.now().toUtc();
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(
+          GameState(
+            fleets: <Fleet>[
+              Fleet(
+                id: 2,
+                name: 'A very long fleet name',
+                mission: FleetMission(
+                  state: 1,
+                  missionId: 5,
+                  completionTime: now.add(const Duration(hours: 1)),
+                ),
+              ),
+            ],
+            hasPortData: true,
+          ),
+        ),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      var opened = false;
+      await pumpFlat(
+        tester,
+        ExpeditionSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenExpedition: () => opened = true,
+          onOpenExpeditionCheck: (_) {},
+        ),
+      );
+      expect(find.byKey(const Key('expedition-summary-row-2')), findsOneWidget);
+      expect(tileBoxes(), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byKey(const Key('expedition-summary-row-2')));
+      expect(opened, isTrue);
+    });
+
+    GameState dockState(DateTime now) => GameState(
+      masterShips: const <int, MasterShip>{
+        101: MasterShip(id: 101, name: 'Yubari', shipTypeId: 2),
+      },
+      ships: <int, OwnedShip>{
+        9001: OwnedShip(id: 9001, masterId: 101, level: 50),
+      },
+      repairDocks: <RepairDock>[
+        const RepairDock(id: 1),
+        RepairDock(
+          id: 2,
+          state: 1,
+          shipId: 9001,
+          completionTime: now.add(const Duration(hours: 1)),
+        ),
+        const RepairDock(id: 3),
+        const RepairDock(id: 4),
+      ],
+      constructionDocks: <ConstructionDock>[
+        for (var i = 1; i <= 4; i++)
+          ConstructionDock(
+            id: i,
+            state: 2,
+            createdShipMasterId: 101,
+            completionTime: now.add(Duration(hours: i)),
+          ),
+      ],
+      hasPortData: true,
+      hasMasterData: true,
+    );
+
+    testWidgets('入渠 empty 关闭时只列出使用中的船位', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: controller,
+          collapsed: false,
+          visible: const {'portrait'},
+          onToggleCollapse: () {},
+          onOpenRepair: (_) {},
+        ),
+      );
+      expect(
+        find.byKey(const Key('repair-summary-dock-slot-2')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('repair-summary-dock-slot-1')), findsNothing);
+      expect(find.byKey(const Key('repair-summary-dock-slot-3')), findsNothing);
+      expect(tileBoxes(), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('维修模式切换是共用的文字切换，选中金色并可切换', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenRepair: (_) {},
+        ),
+      );
+      final selector = find.byKey(const Key('repair-summary-mode-selector'));
+      expect(tester.widget(selector), isA<FlatTextToggle>());
+      Color? labelColor(String mode) => tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(Key('repair-summary-mode-$mode')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color;
+      expect(labelColor('dock'), flatAccentColor);
+      expect(labelColor('anchorage'), flatMutedColor);
+
+      await tester.tap(find.byKey(const Key('repair-summary-mode-anchorage')));
+      await tester.pumpAndSettle();
+      expect(labelColor('anchorage'), flatAccentColor);
+      expect(find.byKey(const Key('repair-summary-dock-grid')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('泊地舰队切换与编队简报同为下划线标签并传递所选舰队', (tester) async {
+      final controller = GameStateController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(start2Event)
+        ..accept(portEvent)
+        ..accept(slotItemEvent);
+      await controller.idle;
+      RepairDestination? destination;
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenRepair: (value) => destination = value,
+        ),
+      );
+      await tester.tap(find.byKey(const Key('repair-summary-mode-anchorage')));
+      await tester.pumpAndSettle();
+
+      final selector = find.byKey(const Key('repair-summary-fleet-selector'));
+      expect(tester.widget(selector), isA<FlatUnderlineTabs>());
+      Color? labelColor(int fleetId) => tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(Key('repair-summary-fleet-$fleetId')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color;
+      expect(labelColor(1), flatAccentColor);
+      expect(labelColor(2), flatMutedColor);
+
+      await tester.tap(find.byKey(const Key('repair-summary-fleet-2')));
+      await tester.pumpAndSettle();
+      expect(labelColor(2), flatAccentColor);
+      await tester.tap(
+        find.byKey(const Key('repair-summary-anchorage-slot')).first,
+      );
+      expect(destination?.fleetId, 2);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('入渠 empty 开启时空闲船位也列出并排成两列', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenRepair: (_) {},
+        ),
+      );
+      Offset at(int n) =>
+          tester.getTopLeft(find.byKey(Key('repair-summary-dock-slot-$n')));
+      expect(at(1).dx, at(3).dx);
+      expect(at(2).dx, greaterThan(at(1).dx));
+      expect(tileBoxes(), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('建造四个船位排成两列', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(dockState(DateTime.now().toUtc())),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      var opened = false;
+      await pumpFlat(
+        tester,
+        ConstructionSummaryCard(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenConstruction: () => opened = true,
+        ),
+      );
+      final slots = find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith(
+              'construction-summary-slot-',
+            ),
+      );
+      expect(slots, findsNWidgets(4));
+      expect(
+        tester.getTopLeft(slots.at(0)).dx,
+        tester.getTopLeft(slots.at(2)).dx,
+      );
+      expect(
+        tester.getTopLeft(slots.at(1)).dx,
+        greaterThan(tester.getTopLeft(slots.at(0)).dx),
+      );
+      expect(tileBoxes(), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.tap(slots.first);
+      expect(opened, isTrue);
+    });
+
+    testWidgets('远征行短标签时名称占满剩余宽度', (tester) async {
+      final controller = GameStateController(
+        gameStateStore: _StaticStore(
+          GameState(
+            fleets: <Fleet>[
+              Fleet(
+                id: 2,
+                name: 'F2',
+                mission: FleetMission(
+                  state: 1,
+                  missionId: 5,
+                  completionTime: DateTime.now().toUtc().add(
+                    const Duration(hours: 1),
+                  ),
+                ),
+              ),
+            ],
+            hasPortData: true,
+          ),
+        ),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        ExpeditionSummaryCard(
+          controller: controller,
+          collapsed: false,
+          visible: const {'fleet', 'name'},
+          onToggleCollapse: () {},
+          onOpenExpedition: () {},
+          onOpenExpeditionCheck: (_) {},
+        ),
+      );
+      final rowWidth = tester
+          .getSize(find.byKey(const Key('expedition-summary-row-2')))
+          .width;
+      final nameWidth = tester
+          .getSize(find.byKey(const Key('expedition-summary-name-2')))
+          .width;
+      expect(nameWidth, greaterThan(rowWidth / 2));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('任务行短标签时名称占满剩余宽度', (tester) async {
+      final controller = GameStateController(
+        questStore: _StaticQuestStore(<int, GameQuest>{
+          101: const GameQuest(
+            id: 101,
+            title: 'Short',
+            detail: 'd',
+            category: 1,
+            type: 1,
+            state: 2,
+            progressFlag: 1,
+          ),
+        }),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      await pumpFlat(
+        tester,
+        PinnedQuestsSummary(
+          controller: controller,
+          collapsed: false,
+          visible: const {'number', 'name', 'progress'},
+          onToggleCollapse: () {},
+          onOpenQuest: (_) {},
+        ),
+      );
+      final rowWidth = tester
+          .getSize(find.byKey(const Key('quest-summary-item-101')))
+          .width;
+      final nameWidth = tester
+          .getSize(
+            find.ancestor(
+              of: find.text('Short'),
+              matching: find.byType(Expanded),
+            ),
+          )
+          .width;
+      expect(nameWidth, greaterThan(rowWidth / 2));
+      expect(tester.takeException(), isNull);
+    });
+
+    void expectFlatEmptyText(WidgetTester tester, Finder text) {
+      expect(text, findsOneWidget);
+      final style = tester.widget<Text>(text).style;
+      expect(style?.fontSize, 11);
+      expect(style?.color, const Color(0xff8197a5));
+      final padding =
+          tester
+                  .widget<Padding>(
+                    find
+                        .ancestor(of: text, matching: find.byType(Padding))
+                        .first,
+                  )
+                  .padding
+              as EdgeInsets;
+      expect(padding.left, 0);
+      expect(padding.right, 0);
+      expect(padding.top, lessThanOrEqualTo(4));
+      expect(padding.bottom, lessThanOrEqualTo(4));
+      expect(
+        find.ancestor(of: text, matching: find.byType(Center)),
+        findsNothing,
+      );
+    }
+
+    testWidgets('空态文案 11 号摘要灰且不居中', (tester) async {
+      final l10n = AppLocalizationsEn();
+      final empty = GameStateController(
+        gameStateStore: _StaticStore(GameState(hasPortData: true)),
+      );
+      addTearDown(empty.dispose);
+      await empty.idle;
+      Finder gridText() => find.descendant(
+        of: find.byType(ModuleSlotGrid),
+        matching: find.byType(Text),
+      );
+      await pumpFlat(
+        tester,
+        RepairSummaryCard(
+          controller: empty,
+          collapsed: false,
+          visible: const {'portrait'},
+          onToggleCollapse: () {},
+          onOpenRepair: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, gridText());
+      await pumpFlat(
+        tester,
+        ConstructionSummaryCard(
+          controller: empty,
+          collapsed: false,
+          visible: const {'portrait'},
+          onToggleCollapse: () {},
+          onOpenConstruction: () {},
+        ),
+      );
+      expectFlatEmptyText(tester, gridText());
+      await pumpFlat(
+        tester,
+        PinnedQuestsSummary(
+          controller: empty,
+          collapsed: false,
+          visible: const {'number', 'name', 'progress'},
+          onToggleCollapse: () {},
+          onOpenQuest: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.questsNeedSync));
+      await pumpFlat(
+        tester,
+        ExpeditionSummaryCard(
+          controller: empty,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenExpedition: () {},
+          onOpenExpeditionCheck: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.noActiveExpedition));
+      await pumpFlat(
+        tester,
+        PreSortieCheckSummary(
+          controller: empty,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenFleet: (_) {},
+        ),
+      );
+      expectFlatEmptyText(tester, find.text(l10n.noSortieWarnings));
+    });
+
+    testWidgets('任务行仍可点击', (tester) async {
+      final controller = GameStateController(
+        questStore: _StaticQuestStore(<int, GameQuest>{
+          101: const GameQuest(
+            id: 101,
+            title: 'A very long quest title that must truncate',
+            detail: 'd',
+            category: 1,
+            type: 1,
+            state: 2,
+            progressFlag: 1,
+          ),
+        }),
+      );
+      addTearDown(controller.dispose);
+      await controller.idle;
+      int? opened;
+      await pumpFlat(
+        tester,
+        PinnedQuestsSummary(
+          controller: controller,
+          collapsed: false,
+          onToggleCollapse: () {},
+          onOpenQuest: (id) => opened = id,
+        ),
+      );
+      expect(tileBoxes(), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byKey(const Key('quest-summary-item-101')));
+      expect(opened, 101);
+    });
   });
 }
 

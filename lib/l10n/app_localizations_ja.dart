@@ -352,13 +352,45 @@ class AppLocalizationsJa extends AppLocalizations {
   String get uiDisplaySizeTitle => 'UIの表示サイズ';
 
   @override
-  String get uiDisplaySizeDesc => '上部ステータスバーとメニューバーの表示サイズを調整します';
+  String get uiDisplaySizeDesc =>
+      '上部バー・ナビゲーションバー・情報バーの表示密度を調整します。ミニマルでは、スマートフォンの横向き時にゲームページの上部バーを既定で非表示にします';
 
   @override
   String get uiDisplaySizeNormal => '標準';
 
   @override
   String get uiDisplaySizeCompact => 'コンパクト';
+
+  @override
+  String get uiDisplaySizeMinimal => 'ミニマル';
+
+  @override
+  String get panelResourcesExpand => '資源を展開';
+
+  @override
+  String get panelResourcesCollapse => '資源を折りたたむ';
+
+  @override
+  String get panelResourcesCollapsedItems => '折りたたみ時に表示';
+
+  @override
+  String get panelResourcesCollapsedItemsReset => 'デフォルトに戻す';
+
+  @override
+  String get minimalResourcePositionTitle => '資源の位置';
+
+  @override
+  String get minimalResourcePositionDesc =>
+      'ミニマルでスマートフォン横向き時、ゲームページの資源を情報バー上部、ゲーム上の細いバー、または画面下部の細いバーに表示します';
+
+  @override
+  String get minimalResourcePositionPanel => '情報バー';
+
+  @override
+  String get minimalResourcePositionTopBar => '上部バー';
+
+  @override
+  String get minimalResourcePositionBottomBar => '下部バー';
 
   @override
   String get gameAreaRatio => 'ゲーム画面の比率';
@@ -3652,6 +3684,77 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get customFontPreviewRetry => '再プレビュー';
+
+  @override
+  String get browserMenuMute => 'ミュート';
+
+  @override
+  String get browserMenuUnmute => '音声オン';
+
+  @override
+  String get browserMenuScreenshot => 'スクショ';
+
+  @override
+  String get browserMenuFit => '表示修正';
+
+  @override
+  String get browserMenuFullscreen => '全画面';
+
+  @override
+  String get browserMenuHome => 'ホーム';
+
+  @override
+  String get browserMenuDismissHint => '外側をタップで閉じる';
+
+  @override
+  String summaryFleetHeavy(int count) {
+    return '大破 $count';
+  }
+
+  @override
+  String summaryFleetMedium(int count) {
+    return '中破 $count';
+  }
+
+  @override
+  String summaryFleetMinMorale(int value) {
+    return '最低疲労 $value';
+  }
+
+  @override
+  String summaryExpedition(int active, String time) {
+    return '遠征中 $active/3 · 直近 $time';
+  }
+
+  @override
+  String summaryRepair(int busy, int total, String time) {
+    return '使用中 $busy/$total · 直近 $time';
+  }
+
+  @override
+  String summaryRepairBusy(int busy, int total) {
+    return '使用中 $busy/$total';
+  }
+
+  @override
+  String summaryConstruction(int done, int building) {
+    return '完成 $done · 建造中 $building';
+  }
+
+  @override
+  String summaryQuests(int done, int active) {
+    return '達成可能 $done · 進行中 $active';
+  }
+
+  @override
+  String summaryLandBase(int sortie, int defense) {
+    return '出撃 $sortie · 防空 $defense';
+  }
+
+  @override
+  String summaryWarnings(int count) {
+    return '警告 $count';
+  }
 
   @override
   String get questQueryTitle => '任務の検索・絞り込み';

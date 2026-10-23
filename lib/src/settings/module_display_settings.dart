@@ -1,6 +1,9 @@
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../fleet/fleet_ui_strings.dart';
+import '../layout/flat_empty_text.dart';
+import '../layout/flat_style.dart';
+import '../layout/panel_style.dart';
 import 'fleet_display_options.dart';
 import 'layout_settings_controller.dart';
 
@@ -37,21 +40,45 @@ Widget? moduleDisplayGear(
   VoidCallback? onPressed,
 ) => onPressed == null
     ? null
-    : IconButton(
+    : displaySettingsGear(
+        context,
         key: Key('$module-display-settings-button'),
         tooltip: fleetText(
           context,
           moduleDisplayTitles[module] ?? FleetUiKeys.displayContent,
         ),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        padding: EdgeInsets.zero,
-        icon: Icon(
-          Icons.settings_outlined,
-          size: 19,
-          color: appColor(context, Color(0xffd4a85f)),
-        ),
         onPressed: onPressed,
       );
+
+// 扁平标题行只有 24 高，M3 默认把点击区撑到 48，会被标题行连图标一起缩成一半。
+Widget displaySettingsGear(
+  BuildContext context, {
+  required Key key,
+  required String tooltip,
+  required VoidCallback onPressed,
+}) {
+  final flat = PanelStyleScope.isFlat(context);
+  return IconButton(
+    key: key,
+    tooltip: tooltip,
+    constraints: flat
+        ? const BoxConstraints.tightFor(
+            width: flatHeaderHeight,
+            height: flatHeaderHeight,
+          )
+        : const BoxConstraints(minWidth: 36, minHeight: 36),
+    style: flat
+        ? const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap)
+        : null,
+    padding: EdgeInsets.zero,
+    icon: Icon(
+      Icons.settings_outlined,
+      size: flat ? flatActionIconSize : 19,
+      color: appColor(context, const Color(0xffd4a85f)),
+    ),
+    onPressed: onPressed,
+  );
+}
 
 Future<void> showModuleDisplaySettings(
   BuildContext context,
@@ -261,23 +288,29 @@ class ModuleSlotGrid extends StatelessWidget {
     required this.children,
     required this.emptyLabel,
     this.columns = 2,
+    this.runSpacing = 8,
   });
   final int columns;
+  final double runSpacing;
   final List<Widget> children;
   final String emptyLabel;
   @override
   Widget build(BuildContext context) => children.isEmpty
-      ? Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Text(
-            fleetText(context, emptyLabel),
-            style: TextStyle(color: appColor(context, Color(0xff8197a5))),
-          ),
-        )
+      ? PanelStyleScope.isFlat(context)
+            ? FlatEmptyText(fleetText(context, emptyLabel))
+            : Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  fleetText(context, emptyLabel),
+                  style: TextStyle(
+                    color: appColor(context, const Color(0xff8197a5)),
+                  ),
+                ),
+              )
       : LayoutBuilder(
           builder: (context, constraints) => Wrap(
             spacing: 8,
-            runSpacing: 8,
+            runSpacing: runSpacing,
             children: [
               for (final child in children)
                 SizedBox(

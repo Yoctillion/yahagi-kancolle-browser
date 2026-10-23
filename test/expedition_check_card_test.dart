@@ -11,6 +11,7 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dar
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_store.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
+import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -175,6 +176,115 @@ void main() {
     );
     expect(find.text('尽量装满大发'), findsNothing);
     expect(find.text('尽可能多的大发动艇或特大发动艇'), findsOneWidget);
+  });
+
+  group('极简档扁平化', () {
+    Future<void> pumpFlat(
+      WidgetTester tester, {
+      required PanelStyle style,
+      String languageCode = 'en',
+      double width = 190,
+    }) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = GameStateController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(start2Event)
+        ..accept(portEvent)
+        ..accept(slotItemEvent);
+      await controller.idle;
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: Locale(languageCode),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.3)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PanelStyleScope(
+                style: style,
+                child: ExpeditionCheckContent(
+                  controller: controller,
+                  onOpenDetails: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Finder inCheck(Finder matching) => find.descendant(
+      of: find.byType(ExpeditionCheckContent),
+      matching: matching,
+    );
+
+    int decoratedBoxes(WidgetTester tester) {
+      var count = 0;
+      for (final box in tester.widgetList<DecoratedBox>(
+        inCheck(find.byType(DecoratedBox)),
+      )) {
+        final decoration = box.decoration;
+        if (decoration is! BoxDecoration ||
+            decoration.color != null ||
+            decoration.border != null ||
+            decoration.borderRadius != null) {
+          count++;
+        }
+      }
+      for (final material in tester.widgetList<Material>(
+        inCheck(find.byType(Material)),
+      )) {
+        if (material.color != null && material.color != Colors.transparent) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    Future<void> openDetailedGreat(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('expedition-mode-detailed')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('expedition-success-great')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('flat 下检查模式不含带底色、圆角或边框的方块', (tester) async {
+      await pumpFlat(tester, style: PanelStyle.flat);
+      expect(decoratedBoxes(tester), 0);
+      await openDetailedGreat(tester);
+      expect(decoratedBoxes(tester), 0);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('flat 下约 190 宽、英文、1.3 倍字号无溢出', (tester) async {
+      await pumpFlat(tester, style: PanelStyle.flat);
+      await openDetailedGreat(tester);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('flat 下模式切换是无底色文字，选中金色、未选灰色', (tester) async {
+      await pumpFlat(tester, style: PanelStyle.flat, languageCode: 'zh');
+      Color colorOf(String label) =>
+          tester.widget<Text>(find.text(label)).style!.color!;
+      expect(colorOf('简洁'), const Color(0xffd4a85f));
+      expect(colorOf('详细'), const Color(0xff8197a5));
+      expect(tester.widget<Text>(find.text('简洁')).style!.fontSize, 10.5);
+    });
+
+    testWidgets('非 flat 仍保留方块装饰', (tester) async {
+      await pumpFlat(tester, style: PanelStyle.card, width: 420);
+      expect(decoratedBoxes(tester), greaterThan(0));
+    });
   });
 
   testWidgets('首页远征检查默认选择远征 1', (tester) async {

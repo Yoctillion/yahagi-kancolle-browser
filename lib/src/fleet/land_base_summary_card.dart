@@ -4,9 +4,16 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
+import '../layout/flat_portrait_backdrop.dart';
+import '../layout/flat_style.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'dashboard_card.dart';
+import '../layout/flat_empty_text.dart';
+import '../layout/flat_list_row.dart';
+import '../layout/flat_text_toggle.dart';
 import '../layout/hd_dashboard_content.dart';
+import '../layout/module_summaries.dart';
+import '../layout/panel_style.dart';
 import '../settings/module_display_settings.dart';
 import 'equipment_type_icon.dart';
 import 'fleet_ship_status_capsule.dart';
@@ -66,6 +73,9 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
       bases.sort((left, right) => left.baseId.compareTo(right.baseId));
 
       return DashboardCard(
+        collapsedSummary: widget.collapsed
+            ? landBaseSummary(l10n, bases)
+            : null,
         headerAction: moduleDisplayGear(
           context,
           'land_base',
@@ -84,18 +94,19 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
           onSelected: (selected) => setState(() => _selectedAreaId = selected),
         ),
         child: bases.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.all(16),
-                child: Center(
-                  child: Text(
-                    l10n.landBaseNoData,
-                    style: appTextStyle(
-                      context,
-                      TextStyle(color: appColor(context, Color(0xff8197a5))),
-                    ),
-                  ),
-                ),
-              )
+            ? PanelStyleScope.isFlat(context)
+                  ? FlatEmptyText(l10n.landBaseNoData)
+                  : Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                        child: Text(
+                          l10n.landBaseNoData,
+                          style: TextStyle(
+                            color: appColor(context, const Color(0xff8197a5)),
+                          ),
+                        ),
+                      ),
+                    )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
@@ -114,7 +125,9 @@ class _LandBaseSummaryCardState extends State<LandBaseSummaryCard> {
                           columnCount;
                       return Wrap(
                         spacing: gap,
-                        runSpacing: gap,
+                        runSpacing: PanelStyleScope.isFlat(context)
+                            ? flatRowSpacing
+                            : gap,
                         children: <Widget>[
                           for (final base in bases)
                             SizedBox(
@@ -149,40 +162,50 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: const Key('land-base-area-switcher'),
-    constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
-    height: 22,
-    padding: const EdgeInsets.all(2),
-    decoration: BoxDecoration(
-      color: appColor(context, Color(0xff102331)),
-      border: Border.all(color: appColor(context, Color(0xff294052))),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        for (final areaId in areaIds)
-          Material(
-            key: Key('land-base-area-selector-$areaId'),
-            color: appColor(
-              context,
-              areaId == selectedAreaId
+  Widget build(BuildContext context) {
+    if (PanelStyleScope.isFlat(context)) {
+      return FlatTextToggle(
+        key: const Key('land-base-area-switcher'),
+        options: [
+          for (final areaId in areaIds)
+            FlatTextToggleOption(
+              key: Key('land-base-area-selector-$areaId'),
+              label: '$areaId',
+              selected: areaId == selectedAreaId,
+              onTap: () => onSelected(areaId),
+            ),
+        ],
+      );
+    }
+    return Container(
+      key: const Key('land-base-area-switcher'),
+      constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
+      height: 22,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: const Color(0xff102331),
+        border: Border.all(color: const Color(0xff294052)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          for (final areaId in areaIds)
+            Material(
+              key: Key('land-base-area-selector-$areaId'),
+              color: areaId == selectedAreaId
                   ? const Color(0xff8a6628)
                   : Colors.transparent,
-            ),
-            borderRadius: BorderRadius.circular(6),
-            child: InkWell(
-              onTap: () => onSelected(areaId),
               borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                width: 32,
-                child: Center(
-                  child: Text(
-                    '$areaId',
-                    style: appTextStyle(
-                      context,
-                      TextStyle(
+              child: InkWell(
+                onTap: () => onSelected(areaId),
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: 32,
+                  child: Center(
+                    child: Text(
+                      '$areaId',
+                      style: TextStyle(
                         color: areaId == selectedAreaId
                             ? const Color(0xffffdc88)
                             : const Color(0xff9fb3bf),
@@ -194,10 +217,10 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class LandBaseAirGroupRow extends StatelessWidget {
@@ -218,6 +241,16 @@ class LandBaseAirGroupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (PanelStyleScope.isFlat(context)) {
+      return _FlatLandBaseRow(
+        key: Key('land-base-row-$_keySuffix'),
+        state: state,
+        base: base,
+        visible: visible,
+        damagePulseMode: damagePulseMode,
+        keySuffix: _keySuffix,
+      );
+    }
     final maximumHp = base.maxHp ?? 200;
     final currentHp = base.currentHp ?? maximumHp;
     final hpRatio = maximumHp <= 0
@@ -764,6 +797,361 @@ class _LandBaseSquadronSlot extends StatelessWidget {
             child: content,
           )
         : content;
+  }
+}
+
+class _FlatLandBaseRow extends StatelessWidget {
+  const _FlatLandBaseRow({
+    super.key,
+    required this.state,
+    required this.base,
+    required this.visible,
+    required this.damagePulseMode,
+    required this.keySuffix,
+  });
+
+  final GameState state;
+  final LandBaseState base;
+  final Set<String> visible;
+  final DamagePulseFilter damagePulseMode;
+  final String keySuffix;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final portraitMaster = visible.contains('portrait')
+        ? _portraitMaster(state, base)
+        : null;
+    final shadows = portraitMaster != null ? flatOnImageShadows(context) : null;
+    final maximumHp = base.maxHp ?? 200;
+    final currentHp = base.currentHp;
+    // 基地 HP 只在空袭后才有数据，平时恒为满血；只在已知且受损时占位。
+    final damagedHp = currentHp != null && currentHp < maximumHp
+        ? currentHp
+        : null;
+    final meter = damagedHp != null && visible.contains('bars');
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        FlatListRow(
+          tags: <Widget>[
+            flatRowText(
+              context,
+              _actionLabel(base.actionKind, l10n),
+              key: Key('land-base-action-chip-$keySuffix'),
+              color: _actionColor(base.actionKind),
+              shadows: shadows,
+            ),
+          ],
+          name: flatRowText(
+            context,
+            base.name,
+            key: Key('land-base-name-$keySuffix'),
+            shadows: shadows,
+          ),
+          trailing: flatRowTrailing(
+            _trailing(
+              context,
+              l10n,
+              damagedHp,
+              maximumHp,
+              shadows,
+              pulseValue: !meter,
+            ),
+          ),
+        ),
+        // 血条与行间距同高、互相替换，受损前后整行高度不变。
+        if (meter)
+          _damagePulse(
+            context,
+            damagedHp,
+            maximumHp,
+            _hpMeter(context, damagedHp, maximumHp),
+          )
+        else
+          const SizedBox(height: flatRowSpacing),
+        Row(
+          key: Key('land-base-squadron-strip-$keySuffix'),
+          children: <Widget>[
+            for (var squadronId = 1; squadronId <= 4; squadronId++) ...[
+              if (squadronId > 1) const SizedBox(width: 4),
+              Expanded(
+                child: _FlatSquadronCell(
+                  state: state,
+                  squadron: _squadron(base, squadronId),
+                  keySuffix: '$keySuffix-$squadronId',
+                  shadows: shadows,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+    if (portraitMaster == null) return content;
+    return FlatPortraitBackdrop(
+      imageKey: Key('land-base-portrait-$keySuffix'),
+      image: (width, height) => SlotItemPortrait(
+        item: portraitMaster,
+        serverOrigin: state.serverOrigin,
+        width: width,
+        height: height,
+      ),
+      child: content,
+    );
+  }
+
+  // trailing 被 FlatListRow 封顶半行宽，文字标签会把整段缩到看不清，所以只用图标 + 数值。
+  Widget _trailing(
+    BuildContext context,
+    AppLocalizations l10n,
+    int? damagedHp,
+    int maximumHp,
+    List<Shadow>? shadows, {
+    required bool pulseValue,
+  }) {
+    final airPower = LandBaseAirPower.calculate(state: state, base: base);
+    final items = <Widget>[
+      if (damagedHp != null)
+        _iconValue(
+          key: Key('land-base-hp-value-$keySuffix'),
+          icon: Icon(
+            Icons.favorite_rounded,
+            key: Key('land-base-hp-icon-$keySuffix'),
+            color: appColor(context, const Color(0xffef5a5a)),
+            size: 10,
+            shadows: shadows,
+          ),
+          value: _hpValue(
+            context,
+            damagedHp,
+            maximumHp,
+            shadows,
+            pulse: pulseValue,
+          ),
+        ),
+      if (visible.contains('airPower'))
+        _iconValue(
+          key: Key('land-base-air-power-chip-$keySuffix'),
+          icon: Icon(
+            Icons.flight_rounded,
+            color: appColor(context, const Color(0xffd4a74e)),
+            size: 10,
+            semanticLabel: l10n.airPower,
+            shadows: shadows,
+          ),
+          value: Text(
+            airPower.displayValue,
+            style: flatRowTextStyle(
+              context,
+              color: const Color(0xffd4a74e),
+              shadows: shadows,
+            ),
+          ),
+        ),
+      if (visible.contains('range'))
+        _iconValue(
+          key: Key('land-base-range-chip-$keySuffix'),
+          icon: Icon(
+            Icons.radar,
+            color: appColor(context, const Color(0xff70b8d8)),
+            size: 10,
+            semanticLabel: l10n.landBaseRange,
+            shadows: shadows,
+          ),
+          value: Text(
+            '${base.effectiveDistance}',
+            style: flatRowTextStyle(
+              context,
+              color: const Color(0xff70b8d8),
+              shadows: shadows,
+            ),
+          ),
+        ),
+    ];
+    return Row(
+      key: Key('land-base-identity-line-$keySuffix'),
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        for (var index = 0; index < items.length; index++) ...[
+          if (index > 0) const SizedBox(width: 6),
+          items[index],
+        ],
+      ],
+    );
+  }
+
+  Widget _iconValue({
+    required Key key,
+    required Widget icon,
+    required Widget value,
+  }) => Row(
+    key: key,
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[icon, const SizedBox(width: 2), value],
+  );
+
+  Widget _hpValue(
+    BuildContext context,
+    int currentHp,
+    int maximumHp,
+    List<Shadow>? shadows, {
+    required bool pulse,
+  }) {
+    final text = Text(
+      '$currentHp',
+      style: TextStyle(
+        color: appColor(
+          context,
+          shipHpValueColor(
+            _hpRatio(currentHp, maximumHp),
+            isZeroHp: currentHp <= 0,
+          ),
+        ),
+        fontSize: flatRowFontSize,
+        fontWeight: FontWeight.w800,
+        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+        shadows: shadows,
+      ),
+    );
+    return pulse ? _damagePulse(context, currentHp, maximumHp, text) : text;
+  }
+
+  Widget _hpMeter(BuildContext context, int currentHp, int maximumHp) {
+    final hpRatio = _hpRatio(currentHp, maximumHp);
+    return Container(
+      key: Key('land-base-hp-meter-$keySuffix'),
+      height: flatRowSpacing,
+      color: appColor(context, const Color(0xff294052)),
+      alignment: Alignment.centerLeft,
+      child: FractionallySizedBox(
+        widthFactor: hpRatio,
+        heightFactor: 1,
+        child: ColoredBox(
+          color: appColor(
+            context,
+            shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static double _hpRatio(int currentHp, int maximumHp) =>
+      maximumHp <= 0 ? 0.0 : (currentHp / maximumHp).clamp(0.0, 1.0);
+
+  Widget _damagePulse(
+    BuildContext context,
+    int currentHp,
+    int maximumHp,
+    Widget child,
+  ) => DamagePulseGlow(
+    currentHp: currentHp,
+    maxHp: maximumHp,
+    filter: damagePulseMode,
+    normalColor: appColor(
+      context,
+      shipHpBarColor(_hpRatio(currentHp, maximumHp), isZeroHp: currentHp <= 0),
+    ),
+    child: child,
+  );
+}
+
+class _FlatSquadronCell extends StatelessWidget {
+  const _FlatSquadronCell({
+    required this.state,
+    required this.squadron,
+    required this.keySuffix,
+    required this.shadows,
+  });
+
+  final GameState state;
+  final LandBaseSquadronState? squadron;
+  final String keySuffix;
+  final List<Shadow>? shadows;
+
+  @override
+  Widget build(BuildContext context) {
+    final squadron = this.squadron;
+    final owned = squadron == null
+        ? null
+        : state.slotItems[squadron.slotItemId];
+    final master = owned == null
+        ? null
+        : state.masterSlotItems[owned.masterSlotItemId];
+    final iconId = master != null && master.type.length > 3
+        ? master.type[3]
+        : -1;
+    final proficiency = owned?.proficiency ?? 0;
+    final fatigueColor = squadron == null
+        ? null
+        : landBaseFatigueColor(landBaseFatigueLevel(<int>[squadron.condition]));
+    final missing =
+        squadron != null &&
+        squadron.maxCount > 0 &&
+        squadron.currentCount < squadron.maxCount;
+    final cell = Container(
+      key: Key('land-base-slot-$keySuffix'),
+      height: 18,
+      // 用前景装饰画下划线：border 会挤占内边距，使疲劳格内容与正常格错位。
+      foregroundDecoration: fatigueColor == null
+          ? null
+          : BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: appColor(context, fatigueColor),
+                  width: 2,
+                ),
+              ),
+            ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            EquipmentTypeIconImage(
+              key: Key('land-base-slot-icon-$keySuffix'),
+              iconId: iconId,
+              width: 14,
+              height: 14,
+            ),
+            if (proficiency > 0)
+              Image.asset(
+                'assets/images/airplane/alv${proficiency.clamp(1, 7)}.png',
+                key: Key('land-base-slot-proficiency-$keySuffix'),
+                width: 8,
+                height: 10,
+              ),
+            const SizedBox(width: 2),
+            Text(
+              squadron == null ? '—' : '${squadron.currentCount}',
+              key: Key('land-base-slot-count-$keySuffix'),
+              style: TextStyle(
+                color: appColor(
+                  context,
+                  missing ? const Color(0xffff8b78) : const Color(0xffe8f1f5),
+                ),
+                fontSize: flatRowFontSize,
+                height: 1,
+                fontWeight: FontWeight.w900,
+                shadows: shadows,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    return squadron?.state == 2
+        ? Opacity(
+            key: Key('land-base-slot-relocating-$keySuffix'),
+            opacity: 0.38,
+            child: cell,
+          )
+        : cell;
   }
 }
 

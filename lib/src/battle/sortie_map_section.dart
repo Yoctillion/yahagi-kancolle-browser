@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../layout/flat_style.dart';
+import '../layout/panel_style.dart';
 import 'battle_detail_strings.dart';
 import 'battle_ui_text.dart';
 import 'fcd_map_geometry.dart';
@@ -27,6 +29,7 @@ class SortieMapSection extends StatefulWidget {
     required this.expanded,
     required this.onToggleExpanded,
     this.currentNodeLabel,
+    this.showCurrentNode = true,
   });
 
   final SortieMapProgress progress;
@@ -34,6 +37,9 @@ class SortieMapSection extends StatefulWidget {
   final bool expanded;
   final VoidCallback onToggleExpanded;
   final String? currentNodeLabel;
+
+  /// False when a header outside the section already names the current node.
+  final bool showCurrentNode;
 
   @override
   State<SortieMapSection> createState() => _SortieMapSectionState();
@@ -51,6 +57,8 @@ class _SortieMapSectionState extends State<SortieMapSection> {
     final expanded = widget.expanded;
     final progress = widget.progress;
     final english = Localizations.localeOf(context).languageCode == 'en';
+    final flat = PanelStyleScope.isFlat(context);
+    final summary = widget.showCurrentNode ? scene.summary : progress.mapKey;
     final title = BattleUiText(
       scene.strings.sortieMapTitle,
       style: appTextStyle(
@@ -62,174 +70,191 @@ class _SortieMapSectionState extends State<SortieMapSection> {
         ),
       ),
     );
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          expanded: expanded,
+          child: TextButton(
+            key: const Key('sortie-map-toggle'),
+            onPressed: widget.onToggleExpanded,
+            style: TextButton.styleFrom(
+              foregroundColor: appColor(context, _teal),
+              minimumSize: Size(0, flat ? 22 : 44),
+              padding: flat
+                  ? const EdgeInsets.symmetric(vertical: 2)
+                  : const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: const RoundedRectangleBorder(),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                children: [
+                  Icon(Icons.map_outlined, size: flat ? 13 : 14),
+                  const SizedBox(width: 6),
+                  if (english)
+                    Flexible(flex: 3, child: title)
+                  else
+                    ConstrainedBox(
+                      // Keep short titles intrinsic, but leave summary space
+                      // when accessibility text sizes enlarge the title.
+                      constraints: BoxConstraints(
+                        maxWidth: math.max(0, constraints.maxWidth - 50) * .6,
+                      ),
+                      child: title,
+                    ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: english ? 2 : 1,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          BattleUiText(
+                            summary,
+                            textAlign: TextAlign.end,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: appTextStyle(
+                              context,
+                              TextStyle(
+                                color: appColor(context, _muted),
+                                fontSize: flat ? flatSmallFontSize : 10,
+                              ),
+                            ),
+                          ),
+                          if (!expanded && scene.needsUpdate)
+                            BattleUiText(
+                              scene.strings.mapUnavailable,
+                              textAlign: TextAlign.end,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: appTextStyle(
+                                context,
+                                TextStyle(
+                                  color: appColor(context, _gold),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    color: appColor(context, _muted),
+                    size: flat ? 15 : 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (expanded)
+          Container(
+            key: const Key('sortie-map-body'),
+            padding: flat
+                ? const EdgeInsets.fromLTRB(0, 2, 0, 4)
+                : const EdgeInsets.fromLTRB(9, 2, 9, 8),
+            decoration: flat
+                ? null
+                : BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: appColor(context, const Color(0xff203746)),
+                      ),
+                    ),
+                  ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (scene.hasGeometry)
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 430),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => SizedBox(
+                          width: constraints.maxWidth,
+                          height: (constraints.maxWidth * .44 + 16).clamp(
+                            125.0,
+                            175.0,
+                          ),
+                          child: RepaintBoundary(
+                            child: _MapCanvas(
+                              key: const Key('sortie-map-canvas'),
+                              scene: scene,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: BattleUiText(
+                      scene.strings.mapUnavailable,
+                      textAlign: TextAlign.center,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, _muted),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (scene.hasGeometry && scene.needsUpdate)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 5),
+                    child: BattleUiText(
+                      scene.strings.mapUnavailable,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, _gold),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (progress.isPartial)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: BattleUiText(
+                      scene.strings.mapPartial,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: appColor(context, _muted),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+    if (flat) {
+      // Still a Material so the toggle's ink has a surface to paint on.
+      return Material(
+        key: const Key('sortie-map-section'),
+        type: MaterialType.transparency,
+        child: content,
+      );
+    }
     return Material(
       key: const Key('sortie-map-section'),
       color: appColor(context, _background),
       borderRadius: BorderRadius.circular(8),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            expanded: expanded,
-            child: TextButton(
-              key: const Key('sortie-map-toggle'),
-              onPressed: widget.onToggleExpanded,
-              style: TextButton.styleFrom(
-                foregroundColor: appColor(context, _teal),
-                minimumSize: const Size(0, 44),
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: const RoundedRectangleBorder(),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  children: [
-                    const Icon(Icons.map_outlined, size: 14),
-                    const SizedBox(width: 6),
-                    if (english)
-                      Flexible(flex: 3, child: title)
-                    else
-                      ConstrainedBox(
-                        // Keep short titles intrinsic, but leave summary space
-                        // when accessibility text sizes enlarge the title.
-                        constraints: BoxConstraints(
-                          maxWidth: math.max(0, constraints.maxWidth - 50) * .6,
-                        ),
-                        child: title,
-                      ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: english ? 2 : 1,
-                      child: Semantics(
-                        liveRegion: true,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            BattleUiText(
-                              scene.summary,
-                              textAlign: TextAlign.end,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: appTextStyle(
-                                context,
-                                TextStyle(
-                                  color: appColor(context, _muted),
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                            if (!expanded && scene.needsUpdate)
-                              BattleUiText(
-                                scene.strings.mapUnavailable,
-                                textAlign: TextAlign.end,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: appTextStyle(
-                                  context,
-                                  TextStyle(
-                                    color: appColor(context, _gold),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      expanded ? Icons.expand_less : Icons.expand_more,
-                      color: appColor(context, _muted),
-                      size: 18,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          if (expanded)
-            Container(
-              key: const Key('sortie-map-body'),
-              padding: const EdgeInsets.fromLTRB(9, 2, 9, 8),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: appColor(context, Color(0xff203746))),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (scene.hasGeometry)
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 430),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) => SizedBox(
-                            width: constraints.maxWidth,
-                            height: (constraints.maxWidth * .44 + 16).clamp(
-                              125.0,
-                              175.0,
-                            ),
-                            child: RepaintBoundary(
-                              child: _MapCanvas(
-                                key: const Key('sortie-map-canvas'),
-                                scene: scene,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      child: BattleUiText(
-                        scene.strings.mapUnavailable,
-                        textAlign: TextAlign.center,
-                        style: appTextStyle(
-                          context,
-                          TextStyle(
-                            color: appColor(context, _muted),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (scene.hasGeometry && scene.needsUpdate)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, bottom: 5),
-                      child: BattleUiText(
-                        scene.strings.mapUnavailable,
-                        style: appTextStyle(
-                          context,
-                          TextStyle(
-                            color: appColor(context, _gold),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (progress.isPartial)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: BattleUiText(
-                        scene.strings.mapPartial,
-                        style: appTextStyle(
-                          context,
-                          TextStyle(
-                            color: appColor(context, _muted),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-        ],
-      ),
+      child: content,
     );
   }
 }
