@@ -3860,6 +3860,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String questQueryActive(int count) {
     return '$count 项查询条件已生效';
   }
+
+  @override
+  String get practicePanelEmpty => '打开演习画面后显示对手';
+
+  @override
+  String get practiceNotFought => '未演习';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S胜基础经验 $exp';
+  }
+
+  @override
+  String get practiceRank1 => '元帅';
+
+  @override
+  String get practiceRank2 => '大将';
+
+  @override
+  String get practiceRank3 => '中将';
+
+  @override
+  String get practiceRank4 => '少将';
+
+  @override
+  String get practiceRank5 => '大佐';
+
+  @override
+  String get practiceRank6 => '中佐';
+
+  @override
+  String get practiceRank7 => '新手中佐';
+
+  @override
+  String get practiceRank8 => '少佐';
+
+  @override
+  String get practiceRank9 => '中坚少佐';
+
+  @override
+  String get practiceRank10 => '新手少佐';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -7720,4 +7761,45 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String questQueryActive(int count) {
     return '$count 項查詢條件已生效';
   }
+
+  @override
+  String get practicePanelEmpty => '打開演習畫面後顯示對手';
+
+  @override
+  String get practiceNotFought => '未演習';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S勝基礎經驗 $exp';
+  }
+
+  @override
+  String get practiceRank1 => '元帥';
+
+  @override
+  String get practiceRank2 => '大將';
+
+  @override
+  String get practiceRank3 => '中將';
+
+  @override
+  String get practiceRank4 => '少將';
+
+  @override
+  String get practiceRank5 => '大佐';
+
+  @override
+  String get practiceRank6 => '中佐';
+
+  @override
+  String get practiceRank7 => '新手中佐';
+
+  @override
+  String get practiceRank8 => '少佐';
+
+  @override
+  String get practiceRank9 => '中堅少佐';
+
+  @override
+  String get practiceRank10 => '新手少佐';
 }

@@ -3905,4 +3905,45 @@ class AppLocalizationsJa extends AppLocalizations {
   String questQueryActive(int count) {
     return '$count 件の検索条件を適用中';
   }
+
+  @override
+  String get practicePanelEmpty => '演習画面を開くと相手が表示されます';
+
+  @override
+  String get practiceNotFought => '未演習';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S勝利 基本経験値 $exp';
+  }
+
+  @override
+  String get practiceRank1 => '元帥';
+
+  @override
+  String get practiceRank2 => '大将';
+
+  @override
+  String get practiceRank3 => '中将';
+
+  @override
+  String get practiceRank4 => '少将';
+
+  @override
+  String get practiceRank5 => '大佐';
+
+  @override
+  String get practiceRank6 => '中佐';
+
+  @override
+  String get practiceRank7 => '新米中佐';
+
+  @override
+  String get practiceRank8 => '少佐';
+
+  @override
+  String get practiceRank9 => '中堅少佐';
+
+  @override
+  String get practiceRank10 => '新米少佐';
 }

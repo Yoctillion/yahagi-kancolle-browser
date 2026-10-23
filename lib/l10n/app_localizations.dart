@@ -7231,6 +7231,84 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{count} 项查询条件已生效'**
   String questQueryActive(int count);
+
+  /// No description provided for @practicePanelEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开演习画面后显示对手'**
+  String get practicePanelEmpty;
+
+  /// No description provided for @practiceNotFought.
+  ///
+  /// In zh, this message translates to:
+  /// **'未演习'**
+  String get practiceNotFought;
+
+  /// No description provided for @practiceBaseExpS.
+  ///
+  /// In zh, this message translates to:
+  /// **'S胜基础经验 {exp}'**
+  String practiceBaseExpS(int exp);
+
+  /// No description provided for @practiceRank1.
+  ///
+  /// In zh, this message translates to:
+  /// **'元帅'**
+  String get practiceRank1;
+
+  /// No description provided for @practiceRank2.
+  ///
+  /// In zh, this message translates to:
+  /// **'大将'**
+  String get practiceRank2;
+
+  /// No description provided for @practiceRank3.
+  ///
+  /// In zh, this message translates to:
+  /// **'中将'**
+  String get practiceRank3;
+
+  /// No description provided for @practiceRank4.
+  ///
+  /// In zh, this message translates to:
+  /// **'少将'**
+  String get practiceRank4;
+
+  /// No description provided for @practiceRank5.
+  ///
+  /// In zh, this message translates to:
+  /// **'大佐'**
+  String get practiceRank5;
+
+  /// No description provided for @practiceRank6.
+  ///
+  /// In zh, this message translates to:
+  /// **'中佐'**
+  String get practiceRank6;
+
+  /// No description provided for @practiceRank7.
+  ///
+  /// In zh, this message translates to:
+  /// **'新手中佐'**
+  String get practiceRank7;
+
+  /// No description provided for @practiceRank8.
+  ///
+  /// In zh, this message translates to:
+  /// **'少佐'**
+  String get practiceRank8;
+
+  /// No description provided for @practiceRank9.
+  ///
+  /// In zh, this message translates to:
+  /// **'中坚少佐'**
+  String get practiceRank9;
+
+  /// No description provided for @practiceRank10.
+  ///
+  /// In zh, this message translates to:
+  /// **'新手少佐'**
+  String get practiceRank10;
 }
 
 class _AppLocalizationsDelegate

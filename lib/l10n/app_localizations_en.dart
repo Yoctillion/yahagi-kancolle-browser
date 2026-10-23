@@ -4035,4 +4035,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String questQueryActive(int count) {
     return '$count query conditions applied';
   }
+
+  @override
+  String get practicePanelEmpty => 'Open the exercise screen to see opponents';
+
+  @override
+  String get practiceNotFought => 'Not fought';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S-rank base EXP $exp';
+  }
+
+  @override
+  String get practiceRank1 => 'Marshal Admiral';
+
+  @override
+  String get practiceRank2 => 'Admiral';
+
+  @override
+  String get practiceRank3 => 'Vice Admiral';
+
+  @override
+  String get practiceRank4 => 'Rear Admiral';
+
+  @override
+  String get practiceRank5 => 'Captain';
+
+  @override
+  String get practiceRank6 => 'Commander';
+
+  @override
+  String get practiceRank7 => 'Novice Commander';
+
+  @override
+  String get practiceRank8 => 'Lieutenant Commander';
+
+  @override
+  String get practiceRank9 => 'Seasoned Lt. Commander';
+
+  @override
+  String get practiceRank10 => 'Novice Lt. Commander';
 }

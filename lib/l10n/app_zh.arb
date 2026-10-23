@@ -1424,5 +1424,19 @@
   "questNoSuccessors": "资料未列出后续任务",
   "japaneseOriginal": "日文原文",
   "questQueryActive": "{count} 项查询条件已生效",
-  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}}
+  "@questQueryActive": {"placeholders": {"count": {"type": "int"}}},
+  "practicePanelEmpty": "打开演习画面后显示对手",
+  "practiceNotFought": "未演习",
+  "practiceBaseExpS": "S胜基础经验 {exp}",
+  "@practiceBaseExpS": {"placeholders": {"exp": {"type": "int"}}},
+  "practiceRank1": "元帅",
+  "practiceRank2": "大将",
+  "practiceRank3": "中将",
+  "practiceRank4": "少将",
+  "practiceRank5": "大佐",
+  "practiceRank6": "中佐",
+  "practiceRank7": "新手中佐",
+  "practiceRank8": "少佐",
+  "practiceRank9": "中坚少佐",
+  "practiceRank10": "新手少佐"
 }

@@ -3933,4 +3933,45 @@ class AppLocalizationsKo extends AppLocalizations {
   String questQueryActive(int count) {
     return '검색 조건 $count개 적용 중';
   }
+
+  @override
+  String get practicePanelEmpty => '연습 화면을 열면 상대가 표시됩니다';
+
+  @override
+  String get practiceNotFought => '미연습';
+
+  @override
+  String practiceBaseExpS(int exp) {
+    return 'S승 기본 경험치 $exp';
+  }
+
+  @override
+  String get practiceRank1 => '원수';
+
+  @override
+  String get practiceRank2 => '대장';
+
+  @override
+  String get practiceRank3 => '중장';
+
+  @override
+  String get practiceRank4 => '소장';
+
+  @override
+  String get practiceRank5 => '대좌';
+
+  @override
+  String get practiceRank6 => '중좌';
+
+  @override
+  String get practiceRank7 => '신참 중좌';
+
+  @override
+  String get practiceRank8 => '소좌';
+
+  @override
+  String get practiceRank9 => '중견 소좌';
+
+  @override
+  String get practiceRank10 => '신참 소좌';
 }
