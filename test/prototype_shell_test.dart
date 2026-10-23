@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -3387,6 +3388,41 @@ void main() {
           final list = tester.widget<ListView>(panelList());
           expect((list.padding! as EdgeInsets).bottom, 0);
           expect(tester.takeException(), isNull);
+        },
+      );
+
+      testWidgets(
+        'safe area mode hides the game column shadow under the bar',
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+        (tester) async {
+          useBottomInset(tester, 21);
+          final layout = await _pumpMinimalShell(tester);
+          await layout.setMinimalResourcePosition(
+            MinimalResourcePosition.bottomBar,
+          );
+          await tester.pumpAndSettle();
+
+          final bytes = await tester.runAsync(() async {
+            final image = await captureImage(tester.element(find.byKey(bar)));
+            return image.toByteData(format: ui.ImageByteFormat.rawRgba);
+          });
+          final stride = _phoneLandscape.width.round();
+          // 最底一行在图标下方，只有底色和游戏列向信息栏投出的阴影。
+          final y = _phoneLandscape.height.round() - 1;
+          final edge = gameColumn(tester).right.round();
+          for (var x = edge - 2; x <= edge + 6; x++) {
+            final i = (y * stride + x) * 4;
+            expect(
+              Color.fromARGB(
+                bytes!.getUint8(i + 3),
+                bytes.getUint8(i),
+                bytes.getUint8(i + 1),
+                bytes.getUint8(i + 2),
+              ),
+              const Color(0xff0a1823),
+              reason: 'x=$x',
+            );
+          }
         },
       );
 

@@ -1980,8 +1980,11 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                 ? cornerInsetAt(corners.bottomRight, contentBottom)
                 : 0),
       ),
+      // 安全区里信息栏和分隔线都止于横栏上沿，游戏列却铺到底，它投向信息栏的
+      // 阴影要由横栏铺底色盖住。内嵌横栏可点，不能铺：墨水画在整屏 Material 上，
+      // 会被底色盖住。
       decoration: inSafeArea
-          ? null
+          ? BoxDecoration(color: appColor(context, const Color(0xff0a1823)))
           : BoxDecoration(
               border: Border(
                 top: BorderSide(
