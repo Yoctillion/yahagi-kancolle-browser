@@ -8,6 +8,7 @@ import '../layout/game_edge_tap_guard.dart';
 import '../localization/game_name_localizations.dart';
 import '../settings/battle_status_effect_settings.dart';
 import '../settings/fleet_display_options.dart';
+import '../theme/app_palette.dart';
 import 'combat_mechanism.dart';
 import 'equipment_display.dart';
 import 'equipment_type_icon.dart';
@@ -116,12 +117,15 @@ class _MoraleChipState extends State<MoraleChip>
     padding: const EdgeInsets.symmetric(horizontal: 2),
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: style.background,
+      color: appColor(context, style.background),
       borderRadius: BorderRadius.circular(3),
       boxShadow: glow > 0
           ? [
               BoxShadow(
-                color: const Color(0xfffff27a).withValues(alpha: 0.6 * glow),
+                color: appColor(
+                  context,
+                  const Color(0xfffff27a).withValues(alpha: 0.6 * glow),
+                ),
                 blurRadius: 5,
               ),
             ]
@@ -130,13 +134,13 @@ class _MoraleChipState extends State<MoraleChip>
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(style.icon, size: 9, color: style.foreground),
+        Icon(style.icon, size: 9, color: appColor(context, style.foreground)),
         const SizedBox(width: 1),
         Text(
           '${widget.value}',
           maxLines: 1,
           style: TextStyle(
-            color: style.foreground,
+            color: appColor(context, style.foreground),
             fontSize: 9,
             height: 1,
             fontWeight: FontWeight.w800,
@@ -206,7 +210,7 @@ class FleetShipMinimalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final master = state.masterForShip(ship);
     final portrait = _show('portrait');
-    final shadows = portrait ? flatOnImageShadows : null;
+    final shadows = portrait ? flatOnImageShadows(context) : null;
     final hasStatus = ['hp', 'fuel', 'ammo', 'morale'].any(_show);
     final lines = Padding(
       padding: const EdgeInsets.fromLTRB(2, 2, 2, 1),
@@ -217,7 +221,7 @@ class FleetShipMinimalRow extends StatelessWidget {
           SizedBox(height: 14, child: _identityLine(context, master, shadows)),
           if (hasStatus) ...[
             const SizedBox(height: 1),
-            SizedBox(height: 12, child: _statusLine(master, shadows)),
+            SizedBox(height: 12, child: _statusLine(context, master, shadows)),
           ],
         ],
       ),
@@ -276,7 +280,7 @@ class FleetShipMinimalRow extends StatelessWidget {
         Text(
           'Lv${ship.level}',
           style: TextStyle(
-            color: flatMutedColor,
+            color: appColor(context, flatMutedColor),
             fontSize: 9,
             fontWeight: FontWeight.w700,
             shadows: shadows,
@@ -331,7 +335,7 @@ class FleetShipMinimalRow extends StatelessWidget {
                       softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: const Color(0xffa9bac4),
+                        color: appColor(context, const Color(0xffa9bac4)),
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         shadows: shadows,
@@ -348,7 +352,7 @@ class FleetShipMinimalRow extends StatelessWidget {
                     softWrap: false,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: _textColor,
+                      color: appColor(context, _textColor),
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       shadows: shadows,
@@ -393,19 +397,23 @@ class FleetShipMinimalRow extends StatelessWidget {
     );
   }
 
-  Widget _statusLine(MasterShip? master, List<Shadow>? shadows) {
+  Widget _statusLine(
+    BuildContext context,
+    MasterShip? master,
+    List<Shadow>? shadows,
+  ) {
     final currentHp = repairStatus == ShipRepairStatus.retreat
         ? 0
         : ship.currentHp;
     final hpRatio = _ratio(currentHp, ship.maxHp);
     final barColor = shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0);
     if (!_show('bars')) {
-      return _valueLine(master, shadows, currentHp, hpRatio, barColor);
+      return _valueLine(context, master, shadows, currentHp, hpRatio, barColor);
     }
     final hpBar = ProphetHpBar(
       value: hpRatio,
-      color: barColor,
-      backgroundColor: const Color(0xff294052),
+      color: appColor(context, barColor),
+      backgroundColor: appColor(context, const Color(0xff294052)),
       height: 4,
     );
     final showSupply = _show('fuel') || _show('ammo');
@@ -420,7 +428,7 @@ class FleetShipMinimalRow extends StatelessWidget {
                     currentHp: currentHp,
                     maxHp: ship.maxHp,
                     filter: damagePulseFilter,
-                    normalColor: barColor,
+                    normalColor: appColor(context, barColor),
                     borderRadius: BorderRadius.circular(2),
                     child: hpBar,
                   ),
@@ -436,7 +444,10 @@ class FleetShipMinimalRow extends StatelessWidget {
                 key: Key('minimal-hp-value-${ship.id}'),
                 maxLines: 1,
                 style: TextStyle(
-                  color: shipHpValueColor(hpRatio, isZeroHp: currentHp <= 0),
+                  color: appColor(
+                    context,
+                    shipHpValueColor(hpRatio, isZeroHp: currentHp <= 0),
+                  ),
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                   fontFeatures: const [FontFeature.tabularFigures()],
@@ -473,6 +484,7 @@ class FleetShipMinimalRow extends StatelessWidget {
 
   // 与普通档关闭条状一致只剩数值；补给细条也随之换成数值，从左依次排开。
   Widget _valueLine(
+    BuildContext context,
     MasterShip? master,
     List<Shadow>? shadows,
     int currentHp,
@@ -484,7 +496,7 @@ class FleetShipMinimalRow extends StatelessWidget {
       key: key,
       maxLines: 1,
       style: TextStyle(
-        color: color,
+        color: appColor(context, color),
         fontSize: 9,
         fontWeight: FontWeight.w800,
         fontFeatures: const [FontFeature.tabularFigures()],
@@ -513,7 +525,7 @@ class FleetShipMinimalRow extends StatelessWidget {
         item(
           Icon(
             Icons.favorite_rounded,
-            color: const Color(0xffef5a5a),
+            color: appColor(context, const Color(0xffef5a5a)),
             size: 10,
             shadows: shadows,
           ),
@@ -523,7 +535,7 @@ class FleetShipMinimalRow extends StatelessWidget {
                   currentHp: currentHp,
                   maxHp: ship.maxHp,
                   filter: damagePulseFilter,
-                  normalColor: barColor,
+                  normalColor: appColor(context, barColor),
                   child: hpText,
                 ),
         ),
@@ -581,14 +593,14 @@ class _Tag extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
     decoration: BoxDecoration(
-      color: background ?? color.withValues(alpha: 0.18),
+      color: appColor(context, background ?? color.withValues(alpha: 0.18)),
       borderRadius: BorderRadius.circular(3),
     ),
     child: Text(
       text,
       maxLines: 1,
       style: TextStyle(
-        color: color,
+        color: appColor(context, color),
         fontSize: 8,
         height: 1.1,
         fontWeight: FontWeight.w700,
@@ -608,7 +620,7 @@ class _SupplyBar extends StatelessWidget {
     height: 3,
     alignment: Alignment.centerLeft,
     decoration: BoxDecoration(
-      color: const Color(0xff294052),
+      color: appColor(context, const Color(0xff294052)),
       borderRadius: BorderRadius.circular(1.5),
     ),
     child: FractionallySizedBox(
@@ -616,7 +628,7 @@ class _SupplyBar extends StatelessWidget {
       heightFactor: 1,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: shipSupplyBarColor(ratio),
+          color: appColor(context, shipSupplyBarColor(ratio)),
           borderRadius: BorderRadius.circular(1.5),
         ),
       ),

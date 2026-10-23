@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_palette.dart';
+
 /// 极简档（扁平面板）的折叠箭头。图标贴着点击框右缘，信息栏里资源区和各模块的
 /// 箭头才能右缘对齐；M3 的 IconButton 会把图标居中在至少 40 宽的按钮里，对不齐。
 class FlatCollapseChevron extends StatelessWidget {
@@ -72,7 +74,7 @@ class FlatCollapseChevron extends StatelessWidget {
                               ? Icons.keyboard_arrow_down_rounded
                               : Icons.keyboard_arrow_up_rounded,
                           size: _iconSize,
-                          color: const Color(0xff8fa8b6),
+                          color: appColor(context, const Color(0xff8fa8b6)),
                         ),
                       ),
                     ),

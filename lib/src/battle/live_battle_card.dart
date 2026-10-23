@@ -827,14 +827,17 @@ class _FlatFormationLine extends StatelessWidget {
           if (enemy != null) (enemy!, _enemyStyle),
         ];
         return Text.rich(
-          TextSpan(
-            style: _baseStyle,
-            children: <InlineSpan>[
-              for (var index = 0; index < segments.length; index++) ...[
-                if (index > 0) flatSegmentSeparator,
-                TextSpan(text: segments[index].$1, style: segments[index].$2),
+          appTextSpan(
+            context,
+            TextSpan(
+              style: _baseStyle,
+              children: <InlineSpan>[
+                for (var index = 0; index < segments.length; index++) ...[
+                  if (index > 0) flatSegmentSeparator,
+                  TextSpan(text: segments[index].$1, style: segments[index].$2),
+                ],
               ],
-            ],
+            ),
           ),
           textAlign: TextAlign.center,
         );
@@ -1129,8 +1132,8 @@ class _IdleBattleContent extends StatelessWidget {
           color: const Color(0xff70c7bc),
           child: Text(
             text,
-            style: const TextStyle(
-              color: flatMutedColor,
+            style: TextStyle(
+              color: appColor(context, flatMutedColor),
               fontSize: flatRowFontSize,
             ),
           ),

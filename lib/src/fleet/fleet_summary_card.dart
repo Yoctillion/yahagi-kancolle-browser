@@ -485,7 +485,10 @@ class _FleetSummaryMetrics extends StatelessWidget {
       return SeparatedWrap(
         key: const Key('fleet-summary-metrics'),
         separator: '·',
-        style: const TextStyle(color: Color(0xff4f6676), fontSize: 10),
+        style: TextStyle(
+          color: appColor(context, const Color(0xff4f6676)),
+          fontSize: 10,
+        ),
         children: [
           for (var index = 0; index < values.length; index++)
             _FlatSummaryMetric(
@@ -633,18 +636,21 @@ class _FlatSummaryMetric extends StatelessWidget {
           Text(
             label,
             maxLines: 1,
-            style: const TextStyle(color: Color(0xff8197a5), fontSize: 10),
+            style: TextStyle(
+              color: appColor(context, const Color(0xff8197a5)),
+              fontSize: 10,
+            ),
           ),
           const SizedBox(width: 3),
           Text(
             value,
             key: Key('fleet-summary-metric-$id-value'),
             maxLines: 1,
-            style: const TextStyle(
-              color: Color(0xffdce6eb),
+            style: TextStyle(
+              color: appColor(context, const Color(0xffdce6eb)),
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
             ),
           ),
         ],

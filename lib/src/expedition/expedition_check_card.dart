@@ -495,6 +495,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             softWrap: false,
             overflow: TextOverflow.ellipsis,
             style: flatRowTextStyle(
+              context,
               color: neutral
                   ? flatMutedColor
                   : passed
@@ -625,7 +626,7 @@ Widget _resourceTile(BuildContext context, int apiId, int value, bool flat) {
           filterQuality: FilterQuality.medium,
         ),
         const Spacer(),
-        Text('$value', style: flatRowTextStyle()),
+        Text('$value', style: flatRowTextStyle(context)),
       ],
     );
   }
@@ -708,8 +709,8 @@ Widget _itemTile(BuildContext context, ExpeditionRewardItem item, bool flat) {
               label ?? '道具',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: flatMutedColor,
+              style: TextStyle(
+                color: appColor(context, flatMutedColor),
                 fontSize: flatRowFontSize,
               ),
             ),
@@ -720,14 +721,14 @@ Widget _itemTile(BuildContext context, ExpeditionRewardItem item, bool flat) {
             kindText,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: flatMutedColor,
+            style: TextStyle(
+              color: appColor(context, flatMutedColor),
               fontSize: flatRowFontSize,
             ),
           ),
         ),
         const Spacer(),
-        Text('${item.count}', style: flatRowTextStyle()),
+        Text('${item.count}', style: flatRowTextStyle(context)),
       ],
     );
   }
@@ -792,20 +793,20 @@ Widget _conditionRow(
               : condition.auxiliary
               ? '!'
               : '×',
-          style: flatRowTextStyle(color: color),
+          style: flatRowTextStyle(context, color: color),
         ),
       ],
       name: Text(
         gameNames(context).entityText(strings.conditionLabel(condition)),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: flatRowTextStyle(),
+        style: flatRowTextStyle(context),
       ),
       trailing: flatRowTrailing(
         Text(
           strings.conditionActual(condition),
           maxLines: 1,
-          style: flatRowTextStyle(color: color),
+          style: flatRowTextStyle(context, color: color),
         ),
       ),
     );

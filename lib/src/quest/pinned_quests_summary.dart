@@ -319,7 +319,7 @@ class PinnedQuestsSummary extends StatelessWidget {
 
   Widget _flatRow(BuildContext context, AppLocalizations l10n, GameQuest q) {
     Widget tag(Key? key, String text) =>
-        flatRowText(text, key: key, color: q.categoryColor);
+        flatRowText(context, text, key: key, color: q.categoryColor);
     final showType = visible.contains('type');
     final showNumber = visible.contains('number');
     final progress = visible.contains('progress')
@@ -339,6 +339,7 @@ class PinnedQuestsSummary extends StatelessWidget {
         ],
         name: visible.contains('name')
             ? flatRowText(
+                context,
                 gameNames(context).entityText(q.title),
                 color: const Color(0xffecf3f5),
               )
@@ -346,6 +347,7 @@ class PinnedQuestsSummary extends StatelessWidget {
         trailing: progress.isEmpty
             ? null
             : flatRowText(
+                context,
                 progress,
                 color: q.isCompleted ? flatDoneColor : _getProgressColor(q),
               ),

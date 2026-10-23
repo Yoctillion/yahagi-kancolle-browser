@@ -91,7 +91,7 @@ class _FlatVisibilityIcon extends StatelessWidget {
     child: Icon(
       visible ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
       size: flatActionIconSize,
-      color: visible ? flatAccentColor : flatMutedColor,
+      color: appColor(context, visible ? flatAccentColor : flatMutedColor),
     ),
   );
 }
@@ -304,7 +304,7 @@ class _FlatTextButton extends StatelessWidget {
             softWrap: false,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: color,
+              color: appColor(context, color),
               fontSize: flatRowFontSize,
               fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
             ),

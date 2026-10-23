@@ -226,7 +226,10 @@ class DashboardCard extends StatelessWidget {
       children: [
         if (showLogo) ...[
           IconTheme(
-            data: const IconThemeData(size: 13, color: flatAccentColor),
+            data: IconThemeData(
+              size: 13,
+              color: appColor(context, flatAccentColor),
+            ),
             child: icon,
           ),
           if (showTitle) const SizedBox(width: 6),
@@ -259,7 +262,7 @@ class DashboardCard extends StatelessWidget {
                   ],
                   if (_showSummary(true)) ...[
                     const SizedBox(width: 8),
-                    Expanded(child: _summary()),
+                    Expanded(child: _summary(context)),
                   ],
                 ],
               ),
@@ -311,12 +314,15 @@ class DashboardCard extends StatelessWidget {
   bool _showSummary(bool flat) =>
       flat && collapsed && (collapsedSummary?.isNotEmpty ?? false);
 
-  Widget _summary() => Text(
+  Widget _summary(BuildContext context) => Text(
     collapsedSummary!,
     key: const Key('dashboard-card-summary'),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
-    style: const TextStyle(color: flatMutedColor, fontSize: flatSmallFontSize),
+    style: TextStyle(
+      color: appColor(context, flatMutedColor),
+      fontSize: flatSmallFontSize,
+    ),
   );
 
   Widget _englishHeader(BuildContext context) => Column(

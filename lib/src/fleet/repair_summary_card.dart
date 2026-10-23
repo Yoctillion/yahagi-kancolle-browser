@@ -242,7 +242,9 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
                 completedText: strings.completed,
                 completedColor: _flat ? flatDoneColor : const Color(0xff4caf50),
                 countingColor: const Color(0xffd4a85f),
-                style: _flat ? flatRowTextStyle() : operationSummaryTimeStyle,
+                style: _flat
+                    ? flatRowTextStyle(context)
+                    : operationSummaryTimeStyle,
                 maxLines: 1,
               ),
             )
@@ -885,6 +887,7 @@ class _RepairCapsule extends StatelessWidget {
         key: contentKey,
         onTap: onTap,
         name: flatRowText(
+          context,
           name,
           color: disabled ? const Color(0xff4a5c68) : Colors.white,
         ),

@@ -131,7 +131,10 @@ class DamagePulseGlow extends StatelessWidget {
                 borderRadius: borderRadius,
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: spec.color.withValues(alpha: 0.3 + 0.5 * phase),
+                    color: appColor(
+                      context,
+                      spec.color,
+                    ).withValues(alpha: 0.3 + 0.5 * phase),
                     blurRadius: 2 + 3 * phase,
                   ),
                 ],

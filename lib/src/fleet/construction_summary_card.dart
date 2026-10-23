@@ -144,6 +144,7 @@ class ConstructionSummaryCard extends StatelessWidget {
         key: Key('construction-summary-slot-$position'),
         onTap: onOpenConstruction,
         name: flatRowText(
+          context,
           active ? '$position · $name' : '$position',
           color: disabled ? const Color(0xff4a5c68) : Colors.white,
         ),
@@ -152,20 +153,21 @@ class ConstructionSummaryCard extends StatelessWidget {
                 completed
                     ? Text(
                         fleetText(context, '已完成'),
-                        style: flatRowTextStyle(color: flatDoneColor),
+                        style: flatRowTextStyle(context, color: flatDoneColor),
                       )
                     : OperationCountdownText(
                         completionTime: dock.completionTime,
                         completedText: fleetText(context, '已完成'),
                         completedColor: flatDoneColor,
                         countingColor: flatAccentColor,
-                        style: flatRowTextStyle(),
+                        style: flatRowTextStyle(context),
                       ),
               )
             : Text(
                 fleetText(context, disabled ? '锁' : '闲置'),
                 maxLines: 1,
                 style: flatRowTextStyle(
+                  context,
                   color: disabled ? const Color(0xff4a5c68) : flatMutedColor,
                 ),
               ),

@@ -1982,9 +1982,12 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       ),
       decoration: inSafeArea
           ? null
-          : const BoxDecoration(
+          : BoxDecoration(
               border: Border(
-                top: BorderSide(color: flatDividerColor, width: dividerExtent),
+                top: BorderSide(
+                  color: appColor(context, flatDividerColor),
+                  width: dividerExtent,
+                ),
               ),
             ),
       child: _buildGameResourceBar(

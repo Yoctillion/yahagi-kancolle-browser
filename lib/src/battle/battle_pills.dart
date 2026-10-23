@@ -110,17 +110,24 @@ class BattleTagLine extends StatelessWidget {
     ];
     const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
     return Text.rich(
-      TextSpan(
-        style: style,
-        children: <InlineSpan>[
-          for (var index = 0; index < segments.length; index++) ...<InlineSpan>[
-            if (index > 0) flatSegmentSeparator,
-            TextSpan(
-              text: segments[index].$1,
-              style: TextStyle(color: segments[index].$2),
-            ),
+      appTextSpan(
+        context,
+        TextSpan(
+          style: style,
+          children: <InlineSpan>[
+            for (
+              var index = 0;
+              index < segments.length;
+              index++
+            ) ...<InlineSpan>[
+              if (index > 0) flatSegmentSeparator,
+              TextSpan(
+                text: segments[index].$1,
+                style: TextStyle(color: segments[index].$2),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
@@ -153,8 +160,8 @@ class BattleDropLine extends StatelessWidget {
           ...dropEntries,
           if (rewardItems.isNotEmpty) _rewardItemsText(rewardItems),
         ].join(' · '),
-        style: const TextStyle(
-          color: flatAccentColor,
+        style: TextStyle(
+          color: appColor(context, flatAccentColor),
           fontSize: 10.5,
           fontWeight: FontWeight.w600,
         ),
@@ -316,25 +323,28 @@ class FlatNavigationHeader extends StatelessWidget {
       color: const Color(0xff70c7bc),
       child: Text.rich(
         key: const Key('battle-navigation-tag-line'),
-        TextSpan(
-          style: const TextStyle(
-            fontSize: flatSmallFontSize,
-            fontWeight: FontWeight.w600,
-          ),
-          children: <InlineSpan>[
-            TextSpan(
-              text: strings.localize(battle.context.forecastNodeLabel),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: flatRowFontSize,
-                fontWeight: FontWeight.w700,
-              ),
+        appTextSpan(
+          context,
+          TextSpan(
+            style: const TextStyle(
+              fontSize: flatSmallFontSize,
+              fontWeight: FontWeight.w600,
             ),
-            for (final segment in navigationHeaderSegments(
-              battle,
-              showLastFormationHint: showLastFormationHint,
-            )) ...[flatSegmentSeparator, ...spansOf(segment)],
-          ],
+            children: <InlineSpan>[
+              TextSpan(
+                text: strings.localize(battle.context.forecastNodeLabel),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: flatRowFontSize,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              for (final segment in navigationHeaderSegments(
+                battle,
+                showLastFormationHint: showLastFormationHint,
+              )) ...[flatSegmentSeparator, ...spansOf(segment)],
+            ],
+          ),
         ),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,

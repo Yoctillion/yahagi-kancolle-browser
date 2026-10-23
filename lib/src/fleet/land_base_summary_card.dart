@@ -824,7 +824,7 @@ class _FlatLandBaseRow extends StatelessWidget {
     final portraitMaster = visible.contains('portrait')
         ? _portraitMaster(state, base)
         : null;
-    final shadows = portraitMaster != null ? flatOnImageShadows : null;
+    final shadows = portraitMaster != null ? flatOnImageShadows(context) : null;
     final maximumHp = base.maxHp ?? 200;
     final currentHp = base.currentHp;
     // 基地 HP 只在空袭后才有数据，平时恒为满血；只在已知且受损时占位。
@@ -839,6 +839,7 @@ class _FlatLandBaseRow extends StatelessWidget {
         FlatListRow(
           tags: <Widget>[
             flatRowText(
+              context,
               _actionLabel(base.actionKind, l10n),
               key: Key('land-base-action-chip-$keySuffix'),
               color: _actionColor(base.actionKind),
@@ -846,17 +847,30 @@ class _FlatLandBaseRow extends StatelessWidget {
             ),
           ],
           name: flatRowText(
+            context,
             base.name,
             key: Key('land-base-name-$keySuffix'),
             shadows: shadows,
           ),
           trailing: flatRowTrailing(
-            _trailing(l10n, damagedHp, maximumHp, shadows, pulseValue: !meter),
+            _trailing(
+              context,
+              l10n,
+              damagedHp,
+              maximumHp,
+              shadows,
+              pulseValue: !meter,
+            ),
           ),
         ),
         // 血条与行间距同高、互相替换，受损前后整行高度不变。
         if (meter)
-          _damagePulse(damagedHp, maximumHp, _hpMeter(damagedHp, maximumHp))
+          _damagePulse(
+            context,
+            damagedHp,
+            maximumHp,
+            _hpMeter(context, damagedHp, maximumHp),
+          )
         else
           const SizedBox(height: flatRowSpacing),
         Row(
@@ -892,6 +906,7 @@ class _FlatLandBaseRow extends StatelessWidget {
 
   // trailing 被 FlatListRow 封顶半行宽，文字标签会把整段缩到看不清，所以只用图标 + 数值。
   Widget _trailing(
+    BuildContext context,
     AppLocalizations l10n,
     int? damagedHp,
     int maximumHp,
@@ -906,18 +921,24 @@ class _FlatLandBaseRow extends StatelessWidget {
           icon: Icon(
             Icons.favorite_rounded,
             key: Key('land-base-hp-icon-$keySuffix'),
-            color: const Color(0xffef5a5a),
+            color: appColor(context, const Color(0xffef5a5a)),
             size: 10,
             shadows: shadows,
           ),
-          value: _hpValue(damagedHp, maximumHp, shadows, pulse: pulseValue),
+          value: _hpValue(
+            context,
+            damagedHp,
+            maximumHp,
+            shadows,
+            pulse: pulseValue,
+          ),
         ),
       if (visible.contains('airPower'))
         _iconValue(
           key: Key('land-base-air-power-chip-$keySuffix'),
           icon: Icon(
             Icons.flight_rounded,
-            color: const Color(0xffd4a74e),
+            color: appColor(context, const Color(0xffd4a74e)),
             size: 10,
             semanticLabel: l10n.airPower,
             shadows: shadows,
@@ -925,6 +946,7 @@ class _FlatLandBaseRow extends StatelessWidget {
           value: Text(
             airPower.displayValue,
             style: flatRowTextStyle(
+              context,
               color: const Color(0xffd4a74e),
               shadows: shadows,
             ),
@@ -935,7 +957,7 @@ class _FlatLandBaseRow extends StatelessWidget {
           key: Key('land-base-range-chip-$keySuffix'),
           icon: Icon(
             Icons.radar,
-            color: const Color(0xff70b8d8),
+            color: appColor(context, const Color(0xff70b8d8)),
             size: 10,
             semanticLabel: l10n.landBaseRange,
             shadows: shadows,
@@ -943,6 +965,7 @@ class _FlatLandBaseRow extends StatelessWidget {
           value: Text(
             '${base.effectiveDistance}',
             style: flatRowTextStyle(
+              context,
               color: const Color(0xff70b8d8),
               shadows: shadows,
             ),
@@ -972,6 +995,7 @@ class _FlatLandBaseRow extends StatelessWidget {
   );
 
   Widget _hpValue(
+    BuildContext context,
     int currentHp,
     int maximumHp,
     List<Shadow>? shadows, {
@@ -980,9 +1004,12 @@ class _FlatLandBaseRow extends StatelessWidget {
     final text = Text(
       '$currentHp',
       style: TextStyle(
-        color: shipHpValueColor(
-          _hpRatio(currentHp, maximumHp),
-          isZeroHp: currentHp <= 0,
+        color: appColor(
+          context,
+          shipHpValueColor(
+            _hpRatio(currentHp, maximumHp),
+            isZeroHp: currentHp <= 0,
+          ),
         ),
         fontSize: flatRowFontSize,
         fontWeight: FontWeight.w800,
@@ -990,21 +1017,24 @@ class _FlatLandBaseRow extends StatelessWidget {
         shadows: shadows,
       ),
     );
-    return pulse ? _damagePulse(currentHp, maximumHp, text) : text;
+    return pulse ? _damagePulse(context, currentHp, maximumHp, text) : text;
   }
 
-  Widget _hpMeter(int currentHp, int maximumHp) {
+  Widget _hpMeter(BuildContext context, int currentHp, int maximumHp) {
     final hpRatio = _hpRatio(currentHp, maximumHp);
     return Container(
       key: Key('land-base-hp-meter-$keySuffix'),
       height: flatRowSpacing,
-      color: const Color(0xff294052),
+      color: appColor(context, const Color(0xff294052)),
       alignment: Alignment.centerLeft,
       child: FractionallySizedBox(
         widthFactor: hpRatio,
         heightFactor: 1,
         child: ColoredBox(
-          color: shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0),
+          color: appColor(
+            context,
+            shipHpBarColor(hpRatio, isZeroHp: currentHp <= 0),
+          ),
         ),
       ),
     );
@@ -1013,17 +1043,21 @@ class _FlatLandBaseRow extends StatelessWidget {
   static double _hpRatio(int currentHp, int maximumHp) =>
       maximumHp <= 0 ? 0.0 : (currentHp / maximumHp).clamp(0.0, 1.0);
 
-  Widget _damagePulse(int currentHp, int maximumHp, Widget child) =>
-      DamagePulseGlow(
-        currentHp: currentHp,
-        maxHp: maximumHp,
-        filter: damagePulseMode,
-        normalColor: shipHpBarColor(
-          _hpRatio(currentHp, maximumHp),
-          isZeroHp: currentHp <= 0,
-        ),
-        child: child,
-      );
+  Widget _damagePulse(
+    BuildContext context,
+    int currentHp,
+    int maximumHp,
+    Widget child,
+  ) => DamagePulseGlow(
+    currentHp: currentHp,
+    maxHp: maximumHp,
+    filter: damagePulseMode,
+    normalColor: appColor(
+      context,
+      shipHpBarColor(_hpRatio(currentHp, maximumHp), isZeroHp: currentHp <= 0),
+    ),
+    child: child,
+  );
 }
 
 class _FlatSquadronCell extends StatelessWidget {
@@ -1066,7 +1100,12 @@ class _FlatSquadronCell extends StatelessWidget {
       foregroundDecoration: fatigueColor == null
           ? null
           : BoxDecoration(
-              border: Border(bottom: BorderSide(color: fatigueColor, width: 2)),
+              border: Border(
+                bottom: BorderSide(
+                  color: appColor(context, fatigueColor),
+                  width: 2,
+                ),
+              ),
             ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -1092,9 +1131,10 @@ class _FlatSquadronCell extends StatelessWidget {
               squadron == null ? '—' : '${squadron.currentCount}',
               key: Key('land-base-slot-count-$keySuffix'),
               style: TextStyle(
-                color: missing
-                    ? const Color(0xffff8b78)
-                    : const Color(0xffe8f1f5),
+                color: appColor(
+                  context,
+                  missing ? const Color(0xffff8b78) : const Color(0xffe8f1f5),
+                ),
                 fontSize: flatRowFontSize,
                 height: 1,
                 fontWeight: FontWeight.w900,

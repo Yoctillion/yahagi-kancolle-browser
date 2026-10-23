@@ -170,7 +170,7 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
           size: 12,
           child: Text(
             warning.message,
-            style: flatRowTextStyle(color: warning.kind.foreground),
+            style: flatRowTextStyle(context, color: warning.kind.foreground),
           ),
         ),
       ),
@@ -299,8 +299,8 @@ class _PreSortieCheckSummaryState extends State<PreSortieCheckSummary> {
           FlatEmptyText(l10n.noMapGaugeData),
           Text(
             l10n.noMapGaugeDataHint,
-            style: const TextStyle(
-              color: Color(0xff4a5c68),
+            style: TextStyle(
+              color: appColor(context, const Color(0xff4a5c68)),
               fontSize: flatRowFontSize,
             ),
           ),
@@ -750,18 +750,20 @@ class _MapGaugeRow extends StatelessWidget {
             FlatListRow(
               tags: [
                 flatRowText(
+                  context,
                   fleetText(context, gauge.categoryTag),
                   color: flatTagColor,
                 ),
               ],
               name: flatRowText(
+                context,
                 '${gauge.code} $displayName$rankText$gaugeNumText',
                 color: nameColor,
               ),
               trailing: flatRowTrailing(
                 Text(
                   '${gauge.currentGaugeValue} / ${gauge.maxGaugeValue}',
-                  style: flatRowTextStyle(color: valueColor).copyWith(
+                  style: flatRowTextStyle(context, color: valueColor).copyWith(
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),

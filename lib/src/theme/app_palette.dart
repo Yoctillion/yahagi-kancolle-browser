@@ -255,6 +255,25 @@ T appTextStyle<T extends TextStyle?>(BuildContext context, T style) {
       as T;
 }
 
+/// Rich text keeps a style on every span, so each span in the tree is adapted.
+InlineSpan appTextSpan(BuildContext context, InlineSpan span) {
+  if (AppPalette.of(context).isDark || span is! TextSpan) return span;
+  return TextSpan(
+    text: span.text,
+    style: appTextStyle(context, span.style),
+    children: span.children
+        ?.map((child) => appTextSpan(context, child))
+        .toList(growable: false),
+    recognizer: span.recognizer,
+    mouseCursor: span.mouseCursor,
+    onEnter: span.onEnter,
+    onExit: span.onExit,
+    semanticsLabel: span.semanticsLabel,
+    locale: span.locale,
+    spellOut: span.spellOut,
+  );
+}
+
 ThemeData createAppTheme({
   required AppThemeMode mode,
   String? fontFamily,

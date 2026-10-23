@@ -1072,7 +1072,10 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
         key: const Key('panel-resource-collapsed-reset'),
         tooltip: l10n.panelResourcesCollapsedItemsReset,
         onPressed: () => controller.setCollapsedPanelResourceIds(null),
-        icon: const Icon(Icons.restart_alt_rounded, color: Color(0xffe0b25c)),
+        icon: Icon(
+          Icons.restart_alt_rounded,
+          color: appColor(context, const Color(0xffe0b25c)),
+        ),
       ),
     );
   }
@@ -1323,7 +1326,7 @@ class _HeaderGridValue extends StatelessWidget implements _NaturallySized {
         Icon(
           icon,
           size: _headerGridIconSize,
-          color: color,
+          color: appColor(context, color),
           semanticLabel: label,
         ),
         const SizedBox(width: _iconGap),
@@ -1331,7 +1334,12 @@ class _HeaderGridValue extends StatelessWidget implements _NaturallySized {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(value, maxLines: 1, softWrap: false, style: _style),
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: appTextStyle(context, _style),
+            ),
           ),
         ),
       ],
