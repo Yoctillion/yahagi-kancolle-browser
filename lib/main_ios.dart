@@ -32,7 +32,10 @@ import 'src/widgets/top_notice.dart';
 Future<void> main() => runYahagi(hooks: _IOSStartupHooks());
 
 final class _IOSStartupHooks extends YahagiStartupHooks {
-  final _rawDataServerController = RawDataServerController();
+  // Lazy: the hooks exist before runYahagi initializes the binding, and the
+  // controller reads SharedPreferences on construction. That early read fails
+  // and drags the startup's own concurrent read down with it (white screen).
+  late final _rawDataServerController = RawDataServerController();
   int _settingsTapCount = 0;
   Timer? _settingsTapResetTimer;
 
