@@ -228,6 +228,9 @@ class YahagiStartupHooks {
   }) async {}
 }
 
+// TEMP startup diagnostics
+String yahagiStartupStage = 'start';
+
 Future<void> runYahagi({
   YahagiStartupHooks hooks = const YahagiStartupHooks(),
 }) async {
@@ -243,6 +246,7 @@ Future<void> runYahagi({
   final customFontController = Platform.isAndroid
       ? await CustomFontController.load()
       : null;
+  yahagiStartupStage = 'layoutSettings';
   final layoutSettingsController = await LayoutSettingsController.load(
     SharedPreferencesLayoutSettingsStore(),
     customFontController: customFontController,
@@ -326,6 +330,7 @@ Future<void> runYahagi({
     accountSession: accountSession,
   );
   final gameStateStore = GameStateStore();
+  yahagiStartupStage = 'gameState';
   final gameStateController = GameStateController(
     accountSession: accountSession,
     questStore: questStore,
@@ -347,6 +352,7 @@ Future<void> runYahagi({
     ),
   );
   await senkaController.initialize();
+  yahagiStartupStage = 'improvement';
   ImprovementDatasetStorage improvementStorage;
   try {
     improvementStorage = await ApplicationImprovementDatasetStorage.create();
@@ -368,6 +374,7 @@ Future<void> runYahagi({
   await improvementPlannerController.loadFavorites();
   final packageInfo = await PackageInfo.fromPlatform();
   final currentVersion = packageInfo.version;
+  yahagiStartupStage = 'fcdMap';
   FcdMapStorage fcdMapStorage;
   try {
     fcdMapStorage = await ApplicationFcdMapStorage.create();
@@ -395,6 +402,7 @@ Future<void> runYahagi({
     lastCheckedAt: fcdMapState?.lastCheckedAt,
     sourceHost: fcdMapState?.source ?? '',
   );
+  yahagiStartupStage = 'questCatalog';
   QuestCatalogStorage questCatalogStorage;
   try {
     questCatalogStorage = await ApplicationQuestCatalogStorage.create();
@@ -420,6 +428,7 @@ Future<void> runYahagi({
     lastCheckedAt: questCatalogState?.lastCheckedAt,
     sourceHost: questCatalogState?.source ?? '',
   );
+  yahagiStartupStage = 'sortieMapCatalog';
   final bundledSortieMapCatalog = await SortieMapCatalog.loadAsset();
   late FileSortieMapCatalogStore sortieMapCatalogStore;
   try {
@@ -453,6 +462,7 @@ Future<void> runYahagi({
       appVersion: currentVersion,
     ),
   );
+  yahagiStartupStage = 'enemyCatalog';
   final bundledEnemyCatalog = await EnemyCatalogData.loadAsset();
   late FileEnemyCatalogStore enemyCatalogStore;
   try {
@@ -590,6 +600,7 @@ Future<void> runYahagi({
   final practiceOpponentController = PracticeOpponentController(
     accountSession: accountSession,
   );
+  yahagiStartupStage = 'pipeline';
   gameApiEventPipeline = GameApiEventPipeline(
     settleGameState: () async {
       await gameStateController.idle;
@@ -625,12 +636,14 @@ Future<void> runYahagi({
     },
   );
   final releaseChecker = GitHubReleaseChecker();
+  yahagiStartupStage = 'mouseWheel';
   final gameMouseWheelSettingsController =
       await GameMouseWheelSettingsController.load();
   final shipSubtitleSettingsController = Platform.isAndroid
       ? await ShipSubtitleSettingsController.load()
       : null;
   // The catalog also localizes ship names, so it loads on every platform.
+  yahagiStartupStage = 'shipSubtitleCatalog';
   shipSubtitleCatalogController = await ShipSubtitleCatalogController.load(
     language:
         shipSubtitleSettingsController?.language ??
@@ -645,6 +658,7 @@ Future<void> runYahagi({
           gameState: gameStateController,
         );
   await shipSubtitleRuntimeController?.initialize();
+  yahagiStartupStage = 'frameRefreshShortcut';
   final gameFrameRefreshShortcutSettings =
       await GameFrameRefreshShortcutSettings.load();
   final screenAwakeController = await ScreenAwakeController.load(
@@ -754,6 +768,7 @@ Future<void> runYahagi({
       browserController.removeListener(recordBrowserState);
     },
   );
+  yahagiStartupStage = 'diagnosticInit';
   await diagnosticController.initialize();
   const telemetrySettingsStore = SharedPreferencesTelemetrySettingsStore();
   final telemetryService = AppTelemetryService(
@@ -761,6 +776,7 @@ Future<void> runYahagi({
     appVersion: currentVersion,
     diagnosticPlatformPort: diagnosticPlatform,
   );
+  yahagiStartupStage = 'telemetry';
   final telemetryController = await TelemetryController.create(
     store: telemetrySettingsStore,
     service: telemetryService,
@@ -780,6 +796,7 @@ Future<void> runYahagi({
     initialTimerAnchors: notificationTimerAnchors,
     timerAnchorStore: notificationTimerAnchorStore,
   );
+  yahagiStartupStage = 'notificationStart';
   notificationCoordinator.start();
   RecordBackupService? backupService;
   Object? backupStartupError;
@@ -799,11 +816,13 @@ Future<void> runYahagi({
     }
   }
   final backupMaintenanceOverlay = ValueNotifier<Widget?>(null);
+  yahagiStartupStage = 'adjustSettings';
   await hooks.adjustSettings(
     layoutSettingsController: layoutSettingsController,
     backgroundGameRetentionController: backgroundGameRetentionController,
     gameMouseWheelSettingsController: gameMouseWheelSettingsController,
   );
+  yahagiStartupStage = 'buildApp';
   final app = YahagiApp(
     layoutSettingsController: layoutSettingsController,
     networkSettingsController: networkSettingsController,
@@ -865,6 +884,7 @@ Future<void> runYahagi({
   var mainAppLaunched = false;
   void launchMainApp() {
     mainAppLaunched = true;
+    yahagiStartupStage = 'runApp';
     runApp(app);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(gameResourceCacheController.refresh());
