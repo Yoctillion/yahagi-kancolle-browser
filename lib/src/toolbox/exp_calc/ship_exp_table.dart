@@ -398,13 +398,6 @@ int shipCumulativeExp(int level) {
   return kShipCumulativeExp[level];
 }
 
-/// Returns the experience required to advance from [level] to [level + 1].
-int shipNextLevelExp(int level) {
-  if (level < 1) return kShipNextLevelExp[1];
-  if (level >= kShipMaxLevel) return 0;
-  return kShipNextLevelExp[level];
-}
-
 /// Computes the level corresponding to a total cumulative [exp].
 int levelForExp(int exp) {
   if (exp <= 0) return 1;

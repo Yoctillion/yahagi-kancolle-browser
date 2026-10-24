@@ -71,11 +71,12 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
         Localizations.localeOf(context);
         Widget? dockCard;
         int? previousDockMask;
-        // 扁平折叠态的摘要带倒计时，需要继续逐秒刷新且不能复用缓存。
-        final summaryTicks =
-            widget.collapsed && PanelStyleScope.isFlat(context);
+        // 极简折叠标题不显示摘要；野埼行的状态与士气只随捕获数据变化。
+        // 入渠到期和泊地倒计时继续使用原来的逐秒刷新。
+        final flat = PanelStyleScope.isFlat(context);
         return SecondTickBuilder(
-          enabled: !widget.collapsed || summaryTicks,
+          enabled:
+              !widget.collapsed && (!flat || _mode != RepairCenterMode.nosaki),
           builder: (context, now, _) {
             _now = now;
             // Countdown texts tick independently. Rebuild the dock card only
@@ -86,9 +87,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
               for (var i = 0; i < state.repairDocks.length; i++) {
                 if (_isDockActive(state.repairDocks[i])) mask |= 1 << i;
               }
-              if (!summaryTicks &&
-                  dockCard != null &&
-                  previousDockMask == mask) {
+              if (dockCard != null && previousDockMask == mask) {
                 return dockCard!;
               }
               previousDockMask = mask;
