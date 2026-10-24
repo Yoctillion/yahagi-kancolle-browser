@@ -50,9 +50,11 @@ import 'src/browser/game_surface_viewport.dart';
 import 'src/browser/game_workspace_visibility.dart';
 import 'src/browser/game_environment_host.dart';
 import 'src/browser/game_application_restart_port.dart';
+import 'src/browser/game_resource_cache_channel.dart';
 import 'src/browser/game_resource_cache_controller.dart';
 import 'src/browser/game_resource_manifest_builder.dart';
 import 'src/browser/game_resource_manifest_consumer.dart';
+import 'src/subtitles/ship_subtitle_language.dart';
 import 'src/subtitles/ship_subtitle_settings.dart';
 import 'src/subtitles/ship_subtitle_catalog_controller.dart';
 import 'src/subtitles/ship_subtitle_runtime_controller.dart';
@@ -191,7 +193,37 @@ import 'src/senka/senka_page.dart';
 import 'src/senka/senka_store.dart';
 import 'src/widgets/top_notice.dart';
 
-Future<void> main() async {
+Future<void> main() => runYahagi();
+
+/// What a platform entry point may change on top of [runYahagi]. Keep every
+/// other piece of startup wiring shared: the iOS entry once kept its own copy
+/// of it and silently lost every controller added afterwards.
+class YahagiStartupHooks {
+  const YahagiStartupHooks();
+
+  GameResourceCachePort? get gameResourceCachePort => null;
+
+  List<GameApiEventConsumer> get extraEventConsumers => const [];
+
+  Widget Function(YahagiApp app)? get gameSurfaceBuilder => null;
+
+  List<Widget>? get additionalDataSections => null;
+
+  void Function(BuildContext context)? get onSettingsNavTap => null;
+
+  /// Runs before the app launches, so settings the platform cannot honour can
+  /// be reset before any screen reads them.
+  Future<void> adjustSettings({
+    required LayoutSettingsController layoutSettingsController,
+    required BackgroundGameRetentionController
+    backgroundGameRetentionController,
+    required GameMouseWheelSettingsController gameMouseWheelSettingsController,
+  }) async {}
+}
+
+Future<void> runYahagi({
+  YahagiStartupHooks hooks = const YahagiStartupHooks(),
+}) async {
   WidgetsFlutterBinding.ensureInitialized();
   final accountSession = AccountSession.shared;
   LogbookDatabase.bindAccountSession(accountSession);
@@ -199,7 +231,11 @@ Future<void> main() async {
   late final GameCaptureController gameCaptureController;
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  final customFontController = await CustomFontController.load();
+  // Subtitles, custom fonts, app exit and rendering modes need native channels
+  // that only the Android host implements.
+  final customFontController = Platform.isAndroid
+      ? await CustomFontController.load()
+      : null;
   final layoutSettingsController = await LayoutSettingsController.load(
     SharedPreferencesLayoutSettingsStore(),
     customFontController: customFontController,
@@ -236,9 +272,11 @@ Future<void> main() async {
       await GameFrameRateSettingsController.load(
         SharedPreferencesGameFrameRateSettingsStore(),
       );
-  final gameRenderingModeController = await GameRenderingModeController.load(
-    SharedPreferencesGameRenderingModeStore(),
-  );
+  final gameRenderingModeController = Platform.isAndroid
+      ? await GameRenderingModeController.load(
+          SharedPreferencesGameRenderingModeStore(),
+        )
+      : null;
   final gameConnectorController = await GameConnectorController.load(
     SharedPreferencesGameConnectorStore(),
   );
@@ -246,7 +284,9 @@ Future<void> main() async {
       await BackgroundGameRetentionController.load(
         SharedPreferencesBackgroundGameRetentionStore(),
       );
-  final appExitSettingsController = await AppExitSettingsController.load();
+  final appExitSettingsController = Platform.isAndroid
+      ? await AppExitSettingsController.load()
+      : null;
   applyOrientationPolicy(
     currentWindowSize(),
     displayModeController.displayMode,
@@ -289,7 +329,9 @@ Future<void> main() async {
   final kcwikiReportController = await KcwikiReportController.load(
     SharedPreferencesKcwikiReportSettingsStore(),
   );
-  final gameResourceCacheController = GameResourceCacheController();
+  final gameResourceCacheController = GameResourceCacheController(
+    port: hooks.gameResourceCachePort,
+  );
   await gameResourceCacheController.initialize(loadStatus: false);
   final senkaController = SenkaController(
     accountSession: accountSession,
@@ -547,6 +589,7 @@ Future<void> main() async {
       battleController,
       newShipReminderController,
       gameInfoNoticeController,
+      ...hooks.extraEventConsumers,
     ],
     onBackgroundDecodeFallback: (path) {
       if (!kcwikiReportController.enabled) return;
@@ -566,18 +609,24 @@ Future<void> main() async {
   final releaseChecker = GitHubReleaseChecker();
   final gameMouseWheelSettingsController =
       await GameMouseWheelSettingsController.load();
-  final shipSubtitleSettingsController =
-      await ShipSubtitleSettingsController.load();
+  final shipSubtitleSettingsController = Platform.isAndroid
+      ? await ShipSubtitleSettingsController.load()
+      : null;
+  // The catalog also localizes ship names, so it loads on every platform.
   shipSubtitleCatalogController = await ShipSubtitleCatalogController.load(
-    language: shipSubtitleSettingsController.language,
+    language:
+        shipSubtitleSettingsController?.language ??
+        ShipSubtitleLanguage.simplifiedChinese,
   );
-  final shipSubtitleRuntimeController = ShipSubtitleRuntimeController(
-    settings: shipSubtitleSettingsController,
-    catalog: shipSubtitleCatalogController,
-    layout: layoutSettingsController,
-    gameState: gameStateController,
-  );
-  await shipSubtitleRuntimeController.initialize();
+  final shipSubtitleRuntimeController = shipSubtitleSettingsController == null
+      ? null
+      : ShipSubtitleRuntimeController(
+          settings: shipSubtitleSettingsController,
+          catalog: shipSubtitleCatalogController,
+          layout: layoutSettingsController,
+          gameState: gameStateController,
+        );
+  await shipSubtitleRuntimeController?.initialize();
   final gameFrameRefreshShortcutSettings =
       await GameFrameRefreshShortcutSettings.load();
   final screenAwakeController = await ScreenAwakeController.load(
@@ -620,8 +669,11 @@ Future<void> main() async {
   }
 
   var diagnosticNativeWebViewGeneration = -1;
+  GameRenderingMode diagnosticRenderingMode() =>
+      gameRenderingModeController?.mode ?? GameRenderingMode.compatibility;
+
   DiagnosticWebViewHost diagnosticWebViewHost() {
-    final mode = gameRenderingModeController.mode;
+    final mode = diagnosticRenderingMode();
     if (!mode.usesActivityWebView) {
       return DiagnosticWebViewHost.flutterPlatformView;
     }
@@ -631,7 +683,7 @@ Future<void> main() async {
   }
 
   DiagnosticGameRenderer diagnosticRenderer() {
-    final mode = gameRenderingModeController.mode;
+    final mode = diagnosticRenderingMode();
     return mode.usesCanvasRenderer
         ? DiagnosticGameRenderer.canvas
         : DiagnosticGameRenderer.webgl;
@@ -663,7 +715,7 @@ Future<void> main() async {
     webViewHost: diagnosticWebViewHost,
     renderer: diagnosticRenderer,
     generationId: diagnosticGeneration,
-    renderingModeName: () => gameRenderingModeController.mode.storageName,
+    renderingModeName: () => diagnosticRenderingMode().storageName,
     exporter: DiagnosticExportService(
       storage: diagnosticStorage,
       exportDirectory: Directory(
@@ -729,6 +781,11 @@ Future<void> main() async {
     }
   }
   final backupMaintenanceOverlay = ValueNotifier<Widget?>(null);
+  await hooks.adjustSettings(
+    layoutSettingsController: layoutSettingsController,
+    backgroundGameRetentionController: backgroundGameRetentionController,
+    gameMouseWheelSettingsController: gameMouseWheelSettingsController,
+  );
   final app = YahagiApp(
     layoutSettingsController: layoutSettingsController,
     networkSettingsController: networkSettingsController,
@@ -778,6 +835,9 @@ Future<void> main() async {
     diagnosticController: diagnosticController,
     telemetryController: telemetryController,
     backupMaintenanceOverlay: backupMaintenanceOverlay,
+    gameSurfaceBuilder: hooks.gameSurfaceBuilder,
+    additionalDataSections: hooks.additionalDataSections,
+    onSettingsNavTap: hooks.onSettingsNavTap,
     nativeWebViewGenerationSink: (value) {
       diagnosticNativeWebViewGeneration = value;
     },
@@ -1058,6 +1118,7 @@ class YahagiApp extends StatelessWidget {
     this.enemyCatalogController,
     this.improvementPlannerController,
     this.gameSurface,
+    this.gameSurfaceBuilder,
     this.currentVersion = '1.0.2',
     this.releaseChecker,
     this.screenAwakeController,
@@ -1113,6 +1174,9 @@ class YahagiApp extends StatelessWidget {
   final EnemyCatalogController? enemyCatalogController;
   final ImprovementPlannerController? improvementPlannerController;
   final Widget? gameSurface;
+
+  /// Like [gameSurface], for a surface that needs this app's controllers.
+  final Widget Function(YahagiApp app)? gameSurfaceBuilder;
   final String currentVersion;
   final ReleaseChecker? releaseChecker;
   final ScreenAwakeController? screenAwakeController;
@@ -1323,7 +1387,7 @@ class YahagiApp extends StatelessWidget {
       child: child,
     );
 
-    if (gameSurface case final injected?) {
+    if (gameSurface ?? gameSurfaceBuilder?.call(this) case final injected?) {
       return withBattleWarning(injected);
     }
     final renderingController = gameRenderingModeController;
