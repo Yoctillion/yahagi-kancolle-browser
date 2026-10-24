@@ -3,6 +3,7 @@ import '../localization/runtime_message_text.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/top_notice.dart';
+import '../widgets/app_segmented_style.dart';
 import 'capture_mode.dart';
 import 'capture_mode_controller.dart';
 
@@ -22,6 +23,7 @@ class CaptureModeSelector extends StatelessWidget {
           children: [
             SegmentedButton<CaptureMode>(
               key: const Key('capture-mode-selector'),
+              style: AppSegmentedStyle.materialStyle(context),
               showSelectedIcon: false,
               segments: CaptureMode.values
                   .map(

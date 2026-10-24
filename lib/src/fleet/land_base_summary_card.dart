@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -181,43 +182,32 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
     return Container(
       key: const Key('land-base-area-switcher'),
       constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
-      height: 26,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff10212e)),
-        border: Border.all(color: appColor(context, const Color(0xff294052))),
-        borderRadius: BorderRadius.circular(7),
-      ),
+      height: AppSegmentedStyle.compactHeight,
+      padding: AppSegmentedStyle.padding(compact: true),
+      decoration: AppSegmentedStyle.decoration(context, compact: true),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           for (final areaId in areaIds)
             Material(
               key: Key('land-base-area-selector-$areaId'),
-              color: appColor(
+              color: AppSegmentedStyle.selection(
                 context,
-                areaId == selectedAreaId
-                    ? const Color(0xff5b4829)
-                    : Colors.transparent,
+                areaId == selectedAreaId,
               ),
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: AppSegmentedStyle.itemRadius(compact: true),
               child: InkWell(
                 onTap: () => onSelected(areaId),
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: AppSegmentedStyle.itemRadius(compact: true),
                 child: SizedBox(
                   width: 32,
                   child: Center(
                     child: Text(
                       '$areaId',
-                      style: appTextStyle(
+                      style: AppSegmentedStyle.textStyle(
                         context,
-                        TextStyle(
-                          color: areaId == selectedAreaId
-                              ? const Color(0xffffcf67)
-                              : const Color(0xff8197a5),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        selected: areaId == selectedAreaId,
+                        compact: true,
                       ),
                     ),
                   ),

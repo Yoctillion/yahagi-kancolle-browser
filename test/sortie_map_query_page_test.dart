@@ -10,6 +10,7 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/toolbox/sortie_map_query/sortie_map_models.dart';
 import 'package:yahagi_kancolle_browser/src/toolbox/sortie_map_query/sortie_map_query_page.dart';
 import 'package:yahagi_kancolle_browser/src/toolbox/sortie_map_query/sortie_map_selection_store.dart';
+import 'package:yahagi_kancolle_browser/src/widgets/app_segmented_style.dart';
 
 void main() {
   testWidgets('tablet landscape enlarges route without shrinking node detail', (
@@ -522,11 +523,17 @@ void main() {
     expect(tester.getSize(nodeButton).width, greaterThanOrEqualTo(44));
     expect(tester.getSize(nodeButton).height, greaterThanOrEqualTo(44));
     expect(tester.getSize(nodeVisual), const Size(32, 32));
-    expect(tester.widget<Material>(nodeVisual).color, const Color(0xff8a6628));
+    expect(
+      tester.widget<Material>(nodeVisual).color,
+      AppSegmentedStyle.selectedBackground(tester.element(nodeVisual)),
+    );
     final nodeLabel = tester.widget<Text>(
       find.descendant(of: nodeVisual, matching: find.text('A')),
     );
-    expect(nodeLabel.style?.color, const Color(0xffffdc88));
+    expect(
+      nodeLabel.style?.color,
+      AppSegmentedStyle.foreground(tester.element(nodeVisual), true),
+    );
     final nextVisual = tester.getRect(
       find.byKey(const Key('sortie-map-node-visual-基地空袭')),
     );
@@ -1103,7 +1110,9 @@ void main() {
       tester
           .widget<Material>(find.byKey(const Key('sortie-map-node-visual-A')))
           .color,
-      const Color(0xff8a6628),
+      AppSegmentedStyle.selectedBackground(
+        tester.element(find.byKey(const Key('sortie-map-node-visual-A'))),
+      ),
     );
 
     await tester.tap(find.byKey(const Key('sortie-map-node-D')));
@@ -1119,7 +1128,9 @@ void main() {
       tester
           .widget<Material>(find.byKey(const Key('sortie-map-node-visual-D')))
           .color,
-      const Color(0xff8a6628),
+      AppSegmentedStyle.selectedBackground(
+        tester.element(find.byKey(const Key('sortie-map-node-visual-D'))),
+      ),
     );
   });
 
@@ -1158,7 +1169,9 @@ void main() {
       tester
           .widget<Material>(find.byKey(const Key('sortie-map-node-visual-A')))
           .color,
-      const Color(0xff8a6628),
+      AppSegmentedStyle.selectedBackground(
+        tester.element(find.byKey(const Key('sortie-map-node-visual-A'))),
+      ),
     );
   });
 
@@ -1174,7 +1187,9 @@ void main() {
       tester
           .widget<Material>(find.byKey(const Key('sortie-map-node-visual-A')))
           .color,
-      const Color(0xff8a6628),
+      AppSegmentedStyle.selectedBackground(
+        tester.element(find.byKey(const Key('sortie-map-node-visual-A'))),
+      ),
     );
   });
 
@@ -1193,7 +1208,9 @@ void main() {
       tester
           .widget<Material>(find.byKey(const Key('sortie-map-node-visual-X')))
           .color,
-      const Color(0xff8a6628),
+      AppSegmentedStyle.selectedBackground(
+        tester.element(find.byKey(const Key('sortie-map-node-visual-X'))),
+      ),
     );
   });
 

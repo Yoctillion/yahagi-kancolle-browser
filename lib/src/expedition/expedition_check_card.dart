@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
@@ -334,13 +335,9 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     required bool expandChildren,
   }) => Container(
     key: key,
-    height: 26,
-    padding: const EdgeInsets.all(2),
-    decoration: BoxDecoration(
-      color: appColor(context, Color(0xff10212e)),
-      borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: appColor(context, Color(0xff294052))),
-    ),
+    height: AppSegmentedStyle.compactHeight,
+    padding: AppSegmentedStyle.padding(compact: true),
+    decoration: AppSegmentedStyle.decoration(context, compact: true),
     child: Row(
       mainAxisSize: expandChildren ? MainAxisSize.max : MainAxisSize.min,
       children: [
@@ -358,13 +355,10 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     bool command = false,
   }) => Material(
     key: key,
-    color: appColor(
-      context,
-      selected ? const Color(0xff8a6628) : Colors.transparent,
-    ),
-    borderRadius: BorderRadius.circular(5),
+    color: AppSegmentedStyle.selection(context, selected),
+    borderRadius: AppSegmentedStyle.itemRadius(compact: true),
     child: InkWell(
-      borderRadius: BorderRadius.circular(5),
+      borderRadius: AppSegmentedStyle.itemRadius(compact: true),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -377,18 +371,16 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
                   label,
                   maxLines: 1,
                   softWrap: false,
-                  style: appTextStyle(
-                    context,
-                    TextStyle(
-                      color: selected
-                          ? const Color(0xffffdc88)
-                          : command
-                          ? const Color(0xffd4a85f)
-                          : const Color(0xff8197a5),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  style:
+                      AppSegmentedStyle.textStyle(
+                        context,
+                        selected: selected,
+                        compact: true,
+                      ).copyWith(
+                        color: command && !selected
+                            ? appColor(context, const Color(0xffd4a85f))
+                            : null,
+                      ),
                 ),
               ],
             ),

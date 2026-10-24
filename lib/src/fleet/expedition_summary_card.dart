@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../game_state/game_state.dart';
@@ -399,21 +400,11 @@ class ExpeditionModeSelector extends StatelessWidget {
     return Container(
       key: const Key('expedition-summary-mode-selector'),
       width: compact ? null : 260,
-      height: compact ? 26 : 38,
-      padding: EdgeInsets.all(compact ? 2 : 3),
-      decoration: BoxDecoration(
-        color: appColor(
-          context,
-          compact ? const Color(0xff10212e) : const Color(0xff0b202d),
-        ),
-        borderRadius: BorderRadius.circular(compact ? 7 : 20),
-        border: Border.all(
-          color: appColor(
-            context,
-            compact ? const Color(0xff294052) : const Color(0xff315064),
-          ),
-        ),
-      ),
+      height: compact
+          ? AppSegmentedStyle.compactHeight
+          : AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(compact: compact),
+      decoration: AppSegmentedStyle.decoration(context, compact: compact),
       child: Row(
         mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
         children: [
@@ -474,30 +465,20 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: appColor(
-        context,
-        selected
-            ? (compact ? const Color(0xff5b4829) : const Color(0xff8a6628))
-            : Colors.transparent,
-      ),
-      borderRadius: BorderRadius.circular(compact ? 5 : 16),
+      color: AppSegmentedStyle.selection(context, selected),
+      borderRadius: AppSegmentedStyle.itemRadius(compact: compact),
       child: InkWell(
-        borderRadius: BorderRadius.circular(compact ? 5 : 16),
+        borderRadius: AppSegmentedStyle.itemRadius(compact: compact),
         onTap: onTap,
         child: compact
             ? Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 child: Text(
                   label,
-                  style: appTextStyle(
+                  style: AppSegmentedStyle.textStyle(
                     context,
-                    TextStyle(
-                      color: selected
-                          ? const Color(0xffffcf67)
-                          : const Color(0xff8197a5),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    selected: selected,
+                    compact: true,
                   ),
                 ),
               )
@@ -506,15 +487,9 @@ class _ModeButton extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     label,
-                    style: appTextStyle(
+                    style: AppSegmentedStyle.textStyle(
                       context,
-                      TextStyle(
-                        color: selected
-                            ? const Color(0xffffdc88)
-                            : const Color(0xff9fb3bf),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      selected: selected,
                     ),
                   ),
                 ),

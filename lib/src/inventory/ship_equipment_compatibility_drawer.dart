@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/services.dart';
@@ -516,12 +517,8 @@ class _ScopeTabs extends StatelessWidget {
     return Container(
       key: const Key('ship-equipment-compatibility-scope-tabs'),
       height: 32,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff081923)),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: appColor(context, const Color(0xff315064))),
-      ),
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: <Widget>[
           Expanded(
@@ -565,27 +562,15 @@ class _ScopeTab extends StatelessWidget {
     excludeSemantics: true,
     onTap: onTap,
     child: Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff2b7180) : Colors.transparent,
-      ),
-      borderRadius: BorderRadius.circular(15),
+      color: AppSegmentedStyle.selection(context, selected),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       child: InkWell(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: AppSegmentedStyle.itemRadius(),
         onTap: onTap,
         child: Center(
           child: Text(
             label,
-            style: appTextStyle(
-              context,
-              TextStyle(
-                color: selected
-                    ? const Color(0xfff2f7f9)
-                    : const Color(0xff8ba2af),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            style: AppSegmentedStyle.textStyle(context, selected: selected),
           ),
         ),
       ),
@@ -645,13 +630,12 @@ class _FilterChip extends StatelessWidget {
     excludeSemantics: true,
     onTap: onTap,
     child: Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff173f4c) : const Color(0xff102a38),
-      ),
-      borderRadius: BorderRadius.circular(6),
+      color: selected
+          ? AppSegmentedStyle.selectedBackground(context)
+          : appColor(context, const Color(0xff102a38)),
+      borderRadius: AppSegmentedStyle.itemRadius(compact: true),
       child: InkWell(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppSegmentedStyle.itemRadius(compact: true),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -661,7 +645,7 @@ class _FilterChip extends StatelessWidget {
               context,
               TextStyle(
                 color: selected
-                    ? const Color(0xff69d2cf)
+                    ? AppSegmentedStyle.foreground(context, true)
                     : const Color(0xff9bb0bb),
                 fontSize: 11,
                 fontWeight: FontWeight.w800,

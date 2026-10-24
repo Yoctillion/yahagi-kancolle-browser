@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/material.dart';
@@ -285,13 +286,9 @@ class _ModeSwitch extends StatelessWidget {
       );
     }
     return Container(
-      height: 26,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff10212e)),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: appColor(context, Color(0xff294052))),
-      ),
+      height: AppSegmentedStyle.compactHeight,
+      padding: AppSegmentedStyle.padding(compact: true),
+      decoration: AppSegmentedStyle.decoration(context, compact: true),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -328,27 +325,19 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff5b4829) : Colors.transparent,
-      ),
-      borderRadius: BorderRadius.circular(5),
+      color: AppSegmentedStyle.selection(context, selected),
+      borderRadius: AppSegmentedStyle.itemRadius(compact: true),
       child: InkWell(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: AppSegmentedStyle.itemRadius(compact: true),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           child: BattleUiText(
             label,
-            style: appTextStyle(
+            style: AppSegmentedStyle.textStyle(
               context,
-              TextStyle(
-                color: selected
-                    ? const Color(0xffffcf67)
-                    : const Color(0xff8197a5),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
+              selected: selected,
+              compact: true,
             ),
           ),
         ),

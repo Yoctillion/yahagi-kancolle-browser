@@ -11,6 +11,7 @@ import 'package:yahagi_kancolle_browser/src/senka/senka_page.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_state.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_store.dart';
 import 'package:yahagi_kancolle_browser/src/senka/senka_ui.dart';
+import 'package:yahagi_kancolle_browser/src/widgets/app_segmented_style.dart';
 
 void main() {
   test('战果刷新时间固定显示为 UTC+9', () {
@@ -84,6 +85,9 @@ void main() {
 
   testWidgets('顶部三按钮等宽且选中态为金色', (tester) async {
     await pumpSenka(tester, controller, const Size(1280, 680));
+    Color selectedTabColor(String name) => AppSegmentedStyle.selectedBackground(
+      tester.element(find.byKey(Key('senka-tab-$name'))),
+    );
     final rects = [
       for (final key in ['info', 'calendar', 'calculator'])
         tester.getRect(find.byKey(Key('senka-tab-$key'))),
@@ -91,16 +95,16 @@ void main() {
     expect(rects[0].width, closeTo(rects[1].width, .01));
     expect(rects[1].width, closeTo(rects[2].width, .01));
     expect(rects.every((rect) => rect.height >= 30), isTrue);
-    expect(tabColor(tester, 'info'), const Color(0xff8a6628));
-    expect(tabColor(tester, 'calendar'), isNot(const Color(0xff8a6628)));
+    expect(tabColor(tester, 'info'), selectedTabColor('info'));
+    expect(tabColor(tester, 'calendar'), isNot(selectedTabColor('calendar')));
     await tester.tap(find.byKey(const Key('senka-tab-calendar')));
     await tester.pump();
-    expect(tabColor(tester, 'calendar'), const Color(0xff8a6628));
-    expect(tabColor(tester, 'info'), isNot(const Color(0xff8a6628)));
+    expect(tabColor(tester, 'calendar'), selectedTabColor('calendar'));
+    expect(tabColor(tester, 'info'), isNot(selectedTabColor('info')));
     await tester.tap(find.byKey(const Key('senka-tab-calculator')));
     await tester.pump();
-    expect(tabColor(tester, 'calculator'), const Color(0xff8a6628));
-    expect(tabColor(tester, 'calendar'), isNot(const Color(0xff8a6628)));
+    expect(tabColor(tester, 'calculator'), selectedTabColor('calculator'));
+    expect(tabColor(tester, 'calendar'), isNot(selectedTabColor('calendar')));
   });
 
   testWidgets('tabs 提供 button、selected 与可读标签语义', (tester) async {
