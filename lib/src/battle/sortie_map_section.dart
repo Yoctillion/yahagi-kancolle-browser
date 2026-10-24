@@ -399,9 +399,15 @@ class _MapProjection {
         entry.key:
             origin + Offset(entry.value.x - minX, entry.value.y - minY) * scale,
     };
+    segments = [
+      for (final route in geometry.routes.values)
+        if (points[route.from] case final from?)
+          if (points[route.to] case final to?) (from, to),
+    ];
   }
 
   late final Map<String, Offset> points;
+  late final List<(Offset, Offset)> segments;
 }
 
 class _MapPainter extends CustomPainter {
@@ -605,6 +611,7 @@ class _MapPainter extends CustomPainter {
     ];
     var best = preferred;
     var bestOverlap = double.infinity;
+    var bestRouteOverlap = double.infinity;
     for (final candidate in candidates) {
       var overlap = 0.0;
       for (final obstacle in obstacles) {
@@ -613,13 +620,44 @@ class _MapPainter extends CustomPainter {
           overlap += intersection.width * intersection.height;
         }
       }
-      if (overlap == 0) return candidate;
-      if (overlap < bestOverlap) {
+      if (overlap > bestOverlap) continue;
+      // A letter on an unrelated route looks like a connection to that node
+      // (e.g. 1-6 I on J-D). Keep labels clear of routes after protecting nodes
+      // and other labels, retaining the nearest preferred placement when clear.
+      final routeOverlap = _routeOverlap(candidate.inflate(2));
+      if (overlap == 0 && routeOverlap == 0) return candidate;
+      if (overlap < bestOverlap ||
+          (overlap == bestOverlap && routeOverlap < bestRouteOverlap)) {
         best = candidate;
         bestOverlap = overlap;
+        bestRouteOverlap = routeOverlap;
       }
     }
     return best;
+  }
+
+  double _routeOverlap(Rect bounds) {
+    var overlap = 0.0;
+    for (final (from, to) in projection.segments) {
+      if (!Rect.fromPoints(from, to).overlaps(bounds)) continue;
+      final delta = to - from;
+      var enter = 0.0;
+      var leave = 1.0;
+      if (delta.dx != 0) {
+        final a = (bounds.left - from.dx) / delta.dx;
+        final b = (bounds.right - from.dx) / delta.dx;
+        enter = math.max(enter, math.min(a, b));
+        leave = math.min(leave, math.max(a, b));
+      }
+      if (delta.dy != 0) {
+        final a = (bounds.top - from.dy) / delta.dy;
+        final b = (bounds.bottom - from.dy) / delta.dy;
+        enter = math.max(enter, math.min(a, b));
+        leave = math.min(leave, math.max(a, b));
+      }
+      if (enter < leave) overlap += (leave - enter) * delta.distance;
+    }
+    return overlap;
   }
 
   @override

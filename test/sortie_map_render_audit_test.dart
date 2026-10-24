@@ -309,6 +309,56 @@ void main() {
     }
   });
 
+  for (final width in [240.0, 280.0, 360.0, 640.0]) {
+    testWidgets('1-6 I label stays clear of the D-J route at width $width', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(Size(width, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final geometry = dataset.geometryFor(mapAreaId: 1, mapInfoNo: 6)!;
+      await tester.pumpWidget(
+        _app(
+          progress: SortieMapProgress(
+            mapAreaId: 1,
+            mapInfoNo: 6,
+            routeIds: const [0, 1, 3],
+          ),
+          geometry: geometry,
+        ),
+      );
+      final canvas = find.byKey(const Key('sortie-map-canvas'));
+      final origin = tester.getRect(canvas).topLeft;
+      final positions = _nodePositions(tester, canvas, geometry);
+      final labels = [
+        ...geometry.spots.keys.where((label) => label != 'E'),
+        'E',
+      ];
+      final paragraphs = _recordPaint(tester, canvas)
+          .where((call) => call.invocation.memberName == #drawParagraph)
+          .map(_paintedBounds)
+          .whereType<Rect>()
+          .toList();
+      final label = paragraphs[labels.indexOf('I')];
+      expect(
+        _segmentCrossesRect(
+          positions['D']! - origin,
+          positions['J']! - origin,
+          label.inflate(2),
+        ),
+        isFalse,
+        reason: 'The D-J route must not look like an I-J connection',
+      );
+      expect(
+        geometry.routes.values.any(
+          (route) =>
+              (route.from == 'I' && route.to == 'J') ||
+              (route.from == 'J' && route.to == 'I'),
+        ),
+        isFalse,
+      );
+    });
+  }
+
   testWidgets('displaced labels stay connected to their source nodes', (
     tester,
   ) async {
@@ -582,4 +632,24 @@ void _expectContained(Rect outer, Rect inner, String reason) {
   expect(inner.top, greaterThanOrEqualTo(outer.top - .01), reason: reason);
   expect(inner.right, lessThanOrEqualTo(outer.right + .01), reason: reason);
   expect(inner.bottom, lessThanOrEqualTo(outer.bottom + .01), reason: reason);
+}
+
+bool _segmentCrossesRect(Offset from, Offset to, Rect rect) {
+  var enter = 0.0;
+  var leave = 1.0;
+  for (final axis in [
+    (from.dx, to.dx - from.dx, rect.left, rect.right),
+    (from.dy, to.dy - from.dy, rect.top, rect.bottom),
+  ]) {
+    if (axis.$2 == 0) {
+      if (axis.$1 < axis.$3 || axis.$1 > axis.$4) return false;
+      continue;
+    }
+    final a = (axis.$3 - axis.$1) / axis.$2;
+    final b = (axis.$4 - axis.$1) / axis.$2;
+    enter = math.max(enter, math.min(a, b));
+    leave = math.min(leave, math.max(a, b));
+    if (enter > leave) return false;
+  }
+  return true;
 }
