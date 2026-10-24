@@ -2160,6 +2160,33 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     final panelBottomBarInset = gameBottomBar && bottomBarInSafeArea
         ? bottomSafeArea
         : 0.0;
+    // 损管提示事关战斗安全，不缩小也不临时撑高顶栏；顶栏放不下 34 高的胶囊时
+    // 改叠在内容上方。全屏时交回 QuestCompletionDrawerHost 的全屏规则。
+    final damageControlOverlay =
+        !_gameFullscreen &&
+        shellHeaderHeight < QuestCompletionHeaderSlot.noticeHeight;
+    EdgeInsets headerContentPadding(BuildContext context) {
+      final sidePadding = uiSize.isCompactOrSmaller ? 8.0 : 10.0;
+      if (!minimalGameLayout) {
+        return EdgeInsets.symmetric(horizontal: sidePadding);
+      }
+      final corners = DisplayCorners.of(context);
+      // Compact header icons are centered at 15dp; keep the bar's ends clear
+      // of the corner arc there.
+      final contentTop = (shellHeaderHeight - 15) / 2;
+      // 竖向导航栏那一侧的顶角已被导航栏占住。
+      final leftAtCorner = !minimalSideRail || menuOnRight;
+      final rightAtCorner = !minimalSideRail || !menuOnRight;
+      return EdgeInsets.only(
+        left:
+            sidePadding +
+            (leftAtCorner ? cornerInsetAt(corners.topLeft, contentTop) : 0),
+        right:
+            sidePadding +
+            (rightAtCorner ? cornerInsetAt(corners.topRight, contentTop) : 0),
+      );
+    }
+
     // 近方窗口（如 807×600）扣掉导航栏后仍算竖排，游戏页保留顶栏；但顶栏下、
     // 导航栏旁的实际工作区已左右分栏，导航不能再按整窗的竖排去贴信息栏。
     final minimalSideNavigation =
@@ -2302,6 +2329,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
               controller: widget.headerNoticeController,
               fullscreen: _gameFullscreen,
               nativeQuestOverlay: Platform.isAndroid,
+              damageControlOverlay: damageControlOverlay,
               child: QuestCompletionFeedback(
                 controller: widget.gameStateController,
                 layoutSettingsController: widget.layoutSettingsController,
@@ -2310,6 +2338,20 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                       ? buildNavigationSidebar(completedCount)
                       : null,
                   railOnRight: menuOnRight,
+                  overlay: damageControlOverlay
+                      ? Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: QuestCompletionHeaderSlot.noticeHeight,
+                          child: Padding(
+                            padding: headerContentPadding(context),
+                            child: const QuestCompletionHeaderSlot.overlay(
+                              key: Key('minimal-notice-overlay'),
+                            ),
+                          ),
+                        )
+                      : null,
                   children: [
                     Visibility(
                       visible:
@@ -2333,41 +2375,11 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               isGameWorkspace &&
                               !minimalShell &&
                               widget.toolbarController.isVisible;
-                          final corners = DisplayCorners.of(context);
-                          final sidePadding = isCompact ? 8.0 : 10.0;
-                          // Compact header icons are centered at 15dp; keep
-                          // the bar's ends clear of the corner arc there.
-                          final contentTop = (shellHeaderHeight - 15) / 2;
-                          // 竖向导航栏那一侧的顶角已被导航栏占住。
-                          final leftAtCorner = !minimalSideRail || menuOnRight;
-                          final rightAtCorner =
-                              !minimalSideRail || !menuOnRight;
                           return UiScale(
                             scale: 1,
                             child: Container(
                               height: headerHeight,
-                              padding: minimalGameLayout
-                                  ? EdgeInsets.only(
-                                      left:
-                                          sidePadding +
-                                          (leftAtCorner
-                                              ? cornerInsetAt(
-                                                  corners.topLeft,
-                                                  contentTop,
-                                                )
-                                              : 0),
-                                      right:
-                                          sidePadding +
-                                          (rightAtCorner
-                                              ? cornerInsetAt(
-                                                  corners.topRight,
-                                                  contentTop,
-                                                )
-                                              : 0),
-                                    )
-                                  : EdgeInsets.symmetric(
-                                      horizontal: sidePadding,
-                                    ),
+                              padding: headerContentPadding(context),
                               decoration: BoxDecoration(
                                 color: appColor(
                                   context,
@@ -3895,11 +3907,13 @@ class _SideRailColumn extends StatelessWidget {
     required this.rail,
     required this.railOnRight,
     required this.children,
+    this.overlay,
   });
 
   final Widget? rail;
   final bool railOnRight;
   final List<Widget> children;
+  final Widget? overlay;
 
   @override
   Widget build(BuildContext context) => Flex(
@@ -3910,7 +3924,15 @@ class _SideRailColumn extends StatelessWidget {
       ?rail,
       Expanded(
         key: const Key('workspace-side-rail-body'),
-        child: Column(children: children),
+        // The Stack stays when the overlay comes and goes so the game below
+        // keeps its element.
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Column(children: children),
+            ?overlay,
+          ],
+        ),
       ),
     ],
   );
