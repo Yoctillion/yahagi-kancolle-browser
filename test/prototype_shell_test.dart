@@ -18,6 +18,7 @@ import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_store.dart';
 import 'package:yahagi_kancolle_browser/src/layout/display_corners.dart';
 import 'package:yahagi_kancolle_browser/src/layout/minimal_layout.dart';
 import 'package:yahagi_kancolle_browser/src/layout/workspace_context_header.dart';
+import 'package:yahagi_kancolle_browser/src/settings/fleet_display_options.dart';
 import 'package:yahagi_kancolle_browser/src/settings/header_resource_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
@@ -2570,10 +2571,7 @@ void main() {
   testWidgets('HD minimal keeps compact chrome and 1.1 content scale', (
     tester,
   ) async {
-    final layout = await _pumpMinimalShell(
-      tester,
-      size: const Size(1280, 800),
-    );
+    final layout = await _pumpMinimalShell(tester, size: const Size(1280, 800));
     await layout.setHdEnabled(true);
     await tester.pumpAndSettle();
     expect(_sidebarWidth(tester), closeTo(41, .001));
@@ -2923,7 +2921,7 @@ void main() {
               'type',
               'shipSpeed',
               'morale',
-              'mechanisms',
+              ...mechanismFields,
               'minimum-condition',
               'recovery-countdown',
             });
@@ -3037,10 +3035,8 @@ void main() {
               matching: find.byWidgetPredicate(
                 (widget) =>
                     widget is Container &&
-                    widget.constraints?.minHeight ==
-                            _minimalHeaderHeight &&
-                        widget.constraints?.maxHeight ==
-                            _minimalHeaderHeight,
+                    widget.constraints?.minHeight == _minimalHeaderHeight &&
+                    widget.constraints?.maxHeight == _minimalHeaderHeight,
               ),
             )
             .first;
@@ -4031,116 +4027,112 @@ void main() {
       }
     });
 
-    testWidgets(
-      'minimal enlarges briefings only under HD and keeps the game',
-      (tester) async {
-        var disposals = 0;
-        var deactivations = 0;
-        final state = GameStateController(reducer: _HdMinimalStateReducer());
-        await state.initialize();
-        state.accept(start2Event);
-        await state.idle;
-        final browser = _NoopBrowserPort();
-        const gameKey = Key('ui-scale-game');
-        final layout = await _pumpMinimalShell(
-          tester,
-          size: const Size(1200, 700),
-          uiSize: UiDisplaySize.compact,
-          gameState: state,
-          browserPort: browser,
-          gameSurface: _LifecycleProbe(
-            key: gameKey,
-            onDispose: () => disposals++,
-            onDeactivate: () => deactivations++,
-          ),
-        );
-        final game = find.byKey(gameKey);
-        await layout.setDashboardCardOrder([
-          'fleet',
-          ...layout.dashboardCardOrder.where((id) => id != 'fleet'),
-        ]);
-        await tester.pumpAndSettle();
-        final originalGame = tester.element(game);
-        final reloads = browser.reloadCalls;
-        final brand = find.byKey(const Key('yahagi-brand-button'));
-        final brandText = find.descendant(
-          of: brand,
-          matching: find.text('ヤハギ'),
-        );
-        final nav = find.byKey(const Key('workspace-nav-game'));
-        final navIcon = find.descendant(of: nav, matching: find.byType(Icon));
+    testWidgets('minimal enlarges briefings only under HD and keeps the game', (
+      tester,
+    ) async {
+      var disposals = 0;
+      var deactivations = 0;
+      final state = GameStateController(reducer: _HdMinimalStateReducer());
+      await state.initialize();
+      state.accept(start2Event);
+      await state.idle;
+      final browser = _NoopBrowserPort();
+      const gameKey = Key('ui-scale-game');
+      final layout = await _pumpMinimalShell(
+        tester,
+        size: const Size(1200, 700),
+        uiSize: UiDisplaySize.compact,
+        gameState: state,
+        browserPort: browser,
+        gameSurface: _LifecycleProbe(
+          key: gameKey,
+          onDispose: () => disposals++,
+          onDeactivate: () => deactivations++,
+        ),
+      );
+      final game = find.byKey(gameKey);
+      await layout.setDashboardCardOrder([
+        'fleet',
+        ...layout.dashboardCardOrder.where((id) => id != 'fleet'),
+      ]);
+      await tester.pumpAndSettle();
+      final originalGame = tester.element(game);
+      final reloads = browser.reloadCalls;
+      final brand = find.byKey(const Key('yahagi-brand-button'));
+      final brandText = find.descendant(of: brand, matching: find.text('ヤハギ'));
+      final nav = find.byKey(const Key('workspace-nav-game'));
+      final navIcon = find.descendant(of: nav, matching: find.byType(Icon));
 
-        void expectScale(Finder finder, double factor) {
-          final element = tester.element(finder);
-          expect(UiScale.of(element), factor);
-          final local = tester.getSize(finder);
-          final painted = tester.getRect(finder).size;
-          expect(painted.width, closeTo(local.width * factor, .001));
-          expect(painted.height, closeTo(local.height * factor, .001));
-        }
+      void expectScale(Finder finder, double factor) {
+        final element = tester.element(finder);
+        expect(UiScale.of(element), factor);
+        final local = tester.getSize(finder);
+        final painted = tester.getRect(finder).size;
+        expect(painted.width, closeTo(local.width * factor, .001));
+        expect(painted.height, closeTo(local.height * factor, .001));
+      }
 
-        for (final hd in [false, true]) {
-          await layout.setHdEnabled(hd);
-          if (hd) await layout.moveHdModuleToSidebar('fleet', target: 'battle');
-          for (final size in [
-            UiDisplaySize.normal,
-            UiDisplaySize.compact,
-            UiDisplaySize.minimal,
-            UiDisplaySize.compact,
-            UiDisplaySize.minimal,
-          ]) {
-            await layout.setUiDisplaySize(size);
-            await tester.pumpAndSettle();
-            final factor = size == UiDisplaySize.minimal
-                ? minimalContentScale(hd: hd)
-                : 1.0;
-            final phoneMinimal = size == UiDisplaySize.minimal && !hd;
-            final header = switch (size) {
-              UiDisplaySize.normal => 44.0,
-              _ => phoneMinimal ? 28.0 : 36.0,
-            };
-            final navigation = switch (size) {
-              UiDisplaySize.normal => 48.0,
-              _ => phoneMinimal ? 34.0 : 41.0,
-            };
-            expect(_headerHeight(tester), closeTo(header, .001));
-            expect(_sidebarWidth(tester), closeTo(navigation, .001));
-            expectScale(brandText, 1);
-            expectScale(navIcon, 1);
+      for (final hd in [false, true]) {
+        await layout.setHdEnabled(hd);
+        if (hd) await layout.moveHdModuleToSidebar('fleet', target: 'battle');
+        for (final size in [
+          UiDisplaySize.normal,
+          UiDisplaySize.compact,
+          UiDisplaySize.minimal,
+          UiDisplaySize.compact,
+          UiDisplaySize.minimal,
+        ]) {
+          await layout.setUiDisplaySize(size);
+          await tester.pumpAndSettle();
+          final factor = size == UiDisplaySize.minimal
+              ? minimalContentScale(hd: hd)
+              : 1.0;
+          final phoneMinimal = size == UiDisplaySize.minimal && !hd;
+          final header = switch (size) {
+            UiDisplaySize.normal => 44.0,
+            _ => phoneMinimal ? 28.0 : 36.0,
+          };
+          final navigation = switch (size) {
+            UiDisplaySize.normal => 48.0,
+            _ => phoneMinimal ? 34.0 : 41.0,
+          };
+          expect(_headerHeight(tester), closeTo(header, .001));
+          expect(_sidebarWidth(tester), closeTo(navigation, .001));
+          expectScale(brandText, 1);
+          expectScale(navIcon, 1);
 
-            final fleet = find.byType(FleetSummaryCard);
-            expect(UiScale.of(tester.element(fleet)), factor);
-            if (size == UiDisplaySize.minimal) {
-              final cardHeader = find.descendant(
-                of: fleet,
-                matching: find.byKey(const Key('dashboard-card-header')),
-              );
-              final hp = find.byKey(const Key('minimal-hp-value-1'));
-              final ship = find.byKey(const Key('minimal-ship-row-1'));
-              expect(tester.getSize(cardHeader).height, flatHeaderHeight);
-              expect(
-                tester.getRect(cardHeader).height,
-                closeTo(flatHeaderHeight * factor, .001),
-              );
-              expectScale(hp, factor);
-              expect(
-                tester.getRect(ship).height,
-                closeTo(tester.getSize(ship).height * factor, .001),
-              );
-            }
-            expect(
-              find.ancestor(of: game, matching: find.byType(UiScale)),
-              findsNothing,
+          final fleet = find.byType(FleetSummaryCard);
+          expect(UiScale.of(tester.element(fleet)), factor);
+          if (size == UiDisplaySize.minimal) {
+            final cardHeader = find.descendant(
+              of: fleet,
+              matching: find.byKey(const Key('dashboard-card-header')),
             );
-            expect(tester.element(game), same(originalGame));
-            expect(browser.reloadCalls, reloads);
-            expect(disposals, 0);
-            expect(deactivations, 0);
-            expect(tester.takeException(), isNull, reason: '$hd / $size');
+            final hp = find.byKey(const Key('minimal-hp-value-1'));
+            final ship = find.byKey(const Key('minimal-ship-row-1'));
+            expect(tester.getSize(cardHeader).height, flatHeaderHeight);
+            expect(
+              tester.getRect(cardHeader).height,
+              closeTo(flatHeaderHeight * factor, .001),
+            );
+            expectScale(hp, factor);
+            expect(
+              tester.getRect(ship).height,
+              closeTo(tester.getSize(ship).height * factor, .001),
+            );
           }
+          expect(
+            find.ancestor(of: game, matching: find.byType(UiScale)),
+            findsNothing,
+          );
+          expect(tester.element(game), same(originalGame));
+          expect(browser.reloadCalls, reloads);
+          expect(disposals, 0);
+          expect(deactivations, 0);
+          expect(tester.takeException(), isNull, reason: '$hd / $size');
         }
-      },
-    );
+      }
+    });
 
     testWidgets('switching compact and minimal keeps game surface alive', (
       tester,

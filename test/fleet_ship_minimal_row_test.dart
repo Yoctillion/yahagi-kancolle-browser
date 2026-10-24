@@ -314,7 +314,13 @@ void main() {
     'metadata stays visible when all numeric status fields are hidden',
     (tester) async {
       await tester.pumpWidget(
-        _app(_row(_mechanismState(), 1, visible: {'shipSpeed', 'mechanisms'})),
+        _app(
+          _row(
+            _mechanismState(),
+            1,
+            visible: {'shipSpeed', ...mechanismFields},
+          ),
+        ),
       );
       await tester.pump();
 
@@ -549,9 +555,7 @@ void main() {
     expect(moraleBandOf(19), MoraleBand.exhausted);
   });
 
-  testWidgets('mechanism tags follow the shared display toggle', (
-    tester,
-  ) async {
+  testWidgets('each mechanism follows its own display toggle', (tester) async {
     final state = _mechanismState();
     Future<void> pumpRows(Set<String> visible) async {
       await tester.pumpWidget(
@@ -578,11 +582,17 @@ void main() {
       findsOneWidget,
     );
 
-    await pumpRows(defaultFields.difference({'mechanisms'}));
+    await pumpRows(defaultFields.difference({'night'}));
+    expect(
+      find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('minimal-mechanism-2-nightCarrierAttack')),
       findsNothing,
     );
+
+    await pumpRows(defaultFields.difference({'asw'}));
     expect(
       find.byKey(const Key('minimal-mechanism-1-openingAsw')),
       findsNothing,
@@ -610,7 +620,7 @@ void main() {
         _row(
           state,
           1,
-          visible: defaultFields.difference({'mechanisms'}),
+          visible: defaultFields.difference(mechanismFields),
           specialAttack: specialAttack,
         ),
       ),
@@ -664,7 +674,7 @@ void main() {
             'ammo',
             'morale',
             'shipSpeed',
-            'mechanisms',
+            ...mechanismFields,
           }),
         ),
       ),
