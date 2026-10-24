@@ -38,6 +38,7 @@ class DashboardCard extends StatelessWidget {
     this.collapseButtonKey,
     this.headerAction,
     this.collapsedSummary,
+    this.onTitleTap,
   });
 
   final String title;
@@ -53,6 +54,10 @@ class DashboardCard extends StatelessWidget {
   final Color? borderColor;
   final Key? collapseButtonKey;
   final Widget? headerAction;
+
+  /// Makes the logo, title and badge one tap target while expanded; the
+  /// callback receives that region's context to anchor a menu.
+  final ValueChanged<BuildContext>? onTitleTap;
 
   /// 保留调用方传入的折叠摘要；当前标题不再展示摘要文字。
   final String? collapsedSummary;
@@ -134,39 +139,36 @@ class DashboardCard extends StatelessWidget {
                         : constraints.maxWidth,
                     child: Row(
                       children: [
-                        if (showLogo) ...[
-                          IconTheme(
-                            data: IconThemeData(
-                              size: 16,
-                              color: appColor(context, Color(0xffd4a85f)),
-                            ),
-                            child: icon,
-                          ),
-                          if (showTitle) const SizedBox(width: 6),
-                        ],
+                        if (showLogo && !showTitle) _cardLogo(context),
                         if (showTitle)
                           Expanded(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      title,
-                                      style: appTextStyle(
-                                        context,
-                                        _titleStyle(false),
+                            child: _titleTapTarget(
+                              context,
+                              Row(
+                                children: [
+                                  if (showLogo) ...[
+                                    _cardLogo(context),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        title,
+                                        style: appTextStyle(
+                                          context,
+                                          _titleStyle(false),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                if (!collapsed && titleBadge != null) ...[
-                                  const SizedBox(width: 8),
-                                  titleBadge!,
+                                  if (!collapsed && titleBadge != null) ...[
+                                    const SizedBox(width: 8),
+                                    titleBadge!,
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           )
                         else ...[
@@ -260,44 +262,52 @@ class DashboardCard extends StatelessWidget {
     Widget Function(Widget, double, AlignmentGeometry) fit,
     double trailingMaxWidth,
   ) {
+    final logo = IconTheme(
+      data: IconThemeData(size: 13, color: appColor(context, flatAccentColor)),
+      child: icon,
+    );
     return Row(
       children: [
-        if (showLogo) ...[
-          IconTheme(
-            data: IconThemeData(
-              size: 13,
-              color: appColor(context, flatAccentColor),
-            ),
-            child: icon,
-          ),
-          if (showTitle) const SizedBox(width: 6),
-        ],
+        if (showLogo && !showTitle) logo,
         if (showTitle)
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) => Row(
-                mainAxisSize: MainAxisSize.min,
+            child: _titleTapTarget(
+              context,
+              Row(
                 children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: appTextStyle(context, _titleStyle(true)),
+                  if (showLogo) ...[logo, const SizedBox(width: 6)],
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: appTextStyle(context, _titleStyle(true)),
+                            ),
+                          ),
+                          if (!collapsed && titleBadge != null) ...[
+                            const SizedBox(width: 8),
+                            // Rigid so the title shrinks first (a Flexible badge would
+                            // cap the title at half too); the cap stops it overflowing
+                            // once the title is gone.
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: math.max(
+                                  0,
+                                  (constraints.maxWidth - 8) / 2,
+                                ),
+                              ),
+                              child: fit(titleBadge!, 22, Alignment.centerLeft),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                  if (!collapsed && titleBadge != null) ...[
-                    const SizedBox(width: 8),
-                    // Rigid so the title shrinks first (a Flexible badge would
-                    // cap the title at half too); the cap stops it overflowing
-                    // once the title is gone.
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: math.max(0, (constraints.maxWidth - 8) / 2),
-                      ),
-                      child: fit(titleBadge!, 22, Alignment.centerLeft),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -350,26 +360,32 @@ class DashboardCard extends StatelessWidget {
     children: [
       Row(
         children: [
-          if (showLogo) ...[
-            IconTheme(
-              data: IconThemeData(
-                size: 16,
-                color: appColor(context, Color(0xffd4a85f)),
-              ),
-              child: icon,
-            ),
-            if (showTitle) const SizedBox(width: 6),
-          ],
           Expanded(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (showTitle)
-                  Text(title, style: appTextStyle(context, _titleStyle(false))),
-                if (!collapsed && titleBadge != null) titleBadge!,
-              ],
+            child: _titleTapTarget(
+              context,
+              Row(
+                children: [
+                  if (showLogo) ...[
+                    _cardLogo(context),
+                    if (showTitle) const SizedBox(width: 6),
+                  ],
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (showTitle)
+                          Text(
+                            title,
+                            style: appTextStyle(context, _titleStyle(false)),
+                          ),
+                        if (!collapsed && titleBadge != null) titleBadge!,
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           ?headerAction,
@@ -387,6 +403,28 @@ class DashboardCard extends StatelessWidget {
         ),
     ],
   );
+
+  Widget _cardLogo(BuildContext context) => IconTheme(
+    data: IconThemeData(size: 16, color: appColor(context, Color(0xffd4a85f))),
+    child: icon,
+  );
+
+  Widget _titleTapTarget(BuildContext context, Widget child) {
+    final onTap = onTitleTap;
+    if (onTap == null ||
+        collapsed ||
+        DashboardEditingScope.isEditing(context)) {
+      return child;
+    }
+    return Builder(
+      builder: (region) => GestureDetector(
+        key: const Key('dashboard-card-title-tap'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap(region),
+        child: child,
+      ),
+    );
+  }
 
   String _collapseLabel(BuildContext context) => collapsed
       ? fleetText(context, '展开$title')

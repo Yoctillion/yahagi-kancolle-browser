@@ -81,29 +81,67 @@ void main() {
   });
 
   for (final panel in PanelStyle.values) {
-    testWidgets('dropdown pages through states with ‹ › ($panel)', (
+    testWidgets('dropdown opens the menu from the logo and title ($panel)', (
       tester,
     ) async {
       await pump(tester, SmartPanelHeaderStyle.dropdown, panel: panel);
-      expect(find.text(_zh.smartPanelStateHome), findsOneWidget);
+      expect(find.byKey(const Key('smart-panel-prev')), findsNothing);
+      expect(find.byKey(const Key('smart-panel-next')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('smart-panel-next')));
-      await tester.pump();
-      expect(controller.state, SmartPanelState.sortieCheck);
-      expect(find.text(_zh.smartPanelStateSortieCheck), findsOneWidget);
+      await tester.tap(find.text(_zh.smartPanelStateHome));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(_zh.smartPanelStateQuests).last);
+      await tester.pumpAndSettle();
+      expect(controller.state, SmartPanelState.quests);
 
-      await tester.tap(find.byKey(const Key('smart-panel-prev')));
-      await tester.tap(find.byKey(const Key('smart-panel-prev')));
-      await tester.pump();
+      await tester.tap(
+        find.byIcon(smartPanelStateIcons[SmartPanelState.quests]!),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(_zh.smartPanelStatePractice).last);
+      await tester.pumpAndSettle();
       expect(controller.state, SmartPanelState.practice);
       expect(tester.takeException(), isNull);
     });
   }
 
+  testWidgets('collapsed dropdown title does not open the menu', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SmartPanelCard(
+            controller: controller,
+            collapsed: true,
+            onToggleCollapse: () {},
+            headerStyle: SmartPanelHeaderStyle.dropdown,
+            stateBody: (context, state) => _EmbedProbe(state),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text(_zh.smartPanelStateHome));
+    await tester.pumpAndSettle();
+    expect(find.byType(PopupMenuItem<SmartPanelState>), findsNothing);
+  });
+
   testWidgets('dropdown menu lists every state', (tester) async {
     await pump(tester, SmartPanelHeaderStyle.dropdown);
     await tester.tap(find.byKey(const Key('smart-panel-menu')));
     await tester.pumpAndSettle();
+    for (final state in SmartPanelState.values) {
+      expect(
+        find.widgetWithText(
+          PopupMenuItem<SmartPanelState>,
+          smartPanelStateLabel(_zh, state),
+        ),
+        findsOneWidget,
+      );
+    }
     await tester.tap(find.text(_zh.smartPanelStateQuests).last);
     await tester.pumpAndSettle();
     expect(controller.state, SmartPanelState.quests);
@@ -131,6 +169,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final panel in PanelStyle.values) {
+    testWidgets('icons keep a usable hit area at 220 dp ($panel)', (
+      tester,
+    ) async {
+      await pump(tester, SmartPanelHeaderStyle.icons, panel: panel, width: 220);
+      expect(find.text(_zh.smartPanelStateHome), findsNothing);
+      for (final state in SmartPanelState.values) {
+        final rect = tester.getRect(
+          find.byKey(Key('smart-panel-icon-${state.name}')),
+        );
+        // Card headers below 220 dp scale as a whole; flat ones do not.
+        final minWidth = panel == PanelStyle.flat ? 24.0 : 22.0;
+        expect(rect.width, greaterThanOrEqualTo(minWidth), reason: '$state');
+        expect(rect.height, greaterThanOrEqualTo(22), reason: '$state');
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final width in const <double>[160, 185, 220, 240]) {
     testWidgets('card-style headers fit at $width dp', (tester) async {
       for (final style in SmartPanelHeaderStyle.values) {
@@ -151,8 +208,10 @@ void main() {
     expect(find.byKey(const Key('smart-panel-auto')), findsOneWidget);
     expect(find.text('body:quests:true'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('smart-panel-next')));
-    await tester.pump();
+    await tester.tap(find.byKey(const Key('smart-panel-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(_zh.smartPanelStateHome).last);
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('smart-panel-auto')), findsNothing);
   });
 
