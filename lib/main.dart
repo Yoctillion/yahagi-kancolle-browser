@@ -2296,6 +2296,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         // Keep navigation beside both panels when the remaining workspace is
         // side by side, even if the whole window crosses the portrait cutoff.
         !minimalSideNavigation &&
+        // minimalSideNavigation 只扣顶栏，底部横栏加手势区更高时它与
+        // minimalSideRail 对横竖的判断会相左；整高的竖向导航栏已在，不能再另出一条。
+        !minimalSideRail &&
         (menuTop ||
             (!menuHorizontal &&
                 !hdWindow &&

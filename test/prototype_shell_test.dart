@@ -5268,6 +5268,58 @@ void main() {
         });
       }
 
+      for (final side in const ['left', 'right']) {
+        testWidgets(
+          'minimal 800x600 bottom bar with gesture inset keeps one navigation rail ($side)',
+          variant: TargetPlatformVariant.only(TargetPlatform.android),
+          (tester) async {
+            // 底部横栏另占的 22 + 24 比顶栏 28 高：只扣顶栏的整窗仍算竖排，
+            // 扣掉横栏后的游戏工作区却已横排，两种判断不能各出一条导航栏。
+            useBottomInset(tester, 24);
+            var disposals = 0;
+            var deactivations = 0;
+            final layout = await _pumpMinimalShell(
+              tester,
+              size: const Size(800, 600),
+              gameSurface: _LifecycleProbe(
+                key: probe,
+                onDispose: () => disposals++,
+                onDeactivate: () => deactivations++,
+              ),
+            );
+            await layout.setWorkspaceMenuPosition(side);
+            await tester.pumpAndSettle();
+            final originalGame = tester.element(
+              find.byKey(probe, skipOffstage: false),
+            );
+
+            for (final position in const [
+              MinimalResourcePosition.bottomBar,
+              MinimalResourcePosition.panel,
+              MinimalResourcePosition.bottomBar,
+              MinimalResourcePosition.topBar,
+              MinimalResourcePosition.bottomBar,
+            ]) {
+              await layout.setMinimalResourcePosition(position);
+              await tester.pumpAndSettle();
+              expect(
+                find.byType(WorkspaceNavigation),
+                findsOneWidget,
+                reason: '$position',
+              );
+              expect(
+                tester.element(find.byKey(probe, skipOffstage: false)),
+                same(originalGame),
+                reason: '$position',
+              );
+              expect(disposals, 0, reason: '$position');
+              expect(deactivations, 0, reason: '$position');
+              expect(tester.takeException(), isNull, reason: '$position');
+            }
+          },
+        );
+      }
+
       for (final inset in [0.0, 21.0]) {
         testWidgets(
           'switching all positions keeps the game alive ($inset)',
