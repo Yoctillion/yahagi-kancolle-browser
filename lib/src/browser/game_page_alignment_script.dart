@@ -1,6 +1,6 @@
 const String gamePageAlignmentScript = r'''
 (() => {
-  const runtimeVersion = 6;
+  const runtimeVersion = 7;
   if (
     window.__yahagiMobilePresentationRuntimeVersion === runtimeVersion &&
     typeof window.__yahagiMobileSyncPresentation === 'function' &&
@@ -9,7 +9,9 @@ const String gamePageAlignmentScript = r'''
     return window.__yahagiMobileSyncPresentation(true);
   }
   // Release snapshots held by a previous runtime before taking ownership again.
+  window.__yahagiMobileDisposePresentation?.();
   window.__yahagiMobileRestoreGameViewport?.();
+  window.__yahagiMobileRestoreOoiFrameScrolling?.();
   const styleId = '__yahagi_mobile_fixed_canvas__';
   const ooiBrowserStyleId = '__yahagi_mobile_ooi_browser__';
   const ooiBrowserFrameWidth = 1280;
@@ -24,6 +26,7 @@ const String gamePageAlignmentScript = r'''
     '#flashWrap > iframe#htmlWrap, #ooi-game > iframe#htmlWrap';
   const ooiFrameScrolling = new Map();
   const gameViewportMetas = new Map();
+  let hadOoiGameSurface = false;
   const restoreGameViewport = () => {
     for (const [meta, original] of gameViewportMetas) {
       if (original.created) meta.remove();
@@ -113,8 +116,8 @@ const String gamePageAlignmentScript = r'''
     #ooi-header,
     #ooi-footer,
     #spacing_top,
-    #ooi-game > :not(iframe#externalswf):not(embed#externalswf):not(iframe#htmlWrap):not(#flashWrap),
-    #flashWrap > :not(iframe#externalswf):not(embed#externalswf):not(iframe#htmlWrap) {
+    #ooi-game > :not(iframe#externalswf):not(embed#externalswf):not(iframe#htmlWrap):not(#flashWrap):not(dialog):not(:has(dialog[open], input[type="password"], input[name="password"], input[autocomplete="current-password"], input[autocomplete="new-password"])),
+    #flashWrap > :not(iframe#externalswf):not(embed#externalswf):not(iframe#htmlWrap):not(dialog):not(:has(dialog[open], input[type="password"], input[name="password"], input[autocomplete="current-password"], input[autocomplete="new-password"])) {
       display: none !important;
     }
 
@@ -124,7 +127,6 @@ const String gamePageAlignmentScript = r'''
     #flashWrap > iframe#externalswf,
     #flashWrap > embed#externalswf,
     #flashWrap > iframe#htmlWrap {
-      display: block !important;
       position: fixed !important;
       left: 0 !important;
       top: 0 !important;
@@ -142,11 +144,13 @@ const String gamePageAlignmentScript = r'''
 
   const restoreOoiFrameScrolling = () => {
     for (const [frame, original] of ooiFrameScrolling) {
+      if (frame.getAttribute('scrolling') === original) continue;
       if (original === null) frame.removeAttribute('scrolling');
       else frame.setAttribute('scrolling', original);
     }
     ooiFrameScrolling.clear();
   };
+  window.__yahagiMobileRestoreOoiFrameScrolling = restoreOoiFrameScrolling;
 
   const cleanupOoiBrowserPresentation = () => {
     document.getElementById(ooiBrowserStyleId)?.remove();
@@ -199,7 +203,7 @@ const String gamePageAlignmentScript = r'''
     isOoiBrowserPage;
 
   const isVisibleElement = (element) => {
-    if (!element || !element.isConnected) return false;
+    if (!element || !element.isConnected || element.hidden) return false;
     const style = getComputedStyle(element);
     if (
       style.display === 'none' ||
@@ -225,6 +229,17 @@ const String gamePageAlignmentScript = r'''
         isVisibleElement(canvas),
     );
 
+  const findOoiBrowserSurface = () =>
+    Array.from(document.querySelectorAll(ooiBrowserSurfaceSelector)).find(
+      isVisibleElement,
+    );
+
+  // Password visibility toggles may change type to text; the field name and
+  // autocomplete intent still identify an ordinary OOI authentication form.
+  const hasOoiLoginForm = () => isOoiBrowserPage && Array.from(
+    document.querySelectorAll('input[type="password"], input[name="password"], input[autocomplete="current-password"], input[autocomplete="new-password"]'),
+  ).some(isVisibleElement);
+
   const notifyPresentationState = (nextState, forceFit = false) => {
     // Explicit fits must survive both JS and native state deduplication.
     if (forceFit && nextState === 'game') {
@@ -240,6 +255,7 @@ const String gamePageAlignmentScript = r'''
   };
 
   const applyGamePresentation = () => {
+    if (isOoiBrowserPage) hadOoiGameSurface = true;
     applyGameViewport();
     let style = document.getElementById(styleId);
     if (!style) {
@@ -299,7 +315,7 @@ const String gamePageAlignmentScript = r'''
 
     if (!window.__yahagiMobileOoiAlignGame) {
       window.__yahagiMobileOoiAlignGame = () => {
-        const frame = document.querySelector(ooiBrowserSurfaceSelector);
+        const frame = findOoiBrowserSurface();
         if (!frame || !document.documentElement) return;
 
         window.scrollTo(0, 0);
@@ -309,7 +325,7 @@ const String gamePageAlignmentScript = r'''
           restoreOoiFrameScrolling();
           ooiFrameScrolling.set(frame, frame.getAttribute('scrolling'));
         }
-        frame.setAttribute('scrolling', 'no');
+        if (frame.getAttribute('scrolling') !== 'no') frame.setAttribute('scrolling', 'no');
         try {
           // HTML embed surfaces expose their window through window.frames.
           const childWindow = frame.contentWindow || Array.from(window.frames || []).find((child) => {
@@ -357,9 +373,10 @@ const String gamePageAlignmentScript = r'''
     if (!document.documentElement || !document.head || !document.body) {
       return {state: isGamePage && !isAccountPage ? 'pending' : 'web', unparsed: true};
     }
-    const hasOoiBrowserSurface = isOoiBrowserPage && Boolean(
-      document.querySelector(ooiBrowserSurfaceSelector),
-    );
+    if (!isGamePage || isAccountPage || hasBlockingPageDialog() || hasOoiLoginForm()) {
+      return {state: 'web'};
+    }
+    const hasOoiBrowserSurface = isOoiBrowserPage && Boolean(findOoiBrowserSurface());
     if (isOoiBrowserPage && hasOoiBrowserSurface) {
       // Android WebView does not scale an embed/iframe's composited surface
       // with CSS transform. Pin the original frame and use the native
@@ -367,15 +384,15 @@ const String gamePageAlignmentScript = r'''
       return {state: 'game', ooi: true};
     }
 
-    if (!isGamePage || isAccountPage || hasBlockingPageDialog()) {
-      return {state: 'web'};
-    }
     const hasGameSurface =
       Array.from(
         document.querySelectorAll('#game_frame, #game-container'),
       ).some(isVisibleElement) || hasStandaloneGameCanvas();
 
-    return {state: hasGameSurface ? 'game' : 'pending'};
+    // Initial loading is pending. Once OOI has shown a game, removing its
+    // surface releases the viewport and native fit for ordinary page content.
+    // Mutation batching keeps a synchronous frame replacement in game mode.
+    return {state: hasGameSurface ? 'game' : isOoiBrowserPage && hadOoiGameSurface ? 'web' : 'pending'};
   };
   // Native hints may be queued by an older document. Re-read without fitting
   // or notifying the bridge again, so acknowledgement cannot form a loop.
@@ -412,7 +429,11 @@ const String gamePageAlignmentScript = r'''
 
   // Replace cached OOI hooks when upgrading a runtime in a retained document.
   cleanupOoiBrowserPresentation();
-  delete window.__yahagiMobileAlignGame;
+  cleanupGamePresentation();
+  if (window.__yahagiMobileOoiResize) {
+    window.removeEventListener('resize', window.__yahagiMobileOoiResize);
+    delete window.__yahagiMobileOoiResize;
+  }
   window.__yahagiMobilePresentationObserver?.disconnect();
   if ((isGamePage && !isAccountPage) || isOoiBrowserPage) {
     window.__yahagiMobilePresentationObserver = new MutationObserver(() => {
@@ -422,12 +443,22 @@ const String gamePageAlignmentScript = r'''
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'hidden', 'style', 'width', 'height', 'id', 'open', 'content', 'name'],
+      attributeFilter: ['class', 'hidden', 'style', 'width', 'height', 'id', 'open', 'content', 'name', 'type', 'autocomplete'],
     });
     window.addEventListener('resize', scheduleSync, {passive: true});
     window.visualViewport?.addEventListener('resize', scheduleSync, {passive: true});
     document.addEventListener('DOMContentLoaded', scheduleSync, {once: true});
   }
+
+  window.__yahagiMobileDisposePresentation = () => {
+    cancelScheduledSync();
+    window.__yahagiMobilePresentationObserver?.disconnect();
+    window.removeEventListener('resize', scheduleSync);
+    window.visualViewport?.removeEventListener?.('resize', scheduleSync);
+    document.removeEventListener('DOMContentLoaded', scheduleSync);
+    cleanupOoiBrowserPresentation();
+    cleanupGamePresentation();
+  };
 
   window.__yahagiMobilePresentationRuntimeVersion = runtimeVersion;
   return window.__yahagiMobileSyncPresentation(true);
