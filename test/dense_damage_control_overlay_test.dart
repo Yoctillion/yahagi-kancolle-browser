@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -85,6 +86,47 @@ void main() {
     );
   });
 
+  testWidgets(
+    'minimal damage control overlay passes taps beside the capsule through',
+    (tester) async {
+      await _pumpMinimalApp(tester, size: _phoneLandscape);
+      final strip = tester.getRect(find.byKey(_overlay));
+      final beside = Offset(strip.right - 4, strip.center.dy);
+      final targetBefore = _topHitTarget(tester, beside);
+
+      final shown = QuestCompletionDrawerHost.showDamageControlNotice(
+        _hostContext(tester),
+        _damageMessage,
+      );
+      await tester.pump();
+      expect(await shown, isTrue);
+      await _settle(tester);
+      final capsule = find
+          .ancestor(
+            of: find.text(_damageMessage),
+            matching: find.byType(Container),
+          )
+          .first;
+      expect(tester.getRect(capsule).contains(beside), isFalse);
+
+      final overlayObjects = _renderObjectsUnder(
+        tester.element(find.byKey(_overlay)),
+      );
+      final path = tester.hitTestOnBinding(beside).path;
+      expect(
+        path.where((entry) => overlayObjects.contains(entry.target)),
+        isEmpty,
+      );
+      expect(_topHitTarget(tester, beside), same(targetBefore));
+
+      await tester.tap(capsule);
+      await _settle(tester);
+      expect(find.text(_damageMessage), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('HD minimal keeps damage control in its header', (tester) async {
     await _pumpMinimalApp(tester, size: const Size(1280, 800), hd: true);
     expect(find.byKey(const Key('yahagi-hd-label')), findsOneWidget);
@@ -124,6 +166,21 @@ void main() {
     await _settle(tester);
     expect(tester.takeException(), isNull);
   });
+}
+
+HitTestTarget _topHitTarget(WidgetTester tester, Offset position) =>
+    tester.hitTestOnBinding(position).path.first.target;
+
+Set<RenderObject> _renderObjectsUnder(Element root) {
+  final objects = <RenderObject>{};
+  void visit(Element element) {
+    final renderObject = element.renderObject;
+    if (renderObject != null) objects.add(renderObject);
+    element.visitChildElements(visit);
+  }
+
+  visit(root);
+  return objects;
 }
 
 BuildContext _hostContext(WidgetTester tester) =>
