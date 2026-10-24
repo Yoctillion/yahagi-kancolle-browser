@@ -35,6 +35,7 @@ class RepairSummaryCard extends StatefulWidget {
     this.showLogo = true,
     this.showTitle = true,
     this.onOpenDisplaySettings,
+    this.lockedMode,
   });
 
   final Set<String> visible;
@@ -46,12 +47,17 @@ class RepairSummaryCard extends StatefulWidget {
   final VoidCallback onToggleCollapse;
   final ValueChanged<RepairDestination> onOpenRepair;
 
+  /// Forces a mode and hides the switch, leaving the user's choice alone.
+  final RepairCenterMode? lockedMode;
+
   @override
   State<RepairSummaryCard> createState() => _RepairSummaryCardState();
 }
 
 class _RepairSummaryCardState extends State<RepairSummaryCard> {
-  RepairCenterMode _mode = RepairCenterMode.dock;
+  RepairCenterMode _selectedMode = RepairCenterMode.dock;
+
+  RepairCenterMode get _mode => widget.lockedMode ?? _selectedMode;
   int? _selectedFleetId;
   DateTime _now = DateTime.now().toUtc();
 
@@ -108,7 +114,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
             dockLabel: fleetText(context, '入渠修理'),
             anchorageLabel: fleetText(context, '泊地修理'),
             nosakiLabel: fleetText(context, '野埼刷闪'),
-            onChanged: (mode) => setState(() => _mode = mode),
+            onChanged: (mode) => setState(() => _selectedMode = mode),
           );
     final content = switch (_mode) {
       RepairCenterMode.dock => _buildDockGrid(state, strings),
@@ -132,7 +138,13 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
       showTitle: widget.showTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [modeSelector, const SizedBox(height: 4), content],
+        children: [
+          if (widget.lockedMode == null) ...[
+            modeSelector,
+            const SizedBox(height: 4),
+          ],
+          content,
+        ],
       ),
     );
   }
@@ -146,7 +158,7 @@ class _RepairSummaryCardState extends State<RepairSummaryCard> {
           key: Key('repair-summary-mode-${mode.name}'),
           label: label,
           selected: _mode == mode,
-          onTap: () => setState(() => _mode = mode),
+          onTap: () => setState(() => _selectedMode = mode),
         );
     return FlatUnderlineTabs(
       key: const Key('repair-summary-mode-selector'),

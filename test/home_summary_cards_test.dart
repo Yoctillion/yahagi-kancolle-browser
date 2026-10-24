@@ -48,6 +48,59 @@ Future<void> _pumpAt(WidgetTester tester, double width, Widget child) async {
 }
 
 void main() {
+  for (final style in PanelStyle.values) {
+    testWidgets(
+      'locked modes hide the expedition and repair switches ($style)',
+      (tester) async {
+        final controller = GameStateController();
+        addTearDown(controller.dispose);
+        controller
+          ..accept(start2Event)
+          ..accept(portEvent);
+        await controller.idle;
+        await _pumpAt(
+          tester,
+          412,
+          PanelStyleScope(
+            style: style,
+            child: Column(
+              children: [
+                ExpeditionSummaryCard(
+                  controller: controller,
+                  collapsed: false,
+                  onToggleCollapse: () {},
+                  onOpenExpedition: () {},
+                  onOpenExpeditionCheck: (_) {},
+                  lockedMode: ExpeditionSummaryMode.summary,
+                ),
+                RepairSummaryCard(
+                  controller: controller,
+                  collapsed: false,
+                  onToggleCollapse: () {},
+                  onOpenRepair: (_) {},
+                  lockedMode: RepairCenterMode.dock,
+                ),
+              ],
+            ),
+          ),
+        );
+        expect(
+          find.byKey(const Key('expedition-summary-mode-selector')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('repair-summary-mode-selector')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('repair-summary-dock-grid')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('维修简报按渠位编号显示不完整的入渠记录', (tester) async {
     final controller = GameStateController();
     addTearDown(controller.dispose);

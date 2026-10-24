@@ -5,6 +5,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/dashboard_card.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
+import 'package:yahagi_kancolle_browser/src/layout/dashboard_editing_scope.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_store.dart';
@@ -127,6 +128,32 @@ void main() {
     await tester.tap(find.text(_zh.smartPanelStateHome));
     await tester.pumpAndSettle();
     expect(find.byType(PopupMenuItem<SmartPanelState>), findsNothing);
+  });
+
+  testWidgets('editing list titles the card by module, not state', (
+    tester,
+  ) async {
+    controller.select(SmartPanelState.practice);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: DashboardEditingScope(
+            child: SmartPanelCard(
+              controller: controller,
+              collapsed: true,
+              onToggleCollapse: () {},
+              headerStyle: SmartPanelHeaderStyle.dropdown,
+              stateBody: (context, state) => _EmbedProbe(state),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text(_zh.smartPanelTitle), findsOneWidget);
+    expect(find.text(_zh.smartPanelStatePractice), findsNothing);
   });
 
   testWidgets('dropdown menu lists every state', (tester) async {

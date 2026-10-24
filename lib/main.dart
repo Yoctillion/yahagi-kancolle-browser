@@ -3928,6 +3928,7 @@ class _InformationPanelState extends State<_InformationPanel> {
     required bool collapsed,
     required VoidCallback onToggleCollapse,
     VoidCallback? onOpenDisplaySettings,
+    ExpeditionSummaryMode? lockedMode,
   }) => ExpeditionSummaryCard(
     showLogo: _layout.moduleShowLogo('expedition'),
     showTitle: _layout.moduleShowName('expedition'),
@@ -3938,12 +3939,14 @@ class _InformationPanelState extends State<_InformationPanel> {
     onToggleCollapse: onToggleCollapse,
     onOpenExpedition: widget.onOpenExpedition,
     onOpenExpeditionCheck: widget.onOpenExpeditionCheck,
+    lockedMode: lockedMode,
   );
 
   Widget _repairCard({
     required bool collapsed,
     required VoidCallback onToggleCollapse,
     VoidCallback? onOpenDisplaySettings,
+    RepairCenterMode? lockedMode,
   }) => RepairSummaryCard(
     showLogo: _layout.moduleShowLogo('repair'),
     showTitle: _layout.moduleShowName('repair'),
@@ -3953,6 +3956,7 @@ class _InformationPanelState extends State<_InformationPanel> {
     collapsed: collapsed,
     onToggleCollapse: onToggleCollapse,
     onOpenRepair: widget.onOpenRepair,
+    lockedMode: lockedMode,
   );
 
   Widget _questsCard({
@@ -3976,7 +3980,6 @@ class _InformationPanelState extends State<_InformationPanel> {
     required bool collapsed,
     required VoidCallback onToggleCollapse,
     VoidCallback? onOpenDisplaySettings,
-    BattlePanelMode? lockedMode,
   }) => LiveBattleCard(
     key: key,
     showLogo: _layout.moduleShowLogo('battle'),
@@ -3994,7 +3997,6 @@ class _InformationPanelState extends State<_InformationPanel> {
         .pulseFilterFor(BattleEffectSurface.prediction),
     collapsed: collapsed,
     onToggleCollapse: onToggleCollapse,
-    lockedMode: lockedMode,
   );
 
   Widget _preSortieCard({
@@ -4019,11 +4021,20 @@ class _InformationPanelState extends State<_InformationPanel> {
   Widget _smartStateBody(BuildContext context, SmartPanelState state) {
     void noop() {}
     return switch (state) {
+      // Home only needs the timers; the expedition check has its own state.
       SmartPanelState.home => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _expeditionCard(collapsed: false, onToggleCollapse: noop),
-          _repairCard(collapsed: false, onToggleCollapse: noop),
+          _expeditionCard(
+            collapsed: false,
+            onToggleCollapse: noop,
+            lockedMode: ExpeditionSummaryMode.summary,
+          ),
+          _repairCard(
+            collapsed: false,
+            onToggleCollapse: noop,
+            lockedMode: RepairCenterMode.dock,
+          ),
         ],
       ),
       SmartPanelState.sortieCheck => _preSortieCard(
@@ -4035,7 +4046,6 @@ class _InformationPanelState extends State<_InformationPanel> {
         key: const PageStorageKey('smart-live-battle'),
         collapsed: false,
         onToggleCollapse: noop,
-        lockedMode: BattlePanelMode.detailed,
       ),
       SmartPanelState.quests => _questsCard(
         collapsed: false,
