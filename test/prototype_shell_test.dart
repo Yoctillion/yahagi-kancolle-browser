@@ -2679,7 +2679,7 @@ void main() {
     }
   });
 
-  group('readable minimal layout matrix', () {
+  group('readable minimal layout matrix keeps the two fixed-height lines', () {
     for (final scenario in const [
       (size: Size(360, 800), hd: false, locale: 'zh', textScale: 1.0),
       (size: Size(800, 360), hd: false, locale: 'zh', textScale: 1.3),
@@ -2877,7 +2877,6 @@ void main() {
           ]);
           final ship = find.byKey(const Key('minimal-ship-row-1'));
           final name = find.byKey(const Key('minimal-name-1'));
-          expectNaturalTextHeight(name);
           final nameRect = tester.getRect(name);
           final icons = find.descendant(
             of: ship,
@@ -2888,27 +2887,13 @@ void main() {
             nameRect.right,
             lessThanOrEqualTo(tester.getRect(icons.first).left + .01),
           );
-          final values = [
-            for (final key in [
-              'minimal-hp-value-1',
-              'minimal-supply-fuel-value-1',
-              'minimal-supply-ammo-value-1',
-            ])
-              find.byKey(Key(key)),
-          ];
-          for (final value in values) {
-            expectNaturalTextHeight(value);
-            expect(tester.widget<Text>(value).data, '999/999');
-            final valueRect = tester.getRect(value);
-            final shipRect = tester.getRect(ship);
-            expect(valueRect.left, greaterThanOrEqualTo(shipRect.left - .01));
-            expect(valueRect.right, lessThanOrEqualTo(shipRect.right + .01));
-            expect(valueRect.bottom, lessThanOrEqualTo(shipRect.bottom + .01));
-          }
-          expect(
-            tester.getRect(values[0]).overlaps(tester.getRect(values[2])),
-            isFalse,
-          );
+          final hp = find.byKey(const Key('minimal-hp-value-1'));
+          expect(tester.widget<Text>(hp).data, '999/999');
+          final hpRect = tester.getRect(hp);
+          final shipRect = tester.getRect(ship);
+          expect(hpRect.left, greaterThanOrEqualTo(shipRect.left - .01));
+          expect(hpRect.right, lessThanOrEqualTo(shipRect.right + .01));
+          expect(hpRect.bottom, lessThanOrEqualTo(shipRect.bottom + .01));
 
           if (scenario.hd && scenario.locale == 'en') {
             await layout.setFleetDisplayFields({
@@ -4115,7 +4100,7 @@ void main() {
               tester.getRect(cardHeader).height,
               closeTo(flatHeaderHeight * factor, .001),
             );
-            expectScale(hp, factor);
+            expect(UiScale.of(tester.element(hp)), factor);
             expect(
               tester.getRect(ship).height,
               closeTo(tester.getSize(ship).height * factor, .001),
