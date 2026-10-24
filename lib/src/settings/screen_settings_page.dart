@@ -270,6 +270,45 @@ class ScreenSettingsPage extends StatelessWidget with SettingsUIHelpers {
                         ],
                       ),
                     ),
+                    if (layoutSettingsController.uiDisplaySize.isMinimal) ...[
+                      Divider(
+                        color: appColor(context, Color(0xff294052)),
+                        height: 1,
+                      ),
+                      buildActionTile(
+                        key: const Key('settings-minimal-resource-position'),
+                        title: l10n.minimalResourcePositionTitle,
+                        subtitle: l10n.minimalResourcePositionDesc,
+                        trailing: DropdownButton<MinimalResourcePosition>(
+                          value:
+                              layoutSettingsController.minimalResourcePosition,
+                          underline: const SizedBox(),
+                          alignment: AlignmentDirectional.centerEnd,
+                          items: [
+                            DropdownMenuItem(
+                              value: MinimalResourcePosition.panel,
+                              child: Text(l10n.minimalResourcePositionPanel),
+                            ),
+                            DropdownMenuItem(
+                              value: MinimalResourcePosition.topBar,
+                              child: Text(l10n.minimalResourcePositionTopBar),
+                            ),
+                            DropdownMenuItem(
+                              value: MinimalResourcePosition.bottomBar,
+                              child: Text(
+                                l10n.minimalResourcePositionBottomBar,
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              layoutSettingsController
+                                  .setMinimalResourcePosition(value);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                     Divider(
                       color: appColor(context, Color(0xff294052)),
                       height: 1,

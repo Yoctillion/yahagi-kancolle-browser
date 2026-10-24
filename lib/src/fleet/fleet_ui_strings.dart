@@ -27,7 +27,7 @@ abstract final class FleetUiKeys {
   static const summaryGroup = '舰队汇总';
   static const singleShipGroup = '单舰胶囊';
   static const summaryLimitHint = '最多同时显示 5 项；先取消一项即可选择其他指标。';
-  static const mechanismsHint = '先制对潜、对空 CI、喷进弹幕、空母夜袭与旗舰特殊攻击';
+  static const mechanismGroup = '特殊机制';
   static const shipTypeName = '舰种名称';
   static const chinese = '中文';
   static const englishAbbreviation = '英文缩写';
@@ -50,7 +50,13 @@ abstract final class FleetUiKeys {
       'type': '舰种',
       'shipSpeed': '单舰速度',
       'morale': '疲劳值',
-      'mechanisms': '特殊机制',
+    },
+    mechanismGroup: {
+      'asw': '先制对潜',
+      'aaci': '对空 CI',
+      'rocket': '喷进弹幕',
+      'night': '空母夜袭',
+      'special': '旗舰特攻',
     },
     summaryGroup: {
       'speed': '舰队速度',
@@ -275,6 +281,9 @@ String fleetText(BuildContext context, String source) {
     "单舰速度": ("单舰速度", "單艦速度", "各艦の速力", "개별 함선 속력", "Ship speed"),
     "疲劳值": ("士气值", "士氣值", "コンディション", "컨디션", "Morale"),
     "特殊机制": ("特殊机制", "特殊機制", "特殊能力", "특수 능력", "Special mechanics"),
+    "喷进弹幕": ("喷进弹幕", "噴進彈幕", "噴進弾幕", "분진탄막", "Rocket barrage"),
+    "空母夜袭": ("空母夜袭", "空母夜襲", "空母夜襲", "항모 야습", "Carrier night attack"),
+    "旗舰特攻": ("旗舰特攻", "旗艦特攻", "旗艦特殊攻撃", "기함 특수 공격", "Flagship special attack"),
     "舰队速度": ("舰队速度", "艦隊速度", "艦隊速力", "함대 속력", "Fleet speed"),
     "最低疲劳": ("最低士气", "最低士氣", "最低コンディション", "최저 컨디션", "Minimum morale"),
     "恢复倒计时": ("恢复倒计时", "恢復倒數計時", "回復まで", "회복 남은 시간", "Recovery countdown"),

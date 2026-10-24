@@ -42,7 +42,26 @@ class _MechanismStore extends GameStateStore {
         condition: 49,
         currentFuel: 25,
         currentAmmo: 30,
+        slotIds: [1, 2],
       ),
+    },
+    masterSlotItems: {
+      10: const MasterSlotItem(
+        id: 10,
+        name: '10cm高角砲+高射装置',
+        type: [0, 0, 1, 16],
+        antiAir: 10,
+      ),
+      11: const MasterSlotItem(
+        id: 11,
+        name: '13号对空电探',
+        type: [0, 0, 12, 11],
+        antiAir: 4,
+      ),
+    },
+    slotItems: {
+      1: const OwnedSlotItem(instanceId: 1, masterSlotItemId: 10),
+      2: const OwnedSlotItem(instanceId: 2, masterSlotItemId: 11),
     },
     fleets: const [
       Fleet(id: 1, name: '第一舰队', shipIds: [1]),
@@ -142,27 +161,22 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
   test(
-    'saved settings preserve mechanisms and enforce a maximum of five metrics',
+    'saved settings keep five mechanism switches and enforce a maximum of five metrics',
     () {
-      expect(defaultFields, contains('mechanisms'));
-      expect(compactFields, contains('mechanisms'));
-      expect(normalizeDisplayFields({'asw', 'night'}), {'mechanisms'});
+      expect(defaultFields, containsAll(mechanismFields));
+      expect(compactFields, containsAll(mechanismFields));
+      expect(allFields, isNot(contains('mechanisms')));
+      expect(normalizeDisplayFields({'asw', 'night'}), {'asw', 'night'});
       expect(normalizeDisplayFields({'mechanisms', 'hp'}), {
-        'mechanisms',
+        ...mechanismFields,
         'hp',
       });
-      expect(
-        allFields.intersection({'asw', 'aaci', 'rocket', 'night', 'special'}),
-        isEmpty,
-      );
       final restored = normalizeDisplayFields(allFields);
       expect(restored.intersection(summaryFields).length, 5);
       expect(normalizeDisplayFields({}), isEmpty);
     },
   );
-  testWidgets('all fleet layouts use the combined mechanism switch', (
-    tester,
-  ) async {
+  testWidgets('all fleet layouts follow each mechanism switch', (tester) async {
     final controller = GameStateController(gameStateStore: _MechanismStore());
     await controller.initialize();
     addTearDown(controller.dispose);
@@ -198,16 +212,8 @@ void main() {
     ]) {
       for (final enabled in [true, false]) {
         final visible = {
-          ...layout.fields.difference({
-            'portrait',
-            'mechanisms',
-            'asw',
-            'aaci',
-            'rocket',
-            'night',
-            'special',
-          }),
-          if (enabled) 'mechanisms',
+          ...layout.fields.difference({'portrait', ...mechanismFields}),
+          ...mechanismFields.difference({if (!enabled) 'aaci'}),
         };
         await tester.pumpWidget(
           MaterialApp(
@@ -241,17 +247,24 @@ void main() {
             ),
           ),
         );
-        final mechanism = find.byKey(
+        final flat = layout.style == PanelStyle.flat;
+        final asw = find.byKey(
           Key(
-            layout.style == PanelStyle.flat
-                ? 'minimal-mechanism-1-openingAsw'
-                : 'fleet-focus-mechanism-1',
+            flat ? 'minimal-mechanism-1-openingAsw' : 'fleet-focus-mechanism-1',
           ),
         );
+        final aaci = find.byKey(
+          Key(
+            flat
+                ? 'minimal-mechanism-1-antiAirCutIn'
+                : 'fleet-focus-mechanism-1-1',
+          ),
+        );
+        expect(asw, findsOneWidget, reason: '${layout.name}, aaci=$enabled');
         expect(
-          mechanism,
+          aaci,
           enabled ? findsOneWidget : findsNothing,
-          reason: '${layout.name}, mechanisms=$enabled',
+          reason: '${layout.name}, aaci=$enabled',
         );
         expect(tester.takeException(), isNull);
       }

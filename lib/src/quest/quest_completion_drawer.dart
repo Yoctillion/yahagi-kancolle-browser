@@ -14,11 +14,18 @@ class QuestCompletionDrawerHost extends StatefulWidget {
     this.controller,
     this.fullscreen = false,
     this.nativeQuestOverlay = false,
+    this.damageControlOverlay = false,
   });
   final Widget child;
   final TopNoticeController? controller;
   final bool fullscreen;
   final bool nativeQuestOverlay;
+
+  /// When true, the damage-control notice shows only in
+  /// [QuestCompletionHeaderSlot.overlay]; set it for layouts whose header
+  /// slots are shorter than [QuestCompletionHeaderSlot.noticeHeight]. Ordinary
+  /// slots then stop taking it even where they fit, so it renders only once.
+  final bool damageControlOverlay;
 
   static void show(
     BuildContext context,
@@ -292,6 +299,7 @@ class _QuestCompletionDrawerHostState extends State<QuestCompletionDrawerHost> {
     controller: _controller,
     damageControlController: _damageControlController,
     host: this,
+    damageControlOverlay: widget.damageControlOverlay,
     child: Stack(
       fit: StackFit.expand,
       children: [
@@ -316,9 +324,20 @@ class QuestCompletionHeaderSlot extends StatefulWidget {
     super.key,
     required this.child,
     this.toolbarVisible = false,
-  });
+  }) : _overlay = false;
+
+  /// Floats the damage-control notice above content that has no header slot
+  /// tall enough for it; give it [noticeHeight] so it can always display.
+  const QuestCompletionHeaderSlot.overlay({super.key})
+    : child = const SizedBox.shrink(),
+      toolbarVisible = false,
+      _overlay = true;
+
   final Widget child;
   final bool toolbarVisible;
+  final bool _overlay;
+
+  static const noticeHeight = _HeaderNoticeCapsule.height;
 
   static IconData iconFor(TopNoticeData notice) {
     if (notice.customIcon != null) return notice.customIcon!;
@@ -368,8 +387,15 @@ class _QuestCompletionHeaderSlotState extends State<QuestCompletionHeaderSlot> {
     _host?._headerSlots.add(this);
   }
 
+  bool get _showsDamageControl =>
+      (_host?.widget.damageControlOverlay ?? false) == widget._overlay;
+
   bool _canDisplayMessage(String message) {
-    if (!mounted || !TickerMode.valuesOf(context).enabled) return false;
+    if (!mounted ||
+        !_showsDamageControl ||
+        !TickerMode.valuesOf(context).enabled) {
+      return false;
+    }
     var hidden = false;
     context.visitAncestorElements((element) {
       final ancestor = element.widget;
@@ -431,8 +457,8 @@ class _QuestCompletionHeaderSlotState extends State<QuestCompletionHeaderSlot> {
     final scope = context.dependOnInheritedWidgetOfExactType<_DrawerScope>();
     final controller = scope?.controller;
     final notices = [
-      ...?scope?.damageControlController.notices,
-      ...?controller?.notices,
+      if (_showsDamageControl) ...?scope?.damageControlController.notices,
+      if (!widget._overlay) ...?controller?.notices,
     ];
     final visible =
         notices.isNotEmpty &&
@@ -598,9 +624,16 @@ class _DrawerScope extends InheritedNotifier<Listenable> {
     required this.controller,
     required this.damageControlController,
     required this.host,
+    required this.damageControlOverlay,
   });
 
   final TopNoticeController controller;
   final TopNoticeController damageControlController;
   final _QuestCompletionDrawerHostState host;
+  final bool damageControlOverlay;
+
+  @override
+  bool updateShouldNotify(_DrawerScope oldWidget) =>
+      super.updateShouldNotify(oldWidget) ||
+      oldWidget.damageControlOverlay != damageControlOverlay;
 }

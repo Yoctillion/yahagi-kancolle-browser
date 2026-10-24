@@ -5,12 +5,32 @@ import 'package:yahagi_kancolle_browser/src/layout/minimal_layout.dart';
 import 'package:yahagi_kancolle_browser/src/settings/ui_display_size.dart';
 
 void main() {
-  test('minimal chrome uses compact size values', () {
+  test('minimal chrome uses the dense phone size values', () {
     const size = UiDisplaySize.minimal;
-    expect(workspaceNavigationExtent(size), 41.0);
-    expect(topHeaderHeight(size), 36.0);
-    expect(headerCapsuleHeight(size), 26.0);
+    expect(workspaceNavigationExtent(size), 34.0);
+    expect(topHeaderHeight(size), 28.0);
+    expect(headerCapsuleHeight(size), 22.0);
     expect(browserToolbarHeight(size), 30.0);
+  });
+
+  test('chromeDisplaySize only folds minimal into compact under HD', () {
+    expect(
+      chromeDisplaySize(UiDisplaySize.minimal, hd: true),
+      UiDisplaySize.compact,
+    );
+    expect(
+      chromeDisplaySize(UiDisplaySize.minimal, hd: false),
+      UiDisplaySize.minimal,
+    );
+    for (final size in [UiDisplaySize.normal, UiDisplaySize.compact]) {
+      expect(chromeDisplaySize(size, hd: true), size);
+      expect(chromeDisplaySize(size, hd: false), size);
+    }
+  });
+
+  test('minimalContentScale enlarges content only under HD', () {
+    expect(minimalContentScale(hd: true), 1.1);
+    expect(minimalContentScale(hd: false), 1.0);
   });
 
   test('isCompactOrSmaller', () {
@@ -62,7 +82,7 @@ void main() {
       bottomRight: 40,
     );
 
-    test('vertical rail below header clears only bottom corners and inset', () {
+    test('vertical rail clears its own corners and the bottom inset', () {
       expect(
         minimalNavigationInsets(
           corners: corners,
@@ -70,7 +90,7 @@ void main() {
           horizontal: false,
           onRight: false,
         ),
-        EdgeInsets.only(bottom: cornerInset(30)),
+        EdgeInsets.only(top: cornerInset(10), bottom: cornerInset(30)),
       );
       expect(
         minimalNavigationInsets(
@@ -79,7 +99,7 @@ void main() {
           horizontal: false,
           onRight: true,
         ),
-        const EdgeInsets.only(bottom: 48),
+        EdgeInsets.only(top: cornerInset(20), bottom: 48),
       );
     });
 
