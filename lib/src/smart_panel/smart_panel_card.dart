@@ -79,9 +79,8 @@ class SmartPanelCard extends StatelessWidget {
         ),
       );
       // The editing list names modules, so it must not follow the state.
-      final tabs =
-          headerStyle == SmartPanelHeaderStyle.tabs ||
-          DashboardEditingScope.isEditing(context);
+      final editing = DashboardEditingScope.isEditing(context);
+      final tabs = headerStyle == SmartPanelHeaderStyle.tabs || editing;
       final dropdown = headerStyle == SmartPanelHeaderStyle.dropdown;
       return DashboardCard(
         title: tabs ? l10n.smartPanelTitle : label,
@@ -95,7 +94,9 @@ class SmartPanelCard extends StatelessWidget {
         showLogo: showLogo,
         // The highlighted icon already names the state, and the strip needs
         // the title's width to keep its buttons tappable.
-        showTitle: showTitle && headerStyle != SmartPanelHeaderStyle.icons,
+        showTitle:
+            showTitle &&
+            (editing || headerStyle != SmartPanelHeaderStyle.icons),
         onTitleTap: dropdown ? (anchor) => _openMenu(anchor, l10n) : null,
         collapsedSummary: collapsed ? label : null,
         headerAction: moduleDisplayGear(

@@ -130,31 +130,33 @@ void main() {
     expect(find.byType(PopupMenuItem<SmartPanelState>), findsNothing);
   });
 
-  testWidgets('editing list titles the card by module, not state', (
-    tester,
-  ) async {
-    controller.select(SmartPanelState.practice);
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: DashboardEditingScope(
-            child: SmartPanelCard(
-              controller: controller,
-              collapsed: true,
-              onToggleCollapse: () {},
-              headerStyle: SmartPanelHeaderStyle.dropdown,
-              stateBody: (context, state) => _EmbedProbe(state),
+  for (final style in SmartPanelHeaderStyle.values) {
+    testWidgets('editing list titles the card by module, not state ($style)', (
+      tester,
+    ) async {
+      controller.select(SmartPanelState.practice);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: DashboardEditingScope(
+              child: SmartPanelCard(
+                controller: controller,
+                collapsed: true,
+                onToggleCollapse: () {},
+                headerStyle: style,
+                stateBody: (context, state) => _EmbedProbe(state),
+              ),
             ),
           ),
         ),
-      ),
-    );
-    expect(find.text(_zh.smartPanelTitle), findsOneWidget);
-    expect(find.text(_zh.smartPanelStatePractice), findsNothing);
-  });
+      );
+      expect(find.text(_zh.smartPanelTitle), findsOneWidget);
+      expect(find.text(_zh.smartPanelStatePractice), findsNothing);
+    });
+  }
 
   testWidgets('dropdown menu lists every state', (tester) async {
     await pump(tester, SmartPanelHeaderStyle.dropdown);
