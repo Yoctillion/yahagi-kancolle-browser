@@ -1974,9 +1974,9 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       widget.layoutSettingsController.uiDisplaySize,
       hd: hd,
     );
-    final uiScale = uiSize.isMinimal ? minimalUiScale : 1.0;
-    // Minimal keeps compact chrome; only information content is enlarged.
-    final shellHeaderHeight = topHeaderHeight(uiSize);
+    final uiScale = uiSize.isMinimal ? minimalContentScale(hd: hd) : 1.0;
+    final chromeSize = chromeDisplaySize(uiSize, hd: hd);
+    final shellHeaderHeight = topHeaderHeight(chromeSize);
     // HD keeps its own viewport and safe-area geometry while its modules can
     // use the minimal panel style.
     final flatShell = usesFlatPanel(size: uiSize, hd: hd) && !hd;
@@ -1990,7 +1990,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     final contentTouchesBottom = !(menuHorizontal && !menuTop);
     // Resources use the persistent header in every display size. Judge
     // the side rail against the same remaining space the game receives.
-    final shellNavigationExtent = workspaceNavigationExtent(uiSize);
+    final shellNavigationExtent = workspaceNavigationExtent(chromeSize);
     final minimalShellWorkspace = Size(
       windowSize.width - (menuHorizontal ? 0 : shellNavigationExtent),
       windowSize.height -
@@ -2146,7 +2146,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                         ]),
                         builder: (context, _) {
                           final isCompact = uiSize.isCompactOrSmaller;
-                          final headerHeight = topHeaderHeight(uiSize);
+                          final headerHeight = topHeaderHeight(chromeSize);
                           final isGameWorkspace = _workspaceIndex == 0;
                           final isToolbarVisible =
                               isGameWorkspace &&
@@ -2367,12 +2367,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                         flatStyle:
                                                             uiSize.isMinimal &&
                                                             isGameWorkspace,
-                                                        uiSize:
-                                                            uiSize.isMinimal &&
-                                                                isGameWorkspace
-                                                            ? UiDisplaySize
-                                                                  .compact
-                                                            : uiSize,
+                                                        uiSize: chromeSize,
                                                         selectedFleetId:
                                                             _fleetCenterInitialFleetId ??
                                                             1,
@@ -3459,7 +3454,9 @@ class WorkspaceNavigation extends StatelessWidget {
     final menuSize = effectiveUiDisplaySize(controller.uiDisplaySize, hd: hd);
     const scale = 1.0;
     final localEndInsets = endInsets * (1 / scale);
-    final menuExtent = workspaceNavigationExtent(menuSize);
+    final menuExtent = workspaceNavigationExtent(
+      chromeDisplaySize(menuSize, hd: hd),
+    );
     final isCompact = menuSize.isCompactOrSmaller;
     final itemExtent = isCompact ? 50.0 : 52.0;
     return UiScale(
@@ -3923,7 +3920,7 @@ class _InformationPanelState extends State<_InformationPanel> {
   Widget build(BuildContext context) {
     return UiScale(
       scale: widget.layoutSettingsController.uiDisplaySize.isMinimal
-          ? minimalUiScale
+          ? minimalContentScale(hd: widget.hd)
           : 1.0,
       child: Container(
         key: widget.singleModule == null

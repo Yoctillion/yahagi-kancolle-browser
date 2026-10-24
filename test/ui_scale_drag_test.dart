@@ -165,7 +165,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('minimal navigation drag keeps size and route identities', (
+  testWidgets('minimal navigation drag keeps the narrower rail size and route identities', (
     tester,
   ) async {
     final controller = await _settings();
@@ -189,7 +189,15 @@ void main() {
     await tester.pumpWidget(navigation());
     await tester.pumpAndSettle();
     final before = _paintedRect(tester, item);
-    _expectSize(before.size, baseline.size);
+    _expectSize(
+      before.size,
+      Size(
+        baseline.width -
+            (workspaceNavigationExtent(UiDisplaySize.compact) -
+                workspaceNavigationExtent(UiDisplaySize.minimal)),
+        baseline.height,
+      ),
+    );
 
     final gesture = await tester.startGesture(before.center);
     await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));

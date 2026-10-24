@@ -16,6 +16,7 @@ import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_channel.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_store.dart';
 import 'package:yahagi_kancolle_browser/src/layout/display_corners.dart';
+import 'package:yahagi_kancolle_browser/src/layout/minimal_layout.dart';
 import 'package:yahagi_kancolle_browser/src/layout/workspace_context_header.dart';
 import 'package:yahagi_kancolle_browser/src/settings/header_resource_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/layout_settings_controller.dart';
@@ -68,8 +69,8 @@ import 'package:yahagi_kancolle_browser/src/layout/hd_workspace_geometry.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
 const _phoneLandscape = Size(873, 393);
-const _minimalHeaderHeight = 36.0;
-const _minimalNavigationExtent = 41.0;
+const _minimalHeaderHeight = 28.0;
+const _minimalNavigationExtent = 34.0;
 
 Future<LayoutSettingsController> _pumpMinimalShell(
   WidgetTester tester, {
@@ -2553,87 +2554,35 @@ void main() {
     },
   );
 
-  testWidgets('minimal chrome keeps compact navigation and settings geometry', (
+  testWidgets('minimal phone chrome uses 34/28/22 and no content scale', (
+    tester,
+  ) async {
+    await _pumpMinimalShell(tester);
+    expect(_sidebarWidth(tester), closeTo(34, .001));
+    expect(_headerHeight(tester), closeTo(28, .001));
+    expect(
+      UiScale.of(tester.element(find.byKey(const Key('information-panel')))),
+      1.0,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('HD minimal keeps compact chrome and 1.1 content scale', (
     tester,
   ) async {
     final layout = await _pumpMinimalShell(
       tester,
-      size: const Size(600, 900),
-      uiSize: UiDisplaySize.compact,
+      size: const Size(1280, 800),
     );
-    await _tapWorkspaceNavigationItem(tester, 'settings');
+    await layout.setHdEnabled(true);
     await tester.pumpAndSettle();
-    Map<String, Size> geometry() {
-      final brand = find.byKey(const Key('yahagi-brand-button'));
-      final gameNavigation = find.byKey(const Key('workspace-nav-game'));
-      return {
-        'brand': tester.getRect(brand).size,
-        'brand icon': tester
-            .getRect(find.descendant(of: brand, matching: find.byType(Image)))
-            .size,
-        'brand text': tester
-            .getRect(find.descendant(of: brand, matching: find.text('ヤハギ')))
-            .size,
-        'settings title': tester
-            .getRect(find.byKey(const Key('workspace-title-settings')))
-            .size,
-        'settings tabs': tester.getRect(find.byType(SettingsSegmented)).size,
-        for (var index = 0; index < 6; index++)
-          'settings tab $index': tester
-              .getRect(find.byKey(Key('settings-tab-$index')))
-              .size,
-        'navigation button': tester
-            .getRect(
-              find.descendant(
-                of: gameNavigation,
-                matching: find.byType(IconButton),
-              ),
-            )
-            .size,
-        'navigation icon': tester
-            .getRect(
-              find.descendant(of: gameNavigation, matching: find.byType(Icon)),
-            )
-            .size,
-      };
-    }
-
-    for (final position in ['left', 'bottom']) {
-      await layout.setUiDisplaySize(UiDisplaySize.compact);
-      await layout.setWorkspaceMenuPosition(position);
-      await tester.pumpAndSettle();
-      final compactNavigation = tester
-          .getRect(find.byType(WorkspaceNavigation))
-          .size;
-      final compactGeometry = geometry();
-      final compactHeaderHeight = _headerHeight(tester);
-      await layout.setUiDisplaySize(UiDisplaySize.minimal);
-      await tester.pumpAndSettle();
-      final minimalNavigation = tester
-          .getRect(find.byType(WorkspaceNavigation))
-          .size;
-      expect(
-        position == 'left' ? minimalNavigation.width : minimalNavigation.height,
-        closeTo(
-          position == 'left'
-              ? compactNavigation.width
-              : compactNavigation.height,
-          .001,
-        ),
-        reason: '$position navigation extent',
-      );
-      expect(
-        geometry(),
-        compactGeometry,
-        reason: '$position actual control sizes',
-      );
-      expect(_headerHeight(tester), closeTo(compactHeaderHeight, .001));
-      await layout.setUiDisplaySize(UiDisplaySize.compact);
-      await tester.pumpAndSettle();
-      expect(geometry(), compactGeometry);
-      expect(_headerHeight(tester), compactHeaderHeight);
-      expect(tester.takeException(), isNull);
-    }
+    expect(_sidebarWidth(tester), closeTo(41, .001));
+    expect(_headerHeight(tester), closeTo(36, .001));
+    expect(
+      UiScale.of(tester.element(find.byKey(const Key('information-panel')))),
+      1.1,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   group('settings body keeps original control sizes', () {
@@ -2796,10 +2745,18 @@ void main() {
           await tester.pumpAndSettle();
           final minimalChrome = chromeGeometry();
           for (final entry in oldGeometry[UiDisplaySize.compact]!.entries) {
+            final dense = switch (entry.key) {
+              'header height' => 28.0,
+              'navigation extent' => 34.0,
+              _ => null,
+            };
+            if (!scenario.hd && dense == null) continue;
             expect(
               minimalChrome[entry.key],
-              closeTo(entry.value, .001),
-              reason: 'minimal retains compact ${entry.key}',
+              closeTo(scenario.hd ? entry.value : dense!, .001),
+              reason: scenario.hd
+                  ? 'HD minimal retains compact ${entry.key}'
+                  : 'phone minimal ${entry.key}',
             );
           }
           // The long-name fixtures exercise the changed flat briefings. The
@@ -3080,8 +3037,10 @@ void main() {
               matching: find.byWidgetPredicate(
                 (widget) =>
                     widget is Container &&
-                    widget.constraints?.minHeight == 36 &&
-                    widget.constraints?.maxHeight == 36,
+                    widget.constraints?.minHeight ==
+                            _minimalHeaderHeight &&
+                        widget.constraints?.maxHeight ==
+                            _minimalHeaderHeight,
               ),
             )
             .first;
@@ -3117,7 +3076,7 @@ void main() {
           );
           expect(
             tester.getRect(brand).left,
-            closeTo(8 + cornerInsetAt(55, 10.5), .01),
+            closeTo(8 + cornerInsetAt(55, 6.5), .01),
           );
           expect(tester.getTopLeft(firstNavigationItem).dy, firstItemTop);
           expect(firstItemTop, greaterThanOrEqualTo(_minimalHeaderHeight));
@@ -3259,17 +3218,11 @@ void main() {
       await layout.setUiDisplaySize(UiDisplaySize.minimal);
       await tester.pumpAndSettle();
       expect(capsule(), findsNothing);
-      expect(tester.getSize(resource), compactSize);
+      expect(
+        tester.getSize(resource).height,
+        headerCapsuleHeight(UiDisplaySize.minimal),
+      );
       expect(tester.widget<Image>(resourceIcon).image, compactIcon.image);
-      expect(tester.getSize(resourceIcon), compactIconSize);
-      expect(
-        tester.getRect(resourceIcon).width,
-        closeTo(compactPaintedIconSize.width, .001),
-      );
-      expect(
-        tester.getRect(resourceIcon).height,
-        closeTo(compactPaintedIconSize.height, .001),
-      );
       expect(
         find.byKey(const Key('header-resource-divider-before-anchorage-timer')),
         findsOneWidget,
@@ -3578,8 +3531,8 @@ void main() {
           matching: find.byIcon(Icons.settings_outlined),
         ),
       );
-      expect(gear.width, closeTo(flatActionIconSize * minimalUiScale, .001));
-      expect(gear.height, closeTo(flatActionIconSize * minimalUiScale, .001));
+      expect(gear.width, closeTo(flatActionIconSize, .001));
+      expect(gear.height, closeTo(flatActionIconSize, .001));
       expect(tester.takeException(), isNull);
     });
     testWidgets('minimal landscape retains brand header and top resources', (
@@ -3686,19 +3639,19 @@ void main() {
       // 页头跨满顶部，品牌与右侧内容分别让开两端圆弧。
       expect(
         tester.getRect(find.byKey(const Key('yahagi-brand-button'))).left,
-        closeTo(8 + cornerInsetAt(55, 10.5), 0.01),
+        closeTo(8 + cornerInsetAt(55, 6.5), 0.01),
       );
       expect(
         header().right,
-        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 10.5)),
+        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
       );
 
       await layout.setWorkspaceMenuPosition('bottom');
       await tester.pumpAndSettle();
-      expect(header().left, greaterThanOrEqualTo(cornerInsetAt(55, 10.5)));
+      expect(header().left, greaterThanOrEqualTo(cornerInsetAt(55, 6.5)));
       expect(
         header().right,
-        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 10.5)),
+        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
       );
       expect(tester.takeException(), isNull);
     });
@@ -4079,7 +4032,7 @@ void main() {
     });
 
     testWidgets(
-      'minimal enlarges briefings while preserving compact chrome and the game',
+      'minimal enlarges briefings only under HD and keeps the game',
       (tester) async {
         var disposals = 0;
         var deactivations = 0;
@@ -4138,9 +4091,18 @@ void main() {
           ]) {
             await layout.setUiDisplaySize(size);
             await tester.pumpAndSettle();
-            final factor = size == UiDisplaySize.minimal ? minimalUiScale : 1.0;
-            final header = size == UiDisplaySize.normal ? 44.0 : 36.0;
-            final navigation = size == UiDisplaySize.normal ? 48.0 : 41.0;
+            final factor = size == UiDisplaySize.minimal
+                ? minimalContentScale(hd: hd)
+                : 1.0;
+            final phoneMinimal = size == UiDisplaySize.minimal && !hd;
+            final header = switch (size) {
+              UiDisplaySize.normal => 44.0,
+              _ => phoneMinimal ? 28.0 : 36.0,
+            };
+            final navigation = switch (size) {
+              UiDisplaySize.normal => 48.0,
+              _ => phoneMinimal ? 34.0 : 41.0,
+            };
             expect(_headerHeight(tester), closeTo(header, .001));
             expect(_sidebarWidth(tester), closeTo(navigation, .001));
             expectScale(brandText, 1);
@@ -4158,7 +4120,7 @@ void main() {
               expect(tester.getSize(cardHeader).height, flatHeaderHeight);
               expect(
                 tester.getRect(cardHeader).height,
-                closeTo(flatHeaderHeight * minimalUiScale, .001),
+                closeTo(flatHeaderHeight * factor, .001),
               );
               expectScale(hp, factor);
               expect(
@@ -4299,7 +4261,7 @@ void main() {
       );
       expect(
         list.right,
-        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 10.5)),
+        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
       );
       expect(tester.takeException(), isNull);
     });
