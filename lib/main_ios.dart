@@ -29,75 +29,7 @@ import 'src/settings/layout_settings_controller.dart';
 import 'src/settings/raw_data_section.dart';
 import 'src/widgets/top_notice.dart';
 
-// TEMP startup diagnostics: surface where startup stops instead of leaving
-// the white launch screen.
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final errors = <String>[];
-  FlutterError.onError = (details) {
-    errors.add(
-      'FlutterError: ${details.exceptionAsString()}\n${details.stack}',
-    );
-    FlutterError.presentError(details);
-  };
-  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
-    errors.add('Async: $error\n$stack');
-    return true;
-  };
-  ErrorWidget.builder = (details) => Material(
-    color: const Color(0xff400000),
-    child: SingleChildScrollView(
-      child: Text(
-        'Build error: ${details.exceptionAsString()}\n${details.stack}',
-        style: const TextStyle(color: Colors.white, fontSize: 10),
-      ),
-    ),
-  );
-  var finished = false;
-  Timer(const Duration(seconds: 12), () {
-    if (finished) return;
-    runApp(
-      _StartupDiagnosticApp(
-        'Startup still running after 12s\nstage: $yahagiStartupStage\n\n'
-        '${errors.join('\n\n')}',
-      ),
-    );
-  });
-  try {
-    await runYahagi(hooks: _IOSStartupHooks());
-  } catch (error, stack) {
-    runApp(
-      _StartupDiagnosticApp(
-        'Startup failed\nstage: $yahagiStartupStage\n$error\n$stack\n\n'
-        '${errors.join('\n\n')}',
-      ),
-    );
-  } finally {
-    finished = true;
-  }
-}
-
-class _StartupDiagnosticApp extends StatelessWidget {
-  const _StartupDiagnosticApp(this.message);
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    home: Scaffold(
-      backgroundColor: const Color(0xff101820),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(12),
-          child: SelectableText(
-            message,
-            style: const TextStyle(color: Colors.white, fontSize: 11),
-          ),
-        ),
-      ),
-    ),
-  );
-}
+Future<void> main() => runYahagi(hooks: _IOSStartupHooks());
 
 final class _IOSStartupHooks extends YahagiStartupHooks {
   final _rawDataServerController = RawDataServerController();
