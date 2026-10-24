@@ -165,59 +165,60 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('minimal navigation drag keeps the narrower rail size and route identities', (
-    tester,
-  ) async {
-    final controller = await _settings();
-    var selectedPage = -1;
-    Widget navigation() => _host(
-      SizedBox(
-        height: 400,
-        child: WorkspaceNavigation(
-          controller: controller,
-          selectedIndex: 0,
-          onRight: false,
-          onSelected: (page) => selectedPage = page,
+  testWidgets(
+    'minimal navigation drag keeps the narrower rail size and route identities',
+    (tester) async {
+      final controller = await _settings();
+      var selectedPage = -1;
+      Widget navigation() => _host(
+        SizedBox(
+          height: 400,
+          child: WorkspaceNavigation(
+            controller: controller,
+            selectedIndex: 0,
+            onRight: false,
+            onSelected: (page) => selectedPage = page,
+          ),
         ),
-      ),
-    );
-    final item = find.byKey(const Key('workspace-nav-item-game'));
-    await controller.setUiDisplaySize(UiDisplaySize.compact);
-    await tester.pumpWidget(navigation());
-    final baseline = _paintedRect(tester, item);
-    await controller.setUiDisplaySize(UiDisplaySize.minimal);
-    await tester.pumpWidget(navigation());
-    await tester.pumpAndSettle();
-    final before = _paintedRect(tester, item);
-    _expectSize(
-      before.size,
-      Size(
-        baseline.width -
-            (workspaceNavigationExtent(UiDisplaySize.compact) -
-                workspaceNavigationExtent(UiDisplaySize.minimal)),
-        baseline.height,
-      ),
-    );
+      );
+      final item = find.byKey(const Key('workspace-nav-item-game'));
+      await controller.setUiDisplaySize(UiDisplaySize.compact);
+      await tester.pumpWidget(navigation());
+      final baseline = _paintedRect(tester, item);
+      await controller.setUiDisplaySize(UiDisplaySize.minimal);
+      await tester.pumpWidget(navigation());
+      await tester.pumpAndSettle();
+      final before = _paintedRect(tester, item);
+      _expectSize(
+        before.size,
+        Size(
+          baseline.width -
+              (workspaceNavigationExtent(UiDisplaySize.compact) -
+                  workspaceNavigationExtent(UiDisplaySize.minimal)),
+          baseline.height,
+        ),
+      );
 
-    final gesture = await tester.startGesture(before.center);
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
-    expect(item, findsOneWidget);
-    expect(
-      find.ancestor(of: item, matching: find.byType(ReorderableListView)),
-      findsNothing,
-    );
-    _expectSize(_paintedRect(tester, item).size, before.size);
-    _expectOffset(_paintedRect(tester, item).topLeft, before.topLeft);
-    await gesture.moveBy(Offset(0, before.height * .85));
-    await tester.pump(const Duration(milliseconds: 400));
-    await gesture.up();
-    await tester.pumpAndSettle();
+      final gesture = await tester.startGesture(before.center);
+      await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+      expect(item, findsOneWidget);
+      expect(
+        find.ancestor(of: item, matching: find.byType(ReorderableListView)),
+        findsNothing,
+      );
+      _expectSize(_paintedRect(tester, item).size, before.size);
+      _expectOffset(_paintedRect(tester, item).topLeft, before.topLeft);
+      await gesture.moveBy(Offset(0, before.height * .85));
+      await tester.pump(const Duration(milliseconds: 400));
+      await gesture.up();
+      await tester.pumpAndSettle();
 
-    expect(controller.workspaceMenuOrder.take(2), ['fleet', 'game']);
-    expect(selectedPage, -1);
-    await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
-    await tester.pump();
-    expect(selectedPage, 1);
-    expect(tester.takeException(), isNull);
-  });
+      expect(controller.workspaceMenuOrder.take(2), ['fleet', 'game']);
+      expect(selectedPage, -1);
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+      await tester.pump();
+      expect(selectedPage, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
