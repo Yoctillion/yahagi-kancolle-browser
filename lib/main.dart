@@ -2340,7 +2340,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                   railOnRight: menuOnRight,
                   overlay: damageControlOverlay
                       ? Positioned(
-                          top: 0,
+                          // 外壳不避让顶部安全区，竖屏时刘海和灵动岛会挡住贴顶的胶囊。
+                          top: MediaQuery.viewPaddingOf(context).top,
                           left: 0,
                           right: 0,
                           height: QuestCompletionHeaderSlot.noticeHeight,

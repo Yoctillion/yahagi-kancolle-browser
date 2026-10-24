@@ -69,6 +69,39 @@ void main() {
     },
   );
 
+  testWidgets('minimal portrait damage control overlay stays below the notch', (
+    tester,
+  ) async {
+    const safeTop = 47.0;
+    tester.view.padding = const FakeViewPadding(top: safeTop);
+    tester.view.viewPadding = const FakeViewPadding(top: safeTop);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    await _pumpMinimalApp(tester, size: _phonePortrait);
+    await _expectOverlayNotice(
+      tester,
+      gameSurfaceLaidOut: true,
+      capsuleTopAtLeast: safeTop,
+    );
+  });
+
+  testWidgets('HD minimal keeps damage control in its header', (tester) async {
+    await _pumpMinimalApp(tester, size: const Size(1280, 800), hd: true);
+    expect(find.byKey(const Key('yahagi-hd-label')), findsOneWidget);
+    expect(find.byKey(_overlay), findsNothing);
+    final shown = QuestCompletionDrawerHost.showDamageControlNotice(
+      _hostContext(tester),
+      _damageMessage,
+    );
+    await tester.pump();
+    expect(await shown, isTrue);
+    await _settle(tester);
+    expect(find.text(_damageMessage), findsOneWidget);
+    QuestCompletionDrawerHost.removeDamageControlNotice(_hostContext(tester));
+    await _settle(tester);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('minimal overlay leaves quest notices to their header slots', (
     tester,
   ) async {
@@ -99,6 +132,7 @@ BuildContext _hostContext(WidgetTester tester) =>
 Future<void> _expectOverlayNotice(
   WidgetTester tester, {
   required bool gameSurfaceLaidOut,
+  double capsuleTopAtLeast = 0,
 }) async {
   final surface = find.byType(GameSurfaceViewport);
   final surfaceBefore = gameSurfaceLaidOut ? tester.getRect(surface) : null;
@@ -123,6 +157,10 @@ Future<void> _expectOverlayNotice(
       .ancestor(of: find.text(_damageMessage), matching: find.byType(Container))
       .first;
   expect(tester.getSize(capsule).height, 34);
+  expect(
+    tester.getTopLeft(capsule).dy,
+    greaterThanOrEqualTo(capsuleTopAtLeast),
+  );
   expect(find.byType(AlertDialog), findsNothing);
   if (surfaceBefore != null) expect(tester.getRect(surface), surfaceBefore);
 
@@ -146,6 +184,7 @@ Future<void> _pumpMinimalApp(
   WidgetTester tester, {
   required Size size,
   MinimalResourcePosition resourcePosition = MinimalResourcePosition.panel,
+  bool hd = false,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final previousTimerSetting = GameStateController.disableTimerForTest;
@@ -166,6 +205,7 @@ Future<void> _pumpMinimalApp(
   await layout.setLocaleCode('zh');
   await layout.setUiDisplaySize(UiDisplaySize.minimal);
   await layout.setMinimalResourcePosition(resourcePosition);
+  await layout.setHdEnabled(hd);
   final safety = await SafetySettingsController.load(
     MemorySafetySettingsStore(),
   );
