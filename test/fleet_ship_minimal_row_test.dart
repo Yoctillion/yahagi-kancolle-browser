@@ -427,6 +427,76 @@ void main() {
     },
   );
 
+  testWidgets('minimal row does not overflow at large text scales', (
+    tester,
+  ) async {
+    final base = _mechanismState();
+    final state = base.copyWith(
+      ships: {
+        ...base.ships,
+        1: const OwnedShip(
+          id: 1,
+          masterId: 1,
+          level: 76,
+          currentHp: 12,
+          maxHp: 30,
+          condition: 15,
+          currentFuel: 15,
+          currentAmmo: 20,
+          antiSub: 100,
+          slotIds: [1],
+        ),
+      },
+    );
+    for (final scale in [1.5, 2.0]) {
+      for (final width in [160.0, 190.0]) {
+        await tester.pumpWidget(
+          _app(
+            _row(
+              state,
+              1,
+              width: width,
+              visible: defaultFields.difference({'morale'}),
+              repairStatus: ShipRepairStatus.dock,
+            ),
+            textScaler: TextScaler.linear(scale),
+          ),
+        );
+        await tester.pump();
+        expect(
+          find.byKey(const Key('minimal-morale-1')),
+          findsOneWidget,
+          reason: 'scale $scale width $width',
+        );
+        expect(find.byKey(const Key('minimal-repair-1')), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: '$scale @ $width');
+      }
+    }
+  });
+
+  testWidgets(
+    'tags stay and no damage glow when hp, fuel and ammo are hidden',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          _row(
+            _mechanismState(),
+            1,
+            visible: defaultFields.difference({'hp', 'fuel', 'ammo'}),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('高速'), findsOneWidget);
+      expect(
+        find.byKey(const Key('minimal-mechanism-1-openingAsw')),
+        findsOneWidget,
+      );
+      expect(find.byType(DamagePulseGlow), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('original ship type names use two-character short forms', (
     tester,
   ) async {
