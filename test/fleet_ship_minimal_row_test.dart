@@ -5,6 +5,7 @@ import 'package:yahagi_kancolle_browser/src/battle/prophet_hp_bar.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/equipment_display.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_minimal_row.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/minimal_status_glow.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_repair_status.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_status_visuals.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
@@ -511,7 +512,7 @@ void main() {
       expect(cell.left, closeTo(supplyOnlyRow.left + 2, .01));
       expect(cell.right, closeTo(supplyOnlyRow.right - 2, .01));
     }
-    expect(find.byType(DamagePulseGlow), findsNothing);
+    expect(find.byType(MinimalDamagePulseGlow), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(
@@ -534,7 +535,7 @@ void main() {
     );
     expect(hpOnlyCell.left, closeTo(hpOnlyRow.left + 2, .01));
     expect(hpOnlyCell.right, closeTo(hpOnlyRow.right - 2, .01));
-    expect(find.byType(DamagePulseGlow), findsOneWidget);
+    expect(find.byType(MinimalDamagePulseGlow), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

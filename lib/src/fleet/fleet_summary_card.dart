@@ -122,10 +122,21 @@ class _FleetSummaryCardState extends State<FleetSummaryCard> {
         Localizations.localeOf(context);
         Widget? cachedShips;
         Map<int, ShipRepairStatus>? cachedRepairStatuses;
+        final recoveryDeadline = summaryVisible.contains('recovery-countdown')
+            ? widget.moraleRecoveryTimerController?.targetForFleet(
+                _selectedFleetId,
+              )
+            : null;
+        final anchorageTicks =
+            widget.controller.anchorageRepairStartedAt != null;
         // Fleet metrics depend on captured state, not the ticking clock.
         return SecondTickBuilder(
           now: widget.clock,
-          enabled: !widget.collapsed,
+          enabled:
+              !widget.collapsed && (anchorageTicks || recoveryDeadline != null),
+          // Recovery alone no longer needs refreshes once it reaches zero.
+          // Preserve the existing repair-status clock while anchorage runs.
+          stopAt: !anchorageTicks ? recoveryDeadline : null,
           builder: (context, now, _) {
             final repairStatuses = widget.collapsed
                 ? const <int, ShipRepairStatus>{}

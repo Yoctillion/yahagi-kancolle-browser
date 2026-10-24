@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -18,13 +20,50 @@ class GameResourceCacheSection extends StatefulWidget {
       _GameResourceCacheSectionState();
 }
 
-class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
+class _GameResourceCacheSectionState extends State<GameResourceCacheSection>
+    with WidgetsBindingObserver {
   bool _integrityChecked = false;
+  bool _tickerEnabled = true;
+  bool _foreground = true;
+  bool _visible = false;
+  bool _visibilityInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    widget.controller.setPageVisible(true);
+    final state = WidgetsBinding.instance.lifecycleState;
+    _foreground =
+        state == null ||
+        state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tickerEnabled = TickerMode.valuesOf(context).enabled;
+    _syncVisibility();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground =
+        state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive;
+    _syncVisibility();
+  }
+
+  void _syncVisibility() {
+    final initialized = _visibilityInitialized;
+    _visibilityInitialized = true;
+    final visible = _foreground && _tickerEnabled;
+    if (_visible == visible) return;
+    _visible = visible;
+    widget.controller.setPageVisible(visible);
+    // Retained settings tabs must catch up immediately when shown again.
+    // This only controls idle UI polling; running downloads keep their clock.
+    if (visible && initialized) unawaited(widget.controller.refresh());
   }
 
   @override
@@ -32,11 +71,13 @@ class _GameResourceCacheSectionState extends State<GameResourceCacheSection> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller == widget.controller) return;
     oldWidget.controller.setPageVisible(false);
-    widget.controller.setPageVisible(true);
+    widget.controller.setPageVisible(_visible);
+    if (_visible) unawaited(widget.controller.refresh());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.controller.setPageVisible(false);
     super.dispose();
   }

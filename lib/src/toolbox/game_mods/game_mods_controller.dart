@@ -16,9 +16,9 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
       _ownsPortraits = portraits == null {
     this.portraits.addListener(_notify);
     WidgetsBinding.instance.addObserver(this);
-    _resumed =
-        WidgetsBinding.instance.lifecycleState == null ||
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _resumed = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+    _progressForeground = _resumed || lifecycle == AppLifecycleState.inactive;
   }
   final GameModsPort _port;
   final GameModPortraitController portraits;
@@ -52,6 +52,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
   bool _disposed = false,
       _visible = false,
       _resumed = true,
+      _progressForeground = true,
       _refreshing = false;
   bool _saveFailed = false;
   int _revision = 0, _saves = 0, _operationEpoch = 0;
@@ -101,17 +102,31 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
     if (_visible == value) return;
     _visible = value;
     _updatePolling();
+    _updateProgressPolling();
   }
 
   void setAppResumed(bool value) {
-    if (_resumed == value) return;
+    if (_resumed == value && _progressForeground == value) return;
     _resumed = value;
+    _progressForeground = value;
     _updatePolling();
+    _updateProgressPolling();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) =>
-      setAppResumed(state == AppLifecycleState.resumed);
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final resumed = state == AppLifecycleState.resumed;
+    final progressForeground = resumed || state == AppLifecycleState.inactive;
+    if (_resumed != resumed) {
+      _resumed = resumed;
+      _updatePolling();
+    }
+    if (_progressForeground != progressForeground) {
+      _progressForeground = progressForeground;
+      _updateProgressPolling();
+    }
+  }
+
   void _updatePolling() {
     _poll?.cancel();
     _poll = null;
@@ -518,7 +533,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
     if (_disposed || busy) return;
     final epoch = ++_operationEpoch;
     busy = true;
-    if (operation != null) _beginProgress(operation, epoch);
+    if (operation != null) _beginProgress(operation);
     errorCode = null;
     _notify();
     try {
@@ -534,7 +549,7 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  void _beginProgress(String operation, int epoch) {
+  void _beginProgress(String operation) {
     _progressKind = operation;
     operationProgress = GameModsOperationProgress(
       operationId: '',
@@ -544,10 +559,43 @@ class GameModsController extends ChangeNotifier with WidgetsBindingObserver {
     );
     _progressClock.reset();
     _progressClock.start();
-    _progressPoll = Timer.periodic(const Duration(milliseconds: 200), (_) {
+    _updateProgressPolling(catchUp: false);
+  }
+
+  void _updateProgressPolling({bool catchUp = true}) {
+    if (_disposed ||
+        !_visible ||
+        !_progressForeground ||
+        !busy ||
+        _progressKind == null) {
+      _progressPoll?.cancel();
+      _progressPoll = null;
+      return;
+    }
+    if (_progressPoll != null) return;
+    final epoch = _operationEpoch;
+    final poll = Timer.periodic(const Duration(milliseconds: 200), (_) {
       _notify();
       unawaited(_readProgress(epoch));
     });
+    _progressPoll = poll;
+    if (catchUp) {
+      // Visibility may change during a page build while its progress modal is
+      // mounted elsewhere in the root overlay. Notify after that build ends.
+      scheduleMicrotask(() {
+        if (_disposed ||
+            !_visible ||
+            !_progressForeground ||
+            !busy ||
+            epoch != _operationEpoch ||
+            !identical(_progressPoll, poll)) {
+          return;
+        }
+        // Only the UI timer pauses. The task and elapsed clock keep running.
+        _notify();
+        unawaited(_readProgress(epoch));
+      });
+    }
   }
 
   Future<void> _readProgress(int epoch) async {
