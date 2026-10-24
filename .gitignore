@@ -2,6 +2,8 @@
 *.class
 *.log
 *.pyc
+__pycache__/
+.pytest_cache/
 *.swp
 .DS_Store
 .atom/
@@ -31,6 +33,7 @@ migrate_working_dir/
 .pub/
 /build/
 /android/build/
+/android/.kotlin/
 /coverage/
 
 # Symbolication related
@@ -82,6 +85,7 @@ fullscreen_exit_button_demo.html
 *.apk
 *.apk.sha256
 *.aab
+*.aab.sha256
 *.ipa
 *.db
 *.sqlite
@@ -118,6 +122,9 @@ test/fixtures/*
 !test/fixtures/poi_ezexped/
 test/fixtures/poi_ezexped/*
 !test/fixtures/poi_ezexped/expedition_rules.json
+!test/fixtures/battle/
+test/fixtures/battle/*
+!test/fixtures/battle/e4_combined_friendly_night.json
 test/*/fixtures/
 
 # Handcrafted parser examples are public; captured pages/master data stay local.
@@ -138,7 +145,6 @@ test/akashi_bonus/fixtures/*
 
 # Local Git worktrees
 .worktrees/
-.superpowers/
 
 # Local credentials and signing material
 .env
@@ -149,8 +155,13 @@ test/akashi_bonus/fixtures/*
 *.keystore
 *.p12
 *.pem
+*.key
 *.p8
 *.mobileprovision
+.netrc
+_netrc
+.npmrc
+.pypirc
 
 # Local database sidecars, record backups, and captured diagnostics.
 **/local.properties

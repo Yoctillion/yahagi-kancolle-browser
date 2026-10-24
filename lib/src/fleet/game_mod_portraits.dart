@@ -104,18 +104,43 @@ final class GameModPortraitResource {
 
 final class GameModPortraitSnapshot {
   GameModPortraitSnapshot.fromMap(Map<Object?, Object?> map)
-    : token = map['token'] is String ? map['token'] as String : '',
-      resources = List.unmodifiable([
-        for (final value
-            in (map['resources'] is List ? map['resources'] as List : const []))
-          if (value is Map && value['id'] is String && value['path'] is String)
-            GameModPortraitResource(
-              id: value['id'] as String,
-              path: (value['path'] as String).replaceFirst(RegExp(r'^/+'), ''),
-            ),
-      ]);
+    : this._(
+        map['token'] is String ? map['token'] as String : '',
+        List.unmodifiable([
+          for (final value
+              in (map['resources'] is List
+                  ? map['resources'] as List
+                  : const []))
+            if (value is Map &&
+                value['id'] is String &&
+                value['path'] is String)
+              GameModPortraitResource(
+                id: value['id'] as String,
+                path: (value['path'] as String).replaceFirst(
+                  RegExp(r'^/+'),
+                  '',
+                ),
+              ),
+        ]),
+      );
+
+  GameModPortraitSnapshot._(this.token, this.resources)
+    : _resourcesByPath = _indexResources(resources);
+
   final String token;
   final List<GameModPortraitResource> resources;
+  final Map<String, GameModPortraitResource> _resourcesByPath;
+
+  static Map<String, GameModPortraitResource> _indexResources(
+    List<GameModPortraitResource> resources,
+  ) {
+    final byPath = <String, GameModPortraitResource>{};
+    for (final resource in resources) {
+      // Preserve the first match even when normalized paths are duplicated.
+      byPath.putIfAbsent(resource.path, () => resource);
+    }
+    return Map.unmodifiable(byPath);
+  }
 }
 
 abstract final class GameModPortraitResolver {
@@ -133,9 +158,8 @@ abstract final class GameModPortraitResolver {
       }
       final path =
           'kcs2/resources/ship/$type/${id}_$cipher${type == 'full' ? '_$filename' : ''}.png';
-      for (final resource in snapshot.resources) {
-        if (resource.path == path) return resource;
-      }
+      final resource = snapshot._resourcesByPath[path];
+      if (resource != null) return resource;
     }
     return null;
   }

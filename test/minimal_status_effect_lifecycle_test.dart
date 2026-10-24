@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/src/battle/prophet_hp_bar.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_minimal_row.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/minimal_status_glow.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_repair_status.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/ship_status_visuals.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
@@ -51,29 +53,38 @@ Widget _row({
 );
 
 Finder _glowDecoration() => find.descendant(
-  of: find.byType(DamagePulseGlow),
-  matching: find.byWidgetPredicate(
-    (widget) =>
-        widget is DecoratedBox &&
-        widget.decoration is BoxDecoration &&
-        ((widget.decoration as BoxDecoration).boxShadow?.isNotEmpty ?? false),
+  of: find.byType(MinimalDamagePulseGlow),
+  matching: find.byElementPredicate(
+    (element) =>
+        element is RenderObjectElement &&
+        element.renderObject is RenderDecoratedBox &&
+        ((((element.renderObject as RenderDecoratedBox).decoration
+                        as BoxDecoration)
+                    .boxShadow)
+                ?.isNotEmpty ??
+            false),
   ),
 );
 
 BoxShadow _damageShadow(WidgetTester tester) =>
-    (tester.widget<DecoratedBox>(_glowDecoration()).decoration as BoxDecoration)
+    (tester.renderObject<RenderDecoratedBox>(_glowDecoration()).decoration
+            as BoxDecoration)
         .boxShadow!
         .single;
 
 List<BoxShadow>? _moraleShadows(WidgetTester tester) =>
     (tester
-                .widget<Container>(
+                .renderObject<RenderDecoratedBox>(
                   find.descendant(
                     of: find.byType(MoraleChip),
-                    matching: find.byType(Container),
+                    matching: find.byElementPredicate(
+                      (element) =>
+                          element is RenderObjectElement &&
+                          element.renderObject is RenderDecoratedBox,
+                    ),
                   ),
                 )
-                .decoration!
+                .decoration
             as BoxDecoration)
         .boxShadow;
 
@@ -183,11 +194,13 @@ void main() {
         await render(repairStatus: ShipRepairStatus.retreat);
         expect(find.text('0/100'), findsOneWidget);
         expect(find.byType(DamagePulseGlow), findsNothing);
+        expect(find.byType(MinimalDamagePulseGlow), findsNothing);
         expect(tester.binding.transientCallbackCount, 0);
         await render();
         expect(tester.binding.transientCallbackCount, greaterThan(0));
         await render(showHp: false);
         expect(find.byType(DamagePulseGlow), findsNothing);
+        expect(find.byType(MinimalDamagePulseGlow), findsNothing);
         expect(tester.binding.transientCallbackCount, 0);
         await render();
         expect(tester.binding.transientCallbackCount, greaterThan(0));

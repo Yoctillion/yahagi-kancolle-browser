@@ -136,14 +136,23 @@ void main() {
         ),
       );
       final navigationTick = tester.element(
-        find.ancestor(
-          of: find.byKey(
-            const Key('workspace-navigation-list'),
-            skipOffstage: false,
-          ),
-          matching: find.byType(SecondTickBuilder, skipOffstage: false),
-        ),
+        find
+            .ancestor(
+              of: find.byKey(
+                const Key('workspace-nav-repair'),
+                skipOffstage: false,
+              ),
+              matching: find.byType(SecondTickBuilder, skipOffstage: false),
+            )
+            .first,
       );
+      var navigationTicks = 0;
+      final previousRebuildCallback = debugOnRebuildDirtyWidget;
+      debugOnRebuildDirtyWidget = (element, builtOnce) {
+        previousRebuildCallback?.call(element, builtOnce);
+        if (identical(element, navigationTick)) navigationTicks++;
+      };
+      addTearDown(() => debugOnRebuildDirtyWidget = previousRebuildCallback);
       final hdStrip = find.byType(HdBottomStrip, skipOffstage: false);
       final hdElement = hd ? tester.element(hdStrip) : null;
       expect(TickerMode.valuesOf(panelElement).enabled, isTrue);
@@ -175,9 +184,11 @@ void main() {
 
       final hiddenHeaderChild = _builtChild(headerTick);
       final hiddenNavigationChild = _builtChild(navigationTick);
+      final hiddenNavigationTicks = navigationTicks;
       await tester.pump(const Duration(seconds: 2));
       expect(_builtChild(headerTick), same(hiddenHeaderChild));
       expect(_builtChild(navigationTick), same(hiddenNavigationChild));
+      expect(navigationTicks, hiddenNavigationTicks);
       expect(gameState.nozakiTimer.anchorAt, timerAnchor);
 
       await tester.binding.handlePopRoute();
@@ -190,9 +201,13 @@ void main() {
       expect(TickerMode.valuesOf(navigationTick).enabled, isTrue);
       final restoredHeaderChild = _builtChild(headerTick);
       final restoredNavigationChild = _builtChild(navigationTick);
+      final restoredNavigationTicks = navigationTicks;
       await tester.pump(const Duration(seconds: 1));
       expect(_builtChild(headerTick), isNot(same(restoredHeaderChild)));
-      expect(_builtChild(navigationTick), isNot(same(restoredNavigationChild)));
+      // The badge still observes deadlines, while an unchanged count reuses
+      // its button instead of rebuilding the entire navigation rail.
+      expect(_builtChild(navigationTick), same(restoredNavigationChild));
+      expect(navigationTicks, greaterThan(restoredNavigationTicks));
       expect(gameState.nozakiTimer.anchorAt, timerAnchor);
       if (hdElement != null) {
         expect(tester.element(hdStrip), same(hdElement));
