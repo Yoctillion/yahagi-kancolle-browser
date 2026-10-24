@@ -71,9 +71,9 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
             AppLocalizations.of(context) ??
             lookupAppLocalizations(const Locale('zh'));
 
-        // 倒计时只在扁平折叠摘要里需要逐秒刷新。
+        // 折叠标题已不展示摘要；展开倒计时由各行独立刷新。
         return SecondTickBuilder(
-          enabled: widget.collapsed && PanelStyleScope.isFlat(context),
+          enabled: false,
           builder: (context, now, _) => DashboardCard(
             collapsedSummary: widget.collapsed
                 ? expeditionSummary(strings, state, now)

@@ -30,16 +30,6 @@ enum DiagnosticWebViewHost { flutterPlatformView, activityDirect, absent }
 
 enum DiagnosticGameRenderer { webgl, canvas, unknown }
 
-enum DiagnosticPreviousExitReason {
-  lowMemory,
-  crash,
-  anr,
-  userRequested,
-  systemUpdate,
-  unknown,
-  unavailable,
-}
-
 final class DiagnosticEvent {
   DiagnosticEvent._({
     required this.occurredAt,

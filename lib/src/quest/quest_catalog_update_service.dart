@@ -15,7 +15,6 @@ const questCatalogDisplayCommitApi =
 const questCatalogRelationCommitApi =
     'https://api.github.com/repos/kcwikizh/kcQuests/commits'
     '?path=dist/quests-scn.json&per_page=1';
-const questCatalogCommitApi = questCatalogRelationCommitApi;
 
 sealed class QuestCatalogUpdateResult {
   const QuestCatalogUpdateResult({required this.sourceHost});

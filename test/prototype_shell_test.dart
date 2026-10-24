@@ -4259,6 +4259,193 @@ void main() {
       },
     );
 
+    testWidgets(
+      'smoke: mode rotation HD and background capture preserve the live game',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          exitFullscreenSkipConfirmationKey: true,
+        });
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        addTearDown(
+          () => tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.resumed,
+          ),
+        );
+        final state = GameStateController();
+        await state.initialize();
+        state
+          ..accept(start2Event)
+          ..accept(portEvent)
+          ..accept(slotItemEvent);
+        await state.idle;
+        final anchor = DateTime.now().toUtc();
+        state.nozakiTimer.reset(anchor);
+        final finish = anchor
+            .add(const Duration(hours: 1))
+            .millisecondsSinceEpoch;
+        Future<void> updateOperations(int count) async {
+          for (final (endpoint, data) in <(String, Object)>[
+            (
+              'ndock',
+              [
+                for (var id = 1; id <= count; id++)
+                  {
+                    'api_id': id,
+                    'api_state': 1,
+                    'api_ship_id': 9000 + id,
+                    'api_complete_time': finish,
+                  },
+              ],
+            ),
+            (
+              'kdock',
+              [
+                for (var id = 1; id <= count; id++)
+                  {
+                    'api_id': id,
+                    'api_state': 3,
+                    'api_created_ship_id': 101,
+                    'api_complete_time': 0,
+                  },
+              ],
+            ),
+            (
+              'deck',
+              [
+                for (var id = 2; id <= 4; id++)
+                  {
+                    'api_id': id,
+                    'api_mission': id <= count + 1 ? [1, 5, finish] : [0, 0, 0],
+                  },
+              ],
+            ),
+          ]) {
+            state.accept(kcsapiEvent('/kcsapi/api_get_member/$endpoint', data));
+          }
+          await state.idle;
+        }
+
+        await updateOperations(1);
+        var disposals = 0;
+        var deactivations = 0;
+        final browser = _NoopBrowserPort();
+        final notices = TopNoticeController();
+        addTearDown(notices.dispose);
+        const gameKey = Key('all-modes-smoke-game');
+        final layout = await _pumpMinimalShell(
+          tester,
+          size: const Size(1200, 700),
+          uiSize: UiDisplaySize.normal,
+          gameState: state,
+          browserPort: browser,
+          headerNoticeController: notices,
+          gameSurface: _LifecycleProbe(
+            key: gameKey,
+            onDispose: () => disposals++,
+            onDeactivate: () => deactivations++,
+          ),
+        );
+        final gameElement = tester.element(find.byKey(gameKey));
+        final reloads = browser.reloadCalls;
+        await layout.reorderWorkspaceMenu(0, 2);
+        final menuOrder = List<String>.of(layout.workspaceMenuOrder);
+        void expectAlive() {
+          expect(tester.element(find.byKey(gameKey)), same(gameElement));
+          expect(browser.reloadCalls, reloads);
+          expect(disposals, 0);
+          expect(deactivations, 0);
+          expect(state.nozakiTimer.anchorAt, anchor);
+          expect(layout.workspaceMenuOrder, menuOrder);
+          expect(tester.takeException(), isNull);
+        }
+
+        void expectBadges(String value) {
+          for (final id in [
+            'repair-active-count',
+            'construction-completion-count',
+            'expedition-active-count',
+          ]) {
+            expect(
+              find.descendant(
+                of: find.byKey(Key(id)),
+                matching: find.text(value),
+              ),
+              findsOneWidget,
+              reason: id,
+            );
+          }
+        }
+
+        for (final (size, hd, screen) in [
+          (UiDisplaySize.normal, false, const Size(1200, 700)),
+          (UiDisplaySize.compact, false, const Size(700, 1200)),
+          (UiDisplaySize.minimal, false, const Size(1200, 700)),
+          (UiDisplaySize.minimal, true, const Size(700, 1200)),
+          (UiDisplaySize.compact, true, const Size(1200, 700)),
+          (UiDisplaySize.normal, true, const Size(700, 1200)),
+          (UiDisplaySize.minimal, true, const Size(1200, 700)),
+        ]) {
+          await layout.setUiDisplaySize(size);
+          await layout.setHdEnabled(hd);
+          tester.view.physicalSize = screen;
+          await tester.pumpAndSettle();
+          expectAlive();
+          expectBadges('①');
+        }
+
+        await tester.tap(find.byKey(const Key('yahagi-brand-button')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('game-enter-fullscreen')));
+        await tester.pumpAndSettle();
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        await updateOperations(2);
+        state.accept(
+          kcsapiEvent('/kcsapi/api_get_member/material', [
+            {'api_id': 1, 'api_value': 44444},
+          ]),
+        );
+        await state.idle;
+        notices.show(
+          message: '冒烟测试任务完成',
+          tone: TopNoticeTone.quest,
+          duration: const Duration(minutes: 1),
+        );
+        final noticeId = notices.notices.single.id;
+        await tester.pump(const Duration(seconds: 2));
+        expectAlive();
+
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expectBadges('②');
+        expectAlive();
+        expect(notices.notices.single.id, noticeId);
+        notices.hide();
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('header-resource-material-1')),
+            matching: find.text('44444'),
+          ),
+          findsOneWidget,
+        );
+        await _tapWorkspaceNavigationItem(tester, 'settings');
+        await tester.pumpAndSettle();
+        await layout.setUiDisplaySize(UiDisplaySize.compact);
+        await tester.pumpAndSettle();
+        await _tapWorkspaceNavigationItem(tester, 'game');
+        await tester.pumpAndSettle();
+        expectBadges('②');
+        expectAlive();
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+
     testWidgets('switching compact and minimal keeps game surface alive', (
       tester,
     ) async {

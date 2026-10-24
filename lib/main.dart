@@ -3500,7 +3500,7 @@ class WorkspaceNavigation extends StatelessWidget {
       scale: scale,
       child: SecondTickBuilder(
         now: clock,
-        enabled: gameStateController != null,
+        enabled: false,
         builder: (context, now, _) => Container(
           width: controller.workspaceMenuHorizontal
               ? null
@@ -3579,6 +3579,85 @@ class WorkspaceNavigation extends StatelessWidget {
                                   onSelected(destination.pageIndex);
                                 }
 
+                                int countAt(DateTime at) =>
+                                    switch (destination.id) {
+                                      'quests' => completedQuestCount,
+                                      'expedition' =>
+                                        navState == null
+                                            ? 0
+                                            : activeExpeditionFleets(
+                                                navState,
+                                                at,
+                                              ).length,
+                                      'construction' =>
+                                        navState == null
+                                            ? 0
+                                            : completedConstructionCount(
+                                                navState,
+                                                at,
+                                              ),
+                                      'repair' =>
+                                        navState == null
+                                            ? 0
+                                            : busyRepairDocks(
+                                                navState,
+                                                at,
+                                              ).length,
+                                      _ => 0,
+                                    };
+                                Widget buttonForCount(
+                                  int count,
+                                ) => _NavigationButton(
+                                  key: Key('workspace-nav-${destination.id}'),
+                                  icon: destination.icon,
+                                  label: destination.label,
+                                  horizontal:
+                                      controller.workspaceMenuHorizontal,
+                                  menuSize: menuSize,
+                                  completedCount: count,
+                                  countKey: Key(switch (destination.id) {
+                                    'repair' => 'repair-active-count',
+                                    'expedition' => 'expedition-active-count',
+                                    'quests' => 'quest-completion-count',
+                                    _ => '${destination.id}-completion-count',
+                                  }),
+                                  countLabel: destination.id == 'quests'
+                                      ? null
+                                      : destination.label,
+                                  selected:
+                                      selectedIndex == destination.pageIndex,
+                                  onTap: handleTap,
+                                );
+                                final timedBadge = switch (destination.id) {
+                                  'expedition' ||
+                                  'construction' ||
+                                  'repair' => true,
+                                  _ => false,
+                                };
+                                Widget button;
+                                if (timedBadge) {
+                                  // Only a changed badge count needs a new
+                                  // button. Data, selection and preferences
+                                  // recreate this cache in the parent builder.
+                                  int? previousCount;
+                                  Widget? cachedButton;
+                                  button = SecondTickBuilder(
+                                    now: clock,
+                                    enabled: gameStateController != null,
+                                    builder: (context, tick, _) {
+                                      final count = countAt(tick);
+                                      if (cachedButton == null ||
+                                          previousCount != count) {
+                                        previousCount = count;
+                                        cachedButton = buttonForCount(count);
+                                      }
+                                      return cachedButton!;
+                                    },
+                                  );
+                                } else {
+                                  button = buttonForCount(countAt(now));
+                                }
+
                                 return UiScale(
                                   key: ValueKey(
                                     'workspace-nav-item-${destination.id}',
@@ -3595,64 +3674,12 @@ class WorkspaceNavigation extends StatelessWidget {
                                       behavior: HitTestBehavior.opaque,
                                       onTap: handleTap,
                                       child: Center(
-                                        child: ReorderableDelayedDragStartListener(
-                                          index: index,
-                                          enabled: !controller.uiLocked,
-                                          child: _NavigationButton(
-                                            key: Key(
-                                              'workspace-nav-${destination.id}',
+                                        child:
+                                            ReorderableDelayedDragStartListener(
+                                              index: index,
+                                              enabled: !controller.uiLocked,
+                                              child: button,
                                             ),
-                                            icon: destination.icon,
-                                            label: destination.label,
-                                            horizontal: controller
-                                                .workspaceMenuHorizontal,
-                                            menuSize: menuSize,
-                                            completedCount: switch (destination
-                                                .id) {
-                                              'quests' => completedQuestCount,
-                                              'expedition' =>
-                                                navState == null
-                                                    ? 0
-                                                    : activeExpeditionFleets(
-                                                        navState,
-                                                        now,
-                                                      ).length,
-                                              'construction' =>
-                                                navState == null
-                                                    ? 0
-                                                    : completedConstructionCount(
-                                                        navState,
-                                                        now,
-                                                      ),
-                                              'repair' =>
-                                                navState == null
-                                                    ? 0
-                                                    : busyRepairDocks(
-                                                        navState,
-                                                        now,
-                                                      ).length,
-                                              _ => 0,
-                                            },
-                                            countKey: Key(switch (destination
-                                                .id) {
-                                              'repair' => 'repair-active-count',
-                                              'expedition' =>
-                                                'expedition-active-count',
-                                              'quests' =>
-                                                'quest-completion-count',
-                                              _ =>
-                                                '${destination.id}-completion-count',
-                                            }),
-                                            countLabel:
-                                                destination.id == 'quests'
-                                                ? null
-                                                : destination.label,
-                                            selected:
-                                                selectedIndex ==
-                                                destination.pageIndex,
-                                            onTap: handleTap,
-                                          ),
-                                        ),
                                       ),
                                     ),
                                   ),

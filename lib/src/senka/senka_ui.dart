@@ -11,14 +11,6 @@ const senkaGold = Color(0xffd7a957);
 const senkaGreen = Color(0xff5dc9a5);
 const senkaYellow = Color(0xffe4b34e);
 const senkaRed = Color(0xffec7777);
-const senkaWeekdayBackground = Color(0xff071923);
-
-const senkaPlannedCard = Color(0xff0d2b45);
-const senkaPlannedBorder = Color(0xff3a8fe0);
-const senkaCompletedCard = Color(0xff091a26);
-const senkaCompletedBorder = Color(0xff224259);
-const senkaDeferredCard = Color(0xff091a26);
-const senkaDeferredBorder = Color(0xfff0b83e);
 
 String senkaNumber(num? value) =>
     value == null ? '--' : value.toStringAsFixed(2);
@@ -112,52 +104,4 @@ class SenkaPanel extends StatelessWidget {
       ),
     );
   }
-}
-
-class SenkaLabelValue extends StatelessWidget {
-  const SenkaLabelValue(
-    this.label,
-    this.value, {
-    super.key,
-    this.compact = false,
-  });
-  final String label;
-  final String value;
-  final bool compact;
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(
-        child: Text(
-          label,
-          maxLines: 1,
-          style: appTextStyle(
-            context,
-            TextStyle(
-              color: senkaMuted,
-              fontSize: compact ? 10 : 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-      Flexible(
-        child: Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.right,
-          style: appTextStyle(
-            context,
-            TextStyle(
-              color: senkaText,
-              fontSize: compact ? 11 : 14,
-              fontWeight: FontWeight.w800,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ),
-      ),
-    ],
-  );
 }
