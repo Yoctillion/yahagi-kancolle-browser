@@ -181,12 +181,12 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
     return Container(
       key: const Key('land-base-area-switcher'),
       constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
-      height: 22,
+      height: 26,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xff102331),
-        border: Border.all(color: const Color(0xff294052)),
-        borderRadius: BorderRadius.circular(8),
+        color: appColor(context, const Color(0xff10212e)),
+        border: Border.all(color: appColor(context, const Color(0xff294052))),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -194,24 +194,30 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
           for (final areaId in areaIds)
             Material(
               key: Key('land-base-area-selector-$areaId'),
-              color: areaId == selectedAreaId
-                  ? const Color(0xff8a6628)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
+              color: appColor(
+                context,
+                areaId == selectedAreaId
+                    ? const Color(0xff5b4829)
+                    : Colors.transparent,
+              ),
+              borderRadius: BorderRadius.circular(5),
               child: InkWell(
                 onTap: () => onSelected(areaId),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(5),
                 child: SizedBox(
                   width: 32,
                   child: Center(
                     child: Text(
                       '$areaId',
-                      style: TextStyle(
-                        color: areaId == selectedAreaId
-                            ? const Color(0xffffdc88)
-                            : const Color(0xff9fb3bf),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                      style: appTextStyle(
+                        context,
+                        TextStyle(
+                          color: areaId == selectedAreaId
+                              ? const Color(0xffffcf67)
+                              : const Color(0xff8197a5),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
