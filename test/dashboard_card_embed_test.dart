@@ -64,7 +64,7 @@ void main() {
     expect(find.text('齿轮'), findsOneWidget);
   });
 
-  group('LiveBattleCard lockedMode', () {
+  group('embedded LiveBattleCard', () {
     final reducer = GameStateReducer();
     late GameState state;
     late BattleController controller;
@@ -85,41 +85,32 @@ void main() {
 
     tearDown(() => controller.dispose());
 
-    testWidgets('locked detailed hides the switch and ignores stored mode', (
-      tester,
-    ) async {
-      final bucket = PageStorageBucket();
-      await tester.pumpWidget(
-        _app(
-          bucket: bucket,
-          LiveBattleCard(
-            key: const PageStorageKey('locked-battle'),
-            controller: controller,
-            collapsed: false,
-            onToggleCollapse: () {},
+    for (final style in PanelStyle.values) {
+      testWidgets('keeps the compact/detailed switch ($style)', (tester) async {
+        await tester.pumpWidget(
+          _app(
+            PanelStyleScope(
+              style: style,
+              child: DashboardCardEmbedScope(
+                child: LiveBattleCard(
+                  key: const PageStorageKey('embedded-battle'),
+                  controller: controller,
+                  collapsed: false,
+                  onToggleCollapse: () {},
+                ),
+              ),
+            ),
           ),
-        ),
-      );
-      await tester.tap(find.byKey(const Key('battle-mode-compact')));
-      await tester.pump();
-      expect(find.byType(DetailedBattlePanel), findsNothing);
-
-      await tester.pumpWidget(
-        _app(
-          bucket: bucket,
-          LiveBattleCard(
-            key: const PageStorageKey('locked-battle'),
-            controller: controller,
-            collapsed: false,
-            onToggleCollapse: () {},
-            lockedMode: BattlePanelMode.detailed,
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.byKey(const Key('battle-mode-compact')), findsNothing);
-      expect(find.byKey(const Key('battle-mode-detailed')), findsNothing);
-      expect(find.byType(DetailedBattlePanel), findsOneWidget);
-    });
+        );
+        expect(find.byType(DetailedBattlePanel), findsOneWidget);
+        await tester.tap(find.byKey(const Key('battle-mode-compact')));
+        await tester.pump();
+        expect(find.byType(DetailedBattlePanel), findsNothing);
+        await tester.tap(find.byKey(const Key('battle-mode-detailed')));
+        await tester.pump();
+        expect(find.byType(DetailedBattlePanel), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }

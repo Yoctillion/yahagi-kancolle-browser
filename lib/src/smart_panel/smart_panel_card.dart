@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../fleet/dashboard_card.dart';
+import '../layout/dashboard_editing_scope.dart';
 import '../layout/flat_style.dart';
 import '../layout/flat_text_toggle.dart';
 import '../layout/flat_underline_tabs.dart';
@@ -77,7 +78,10 @@ class SmartPanelCard extends StatelessWidget {
           child: stateBody(context, state),
         ),
       );
-      final tabs = headerStyle == SmartPanelHeaderStyle.tabs;
+      // The editing list names modules, so it must not follow the state.
+      final tabs =
+          headerStyle == SmartPanelHeaderStyle.tabs ||
+          DashboardEditingScope.isEditing(context);
       final dropdown = headerStyle == SmartPanelHeaderStyle.dropdown;
       return DashboardCard(
         title: tabs ? l10n.smartPanelTitle : label,

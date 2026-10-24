@@ -34,6 +34,7 @@ class ExpeditionSummaryCard extends StatefulWidget {
     this.showLogo = true,
     this.showTitle = true,
     this.onOpenDisplaySettings,
+    this.lockedMode,
   });
 
   final Set<String> visible;
@@ -45,6 +46,9 @@ class ExpeditionSummaryCard extends StatefulWidget {
   final VoidCallback onToggleCollapse;
   final VoidCallback onOpenExpedition;
   final ValueChanged<int> onOpenExpeditionCheck;
+
+  /// Forces a mode and hides the switch, leaving the user's choice alone.
+  final ExpeditionSummaryMode? lockedMode;
 
   @override
   State<ExpeditionSummaryCard> createState() => _ExpeditionSummaryCardState();
@@ -85,14 +89,16 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
             onToggleCollapse: widget.onToggleCollapse,
             showLogo: widget.showLogo,
             showTitle: widget.showTitle,
-            trailing: ExpeditionModeSelector(
-              mode: _mode,
-              compact: true,
-              summaryLabel: ExpeditionStrings.of(context).modeProgress,
-              checkLabel: ExpeditionStrings.of(context).modeCheck,
-              onChanged: (mode) => setState(() => _mode = mode),
-            ),
-            child: _mode == ExpeditionSummaryMode.summary
+            trailing: widget.lockedMode == null
+                ? ExpeditionModeSelector(
+                    mode: _mode,
+                    compact: true,
+                    summaryLabel: ExpeditionStrings.of(context).modeProgress,
+                    checkLabel: ExpeditionStrings.of(context).modeCheck,
+                    onChanged: (mode) => setState(() => _mode = mode),
+                  )
+                : null,
+            child: (widget.lockedMode ?? _mode) == ExpeditionSummaryMode.summary
                 ? _buildSummaryContent(state, activeFleets, strings)
                 : ExpeditionCheckContent(
                     controller: widget.controller,

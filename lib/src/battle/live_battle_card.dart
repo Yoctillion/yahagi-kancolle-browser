@@ -46,7 +46,6 @@ class LiveBattleCard extends StatefulWidget {
     this.showLogo = true,
     this.showTitle = true,
     this.onOpenDisplaySettings,
-    this.lockedMode,
   });
 
   final BattleController controller;
@@ -60,9 +59,6 @@ class LiveBattleCard extends StatefulWidget {
   final bool showLogo;
   final bool showTitle;
   final VoidCallback? onOpenDisplaySettings;
-
-  /// Forces a panel mode and hides the switch, leaving the stored mode alone.
-  final BattlePanelMode? lockedMode;
 
   @override
   State<LiveBattleCard> createState() => _LiveBattleCardState();
@@ -194,9 +190,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
           titleBadge: idle
               ? (flat ? null : const _IdleBadge())
               : _StatusBadge(battle: battle),
-          trailing: widget.lockedMode == null
-              ? _ModeSwitch(mode: _mode, onChanged: _setMode)
-              : null,
+          trailing: _ModeSwitch(mode: _mode, onChanged: _setMode),
           child: Column(
             key: widget.collapsed
                 ? const Key('live-battle-collapsed')
@@ -223,8 +217,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                   SizedBox(height: flat ? flatSectionGap : 9),
                 ],
                 const _IdleBattleContent(),
-              ] else if ((widget.lockedMode ?? _mode) ==
-                  BattlePanelMode.detailed)
+              ] else if (_mode == BattlePanelMode.detailed)
                 DetailedBattlePanel(
                   battle: battle,
                   gameState: widget.controller.gameStateSnapshot,
