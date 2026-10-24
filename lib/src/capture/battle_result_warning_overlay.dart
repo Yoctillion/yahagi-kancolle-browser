@@ -696,123 +696,237 @@ class _BattleResultWarningOverlayState
             );
             final reloadGame = widget.onReloadGame;
             final reloadGameFrame = widget.onReloadGameFrame;
-            return AlertDialog(
-              scrollable: true,
-              backgroundColor: appColor(context, const Color(0xff122431)),
-              title: Text(
-                l10n.postBattleWarningTitle,
-                style: appTextStyle(
-                  context,
-                  TextStyle(color: appColor(context, Color(0xffd4a85f))),
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    allEquipped
-                        ? l10n.advanceWarningEquippedHeadline
-                        : hasMissing
-                        ? l10n.advanceWarningMissingHeadline
-                        : l10n.advanceWarningUnknownHeadline,
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final viewInsets = MediaQuery.viewInsetsOf(context);
+                final contentWidth =
+                    (constraints.maxWidth - viewInsets.horizontal - 72).clamp(
+                      0.0,
+                      480.0,
+                    );
+                final scrollActions =
+                    constraints.maxHeight - viewInsets.vertical < 400;
+                final warningActions = _AdvanceWarningButtonRow(
+                  availableWidth: contentWidth,
+                  leadingFlex: 3,
+                  trailingFlex: 2,
+                  leading: FilledButton(
+                    key: const Key('muteCurrentSortieWarning'),
+                    onPressed: () {
+                      if (!mounted ||
+                          !identical(_warningDialogRoute, route) ||
+                          !route.isCurrent ||
+                          !_accountSession.isCurrent(warningScope) ||
+                          _warningSession.generation != warningGeneration) {
+                        return;
+                      }
+                      _warningSession.muteCurrentSortie();
+                    },
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: const StadiumBorder(),
+                      backgroundColor: appColor(
+                        context,
+                        const Color(0xffe4c267),
+                      ),
+                      foregroundColor: appColor(
+                        context,
+                        const Color(0xff302305),
+                      ),
+                    ),
+                    child: Text(l10n.advanceWarningMuteSortie),
+                  ),
+                  trailing: FilledButton(
+                    key: const Key('acknowledgeAdvanceWarning'),
+                    onPressed: () {
+                      if (mounted &&
+                          identical(_warningDialogRoute, route) &&
+                          route.isCurrent) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: const StadiumBorder(),
+                      backgroundColor: appColor(
+                        context,
+                        const Color(0xffff7f88),
+                      ),
+                      foregroundColor: appColor(
+                        context,
+                        const Color(0xff330c12),
+                      ),
+                    ),
+                    child: Text(l10n.acknowledgeAndRetreat),
+                  ),
+                );
+                final warningDialog = AlertDialog(
+                  scrollable: true,
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  insetPadding: const EdgeInsets.all(16),
+                  titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                  contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                  actionsPadding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+                  buttonPadding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  backgroundColor: appColor(context, const Color(0xff122431)),
+                  title: Text(
+                    l10n.postBattleWarningTitle,
                     style: appTextStyle(
                       context,
                       TextStyle(
-                        color: appColor(
-                          context,
-                          allEquipped
-                              ? const Color(0xffd4a85f)
-                              : Colors.redAccent,
-                        ),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        color: appColor(context, const Color(0xffd4a85f)),
+                        fontSize: 21,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  for (final ship in ships)
-                    _AdvanceWarningShipRow(ship: ship, l10n: l10n),
-                  const SizedBox(height: 8),
-                  Text(
-                    _postBattlePresentation
-                        ? allEquipped
-                              ? l10n.postBattleDamageControlEquippedBody
-                              : l10n.postBattleDamageControlDangerBody
-                        : allEquipped
-                        ? l10n.advanceWarningEquippedBody
-                        : l10n.postBattleWarningBody,
-                    style: appTextStyle(
-                      context,
-                      TextStyle(color: appColor(context, Colors.white70)),
+                  content: SizedBox(
+                    width: 480,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          allEquipped
+                              ? l10n.advanceWarningEquippedHeadline
+                              : hasMissing
+                              ? l10n.advanceWarningMissingHeadline
+                              : l10n.advanceWarningUnknownHeadline,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(
+                                context,
+                                allEquipped
+                                    ? const Color(0xffd4a85f)
+                                    : Colors.redAccent,
+                              ),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: appColor(context, const Color(0xff162c38)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < ships.length;
+                                  index++
+                                ) ...[
+                                  if (index > 0)
+                                    Divider(
+                                      height: 1,
+                                      color: appColor(
+                                        context,
+                                        const Color(0xff354550),
+                                      ),
+                                    ),
+                                  _AdvanceWarningShipRow(
+                                    ship: ships[index],
+                                    l10n: l10n,
+                                    availableWidth: (contentWidth - 24).clamp(
+                                      0.0,
+                                      456.0,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _postBattlePresentation
+                              ? allEquipped
+                                    ? l10n.postBattleDamageControlEquippedBody
+                                    : l10n.postBattleDamageControlDangerBody
+                              : allEquipped
+                              ? l10n.advanceWarningEquippedBody
+                              : l10n.postBattleWarningBody,
+                          style: appTextStyle(
+                            context,
+                            TextStyle(
+                              color: appColor(context, Colors.white70),
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _AdvanceWarningRefreshActions(
+                          l10n: l10n,
+                          availableWidth: contentWidth,
+                          initiallyFailed: refreshFailed,
+                          canRefresh: () =>
+                              mounted &&
+                              identical(_warningDialogRoute, route) &&
+                              route.isCurrent &&
+                              _accountSession.isCurrent(warningScope) &&
+                              _warningSession.generation == warningGeneration,
+                          onReloadGame: reloadGame == null
+                              ? null
+                              : () => _refreshWarning(
+                                  route,
+                                  warningScope,
+                                  warningGeneration,
+                                  reloadGame,
+                                ),
+                          onReloadGameFrame: reloadGameFrame == null
+                              ? null
+                              : () => _refreshWarning(
+                                  route,
+                                  warningScope,
+                                  warningGeneration,
+                                  reloadGameFrame,
+                                ),
+                        ),
+                        if (scrollActions) ...[
+                          const SizedBox(height: 10),
+                          warningActions,
+                        ],
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  _AdvanceWarningRefreshActions(
-                    l10n: l10n,
-                    initiallyFailed: refreshFailed,
-                    canRefresh: () =>
-                        mounted &&
-                        identical(_warningDialogRoute, route) &&
-                        route.isCurrent &&
-                        _accountSession.isCurrent(warningScope) &&
-                        _warningSession.generation == warningGeneration,
-                    onReloadGame: reloadGame == null
-                        ? null
-                        : () => _refreshWarning(
-                            route,
-                            warningScope,
-                            warningGeneration,
-                            reloadGame,
-                          ),
-                    onReloadGameFrame: reloadGameFrame == null
-                        ? null
-                        : () => _refreshWarning(
-                            route,
-                            warningScope,
-                            warningGeneration,
-                            reloadGameFrame,
-                          ),
+                  actions: scrollActions
+                      ? null
+                      : [SizedBox(width: 480, child: warningActions)],
+                );
+                return Padding(
+                  padding: viewInsets,
+                  child: MediaQuery.removeViewInsets(
+                    context: context,
+                    removeLeft: true,
+                    removeTop: true,
+                    removeRight: true,
+                    removeBottom: true,
+                    child: warningDialog,
                   ),
-                ],
-              ),
-              actions: [
-                FilledButton(
-                  key: const Key('muteCurrentSortieWarning'),
-                  onPressed: () {
-                    if (!mounted ||
-                        !identical(_warningDialogRoute, route) ||
-                        !route.isCurrent ||
-                        !_accountSession.isCurrent(warningScope) ||
-                        _warningSession.generation != warningGeneration) {
-                      return;
-                    }
-                    _warningSession.muteCurrentSortie();
-                  },
-                  style: FilledButton.styleFrom(
-                    shape: const StadiumBorder(),
-                    backgroundColor: appColor(context, const Color(0xffe4c267)),
-                    foregroundColor: appColor(context, const Color(0xff302305)),
-                  ),
-                  child: Text(l10n.advanceWarningMuteSortie),
-                ),
-                FilledButton(
-                  key: const Key('acknowledgeAdvanceWarning'),
-                  onPressed: () {
-                    if (mounted &&
-                        identical(_warningDialogRoute, route) &&
-                        route.isCurrent) {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                    shape: const StadiumBorder(),
-                    backgroundColor: appColor(context, const Color(0xffff7f88)),
-                    foregroundColor: appColor(context, const Color(0xff330c12)),
-                  ),
-                  child: Text(l10n.acknowledgeAndRetreat),
-                ),
-              ],
+                );
+              },
             );
           },
         );
@@ -842,9 +956,45 @@ class _BattleResultWarningOverlayState
   }
 }
 
+class _AdvanceWarningButtonRow extends StatelessWidget {
+  const _AdvanceWarningButtonRow({
+    required this.leading,
+    required this.trailing,
+    required this.availableWidth,
+    this.leadingFlex = 1,
+    this.trailingFlex = 1,
+  });
+
+  final Widget leading;
+  final Widget trailing;
+  final double availableWidth;
+  final int leadingFlex;
+  final int trailingFlex;
+
+  @override
+  Widget build(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    if (availableWidth < 240 * textScale) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [leading, const SizedBox(height: 8), trailing],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(flex: leadingFlex, child: leading),
+        const SizedBox(width: 8),
+        Expanded(flex: trailingFlex, child: trailing),
+      ],
+    );
+  }
+}
+
 class _AdvanceWarningRefreshActions extends StatefulWidget {
   const _AdvanceWarningRefreshActions({
     required this.l10n,
+    required this.availableWidth,
     required this.canRefresh,
     required this.onReloadGame,
     required this.onReloadGameFrame,
@@ -852,6 +1002,7 @@ class _AdvanceWarningRefreshActions extends StatefulWidget {
   });
 
   final AppLocalizations l10n;
+  final double availableWidth;
   final bool Function() canRefresh;
   final Future<void> Function()? onReloadGame;
   final Future<void> Function()? onReloadGameFrame;
@@ -883,51 +1034,65 @@ class _AdvanceWarningRefreshActionsState
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          OutlinedButton.icon(
+  Widget build(BuildContext context) {
+    final buttonStyle = OutlinedButton.styleFrom(
+      minimumSize: const Size(0, 44),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      shape: const StadiumBorder(),
+      foregroundColor: appColor(context, const Color(0xffd4a85f)),
+      side: BorderSide(color: appColor(context, const Color(0xff867b61))),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _AdvanceWarningButtonRow(
+          availableWidth: widget.availableWidth,
+          leading: OutlinedButton.icon(
             key: const Key('advanceWarningReloadGame'),
             onPressed: _busy || widget.onReloadGame == null
                 ? null
                 : () => _refresh(widget.onReloadGame!),
             icon: const Icon(Icons.refresh, size: 18),
+            style: buttonStyle,
             label: Text(widget.l10n.advanceWarningReloadGame),
           ),
-          OutlinedButton.icon(
+          trailing: OutlinedButton.icon(
             key: const Key('advanceWarningReloadFrame'),
             onPressed: _busy || widget.onReloadGameFrame == null
                 ? null
                 : () => _refresh(widget.onReloadGameFrame!),
             icon: const Icon(Icons.web_asset, size: 18),
+            style: buttonStyle,
             label: Text(widget.l10n.advanceWarningReloadFrame),
           ),
-        ],
-      ),
-      if (_failed)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(
-            widget.l10n.advanceWarningRefreshFailed,
-            style: appTextStyle(
-              context,
-              TextStyle(color: appColor(context, Colors.redAccent)),
+        ),
+        if (_failed)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              widget.l10n.advanceWarningRefreshFailed,
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, Colors.redAccent)),
+              ),
             ),
           ),
-        ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _AdvanceWarningShipRow extends StatelessWidget {
-  const _AdvanceWarningShipRow({required this.ship, required this.l10n});
+  const _AdvanceWarningShipRow({
+    required this.ship,
+    required this.l10n,
+    required this.availableWidth,
+  });
 
   final AdvanceWarningShip ship;
   final AppLocalizations l10n;
+  final double availableWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -955,17 +1120,48 @@ class _AdvanceWarningShipRow extends StatelessWidget {
       ),
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(name, style: appTextStyle(context, TextStyle(color: color))),
-          const SizedBox(height: 4),
-          Text(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Builder(
+        builder: (context) {
+          final stacked =
+              availableWidth < 360 ||
+              (MediaQuery.textScalerOf(context).scale(14) > 18 &&
+                  availableWidth < 430);
+          final nameLabel = Text(
+            name,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.5,
+              ),
+            ),
+          );
+          final statusLabel = Text(
             status,
-            style: appTextStyle(context, TextStyle(color: color, fontSize: 13)),
-          ),
-        ],
+            textAlign: stacked ? TextAlign.start : TextAlign.end,
+            style: appTextStyle(
+              context,
+              TextStyle(color: color, fontSize: 13, height: 1.5),
+            ),
+          );
+          if (stacked) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [nameLabel, const SizedBox(height: 4), statusLabel],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(flex: 3, child: nameLabel),
+              const SizedBox(width: 12),
+              Expanded(flex: 7, child: statusLabel),
+            ],
+          );
+        },
       ),
     );
   }

@@ -382,6 +382,3 @@ final class AppTelemetryService
     return false;
   }
 }
-
-/// Optional alias for [AppTelemetryService].
-typedef TelemetryDeckService = AppTelemetryService;

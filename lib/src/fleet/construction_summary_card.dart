@@ -46,9 +46,9 @@ class ConstructionSummaryCard extends StatelessWidget {
       builder: (context, _) {
         final state = controller.state;
         final docks = state.constructionDocks;
-        // 倒计时只在扁平折叠摘要里需要逐秒刷新。
+        // 折叠标题已不展示摘要；展开槽位保留各自的完成计时。
         return SecondTickBuilder(
-          enabled: collapsed && PanelStyleScope.isFlat(context),
+          enabled: false,
           builder: (context, now, _) => DashboardCard(
             collapsedSummary: collapsed
                 ? constructionSummary(

@@ -266,26 +266,53 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.anchorageRepairStartedAt == null &&
-        widget.nosakiSparkleStartedAt == null) {
-      return _buildWithSettings(context, DateTime.now().toUtc());
-    }
-    return SecondTickBuilder(
-      builder: (context, now, _) => _buildWithSettings(context, now),
-    );
-  }
-
-  Widget _buildWithSettings(BuildContext context, DateTime now) {
-    _now = now;
     final controller = widget.settingsController;
     if (controller != null) {
       return AnimatedBuilder(
         animation: controller,
-        builder: (context, _) => _buildBar(controller),
+        builder: (context, _) => _buildWithClock(controller),
       );
     }
-    return _buildBar(null);
+    return _buildWithClock(null);
   }
+
+  List<String> _orderedDisplayIds(LayoutSettingsController? controller) {
+    final order = controller?.headerResourceOrder ?? allHeaderResourceIds;
+    if (_editing && controller?.uiLocked != true) return order;
+    final visible =
+        (controller?.visibleHeaderResourceIds ??
+                defaultVisibleHeaderResourceIds)
+            .toSet();
+    return [
+      for (final id in order)
+        if (visible.contains(id)) id,
+    ];
+  }
+
+  bool _visibleTimerNeedsTick(LayoutSettingsController? controller) {
+    var ids = _orderedDisplayIds(controller);
+    if (widget.layout == ResourceBarLayout.grid && _gridCollapsed(controller)) {
+      ids = _collapsedGridIds(ids, controller);
+    }
+    if (widget.nosakiSparkleStartedAt != null &&
+        ids.contains(headerNosakiTimerId)) {
+      return true;
+    }
+    return widget.anchorageRepairStartedAt != null &&
+        ids.contains(headerAnchorageTimerId) &&
+        AnchorageRepairCalculator.hasReadyFleet(widget.state);
+  }
+
+  // Settings and editor changes must update the subscription as well as the
+  // displayed items. Re-enabling reads the scope's current absolute time.
+  Widget _buildWithClock(LayoutSettingsController? controller) =>
+      SecondTickBuilder(
+        enabled: _visibleTimerNeedsTick(controller),
+        builder: (context, now, _) {
+          _now = now;
+          return _buildBar(controller);
+        },
+      );
 
   Widget _buildBar(LayoutSettingsController? controller) {
     final uiSize =
@@ -295,18 +322,12 @@ class _CompactResourceBarState extends State<CompactResourceBar> {
     final separatorWidth = isCompact && !uiSize.isMinimal ? 5.0 : 6.0;
     final resourceScale = UiScale.of(context);
 
-    final order = controller?.headerResourceOrder ?? allHeaderResourceIds;
     final visible =
         (controller?.visibleHeaderResourceIds ??
                 defaultVisibleHeaderResourceIds)
             .toSet();
     final isEditing = _editing && controller?.uiLocked != true;
-    final ids = isEditing
-        ? order
-        : <String>[
-            for (final id in order)
-              if (visible.contains(id)) id,
-          ];
+    final ids = _orderedDisplayIds(controller);
     final l10n =
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));

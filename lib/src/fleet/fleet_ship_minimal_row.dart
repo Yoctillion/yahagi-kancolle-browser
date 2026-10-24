@@ -16,11 +16,11 @@ import 'equipment_display.dart';
 import 'equipment_type_icon.dart';
 import 'fleet_ship_type_label.dart';
 import 'fleet_ui_strings.dart';
+import 'minimal_status_glow.dart';
 import 'ship_portrait.dart';
 import 'ship_repair_status.dart';
 import 'ship_speed_visual.dart';
 import 'ship_status_style.dart';
-import 'ship_status_visuals.dart';
 
 enum MoraleBand { sparkle, normal, mild, tired, exhausted }
 
@@ -113,56 +113,81 @@ class _MoraleChipState extends State<MoraleChip>
     super.dispose();
   }
 
-  Widget _chip(_MoraleStyle style, double glow) => Container(
-    height: math.max(12, MediaQuery.textScalerOf(context).scale(9)),
-    constraints: const BoxConstraints(minWidth: 28),
-    padding: const EdgeInsets.symmetric(horizontal: 2),
-    decoration: BoxDecoration(
-      color: appColor(context, style.background),
-      borderRadius: BorderRadius.circular(3),
-      boxShadow: glow > 0
-          ? [
-              BoxShadow(
-                color: appColor(
-                  context,
-                  const Color(0xfffff27a).withValues(alpha: 0.6 * glow),
-                ),
-                blurRadius: 5,
+  BoxDecoration _decoration(
+    _MoraleStyle style,
+    double glow,
+    AppPalette palette,
+  ) => BoxDecoration(
+    color: palette.color(style.background),
+    borderRadius: BorderRadius.circular(3),
+    boxShadow: glow > 0
+        ? [
+            BoxShadow(
+              color: palette.color(
+                const Color(0xfffff27a).withValues(alpha: 0.6 * glow),
               ),
-            ]
-          : null,
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(style.icon, size: 9, color: appColor(context, style.foreground)),
-        const SizedBox(width: 1),
-        Text(
-          '${widget.value}',
-          maxLines: 1,
-          style: TextStyle(
-            color: appColor(context, style.foreground),
-            fontSize: 9,
-            height: 1,
-            fontWeight: FontWeight.w800,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
+              blurRadius: 5,
+            ),
+          ]
+        : null,
+  );
+
+  Widget _chip(
+    _MoraleStyle style,
+    double glow,
+    Widget child, {
+    Animation<double>? animation,
+  }) {
+    final palette = AppPalette.of(context);
+    final padded = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: child,
+    );
+    return Container(
+      height: math.max(12, MediaQuery.textScalerOf(context).scale(9)),
+      constraints: const BoxConstraints(minWidth: 28),
+      child: animation == null
+          ? DecoratedBox(
+              decoration: _decoration(style, glow, palette),
+              child: padded,
+            )
+          : MinimalAnimatedDecoration(
+              animation: animation,
+              decorationBuilder: (value) =>
+                  _decoration(style, 0.3 + 0.7 * value, palette),
+              child: padded,
+            ),
+    );
+  }
+
+  Widget _content(_MoraleStyle style) => Row(
+    mainAxisSize: MainAxisSize.min,
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Icon(style.icon, size: 9, color: appColor(context, style.foreground)),
+      const SizedBox(width: 1),
+      Text(
+        '${widget.value}',
+        maxLines: 1,
+        style: TextStyle(
+          color: appColor(context, style.foreground),
+          fontSize: 9,
+          height: 1,
+          fontWeight: FontWeight.w800,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
-      ],
-    ),
+      ),
+    ],
   );
 
   @override
   Widget build(BuildContext context) {
     final style = _moraleStyle(moraleBandOf(widget.value));
     final pulse = _pulse;
-    if (!_sparkles) return _chip(style, 0);
-    if (!_blinks || pulse == null) return _chip(style, 1);
-    return AnimatedBuilder(
-      animation: pulse,
-      builder: (context, _) => _chip(style, 0.3 + 0.7 * pulse.value),
-    );
+    final content = _content(style);
+    if (!_sparkles) return _chip(style, 0, content);
+    if (!_blinks || pulse == null) return _chip(style, 1, content);
+    return RepaintBoundary(child: _chip(style, 0, content, animation: pulse));
   }
 }
 
@@ -490,7 +515,7 @@ class FleetShipMinimalRow extends StatelessWidget {
       if (field == 'hp' &&
           !showBars &&
           repairStatus != ShipRepairStatus.retreat) {
-        text = DamagePulseGlow(
+        text = MinimalDamagePulseGlow(
           currentHp: currentHp,
           maxHp: ship.maxHp,
           filter: damagePulseFilter,
@@ -526,7 +551,7 @@ class FleetShipMinimalRow extends StatelessWidget {
                 ? null
                 : repairStatus == ShipRepairStatus.retreat
                 ? hpBar
-                : DamagePulseGlow(
+                : MinimalDamagePulseGlow(
                     currentHp: currentHp,
                     maxHp: ship.maxHp,
                     filter: damagePulseFilter,
