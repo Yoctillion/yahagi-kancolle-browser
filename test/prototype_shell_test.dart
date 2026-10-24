@@ -2560,11 +2560,13 @@ void main() {
   ) async {
     await _pumpMinimalShell(tester);
     expect(_sidebarWidth(tester), closeTo(34, .001));
-    expect(_headerHeight(tester), closeTo(28, .001));
     expect(
       UiScale.of(tester.element(find.byKey(const Key('information-panel')))),
       1.0,
     );
+    await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
+    await tester.pumpAndSettle();
+    expect(_headerHeight(tester), closeTo(28, .001));
     expect(tester.takeException(), isNull);
   });
 
@@ -2728,8 +2730,10 @@ void main() {
               'navigation extent': layout.workspaceMenuHorizontal
                   ? navigation.height
                   : navigation.width,
-              'brand image width': tester.getRect(brandIcon).width,
-              'brand image height': tester.getRect(brandIcon).height,
+              if (brandIcon.evaluate().isNotEmpty) ...{
+                'brand image width': tester.getRect(brandIcon).width,
+                'brand image height': tester.getRect(brandIcon).height,
+              },
             };
           }
 
@@ -2744,7 +2748,9 @@ void main() {
           final minimalChrome = chromeGeometry();
           for (final entry in oldGeometry[UiDisplaySize.compact]!.entries) {
             final dense = switch (entry.key) {
-              'header height' => 28.0,
+              // 扣掉导航栏后仍偏横的手机窗口才进入极简外壳，游戏页不显示顶栏。
+              'header height' =>
+                scenario.size == const Size(800, 360) ? 0.0 : 28.0,
               'navigation extent' => 34.0,
               _ => null,
             };
@@ -2986,9 +2992,9 @@ void main() {
     }
   });
 
-  group('header first minimal shell', () {
+  group('full height minimal rail', () {
     for (final side in ['left', 'right']) {
-      testWidgets('$side rail yields the full header across workspaces', (
+      testWidgets('$side rail spans full height across workspaces', (
         tester,
       ) async {
         const corners = MethodChannel(displayCornersChannelName);
@@ -3004,7 +3010,7 @@ void main() {
           },
         );
         addTearDown(() => messenger.setMockMethodCallHandler(corners, null));
-        const gameKey = Key('header-first-game');
+        const gameKey = Key('full-height-rail-game');
         final browser = _NoopBrowserPort();
         final layout = await _pumpMinimalShell(
           tester,
@@ -3013,15 +3019,15 @@ void main() {
         );
         await layout.setWorkspaceMenuPosition(side);
         await tester.pumpAndSettle();
-        final brand = find.byKey(const Key('yahagi-brand-button'));
         Finder header() => find
             .ancestor(
-              of: brand,
+              of: find.byType(WorkspaceContextHeader, skipOffstage: false),
               matching: find.byWidgetPredicate(
                 (widget) =>
                     widget is Container &&
                     widget.constraints?.minHeight == _minimalHeaderHeight &&
                     widget.constraints?.maxHeight == _minimalHeaderHeight,
+                skipOffstage: false,
               ),
             )
             .first;
@@ -3039,28 +3045,39 @@ void main() {
           navigation.onSelected(workspace);
           await tester.pumpAndSettle();
           expect(
-            tester.getRect(header()),
-            rectMoreOrLessEquals(
-              const Rect.fromLTWH(0, 0, 873, _minimalHeaderHeight),
-            ),
-          );
-          expect(
             tester.getRect(rail),
             rectMoreOrLessEquals(
               Rect.fromLTWH(
                 side == 'left' ? 0 : 873 - _minimalNavigationExtent,
-                _minimalHeaderHeight,
+                0,
                 _minimalNavigationExtent,
-                393 - _minimalHeaderHeight,
+                393,
               ),
             ),
           );
-          expect(
-            tester.getRect(brand).left,
-            closeTo(8 + cornerInsetAt(55, 6.5), .01),
-          );
+          if (workspace == 0) {
+            expect(_headerHeight(tester), 0);
+          } else {
+            // 顶栏只排在内容一侧，不横跨导航栏。
+            expect(
+              tester.getRect(header()),
+              rectMoreOrLessEquals(
+                Rect.fromLTWH(
+                  side == 'left' ? _minimalNavigationExtent : 0,
+                  0,
+                  873 - _minimalNavigationExtent,
+                  _minimalHeaderHeight,
+                ),
+              ),
+            );
+          }
+          expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
+          expect(find.byKey(const Key('minimal-menu-button')), findsOneWidget);
           expect(tester.getTopLeft(firstNavigationItem).dy, firstItemTop);
-          expect(firstItemTop, greaterThanOrEqualTo(_minimalHeaderHeight));
+          expect(
+            tester.getTopLeft(find.byKey(const Key('minimal-menu-button'))).dy,
+            greaterThanOrEqualTo(cornerInset(side == 'left' ? 55 : 40)),
+          );
           expect(
             tester.element(find.byKey(gameKey, skipOffstage: false)),
             same(gameElement),
@@ -3080,7 +3097,7 @@ void main() {
 
   group('fixed top resources', () {
     for (final savedPosition in MinimalResourcePosition.values) {
-      testWidgets('legacy $savedPosition uses the persistent header', (
+      testWidgets('legacy $savedPosition keeps resources across sizes', (
         tester,
       ) async {
         SharedPreferences.setMockInitialValues({
@@ -3101,20 +3118,27 @@ void main() {
         expect(layout.minimalResourcePosition, savedPosition);
         final resource = find.byKey(const Key('header-resource-material-1'));
         final headerSlot = find.byType(QuestCompletionHeaderSlot);
+        final panelResources = find.descendant(
+          of: find.byKey(const Key('workspace-information-panel')),
+          matching: find.byKey(const Key('information-panel-resources')),
+        );
+        final contextHeader = find.byType(
+          WorkspaceContextHeader,
+          skipOffstage: false,
+        );
+        // 极简游戏页没有顶栏，资源排在信息栏顶部。
+        expect(_headerHeight(tester), 0);
+        expect(panelResources, findsOneWidget);
         expect(
           find.descendant(of: headerSlot, matching: resource),
           findsOneWidget,
-        );
-        expect(
-          find.byKey(const Key('information-panel-resources')),
-          findsNothing,
         );
         expect(
           find.byKey(const Key('minimal-bottom-resource-bar')),
           findsNothing,
         );
         final originalGame = tester.element(find.byKey(gameKey));
-        final originalHeader = tester.element(headerSlot);
+        final originalHeader = tester.element(contextHeader);
         final originalHost = tester.state(
           find.byType(QuestCompletionDrawerHost),
         );
@@ -3131,7 +3155,7 @@ void main() {
           await layout.setUiDisplaySize(size);
           await tester.pump(const Duration(milliseconds: 40));
           expect(tester.element(find.byKey(gameKey)), same(originalGame));
-          expect(tester.element(headerSlot), same(originalHeader));
+          expect(tester.element(contextHeader), same(originalHeader));
           expect(
             tester.state(find.byType(QuestCompletionDrawerHost)),
             same(originalHost),
@@ -3143,14 +3167,17 @@ void main() {
             findsOneWidget,
           );
           expect(
-            find.byKey(const Key('information-panel-resources')),
-            findsNothing,
+            panelResources,
+            size.isMinimal ? findsOneWidget : findsNothing,
           );
           expect(
             find.byKey(const Key('minimal-bottom-resource-bar')),
             findsNothing,
           );
         }
+        // 极简游戏页由菜单按钮打开工具栏操作，回到有品牌入口的档位再收起。
+        await layout.setUiDisplaySize(UiDisplaySize.compact);
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('yahagi-brand-button')));
         await tester.pumpAndSettle();
         expect(toolbar.isVisible, isFalse);
@@ -3170,8 +3197,10 @@ void main() {
     testWidgets('only minimal flattens top resources while preserving icons', (
       tester,
     ) async {
+      // 扣掉导航栏后偏竖的窗口，极简游戏页仍保留带资源的顶栏。
       final layout = await _pumpMinimalShell(
         tester,
+        size: const Size(873, 640),
         uiSize: UiDisplaySize.compact,
       );
       await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
@@ -3246,13 +3275,18 @@ void main() {
     });
   });
 
-  group('minimal topbar integration', () {
-    testWidgets('brand opens the original toolbar in the persistent header', (
+  group('minimal header integration', () {
+    testWidgets('tall minimal window brand opens the original toolbar', (
       tester,
     ) async {
       final toolbar = GameToolbarController();
       addTearDown(toolbar.dispose);
-      await _pumpMinimalShell(tester, toolbarController: toolbar);
+      // 扣掉导航栏后偏竖的窗口，极简游戏页保留顶栏，品牌入口和原工具栏照旧。
+      await _pumpMinimalShell(
+        tester,
+        size: const Size(873, 640),
+        toolbarController: toolbar,
+      );
 
       final brand = find.byKey(const Key('yahagi-brand-button'));
       expect(brand, findsOneWidget);
@@ -3302,6 +3336,7 @@ void main() {
         addTearDown(notices.dispose);
         final layout = await _pumpMinimalShell(
           tester,
+          size: const Size(873, 640),
           toolbarController: toolbar,
           headerNoticeController: notices,
         );
@@ -3447,7 +3482,12 @@ void main() {
             find.byKey(const Key('quest-completion-drawer')),
             findsOneWidget,
           );
-          expect(find.byKey(const Key('game-toolbar-visible')), findsOneWidget);
+          // 极简游戏页由菜单按钮打开工具栏操作，原工具栏只在有顶栏时展开；
+          // 刚切回有顶栏的档位时，上一次淡出的工具栏可能还没卸下。
+          expect(
+            find.byKey(const Key('game-toolbar-visible')),
+            size.isMinimal ? findsNothing : findsWidgets,
+          );
           expect(disposals, 0);
           expect(deactivations, 0);
         }
@@ -3462,6 +3502,7 @@ void main() {
         // Navigation retains the established collapse behavior; size changes do
         // not mutate the controller, and returning still uses the same toolbar.
         expect(toolbar.isVisible, isFalse);
+        await layout.setUiDisplaySize(UiDisplaySize.compact);
         toolbar.reveal();
         await tester.pump(const Duration(milliseconds: 1710));
         expect(notices.notices, isEmpty);
@@ -3516,61 +3557,65 @@ void main() {
       expect(gear.height, closeTo(flatActionIconSize, .001));
       expect(tester.takeException(), isNull);
     });
-    testWidgets('minimal landscape retains brand header and top resources', (
-      tester,
-    ) async {
+    testWidgets('minimal menu button opens the browser menu', (tester) async {
       await _pumpMinimalShell(tester);
 
-      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
-      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      // 游戏页没有顶栏，资源排在信息栏顶部。
+      expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
+      expect(_headerHeight(tester), 0);
       expect(
         find.descendant(
-          of: find.byType(QuestCompletionHeaderSlot),
-          matching: find.byKey(const Key('header-resource-material-1')),
+          of: find.byKey(const Key('workspace-information-panel')),
+          matching: find.byKey(const Key('information-panel-resources')),
         ),
         findsOneWidget,
       );
-      expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
       expect(_sidebarWidth(tester), closeTo(_minimalNavigationExtent, .001));
+
+      await tester.tap(find.byKey(const Key('minimal-menu-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('game-browser-menu-reload')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('game-browser-menu-close')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('game-browser-menu-close')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal brand opens and closes the header toolbar', (
+    testWidgets('minimal menu button returns other workspaces to the game', (
       tester,
     ) async {
       await _pumpMinimalShell(tester);
-
-      await tester.tap(find.byKey(const Key('yahagi-brand-button')));
+      await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('game-toolbar-visible')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('yahagi-brand-button')));
+      await tester.tap(find.byKey(const Key('minimal-menu-button')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('game-toolbar-visible')), findsNothing);
+
+      expect(find.byKey(const Key('game-browser-menu-reload')), findsNothing);
+      expect(find.byType(FleetInformationCenter), findsNothing);
+      expect(_headerHeight(tester), 0);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal other workspaces keep the rail below the header', (
+    testWidgets('minimal other workspaces put the header beside the rail', (
       tester,
     ) async {
       await _pumpMinimalShell(tester);
-      final menuButton = find.byKey(const Key('workspace-nav-fleet'));
+      final menuButton = find.byKey(const Key('minimal-menu-button'));
       final gameMenuTop = tester.getTopLeft(menuButton).dy;
 
       await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
       expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
       expect(_sidebarWidth(tester), closeTo(_minimalNavigationExtent, .001));
       final rail = tester.getRect(
         find.byKey(const Key('workspace-navigation-sidebar')),
       );
-      expect(rail.top, closeTo(_minimalHeaderHeight, .001));
-      expect(
-        rail.height,
-        closeTo(_phoneLandscape.height - _minimalHeaderHeight, .001),
-      );
+      expect(rail.top, 0);
+      expect(rail.height, _phoneLandscape.height);
       expect(tester.getTopLeft(menuButton).dy, gameMenuTop);
       expect(
         tester.getTopLeft(find.byType(WorkspaceContextHeader)).dx,
@@ -3591,12 +3636,12 @@ void main() {
 
         expect(find.byKey(const Key('game-browser-menu-reload')), findsNothing);
         expect(find.byType(FleetInformationCenter), findsNothing);
-        expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
+        expect(_headerHeight(tester), 0);
         expect(tester.takeException(), isNull);
       },
     );
 
-    testWidgets('minimal header on other workspaces clears both top corners', (
+    testWidgets('minimal header on other workspaces clears the far corner', (
       tester,
     ) async {
       const corners = MethodChannel(displayCornersChannelName);
@@ -3617,10 +3662,10 @@ void main() {
       await tester.pumpAndSettle();
       Rect header() => tester.getRect(find.byType(WorkspaceContextHeader));
 
-      // 页头跨满顶部，品牌与右侧内容分别让开两端圆弧。
+      // 竖栏占着左上角，页头只在右端让圆弧。
       expect(
-        tester.getRect(find.byKey(const Key('yahagi-brand-button'))).left,
-        closeTo(8 + cornerInsetAt(55, 6.5), 0.01),
+        header().left,
+        lessThan(_minimalNavigationExtent + cornerInsetAt(55, 6.5)),
       );
       expect(
         header().right,
@@ -3637,7 +3682,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal horizontal navigation retains the brand everywhere', (
+    testWidgets('minimal horizontal navigation shows the menu everywhere', (
       tester,
     ) async {
       final layout = await _pumpMinimalShell(tester);
@@ -3648,11 +3693,10 @@ void main() {
 
         expect(
           find.byKey(const Key('yahagi-brand-button')),
-          findsOneWidget,
+          findsNothing,
           reason: position,
         );
-        expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
-        await tester.tap(find.byKey(const Key('workspace-nav-game')));
+        await tester.tap(find.byKey(const Key('minimal-menu-button')));
         await tester.pumpAndSettle();
         expect(find.byType(FleetInformationCenter), findsNothing);
         expect(tester.takeException(), isNull, reason: position);
@@ -4073,9 +4117,10 @@ void main() {
               ? minimalContentScale(hd: hd)
               : 1.0;
           final phoneMinimal = size == UiDisplaySize.minimal && !hd;
+          // 手机极简横屏的游戏页没有顶栏，品牌入口挪到导航栏的菜单按钮。
           final header = switch (size) {
             UiDisplaySize.normal => 44.0,
-            _ => phoneMinimal ? 28.0 : 36.0,
+            _ => phoneMinimal ? 0.0 : 36.0,
           };
           final navigation = switch (size) {
             UiDisplaySize.normal => 48.0,
@@ -4083,7 +4128,18 @@ void main() {
           };
           expect(_headerHeight(tester), closeTo(header, .001));
           expect(_sidebarWidth(tester), closeTo(navigation, .001));
-          expectScale(brandText, 1);
+          if (phoneMinimal) {
+            expect(brand, findsNothing);
+            expectScale(
+              find.descendant(
+                of: find.byKey(const Key('minimal-menu-button')),
+                matching: find.byType(Image),
+              ),
+              1,
+            );
+          } else {
+            expectScale(brandText, 1);
+          }
           expectScale(navIcon, 1);
 
           final fleet = find.byType(FleetSummaryCard);
@@ -4144,7 +4200,11 @@ void main() {
       ]) {
         await layout.setUiDisplaySize(size);
         await tester.pumpAndSettle();
-        expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+        expect(
+          find.byKey(const Key('minimal-menu-button')),
+          size.isMinimal ? findsOneWidget : findsNothing,
+        );
+        expect(_headerHeight(tester), size.isMinimal ? 0 : 36);
         expect(disposeCount, 0);
         expect(deactivateCount, 0);
         expect(tester.element(gameSurface), same(originalElement));
@@ -4152,13 +4212,19 @@ void main() {
       }
     });
 
-    testWidgets('quest notice covers top resources and restores their state', (
+    testWidgets('quest notice replaces panel resources in minimal', (
       tester,
     ) async {
       await _pumpMinimalShell(tester);
       final panel = find.byKey(const Key('workspace-information-panel'));
-      final slot = find.byType(QuestCompletionHeaderSlot);
-      final resource = find.byKey(const Key('header-resource-material-1'));
+      final slot = find.descendant(
+        of: panel,
+        matching: find.byType(QuestCompletionHeaderSlot),
+      );
+      final resource = find.descendant(
+        of: find.byKey(const Key('information-panel-resources')),
+        matching: find.byKey(const Key('header-resource-material-1')),
+      );
       final originalResource = tester.element(resource);
       double opacity() => tester
           .widget<AnimatedOpacity>(
@@ -4191,94 +4257,67 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal top bar shows resources above the game and panel', (
+    testWidgets('minimal legacy top bar value keeps resources in the panel', (
       tester,
     ) async {
-      const corners = MethodChannel(displayCornersChannelName);
-      final messenger =
-          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      messenger.setMockMethodCallHandler(
-        corners,
-        (_) async => <String, Object>{
-          'topLeft': 55,
-          'topRight': 40,
-          'bottomLeft': 24,
-          'bottomRight': 24,
-        },
-      );
-      addTearDown(() => messenger.setMockMethodCallHandler(corners, null));
       final layout = await _pumpMinimalShell(tester);
-      final navItem = find.byKey(const Key('workspace-nav-fleet'));
-      final menuTop = tester.getTopLeft(navItem).dy;
+      final menuButton = find.byKey(const Key('minimal-menu-button'));
+      final menuTop = tester.getTopLeft(menuButton).dy;
       await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
       await tester.pumpAndSettle();
 
-      expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
+      expect(_headerHeight(tester), 0);
+      expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
       expect(
-        find.byKey(const Key('header-resource-material-1')),
+        find.descendant(
+          of: find.byKey(const Key('workspace-information-panel')),
+          matching: find.byKey(const Key('information-panel-resources')),
+        ),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
-      expect(
-        find.byKey(const Key('information-panel-resources')),
-        findsNothing,
-      );
-      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
-      // 资源位置的旧保存值不改变页头下方的导航位置。
-      expect(tester.getTopLeft(navItem).dy, menuTop);
-      // 保留品牌入口后，资源排在品牌右侧，远端仍让开圆弧。
-      final list = tester.getRect(
-        find.byKey(const Key('header-resource-list')),
-      );
-      expect(
-        list.left,
-        greaterThan(
-          tester.getRect(find.byKey(const Key('yahagi-brand-button'))).right,
-        ),
-      );
-      expect(
-        list.right,
-        lessThanOrEqualTo(_phoneLandscape.width - cornerInsetAt(40, 6.5)),
-      );
+      expect(find.byKey(const Key('header-resource-list')), findsNothing);
+      expect(tester.getTopLeft(menuButton).dy, menuTop);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal top bar takes quest notices in the header', (
-      tester,
-    ) async {
-      final layout = await _pumpMinimalShell(tester);
-      await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
-      await tester.pumpAndSettle();
-      final panel = find.byKey(const Key('workspace-information-panel'));
+    testWidgets(
+      'minimal legacy top bar value takes quest notices in the panel',
+      (tester) async {
+        final layout = await _pumpMinimalShell(tester);
+        await layout.setMinimalResourcePosition(MinimalResourcePosition.topBar);
+        await tester.pumpAndSettle();
+        final panel = find.byKey(const Key('workspace-information-panel'));
 
-      QuestCompletionDrawerHost.show(
-        tester.element(panel),
-        '任务完成',
-        tone: TopNoticeTone.quest,
-      );
-      await tester.pumpAndSettle();
+        QuestCompletionDrawerHost.show(
+          tester.element(panel),
+          '任务完成',
+          tone: TopNoticeTone.quest,
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('quest-completion-drawer')), findsOneWidget);
-      expect(
-        find.descendant(
-          of: panel,
-          matching: find.byKey(const Key('quest-completion-drawer')),
-        ),
-        findsNothing,
-      );
-      QuestCompletionDrawerHost.hide(tester.element(panel));
-      await tester.pumpAndSettle();
-    });
+        expect(
+          find.byKey(const Key('quest-completion-drawer')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: panel,
+            matching: find.byKey(const Key('quest-completion-drawer')),
+          ),
+          findsOneWidget,
+        );
+        QuestCompletionDrawerHost.hide(tester.element(panel));
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets(
-      'toggling minimal resource position keeps header game and refits',
+      'toggling legacy resource positions keeps the minimal game in place',
       (tester) async {
         var disposeCount = 0;
         var deactivateCount = 0;
-        final browserPort = _NoopBrowserPort();
         final layout = await _pumpMinimalShell(
           tester,
-          browserPort: browserPort,
           gameSurface: _LifecycleProbe(
             key: const Key('minimal-top-bar-game-surface'),
             onDispose: () => disposeCount++,
@@ -4289,6 +4328,7 @@ void main() {
           const Key('minimal-top-bar-game-surface'),
         );
         final originalElement = tester.element(gameSurface);
+        final originalRect = tester.getRect(gameSurface);
         final panelTop = tester
             .getTopLeft(find.byKey(const Key('workspace-information-panel')))
             .dy;
@@ -4298,11 +4338,9 @@ void main() {
           MinimalResourcePosition.panel,
           MinimalResourcePosition.topBar,
         ]) {
-          final fitCalls = browserPort.fitGameScreenCalls;
           await layout.setMinimalResourcePosition(position);
           await tester.pumpAndSettle();
-          expect(browserPort.fitGameScreenCalls, greaterThan(fitCalls));
-          expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
+          expect(_headerHeight(tester), 0);
           expect(
             tester
                 .getTopLeft(
@@ -4311,6 +4349,7 @@ void main() {
                 .dy,
             panelTop,
           );
+          expect(tester.getRect(gameSurface), originalRect);
           expect(disposeCount, 0);
           expect(deactivateCount, 0);
           expect(tester.element(gameSurface), same(originalElement));
@@ -4330,9 +4369,9 @@ void main() {
       await tester.tap(navItem);
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('yahagi-brand-button')), findsOneWidget);
+      expect(find.byKey(const Key('yahagi-brand-button')), findsNothing);
       expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
-      expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
+      expect(find.byKey(const Key('minimal-menu-button')), findsOneWidget);
       expect(tester.getTopLeft(navItem).dy, gameNavTop);
       expect(tester.takeException(), isNull);
     });
@@ -4352,7 +4391,7 @@ void main() {
         tester,
         gameSurface: const ColoredBox(key: surfaceProbe, color: Colors.black),
       );
-      // 0.75 让游戏受高度限制，导航时仍保持同一块游戏几何。
+      // 0.75 让游戏受高度限制，顶栏的 28dp 才会改变游戏尺寸。
       await layout.setAutoZoom(false);
       await layout.setGameAreaRatio(0.75);
       await tester.pumpAndSettle();
@@ -4365,7 +4404,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('workspace-nav-game')));
       await tester.pumpAndSettle();
-      expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
+      expect(_headerHeight(tester), 0);
       expect(surfaceSize(tester), initial);
       expect(tester.takeException(), isNull);
     });
@@ -4464,6 +4503,28 @@ void main() {
       );
     }
 
+    void expectResourcesInPanel(WidgetTester tester, {String? reason}) {
+      expect(_headerHeight(tester), 0, reason: reason);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('workspace-information-panel')),
+          matching: find.byKey(const Key('information-panel-resources')),
+        ),
+        findsOneWidget,
+        reason: reason,
+      );
+      expect(
+        find.byKey(const Key('header-resource-list')),
+        findsNothing,
+        reason: reason,
+      );
+      expect(
+        find.byKey(const Key('minimal-bottom-resource-bar')),
+        findsNothing,
+        reason: reason,
+      );
+    }
+
     for (final side in const ['left', 'right']) {
       testWidgets('minimal 807x600 keeps one navigation rail ($side)', (
         tester,
@@ -4488,12 +4549,13 @@ void main() {
         final originalReloads = browser.reloadCalls;
         expect(find.byType(WorkspaceNavigation), findsOneWidget);
 
-        // The full window is below the 1.35 boundary, while the workspace
-        // after reserving the compact header and rail is above it.
+        // 807×600 整窗和扣掉导航栏后的工作区都不到 1.35，游戏页保留顶栏；
+        // 但顶栏下、导航栏旁的实际工作区已是左右分栏，导航不能再贴信息栏。
         for (final size in const [Size(807, 600), Size(800, 500)]) {
           tester.view.physicalSize = size;
           await tester.pump(const Duration(seconds: 2));
           await tester.pumpAndSettle();
+          final keepsHeader = size == const Size(807, 600);
           expect(tester.element(find.byKey(probeKey)), same(originalGame));
           expect(disposals, 0);
           expect(deactivations, 0);
@@ -4501,14 +4563,22 @@ void main() {
           expect(find.byType(WorkspaceNavigation), findsOneWidget);
           final sidebar = find.byKey(const Key('workspace-navigation-sidebar'));
           expect(sidebar, findsOneWidget);
-          expect(
-            tester.getRect(sidebar).top,
-            closeTo(_minimalHeaderHeight, .001),
-          );
+          final headerExtent = keepsHeader ? _minimalHeaderHeight : 0.0;
+          expect(_headerHeight(tester), closeTo(headerExtent, .001));
+          expect(tester.getRect(sidebar).top, closeTo(headerExtent, .001));
           expect(
             tester.getRect(sidebar).height,
-            closeTo(size.height - _minimalHeaderHeight, .001),
+            closeTo(size.height - headerExtent, .001),
           );
+          expect(
+            tester.getRect(sidebar).left,
+            side == 'left' ? 0 : size.width - _minimalNavigationExtent,
+          );
+          expect(
+            find.byKey(const Key('minimal-menu-button')),
+            keepsHeader ? findsNothing : findsOneWidget,
+          );
+          expect(viewport(tester).isLandscape, isTrue);
           expect(tester.takeException(), isNull);
         }
       });
@@ -4521,12 +4591,12 @@ void main() {
         tester.view.padding = const FakeViewPadding(bottom: 20);
         addTearDown(tester.view.resetViewPadding);
         addTearDown(tester.view.resetPadding);
-        // 扣掉等比放大的侧栏和顶栏后，实际工作区仍为横排。
+        // 整窗 1.375 偏横，扣掉侧栏后的工作区 736×560 却是竖排。
         await _pumpMinimalShell(tester, size: const Size(770, 560));
 
         await expectResourcesInHeader(tester);
         expect(find.byKey(const Key('minimal-menu-button')), findsNothing);
-        // 常驻顶栏后的工作区仍按实际宽高选择游戏方向。
+        // 留出顶栏后工作区 736×532 回到横排，侧栏布局下游戏列贴屏幕底边。
         expect(viewport(tester).isLandscape, isTrue);
         expect(viewport(tester).centerAboveBottomInset, isTrue);
         expect(tester.takeException(), isNull);
@@ -4536,7 +4606,8 @@ void main() {
     testWidgets('minimal shell follows the workspace orientation near 1.35', (
       tester,
     ) async {
-      // 跨过旧的顶栏隐藏阈值时，资源始终保留在顶部。
+      // h = 560：不含顶栏的工作区宽在 (532·1.35, 560·1.35] 内仍算竖排而保留
+      // 顶栏，留出顶栏后实际工作区为横排；再宽 1dp 才隐藏顶栏。
       await _pumpMinimalShell(tester, size: const Size(757, 560));
       for (final width in const [757.0, 790.0]) {
         tester.view.physicalSize = Size(width, 560);
@@ -4550,19 +4621,19 @@ void main() {
       tester.view.physicalSize = const Size(791, 560);
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();
-      await expectResourcesInHeader(tester);
+      expect(_headerHeight(tester), 0);
       expect(
         find.descendant(
           of: find.byKey(const Key('workspace-information-panel')),
           matching: find.byKey(const Key('information-panel-resources')),
         ),
-        findsNothing,
+        findsOneWidget,
       );
       expect(viewport(tester).isLandscape, isTrue);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('minimal near-square menu move retains the header and refits', (
+    testWidgets('minimal near-square menu move toggles the header and refits', (
       tester,
     ) async {
       final browserPort = _NoopBrowserPort();
@@ -4573,11 +4644,11 @@ void main() {
       );
       expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
 
-      // 导航位置会改变游戏空间，但顶栏始终保持。
+      // 底部横栏不占宽度，工作区 770 宽偏横，外壳改回无顶栏。
       final fitCalls = browserPort.fitGameScreenCalls;
       await layout.setWorkspaceMenuPosition('bottom');
       await tester.pumpAndSettle();
-      expect(_headerHeight(tester), closeTo(_minimalHeaderHeight, .001));
+      expect(_headerHeight(tester), 0);
       expect(browserPort.fitGameScreenCalls, greaterThan(fitCalls));
       expect(tester.takeException(), isNull);
 
@@ -4676,14 +4747,14 @@ void main() {
       }
     });
 
-    group('fixed header ignores legacy resource placement', () {
+    group('minimal game page ignores legacy resource placement', () {
       const probe = Key('fixed-header-legacy-game');
       Rect gameRect(WidgetTester tester) =>
           tester.getRect(find.byKey(probe, skipOffstage: false));
       Rect gameColumn(WidgetTester tester) =>
           tester.getRect(find.byType(GameSurfaceViewport, skipOffstage: false));
-      Finder headerResource() => find.descendant(
-        of: find.byType(QuestCompletionHeaderSlot),
+      Finder panelResource() => find.descendant(
+        of: find.byKey(const Key('information-panel-resources')),
         matching: find.byKey(const Key('header-resource-material-1')),
       );
       void useBottomInset(WidgetTester tester, double bottom) {
@@ -4696,7 +4767,7 @@ void main() {
       for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
         for (final inset in [0.0, 16.0, 21.0, 24.0]) {
           testWidgets(
-            'legacy positions preserve the game and top resources at inset $inset',
+            'legacy positions preserve the game and panel resources at inset $inset',
             variant: TargetPlatformVariant.only(platform),
             (tester) async {
               useBottomInset(tester, inset);
@@ -4713,14 +4784,14 @@ void main() {
               for (final position in MinimalResourcePosition.values) {
                 await layout.setMinimalResourcePosition(position);
                 await tester.pumpAndSettle();
-                await expectResourcesInHeader(tester, reason: '$position');
-                expect(headerResource().hitTestable(), findsOneWidget);
+                expectResourcesInPanel(tester, reason: '$position');
+                expect(panelResource().hitTestable(), findsOneWidget);
                 expect(gameRect(tester), initialGame);
                 expect(gameColumn(tester), initialColumn);
                 expect(panelBottomPadding(tester), initialPadding);
                 final game = gameRect(tester);
                 final column = gameColumn(tester);
-                expect(column.top, closeTo(_minimalHeaderHeight, .001));
+                expect(column.top, 0);
                 expect(game.top, greaterThanOrEqualTo(column.top));
                 expect(
                   game.bottom,
@@ -4734,32 +4805,30 @@ void main() {
         }
       }
 
-      testWidgets('top resources remain editable with a legacy bottom value', (
-        tester,
-      ) async {
-        final layout = await _pumpMinimalShell(tester);
-        await layout.setMinimalResourcePosition(
-          MinimalResourcePosition.bottomBar,
-        );
-        await layout.setWorkspaceMenuPosition('right');
-        await tester.pumpAndSettle();
-        await tester.longPress(headerResource());
-        await tester.pumpAndSettle();
-        expect(
-          find.descendant(
-            of: find.byType(QuestCompletionHeaderSlot),
-            matching: find.byKey(const Key('header-resource-edit-mode')),
-          ),
-          findsOneWidget,
-        );
-        expect(
-          find.byKey(const Key('minimal-bottom-resource-bar')),
-          findsNothing,
-        );
-        expect(tester.takeException(), isNull);
-      });
+      testWidgets(
+        'panel resources remain editable with a legacy bottom value',
+        (tester) async {
+          final layout = await _pumpMinimalShell(tester);
+          await layout.setMinimalResourcePosition(
+            MinimalResourcePosition.bottomBar,
+          );
+          await layout.setWorkspaceMenuPosition('right');
+          await tester.pumpAndSettle();
+          await tester.longPress(panelResource());
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(const Key('panel-resource-collapsed-dialog')),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(const Key('minimal-bottom-resource-bar')),
+            findsNothing,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
 
-      testWidgets('top resource long-press respects the ui lock', (
+      testWidgets('panel resource long-press respects the ui lock', (
         tester,
       ) async {
         final layout = await _pumpMinimalShell(tester);
@@ -4768,10 +4837,10 @@ void main() {
         );
         await layout.setUiLocked(true);
         await tester.pumpAndSettle();
-        await tester.longPress(headerResource());
+        await tester.longPress(panelResource());
         await tester.pump();
         expect(
-          find.byKey(const Key('header-resource-edit-mode')),
+          find.byKey(const Key('panel-resource-collapsed-dialog')),
           findsNothing,
         );
         expect(find.text('界面已锁定，布局自定义已禁用，功能切换不受影响'), findsOneWidget);
@@ -4795,17 +4864,17 @@ void main() {
         final original = tester.element(find.byKey(probe));
         await tester.tap(find.byKey(const Key('workspace-nav-fleet')));
         await tester.pumpAndSettle();
-        expect(headerResource(), findsNothing);
+        expect(panelResource(), findsNothing);
         expect(gameRect(tester).size, initial);
         await tester.tap(find.byKey(const Key('workspace-nav-game')));
         await tester.pumpAndSettle();
-        await expectResourcesInHeader(tester);
+        expectResourcesInPanel(tester);
         expect(gameRect(tester).size, initial);
         expect(tester.element(find.byKey(probe)), same(original));
         expect(tester.takeException(), isNull);
       });
 
-      testWidgets('horizontal navigation retains resources in the top header', (
+      testWidgets('horizontal navigation keeps resources in the panel', (
         tester,
       ) async {
         useBottomInset(tester, 21);
@@ -4816,7 +4885,7 @@ void main() {
         for (final position in ['bottom', 'top']) {
           await layout.setWorkspaceMenuPosition(position);
           await tester.pumpAndSettle();
-          await expectResourcesInHeader(tester, reason: position);
+          expectResourcesInPanel(tester, reason: position);
         }
         expect(tester.takeException(), isNull);
       });
@@ -4834,7 +4903,13 @@ void main() {
           for (final position in MinimalResourcePosition.values) {
             await layout.setMinimalResourcePosition(position);
             await tester.pumpAndSettle();
-            expect(headerResource(), findsOneWidget);
+            expect(
+              find.descendant(
+                of: find.byType(QuestCompletionHeaderSlot),
+                matching: find.byKey(const Key('header-resource-material-1')),
+              ),
+              findsOneWidget,
+            );
             expect(
               find.byKey(const Key('minimal-bottom-resource-bar')),
               findsNothing,
@@ -4876,7 +4951,7 @@ void main() {
             ]) {
               await layout.setMinimalResourcePosition(position);
               await tester.pumpAndSettle();
-              await expectResourcesInHeader(tester, reason: '$position');
+              expectResourcesInPanel(tester, reason: '$position');
               expect(disposals, 0);
               expect(deactivations, 0);
               expect(tester.element(find.byKey(probe)), same(original));
@@ -4887,7 +4962,7 @@ void main() {
         );
 
         testWidgets(
-          'quest notice restores top resources with legacy bottom at inset $inset',
+          'quest notice restores panel resources with legacy bottom at inset $inset',
           variant: TargetPlatformVariant.only(TargetPlatform.iOS),
           (tester) async {
             useBottomInset(tester, inset);
@@ -4896,7 +4971,7 @@ void main() {
               MinimalResourcePosition.bottomBar,
             );
             await tester.pumpAndSettle();
-            final originalResource = tester.element(headerResource());
+            final originalResource = tester.element(panelResource());
             final panel = find.byKey(const Key('workspace-information-panel'));
             QuestCompletionDrawerHost.show(
               tester.element(panel),
@@ -4907,16 +4982,15 @@ void main() {
             final drawer = find.byKey(const Key('quest-completion-drawer'));
             expect(
               find.descendant(
-                of: find.byType(QuestCompletionHeaderSlot),
+                of: find.descendant(
+                  of: panel,
+                  matching: find.byType(QuestCompletionHeaderSlot),
+                ),
                 matching: drawer,
               ),
               findsOneWidget,
             );
-            expect(
-              tester.getRect(drawer).bottom,
-              lessThanOrEqualTo(_minimalHeaderHeight),
-            );
-            expect(tester.element(headerResource()), same(originalResource));
+            expect(tester.element(panelResource()), same(originalResource));
             expect(
               find.byKey(const Key('minimal-bottom-resource-bar')),
               findsNothing,
@@ -4924,8 +4998,8 @@ void main() {
             QuestCompletionDrawerHost.hide(tester.element(panel));
             await tester.pumpAndSettle();
             expect(drawer, findsNothing);
-            expect(headerResource().hitTestable(), findsOneWidget);
-            expect(tester.element(headerResource()), same(originalResource));
+            expect(panelResource().hitTestable(), findsOneWidget);
+            expect(tester.element(panelResource()), same(originalResource));
             expect(tester.takeException(), isNull);
           },
         );

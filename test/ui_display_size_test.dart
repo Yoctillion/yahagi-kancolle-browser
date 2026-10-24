@@ -82,7 +82,7 @@ void main() {
       bottomRight: 40,
     );
 
-    test('vertical rail below header clears only bottom corners and inset', () {
+    test('vertical rail clears its own corners and the bottom inset', () {
       expect(
         minimalNavigationInsets(
           corners: corners,
@@ -90,7 +90,7 @@ void main() {
           horizontal: false,
           onRight: false,
         ),
-        EdgeInsets.only(bottom: cornerInset(30)),
+        EdgeInsets.only(top: cornerInset(10), bottom: cornerInset(30)),
       );
       expect(
         minimalNavigationInsets(
@@ -99,7 +99,7 @@ void main() {
           horizontal: false,
           onRight: true,
         ),
-        const EdgeInsets.only(bottom: 48),
+        EdgeInsets.only(top: cornerInset(20), bottom: 48),
       );
     });
 

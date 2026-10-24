@@ -90,6 +90,7 @@ import 'src/fleet/construction_summary_card.dart';
 import 'src/fleet/nosaki_sparkle_calculator.dart';
 import 'src/fleet/morale_recovery_timer_controller.dart';
 import 'src/fleet/pre_sortie_check_summary.dart';
+import 'src/fleet/resource_grid.dart';
 
 import 'src/game_webview.dart';
 import 'src/native_activity_game_surface.dart';
@@ -1855,6 +1856,10 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     );
   }
 
+  void _openBrowserMenu() {
+    unawaited(showGameBrowserMenu(context, _browserActions(context)));
+  }
+
   GameBrowserActions _browserActions(BuildContext context) =>
       GameBrowserActions(
         mode: widget.browserController.mode,
@@ -1927,6 +1932,61 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         },
       );
 
+  Widget _buildPanelResources({
+    required bool cornerOnLeft,
+    required bool cornerOnRight,
+  }) {
+    final corners = DisplayCorners.of(context);
+    return _buildGameResourceBar(
+      layout: ResourceBarLayout.grid,
+      gridPadding: const EdgeInsets.fromLTRB(6, 6, 6, 2),
+      gridCornerRadii: (
+        left: cornerOnLeft ? corners.topLeft : 0,
+        right: cornerOnRight ? corners.topRight : 0,
+      ),
+    );
+  }
+
+  /// 极简游戏页没有顶栏时的资源条，任务完成等通知临时占用它的位置。
+  Widget _buildGameResourceBar({
+    required ResourceBarLayout layout,
+    EdgeInsets gridPadding = EdgeInsets.zero,
+    ({double left, double right}) gridCornerRadii = (left: 0, right: 0),
+  }) {
+    final senkaController = widget.senkaController;
+    return QuestCompletionHeaderSlot(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([
+          widget.gameStateController,
+          ?senkaController,
+        ]),
+        builder: (context, _) {
+          final gameState = widget.gameStateController;
+          final playerRanking = senkaController?.state.playerRankingRow;
+          return CompactResourceBar(
+            layout: layout,
+            gridPadding: gridPadding,
+            gridCornerRadii: gridCornerRadii,
+            state: gameState.state,
+            senka: playerRanking?.senka,
+            rank: playerRanking?.rank,
+            onSenkaTap: senkaController == null
+                ? null
+                : () => _selectWorkspace(9),
+            anchorageRepairStartedAt: gameState.anchorageRepairStartedAt,
+            onAnchorageTimerTap: _openAnchorageRepairCenter,
+            nosakiSparkleStartedAt: gameState.nosakiSparkleStartedAt,
+            onNosakiTimerTap: _openNosakiRepairCenter,
+            onFrameRefreshTap: widget.gameFrameRefreshShortcutSettings == null
+                ? null
+                : _refreshGameFrameFromHeader,
+            settingsController: widget.layoutSettingsController,
+          );
+        },
+      ),
+    );
+  }
+
   void _setGameFullscreen(bool fullscreen) {
     if (_gameFullscreen == fullscreen) return;
     setState(() => _gameFullscreen = fullscreen);
@@ -1988,16 +2048,17 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
         ? bottomSafeArea
         : 0.0;
     final contentTouchesBottom = !(menuHorizontal && !menuTop);
-    // Resources use the persistent header in every display size. Judge
-    // the side rail against the same remaining space the game receives.
+    // Judged on the workspace the game would get without the header: a
+    // stacked workspace leaves the panel too short for the resource grid, so
+    // the header must keep the resources. The header is left out because
+    // hiding it makes the workspace taller and would flip the answer back.
     final shellNavigationExtent = workspaceNavigationExtent(chromeSize);
     final minimalShellWorkspace = Size(
       windowSize.width - (menuHorizontal ? 0 : shellNavigationExtent),
       windowSize.height -
           (menuHorizontal && !menuTop
               ? shellNavigationExtent + navigationGestureInset
-              : 0) -
-          shellHeaderHeight,
+              : 0),
     );
     final minimalGameLayout = usesMinimalShell(
       size: uiSize,
@@ -2007,8 +2068,24 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       ),
       hd: hd,
     );
-    // 极简横排工作区的导航始终在顶栏下方、游戏和信息栏旁边。
-    final minimalSideNavigation = minimalGameLayout && !menuHorizontal;
+    final minimalShell = minimalGameLayout && _workspaceIndex == 0;
+    // 竖向导航栏在所有页面都占满整高，切页时导航项不跳；顶栏只排在内容一侧。
+    final minimalSideRail = minimalGameLayout && !menuHorizontal;
+    // 近方窗口（如 807×600）扣掉导航栏后仍算竖排，游戏页保留顶栏；但顶栏下、
+    // 导航栏旁的实际工作区已左右分栏，导航不能再按整窗的竖排去贴信息栏。
+    final minimalSideNavigation =
+        !menuHorizontal &&
+        usesMinimalShell(
+          size: uiSize,
+          isLandscape: !usesVerticalWorkspace(
+            Size(
+              windowSize.width - shellNavigationExtent,
+              windowSize.height - shellHeaderHeight,
+            ),
+            screenDisplayMode,
+          ),
+          hd: hd,
+        );
 
     Widget buildWorkspaceNavigation(
       int completedCount, {
@@ -2023,6 +2100,14 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
       completedQuestCount: completedCount,
       gameStateController: widget.gameStateController,
       hd: hd,
+      leading: minimalGameLayout
+          ? _MinimalMenuButton(
+              horizontal: menuHorizontal,
+              onTap: _workspaceIndex == 0
+                  ? _openBrowserMenu
+                  : () => _selectWorkspace(0),
+            )
+          : null,
       endInsets:
           // 顶部横向导航栏在非游戏页排在顶栏下面，碰不到屏幕角。
           (minimalGameLayout && atScreenBottom
@@ -2132,11 +2217,13 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                 controller: widget.gameStateController,
                 layoutSettingsController: widget.layoutSettingsController,
                 builder: (context, completedCount) => _SideRailColumn(
-                  rail: null,
+                  rail: minimalSideRail
+                      ? buildNavigationSidebar(completedCount)
+                      : null,
                   railOnRight: menuOnRight,
                   children: [
                     Visibility(
-                      visible: !_gameFullscreen,
+                      visible: !_gameFullscreen && !minimalShell,
                       maintainState: true,
                       maintainFocusability: true,
                       child: AnimatedBuilder(
@@ -2148,14 +2235,23 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                           final isCompact = uiSize.isCompactOrSmaller;
                           final headerHeight = topHeaderHeight(chromeSize);
                           final isGameWorkspace = _workspaceIndex == 0;
+                          // The minimal shell opens the toolbar actions from
+                          // the navigation menu button, so a toolbar left open
+                          // before switching would come back in a header that
+                          // has no brand button to close it.
                           final isToolbarVisible =
                               isGameWorkspace &&
+                              !minimalShell &&
                               widget.toolbarController.isVisible;
                           final corners = DisplayCorners.of(context);
                           final sidePadding = isCompact ? 8.0 : 10.0;
                           // Compact header icons are centered at 15dp; keep
                           // the bar's ends clear of the corner arc there.
                           final contentTop = (shellHeaderHeight - 15) / 2;
+                          // 竖向导航栏那一侧的顶角已被导航栏占住。
+                          final leftAtCorner = !minimalSideRail || menuOnRight;
+                          final rightAtCorner =
+                              !minimalSideRail || !menuOnRight;
                           return UiScale(
                             scale: 1,
                             child: Container(
@@ -2164,16 +2260,20 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                   ? EdgeInsets.only(
                                       left:
                                           sidePadding +
-                                          cornerInsetAt(
-                                            corners.topLeft,
-                                            contentTop,
-                                          ),
+                                          (leftAtCorner
+                                              ? cornerInsetAt(
+                                                  corners.topLeft,
+                                                  contentTop,
+                                                )
+                                              : 0),
                                       right:
                                           sidePadding +
-                                          cornerInsetAt(
-                                            corners.topRight,
-                                            contentTop,
-                                          ),
+                                          (rightAtCorner
+                                              ? cornerInsetAt(
+                                                  corners.topRight,
+                                                  contentTop,
+                                                )
+                                              : 0),
                                     )
                                   : EdgeInsets.symmetric(
                                       horizontal: sidePadding,
@@ -2193,7 +2293,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                 visible: false,
                                 child: Row(
                                   children: [
-                                    ...[
+                                    if (!minimalGameLayout) ...[
                                       Material(
                                         color: appColor(
                                           context,
@@ -2586,7 +2686,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                               .workspaceMenuOnRight,
                         ),
                         children: [
-                          if (!panelAlignedNavigation)
+                          if (!panelAlignedNavigation && !minimalSideRail)
                             buildNavigationSidebar(completedCount),
                           Expanded(
                             key: const Key('workspace-content-expanded'),
@@ -2814,10 +2914,23 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                   .informationPanelOnLeft;
                                           final infoPanelExtent =
                                               availableWidth - gamePanelExtent;
+                                          final panelAtScreenEdge =
+                                              isLandscape &&
+                                              (menuHorizontal ||
+                                                  menuOnRight == infoOnLeft);
                                           final infoWidget = Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.stretch,
                                             children: [
+                                              if (minimalShell)
+                                                _buildPanelResources(
+                                                  cornerOnLeft:
+                                                      panelAtScreenEdge &&
+                                                      infoOnLeft,
+                                                  cornerOnRight:
+                                                      panelAtScreenEdge &&
+                                                      !infoOnLeft,
+                                                ),
                                               Expanded(
                                                 child: PanelGameEdgeScope(
                                                   edge: panelGameEdgeFor(
@@ -3637,8 +3750,8 @@ class WorkspaceNavigation extends StatelessWidget {
   }
 }
 
-/// 保留既有 Flex → 带 key 的 Expanded → Column 祖先链，导航移到顶栏下方时
-/// 热重载和切档都不会重新挂载游戏的平台视图。
+/// 外层始终是同一个 Flex，导航栏挂上或摘下时 Column 连同游戏子树不会被
+/// 重新挂载，否则旋转或切档会重建游戏的平台视图。
 class _SideRailColumn extends StatelessWidget {
   const _SideRailColumn({
     required this.rail,
@@ -3663,6 +3776,45 @@ class _SideRailColumn extends StatelessWidget {
       ),
     ],
   );
+}
+
+class _MinimalMenuButton extends StatelessWidget {
+  const _MinimalMenuButton({required this.horizontal, required this.onTap});
+
+  final bool horizontal;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'ヤハギ',
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          key: const Key('minimal-menu-button'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: SizedBox(
+            width: horizontal ? 44 : null,
+            height: horizontal ? null : 40,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.asset(
+                  'assets/app_icon.png',
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.none,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 final class _WorkspaceDestination {

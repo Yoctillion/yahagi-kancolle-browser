@@ -27,8 +27,8 @@ UiDisplaySize chromeDisplaySize(UiDisplaySize size, {required bool hd}) =>
 /// 极简档只在 HD 下放大信息栏内容；手机极简靠更小的外壳尺寸省空间，内容保持原大小。
 double minimalContentScale({required bool hd}) => hd ? minimalUiScale : 1.0;
 
-/// 极简横屏下竖向导航栏位于顶栏下方，只需避让底角与手势条。横向导航栏只在
-/// 贴着屏幕底边时才需要（游戏页的「上方」位置也排在游戏列下面），所以只看底部两角；
+/// 极简横屏下竖向导航栏占满整高，两端直接贴到屏幕角。横向导航栏只在贴着屏幕
+/// 底边时才需要（游戏页的「上方」位置也排在游戏列下面），所以只看底部两角；
 /// 这里不含手势条，贴底横栏的底部安全区由调用方按栏的位置另加。
 EdgeInsets minimalNavigationInsets({
   required CornerRadii corners,
@@ -45,6 +45,7 @@ EdgeInsets minimalNavigationInsets({
     );
   }
   return EdgeInsets.only(
+    top: cornerInset(onRight ? corners.topRight : corners.topLeft),
     bottom: math.max(
       cornerInset(onRight ? corners.bottomRight : corners.bottomLeft),
       bottomSafeArea,
