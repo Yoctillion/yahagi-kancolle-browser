@@ -3904,8 +3904,9 @@ class WorkspaceNavigation extends StatelessWidget {
   }
 }
 
-/// 外层始终是同一个 Flex，导航栏挂上或摘下时 Column 连同游戏子树不会被
-/// 重新挂载，否则旋转或切档会重建游戏的平台视图。
+/// 保留既有 Flex → 带 key 的 Expanded → Column 祖先链，导航移到顶栏下方时
+/// 热重载和切档都不会重新挂载游戏的平台视图。Column 外始终包一层 Stack，
+/// 浮层出现或消失时也不改变这条链。
 class _SideRailColumn extends StatelessWidget {
   const _SideRailColumn({
     required this.rail,
@@ -3928,8 +3929,6 @@ class _SideRailColumn extends StatelessWidget {
       ?rail,
       Expanded(
         key: const Key('workspace-side-rail-body'),
-        // The Stack stays when the overlay comes and goes so the game below
-        // keeps its element.
         child: Stack(
           fit: StackFit.expand,
           children: [
