@@ -39,34 +39,33 @@ class OoiViewportSmokeTest {
                 "https://ooi.moe/poi",
                 "<div id='flashWrap'><$tag id='externalswf' width='1280' height='800'></$tag></div>",
             )
-            eval(script)
             val finishes = pageFinishes.get()
             for ((width, height) in listOf(1200 to 720, 700 to 420, 1500 to 900, 900 to 900, 700 to 420)) {
                 instrumentation.runOnMainSync { view.layout(0, 0, width, height) }
-                eval(script) // Same original-runtime reinjection used by manual fit.
-                settle()
+                val beforeFit = fits.get()
+                fit(script)
+                assertTrue("$tag ${width}x$height requests a native fit", fits.get() > beforeFit)
                 val metrics = JSONObject(eval("""
                     (function(){
                       const frame=document.getElementById('externalswf');
-                      const parent=frame.parentElement;
-                      const rect=frame.getBoundingClientRect();
+                      const style=getComputedStyle(frame);
                       return {
                         state:window.__yahagiMobileReadPresentation(),
-                        viewportWidth:visualViewport.width,viewportHeight:visualViewport.height,
-                        scale:Number(parent.style.getPropertyValue('--yahagi-ooi-scale')),
-                        width:rect.width,height:rect.height,
-                        maxWidth:getComputedStyle(frame).maxWidth,
-                        styleCount:document.querySelectorAll('#__yahagi_mobile_ooi_browser__').length
+                        width:style.width,height:style.height,
+                        transform:style.transform,
+                        maxWidth:style.maxWidth,
+                        styleCount:document.querySelectorAll('#__yahagi_mobile_ooi_browser__').length,
+                        fixedCanvas:document.querySelectorAll('#__yahagi_mobile_fixed_canvas__').length
                       };
                     })()
                 """.trimIndent()))
-                val scale = minOf(metrics.getDouble("viewportWidth") / 1200, metrics.getDouble("viewportHeight") / 720)
-                assertEquals("OOI wrapper retains web presentation", "web", metrics.getString("state"))
-                assertEquals("$tag fit scale", scale, metrics.getDouble("scale"), 0.00001)
-                assertEquals("$tag original CSS width", 1280 * scale, metrics.getDouble("width"), 0.25)
-                assertEquals("$tag original CSS height", 800 * scale, metrics.getDouble("height"), 0.25)
+                assertEquals("OOI frame uses the native game fit", "game", metrics.getString("state"))
+                assertEquals("$tag keeps the authored CSS width", "1280px", metrics.getString("width"))
+                assertEquals("$tag keeps the authored CSS height", "800px", metrics.getString("height"))
+                assertEquals("$tag is not CSS-transformed", "none", metrics.getString("transform"))
                 assertEquals("UIkit max-width cannot shrink the frame", "none", metrics.getString("maxWidth"))
                 assertEquals("Reinjection keeps one style", 1, metrics.getInt("styleCount"))
+                assertEquals("Native fit stylesheet stays installed", 1, metrics.getInt("fixedCanvas"))
             }
             assertEquals("Repeated fitting never reloads the OOI document", finishes, pageFinishes.get())
         }
@@ -169,7 +168,7 @@ class OoiViewportSmokeTest {
     }
 
     @Test
-    fun originalScriptRestoresViewportMetadataWhenCanvasBecomesOoiWrapper() = withWebView { script ->
+    fun originalScriptKeepsNativeFitWhenCanvasBecomesOoiWrapper() = withWebView { script ->
         val original = "width=device-width,initial-scale=1,minimum-scale=0.8,maximum-scale=1,user-scalable=no"
         for (originalPresent in listOf(true, false)) {
             instrumentation.runOnMainSync { view.layout(0, 0, 700, 420) }
@@ -183,17 +182,16 @@ class OoiViewportSmokeTest {
             assertCanvasRemainsFitted()
             val nativeBefore = view.nativeScaleCalls
             eval("document.body.innerHTML=\"<div id='flashWrap'><iframe id='externalswf' width='1280' height='800'></iframe></div>\"")
-            eval(script)
-            settle()
-            assertEquals("OOI wrapper releases game presentation", "\"web\"", eval("window.__yahagiMobileReadPresentation()"))
+            fit(script)
+            assertEquals("OOI wrapper stays on the native game fit", "\"game\"", eval("window.__yahagiMobileReadPresentation()"))
             if (originalPresent) {
                 assertEquals("Original viewport node is retained", "true", eval("document.querySelector('meta[name=viewport]')===window.__fixtureViewport"))
-                assertEquals("Original viewport content is restored exactly", JSONObject.quote(original), eval("document.querySelector('meta[name=viewport]').getAttribute('content')"))
-            } else {
-                assertEquals("A game-created viewport is removed on release", "0", eval("document.querySelectorAll('meta[name=viewport]').length"))
             }
-            assertEquals("Game clipping is removed with its stylesheet", "\"none\"", eval("getComputedStyle(document.body).clipPath"))
-            assertEquals("Web presentation makes no native scale request", nativeBefore, view.nativeScaleCalls)
+            assertTrue(
+                "OOI game keeps a scalable viewport",
+                eval("document.querySelector('meta[name=viewport]').getAttribute('content')").contains("minimum-scale=0.01"),
+            )
+            assertTrue("Replacing the canvas with the OOI frame refits", view.nativeScaleCalls > nativeBefore)
         }
     }
 
@@ -212,7 +210,7 @@ class OoiViewportSmokeTest {
         """.trimIndent())
         eval(script)
         settle()
-        assertEquals("Runtime upgrades cached v3 state", "5", eval("window.__yahagiMobilePresentationRuntimeVersion"))
+        assertEquals("Runtime upgrades cached v3 state", "6", eval("window.__yahagiMobilePresentationRuntimeVersion"))
         assertEquals("Upgrade replaces old OOI alignment closure", "0", eval("window.__staleOoiClosureCalls"))
         val finishes = pageFinishes.get()
         eval("document.getElementById('externalswf').contentWindow.scrollTo(113,157)")
