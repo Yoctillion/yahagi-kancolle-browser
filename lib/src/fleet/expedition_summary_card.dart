@@ -190,11 +190,13 @@ class _ExpeditionSummaryCardState extends State<ExpeditionSummaryCard> {
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final narrowEnglish =
-                  Localizations.localeOf(context).languageCode == 'en' &&
-                  constraints.maxWidth <
-                      320 * MediaQuery.textScalerOf(context).scale(1);
-              if (narrowEnglish) {
+              // HD columns may not fit badges and the countdown on one row.
+              final wrapThreshold =
+                  Localizations.localeOf(context).languageCode == 'en'
+                  ? 320.0
+                  : 160.0;
+              if (constraints.maxWidth <
+                  wrapThreshold * MediaQuery.textScalerOf(context).scale(1)) {
                 return Wrap(
                   key: Key('expedition-summary-row-$fleetId'),
                   spacing: 4,
