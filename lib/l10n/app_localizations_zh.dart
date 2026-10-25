@@ -163,7 +163,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get telemetryAnonymousStatsDesc =>
-      '发送匿名统计数据以帮助开发者持续优化和改进应用。不包含任何账号或隐私信息。';
+      '发送包含设备信息和渲染模式的匿名统计数据，以帮助开发者持续优化和改进应用。不包含任何账号或隐私信息。';
 
   @override
   String get diagnosticPrivacyTitle => '隐私安全诊断';
@@ -4021,7 +4021,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get telemetryAnonymousStatsDesc =>
-      '傳送匿名統計資料以協助開發者持續最佳化與改進應用程式。不包含任何帳號或隱私資訊。';
+      '傳送包含裝置資訊和渲染模式的匿名統計資料，以協助開發者持續最佳化與改進應用程式。不包含任何帳號或隱私資訊。';
 
   @override
   String get diagnosticPrivacyTitle => '隱私安全診斷';

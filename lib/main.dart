@@ -690,6 +690,7 @@ Future<void> main() async {
     telemetryDeckAppID: '685D5F38-DD7D-48CB-896D-88642F96F92D',
     appVersion: currentVersion,
     diagnosticPlatformPort: diagnosticPlatform,
+    renderingModeResolver: () => gameRenderingModeController.mode,
   );
   final telemetryController = await TelemetryController.create(
     store: telemetrySettingsStore,

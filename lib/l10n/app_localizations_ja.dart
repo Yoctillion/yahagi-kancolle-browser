@@ -165,7 +165,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get telemetryAnonymousStatsDesc =>
-      'アプリの品質向上と最適化のため匿名の利用統計を送信します。アカウントや個人情報は一切含みません。';
+      'アプリの品質向上と最適化のため、端末情報と描画モードを含む匿名の利用統計を送信します。アカウントや個人情報は一切含みません。';
 
   @override
   String get diagnosticPrivacyTitle => 'プライバシー保護診断';

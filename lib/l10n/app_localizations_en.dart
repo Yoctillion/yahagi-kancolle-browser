@@ -177,7 +177,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get telemetryAnonymousStatsDesc =>
-      'Send anonymous statistics to help the developer improve the app. No account or personal information is included.';
+      'Send anonymous device information and rendering mode statistics to help improve the app. No account or personal information is included.';
 
   @override
   String get diagnosticPrivacyTitle => 'Privacy-protected diagnostics';

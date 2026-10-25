@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:telemetrydecksdk/telemetrydecksdk.dart';
 
 import '../diagnostics/diagnostic_platform_port.dart';
+import '../settings/game_rendering_mode.dart';
 
 /// Contract for application telemetry and usage reporting.
 abstract interface class TelemetryService {
@@ -36,6 +37,7 @@ final class AppTelemetryService
     this.telemetryDeckAppID = '685D5F38-DD7D-48CB-896D-88642F96F92D',
     required this.appVersion,
     required this.diagnosticPlatformPort,
+    this.renderingModeResolver,
     this.heartbeatInterval = const Duration(minutes: 15),
     this.initTimeout = const Duration(seconds: 4),
     this.eventTimeout = const Duration(seconds: 4),
@@ -65,6 +67,7 @@ final class AppTelemetryService
   final String? telemetryDeckAppID;
   final String appVersion;
   final DiagnosticPlatformPort diagnosticPlatformPort;
+  final GameRenderingMode Function()? renderingModeResolver;
   final Duration heartbeatInterval;
   final Duration initTimeout;
   final Duration eventTimeout;
@@ -263,9 +266,20 @@ final class AppTelemetryService
     try {
       await _telemetryDeckSendFn(
         eventName,
-        additionalPayload: props,
+        additionalPayload: <String, dynamic>{
+          ...?props,
+          'rendering_mode': _renderingModeName(),
+        },
       ).timeout(eventTimeout);
     } catch (_) {}
+  }
+
+  String _renderingModeName() {
+    try {
+      return renderingModeResolver?.call().storageName ?? 'unknown';
+    } catch (_) {
+      return 'unknown';
+    }
   }
 
   Future<Map<String, dynamic>> _collectDeviceProperties() async {
