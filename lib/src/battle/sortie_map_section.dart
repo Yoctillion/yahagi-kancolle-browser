@@ -177,18 +177,24 @@ class _SortieMapSectionState extends State<SortieMapSection> {
                 if (scene.hasGeometry)
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 430),
+                      constraints: const BoxConstraints(maxWidth: 326),
                       child: LayoutBuilder(
                         builder: (context, constraints) => SizedBox(
+                          key: const Key('sortie-map-canvas'),
                           width: constraints.maxWidth,
-                          height: _MapProjection.canvasHeight(
-                            scene.geometry!,
-                            constraints.maxWidth,
-                          ),
+                          height:
+                              constraints.maxWidth /
+                              _MapProjection.canvasSize.aspectRatio,
                           child: RepaintBoundary(
-                            child: _MapCanvas(
-                              key: const Key('sortie-map-canvas'),
-                              scene: scene,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: SizedBox.fromSize(
+                                size: _MapProjection.canvasSize,
+                                child: _MapCanvas(
+                                  key: const Key('sortie-map-logical-canvas'),
+                                  scene: scene,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -392,11 +398,14 @@ class _MapCanvas extends StatelessWidget {
 }
 
 class _MapProjection {
-  static double canvasHeight(FcdMapGeometry geometry, double width) {
-    final compact = (width * .44 + 16).clamp(125.0, 175.0);
+  // The old 360px preview has 326px of drawable width after card padding.
+  // Lay out once at that reference width, then scale the complete scene.
+  static const canvasSize = Size(326, 240);
+
+  static double _referenceHeight(FcdMapGeometry geometry) {
+    final compact = canvasSize.width * .44 + 16;
     final nodes = geometry.spots.length;
     if (nodes <= 10) return compact;
-    if (nodes >= 45 && width < 300) return width < 240 ? 320.0 : 280.0;
     return math.max(
       compact,
       nodes >= 30
@@ -414,15 +423,17 @@ class _MapProjection {
     final minY = ys.reduce(math.min);
     final rangeX = xs.reduce(math.max) - minX;
     final rangeY = ys.reduce(math.max) - minY;
-    // Use the available height on dense maps as well as the available width.
-    // Each axis preserves the source ordering; no nodes or routes are invented.
+    // Retain each map's composition at the reference width. Sparse maps are
+    // centered in the common canvas instead of stretching them to fill it.
+    contentSize = Size(size.width, _referenceHeight(geometry));
+    contentOffset = Offset(0, (size.height - contentSize.height) / 2);
     final scaleX = math.max(0, size.width - 40) / math.max(1, rangeX);
-    final scaleY = math.max(0, size.height - 40) / math.max(1, rangeY);
+    final scaleY = math.max(0, contentSize.height - 40) / math.max(1, rangeY);
     final origin = Offset(
       (size.width - rangeX * scaleX) / 2,
-      (size.height - rangeY * scaleY) / 2,
+      (contentSize.height - rangeY * scaleY) / 2,
     );
-    points = {
+    contentPoints = {
       for (final entry in geometry.spots.entries)
         entry.key:
             origin +
@@ -431,21 +442,32 @@ class _MapProjection {
               (entry.value.y - minY) * scaleY,
             ),
     };
-    routePaths = layoutSortieMapRoutes(
+    final contentPaths = layoutSortieMapRoutes(
       routes: geometry.routes,
-      points: points,
-      canvas: size,
+      points: contentPoints,
+      canvas: contentSize,
     );
-    segments = [
-      for (final path in routePaths.values)
+    contentSegments = [
+      for (final path in contentPaths.values)
         for (var index = 1; index < path.length; index++)
           (path[index - 1], path[index]),
     ];
+    points = {
+      for (final entry in contentPoints.entries)
+        entry.key: entry.value + contentOffset,
+    };
+    routePaths = {
+      for (final entry in contentPaths.entries)
+        entry.key: [for (final point in entry.value) point + contentOffset],
+    };
   }
 
   late final Map<String, Offset> points;
   late final Map<int, List<Offset>> routePaths;
-  late final List<(Offset, Offset)> segments;
+  late final Size contentSize;
+  late final Offset contentOffset;
+  late final Map<String, Offset> contentPoints;
+  late final List<(Offset, Offset)> contentSegments;
 }
 
 class _MapPainter extends CustomPainter {
@@ -517,12 +539,12 @@ class _MapPainter extends CustomPainter {
       labels[entry.key] = label;
     }
     final labelBounds = layoutSortieMapLabels(
-      points: projection.points,
+      points: projection.contentPoints,
       labelSizes: {
         for (final entry in labels.entries) entry.key: entry.value.size,
       },
-      routes: projection.segments,
-      canvas: size,
+      routes: projection.contentSegments,
+      canvas: projection.contentSize,
       current: scene.current,
       markerClearances: {
         for (final entry in geometry.spots.entries)
@@ -588,7 +610,10 @@ class _MapPainter extends CustomPainter {
       } else {
         canvas.drawCircle(point, at ? 4.5 : 3.2, fill);
       }
-      labels[node]!.paint(canvas, labelBounds[node]!.topLeft);
+      labels[node]!.paint(
+        canvas,
+        labelBounds[node]!.topLeft + projection.contentOffset,
+      );
     }
   }
 

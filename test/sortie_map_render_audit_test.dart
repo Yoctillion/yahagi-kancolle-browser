@@ -77,12 +77,18 @@ void main() {
               );
               final canvas = find.byKey(const Key('sortie-map-canvas'));
               expect(canvas, findsOneWidget, reason: mapKey);
-              final bounds = tester.getRect(canvas);
+              final visibleBounds = tester.getRect(canvas);
               expect(
-                bounds.width,
-                lessThanOrEqualTo(math.min(430, width - 34)),
+                visibleBounds.width,
+                lessThanOrEqualTo(math.min(326, width - 34)),
               );
-              _expectContained(Rect.fromLTWH(0, 0, width, 640), bounds, mapKey);
+              _expectContained(
+                Rect.fromLTWH(0, 0, width, 640),
+                visibleBounds,
+                mapKey,
+              );
+              _expectUniformScale(tester, canvas, mapKey);
+              final bounds = _logicalBounds(tester, canvas);
               final positions = _nodePositions(tester, canvas, map);
               expect(
                 positions.keys,
@@ -314,7 +320,7 @@ void main() {
     final canvas = find.byKey(const Key('sortie-map-canvas'));
     _expectPaintWithinBounds(
       _recordPaint(tester, canvas),
-      tester.getSize(canvas),
+      _logicalBounds(tester, canvas).size,
       'long labels',
     );
   });
@@ -336,7 +342,7 @@ void main() {
       ),
     );
     final canvas = find.byKey(const Key('sortie-map-canvas'));
-    final bounds = tester.getRect(canvas);
+    final bounds = _logicalBounds(tester, canvas);
     final labels = _recordPaint(tester, canvas)
         .where((call) => call.invocation.memberName == #drawParagraph)
         .map(_paintedBounds)
@@ -457,7 +463,7 @@ void main() {
       ),
     );
     final canvas = find.byKey(const Key('sortie-map-canvas'));
-    final bounds = tester.getRect(canvas);
+    final bounds = _logicalBounds(tester, canvas);
     final positions = _nodePositions(tester, canvas, geometry);
     final paint = _recordPaint(tester, canvas);
     _expectOnlyRoutes(paint, geometry, positions, bounds.topLeft, const [
@@ -511,7 +517,7 @@ void main() {
       final canvas = find.byKey(const Key('sortie-map-canvas'));
       _expectPaintWithinBounds(
         _recordPaint(tester, canvas),
-        tester.getSize(canvas),
+        _logicalBounds(tester, canvas).size,
         spots.key,
       );
     });
@@ -709,24 +715,60 @@ Map<String, Offset> _nodePositions(
   WidgetTester tester,
   Finder canvas,
   FcdMapGeometry map,
-) => {
-  for (final element
-      in find
-          .descendant(of: canvas, matching: find.byType(Semantics))
-          .evaluate())
-    if ((element.widget as Semantics).properties.label case final String label)
-      if (map.spots.containsKey(label.split(' · ').first))
-        label.split(' · ').first: tester
-            .getRect(find.byWidget(element.widget))
-            .center,
-};
+) {
+  final paintBox = tester.renderObject<RenderBox>(_mapPaint(canvas));
+  final origin = tester.getRect(canvas).topLeft;
+  // Keep the existing audit origin while undoing the FittedBox transform.
+  // Paint calls and route paths are measured in the fixed logical canvas.
+  return {
+    for (final element
+        in find
+            .descendant(of: canvas, matching: find.byType(Semantics))
+            .evaluate())
+      if ((element.widget as Semantics).properties.label
+          case final String label)
+        if (map.spots.containsKey(label.split(' · ').first))
+          label.split(' · ').first:
+              paintBox.globalToLocal(
+                tester.getRect(find.byWidget(element.widget)).center,
+              ) +
+              origin,
+  };
+}
+
+Finder _mapPaint(Finder canvas) =>
+    find.descendant(of: canvas, matching: find.byType(CustomPaint));
+
+Rect _logicalBounds(WidgetTester tester, Finder canvas) =>
+    tester.getRect(canvas).topLeft & tester.getSize(_mapPaint(canvas));
+
+void _expectUniformScale(WidgetTester tester, Finder canvas, String reason) {
+  final visible = tester.getRect(canvas);
+  final paintBox = tester.renderObject<RenderBox>(_mapPaint(canvas));
+  expect(paintBox.size, const Size(326, 240), reason: reason);
+  expect(
+    visible.height,
+    closeTo(visible.width * 240 / 326, .01),
+    reason: '$reason fixed visible aspect ratio',
+  );
+  for (final corner in [
+    (Offset.zero, visible.topLeft),
+    (const Offset(326, 0), visible.topRight),
+    (const Offset(0, 240), visible.bottomLeft),
+    (const Offset(326, 240), visible.bottomRight),
+  ]) {
+    expect(
+      (paintBox.localToGlobal(corner.$1) - corner.$2).distance,
+      lessThan(.01),
+      reason: '$reason paint and semantics share the uniform transform',
+    );
+  }
+}
 
 List<RecordedInvocation> _recordPaint(WidgetTester tester, Finder canvas) {
-  final painter = tester.widget<CustomPaint>(
-    find.descendant(of: canvas, matching: find.byType(CustomPaint)),
-  );
+  final painter = tester.widget<CustomPaint>(_mapPaint(canvas));
   final recording = TestRecordingCanvas();
-  painter.painter!.paint(recording, tester.getSize(canvas));
+  painter.painter!.paint(recording, tester.getSize(_mapPaint(canvas)));
   return recording.invocations;
 }
 
