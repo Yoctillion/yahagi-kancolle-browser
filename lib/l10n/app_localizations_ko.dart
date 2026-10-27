@@ -169,7 +169,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get telemetryAnonymousStatsDesc =>
-      '개발자가 앱을 지속적으로 개선할 수 있도록 익명 통계를 보냅니다. 계정 및 개인 정보는 포함하지 않습니다.';
+      '앱 개선을 위해 기기 정보와 렌더링 모드가 포함된 익명 통계를 보냅니다. 계정 및 개인 정보는 포함하지 않습니다.';
 
   @override
   String get diagnosticPrivacyTitle => '개인 정보 보호 진단';

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import 'game_frame_rate_settings.dart';
 import 'settings_ui_helpers.dart';
+import '../widgets/app_segmented_style.dart';
 
 class GameFrameRateSettingsSection extends StatelessWidget {
   const GameFrameRateSettingsSection({super.key, required this.controller});
@@ -31,6 +32,7 @@ class GameFrameRateSettingsSection extends StatelessWidget {
             const SizedBox(height: 10),
             SegmentedButton<GameFrameRateMode>(
               key: const Key('game-frame-rate-mode'),
+              style: AppSegmentedStyle.materialStyle(context),
               segments: <ButtonSegment<GameFrameRateMode>>[
                 ButtonSegment<GameFrameRateMode>(
                   value: GameFrameRateMode.automatic,

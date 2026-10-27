@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
@@ -781,13 +782,9 @@ class _SegmentGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, const Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      height: AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(children: children.map((c) => Expanded(child: c)).toList()),
     );
   }
@@ -805,29 +802,17 @@ class _SegmentButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff8a6628) : Colors.transparent,
-      ),
-      borderRadius: BorderRadius.circular(16),
+      color: AppSegmentedStyle.selection(context, selected),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppSegmentedStyle.itemRadius(),
         onTap: onTap,
         child: Center(
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               label,
-              style: appTextStyle(
-                context,
-                TextStyle(
-                  color: selected
-                      ? const Color(0xffffdc88)
-                      : const Color(0xff9fb3bf),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              style: AppSegmentedStyle.textStyle(context, selected: selected),
             ),
           ),
         ),

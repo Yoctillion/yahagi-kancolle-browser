@@ -84,7 +84,7 @@ void main() {
     expect(gamePageAlignmentScript, contains('canvas.height === 720'));
   });
 
-  test('OOI mode 1 keeps its outer frame while fitting the visible game', () {
+  test('OOI mode 1 pins its outer frame for the native game fit', () {
     expect(gamePageAlignmentScript, contains("host === 'ooi.moe'"));
     expect(
       gamePageAlignmentScript,
@@ -95,19 +95,17 @@ void main() {
     expect(gamePageAlignmentScript, contains('ooiBrowserFrameHeight = 800'));
     expect(gamePageAlignmentScript, contains('ooiBrowserGameWidth = 1200'));
     expect(gamePageAlignmentScript, contains('ooiBrowserGameHeight = 720'));
+    expect(gamePageAlignmentScript, contains('transform: none !important'));
     expect(
       gamePageAlignmentScript,
-      contains('viewportWidth / ooiBrowserGameWidth'),
-    );
-    expect(
-      gamePageAlignmentScript,
-      contains('viewportHeight / ooiBrowserGameHeight'),
+      isNot(contains("style.setProperty('--yahagi-ooi-scale'")),
     );
   });
 
-  test('OOI mode 1 isolates the game after login from native fixed canvas', () {
+  test('OOI mode 1 uses native fixed canvas once the game frame exists', () {
     expect(gamePageAlignmentScript, contains('applyOoiBrowserPresentation'));
     expect(gamePageAlignmentScript, contains('cleanupOoiBrowserPresentation'));
+    expect(gamePageAlignmentScript, contains('applyGamePresentation()'));
     expect(gamePageAlignmentScript, contains('#ooi-header'));
     expect(gamePageAlignmentScript, contains('#ooi-footer'));
     expect(
@@ -116,17 +114,16 @@ void main() {
     );
     expect(
       gamePageAlignmentScript,
-      contains("style.setProperty('--yahagi-ooi-scale'"),
+      contains("return {state: 'game', ooi: true}"),
     );
     expect(
       gamePageAlignmentScript,
-      contains("style.setProperty('--yahagi-ooi-left'"),
+      contains("notifyPresentationState('game', forceFit)"),
     );
     expect(
       gamePageAlignmentScript,
       contains("window.addEventListener('resize'"),
     );
-    expect(gamePageAlignmentScript, contains("notifyPresentationState('web')"));
   });
 
   test('alignment yields to an open DMM purchase dialog', () {

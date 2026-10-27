@@ -185,7 +185,7 @@ Companion records are primarily stored on your device, without requiring a separ
 | Item | How data is handled |
 | --- | --- |
 | Logbook and fleet records | Stored locally; exported, restored, or synced to a selected document folder at the user's request. |
-| Anonymous device and usage statistics | Uses TelemetryDeck. Enabled by default and can be disabled in settings. |
+| Anonymous device and usage statistics | Uses TelemetryDeck for anonymous device information and usage statistics, including the current rendering mode. Enabled by default and can be disabled in settings. |
 | KCWiki data contribution | Disabled by default; users may enable it when supported by the app version and configuration. |
 | Diagnostic files | Saved manually or sent through the system share sheet by the user. The app does not upload diagnostic files automatically. |
 

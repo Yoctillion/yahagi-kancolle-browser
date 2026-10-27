@@ -400,7 +400,7 @@ abstract class AppLocalizations {
   /// No description provided for @telemetryAnonymousStatsDesc.
   ///
   /// In zh, this message translates to:
-  /// **'发送匿名统计数据以帮助开发者持续优化和改进应用。不包含任何账号或隐私信息。'**
+  /// **'发送包含设备信息和渲染模式的匿名统计数据，以帮助开发者持续优化和改进应用。不包含任何账号或隐私信息。'**
   String get telemetryAnonymousStatsDesc;
 
   /// No description provided for @diagnosticPrivacyTitle.

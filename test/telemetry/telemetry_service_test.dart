@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:telemetrydecksdk/telemetrydecksdk.dart';
 import 'package:yahagi_kancolle_browser/src/diagnostics/diagnostic_platform_port.dart';
+import 'package:yahagi_kancolle_browser/src/settings/game_rendering_mode.dart';
 import 'package:yahagi_kancolle_browser/src/telemetry/telemetry_controller.dart';
 import 'package:yahagi_kancolle_browser/src/telemetry/telemetry_service.dart';
 import 'package:yahagi_kancolle_browser/src/telemetry/telemetry_settings_store.dart';
@@ -113,6 +115,107 @@ void main() {
   final binding = TestWidgetsBinding();
 
   group('AppTelemetryService', () {
+    const renderingModes = <GameRenderingMode, String>{
+      GameRenderingMode.standard: 'standard',
+      GameRenderingMode.compatibility: 'compatibility',
+      GameRenderingMode.canvasCompatibility: 'canvasCompatibility',
+      GameRenderingMode.nativeActivityExperimental:
+          'nativeActivityExperimental',
+    };
+    for (final entry in renderingModes.entries) {
+      test('${entry.value} is included in app_open and periodic heartbeat', () {
+        fakeAsync((async) {
+          final events = <(String, Map<String, dynamic>?)>[];
+          final service = AppTelemetryService(
+            appVersion: 'test',
+            diagnosticPlatformPort: MockDiagnosticPlatformPort(),
+            widgetsBinding: binding,
+            renderingModeResolver: () => entry.key,
+            telemetryDeckStartFn: (_) async {},
+            telemetryDeckStopFn: () async {},
+            telemetryDeckSendFn: (signal, {additionalPayload}) async {
+              events.add((signal, additionalPayload));
+            },
+          );
+          addTearDown(service.dispose);
+          unawaited(service.start());
+          async.flushMicrotasks();
+          expect(events.map((event) => event.$1), ['app_open']);
+          expect(events.single.$2?['rendering_mode'], entry.value);
+
+          async.elapse(
+            const Duration(minutes: 15) - const Duration(milliseconds: 1),
+          );
+          expect(events, hasLength(1));
+          async.elapse(const Duration(milliseconds: 1));
+          expect(events.map((event) => event.$1), ['app_open', 'heartbeat']);
+          expect(events.last.$2?['rendering_mode'], entry.value);
+          expect(events.last.$2?['webview_version'], 'Chrome 124.0.0.0');
+          service.dispose();
+          async.flushMicrotasks();
+        });
+      });
+    }
+
+    test('heartbeat reads current rendering mode instead of startup cache', () {
+      fakeAsync((async) {
+        var mode = GameRenderingMode.standard;
+        final events = <(String, Map<String, dynamic>?)>[];
+        final service = AppTelemetryService(
+          appVersion: 'test',
+          diagnosticPlatformPort: MockDiagnosticPlatformPort(),
+          widgetsBinding: binding,
+          renderingModeResolver: () => mode,
+          telemetryDeckStartFn: (_) async {},
+          telemetryDeckStopFn: () async {},
+          telemetryDeckSendFn: (signal, {additionalPayload}) async {
+            events.add((signal, additionalPayload));
+          },
+        );
+        addTearDown(service.dispose);
+        unawaited(service.start());
+        async.flushMicrotasks();
+
+        mode = GameRenderingMode.canvasCompatibility;
+        async.elapse(const Duration(minutes: 15));
+        expect(events.map((event) => event.$1), ['app_open', 'heartbeat']);
+        expect(events.first.$2?['rendering_mode'], 'standard');
+        expect(events.last.$2?['rendering_mode'], 'canvasCompatibility');
+        service.dispose();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('rendering mode lookup failure preserves device reporting', () {
+      fakeAsync((async) {
+        final events = <(String, Map<String, dynamic>?)>[];
+        final service = AppTelemetryService(
+          appVersion: 'test',
+          diagnosticPlatformPort: MockDiagnosticPlatformPort(),
+          widgetsBinding: binding,
+          renderingModeResolver: () => throw StateError('Unavailable mode'),
+          telemetryDeckStartFn: (_) async {},
+          telemetryDeckStopFn: () async {},
+          telemetryDeckSendFn: (signal, {additionalPayload}) async {
+            events.add((signal, additionalPayload));
+          },
+        );
+        addTearDown(service.dispose);
+        unawaited(service.start());
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 15));
+        expect(service.isRunning, isTrue);
+        expect(events.map((event) => event.$1), ['app_open', 'heartbeat']);
+        for (final event in events) {
+          expect(event.$2?['rendering_mode'], 'unknown');
+          expect(event.$2?['app_version'], 'test');
+          expect(event.$2?['resolution'], '2400x1080');
+        }
+        service.dispose();
+        async.flushMicrotasks();
+      });
+    });
+
     test('restart waits for a slow native stop', () async {
       final stopped = Completer<void>();
       var active = false;
@@ -282,6 +385,7 @@ void main() {
           'webview_version',
           'language',
           'app_version',
+          'rendering_mode',
         ]),
       );
       expect(initializedDeckConfig?.defaultUser, isNull);
@@ -289,6 +393,7 @@ void main() {
       expect(props['webview_version'], equals('Chrome 124.0.6367.82'));
       expect(props['language'], equals('zh-CN'));
       expect(props['resolution'], equals('2400x1080'));
+      expect(props['rendering_mode'], equals('unknown'));
 
       expect(service.hasHeartbeatTimer, isTrue);
 
@@ -501,6 +606,69 @@ void main() {
   });
 
   group('TelemetryController', () {
+    test(
+      'existing stats switch controls rendering mode collection and upload',
+      () {
+        fakeAsync((async) {
+          var mode = GameRenderingMode.compatibility;
+          var modeReads = 0;
+          var backendStarts = 0;
+          final events = <(String, Map<String, dynamic>?)>[];
+          final service = AppTelemetryService(
+            appVersion: 'test',
+            diagnosticPlatformPort: MockDiagnosticPlatformPort(),
+            widgetsBinding: binding,
+            renderingModeResolver: () {
+              modeReads++;
+              return mode;
+            },
+            telemetryDeckStartFn: (_) async => backendStarts++,
+            telemetryDeckStopFn: () async {},
+            telemetryDeckSendFn: (signal, {additionalPayload}) async {
+              events.add((signal, additionalPayload));
+            },
+          );
+          final controller = TelemetryController(
+            store: MemoryTelemetrySettingsStore(false),
+            service: service,
+            initialEnabled: false,
+          );
+          addTearDown(controller.dispose);
+          unawaited(controller.startIfEnabled());
+          async.flushMicrotasks();
+          async.elapse(const Duration(minutes: 15));
+          expect(backendStarts, 0);
+          expect(modeReads, 0);
+          expect(events, isEmpty);
+
+          unawaited(controller.setEnabled(true));
+          async.flushMicrotasks();
+          expect(events.single.$1, 'app_open');
+          expect(events.single.$2?['rendering_mode'], 'compatibility');
+
+          unawaited(controller.setEnabled(false));
+          async.flushMicrotasks();
+          final readsBeforeDisabledInterval = modeReads;
+          mode = GameRenderingMode.nativeActivityExperimental;
+          async.elapse(const Duration(minutes: 30));
+          service.onLifecycleChanged(AppLifecycleState.resumed);
+          expect(events, hasLength(1));
+          expect(modeReads, readsBeforeDisabledInterval);
+
+          unawaited(controller.setEnabled(true));
+          async.flushMicrotasks();
+          expect(backendStarts, 2);
+          expect(events.map((event) => event.$1), ['app_open', 'app_open']);
+          expect(
+            events.last.$2?['rendering_mode'],
+            'nativeActivityExperimental',
+          );
+          controller.dispose();
+          async.flushMicrotasks();
+        });
+      },
+    );
+
     test(
       'persisted opt-out does not initialize telemetry after restart',
       () async {

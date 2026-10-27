@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../game_state/game_state.dart';
 import '../../localization/game_name_localizations.dart';
+import '../../widgets/app_segmented_style.dart';
 import '../../widgets/top_notice.dart';
 import '../../theme/app_fonts.dart';
 import '../../quest/quest_completion_badge.dart';
@@ -28,8 +29,6 @@ abstract final class _ExpCalcPalette {
   static const border = Color(0xff284553);
   static const gold = Color(0xffd7b56d);
   static const goldSoft = Color(0xffffdc88);
-  static const goldDark = Color(0xffa98545);
-  static const goldSurface = Color(0xff332d22);
   static const text = Color(0xffecf3f5);
   static const textMuted = Color(0xff91aab8);
   static const textFaint = Color(0xff6f8a98);
@@ -1117,14 +1116,8 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
       builder: (context, constraints) {
         final ranks = Container(
           height: 38,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: appColor(context, const Color(0xff0b202d)),
-            border: Border.all(
-              color: appColor(context, const Color(0xff315064)),
-            ),
-            borderRadius: BorderRadius.circular(20),
-          ),
+          padding: AppSegmentedStyle.padding(),
+          decoration: AppSegmentedStyle.decoration(context),
           child: Row(
             children: [
               for (final value in BattleRank.values)
@@ -1133,29 +1126,21 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                     button: true,
                     selected: rank == value,
                     child: Material(
-                      color: appColor(
+                      color: AppSegmentedStyle.selection(
                         context,
-                        rank == value
-                            ? const Color(0xff8a6628)
-                            : Colors.transparent,
+                        rank == value,
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppSegmentedStyle.itemRadius(),
                       child: InkWell(
                         key: Key('exp-calc-rank-${value.name}-$suffix'),
                         onTap: () => update(rank: value),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: AppSegmentedStyle.itemRadius(),
                         child: Center(
                           child: Text(
                             value.label,
-                            style: appTextStyle(
+                            style: AppSegmentedStyle.textStyle(
                               context,
-                              TextStyle(
-                                color: rank == value
-                                    ? const Color(0xffffdc88)
-                                    : const Color(0xff9fb3bf),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                              ),
+                              selected: rank == value,
                             ),
                           ),
                         ),
@@ -1399,17 +1384,15 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
       child: Material(
-        color: appColor(
-          context,
-          selected ? _ExpCalcPalette.goldSurface : _ExpCalcPalette.surfaceInset,
-        ),
+        color: selected
+            ? AppSegmentedStyle.selectedBackground(context)
+            : appColor(context, _ExpCalcPalette.surfaceInset),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
           side: BorderSide(
-            color: appColor(
-              context,
-              selected ? _ExpCalcPalette.goldDark : _ExpCalcPalette.border,
-            ),
+            color: selected
+                ? AppSegmentedStyle.selectedBorder(context)
+                : appColor(context, _ExpCalcPalette.border),
           ),
         ),
         child: InkWell(
@@ -1425,7 +1408,7 @@ class _ExpCalcPageState extends State<ExpCalcPage> {
                   context,
                   TextStyle(
                     color: selected
-                        ? _ExpCalcPalette.goldSoft
+                        ? AppSegmentedStyle.foreground(context, true)
                         : _ExpCalcPalette.textMuted,
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.normal,

@@ -1,4 +1,5 @@
 import '../../theme/app_palette.dart';
+import '../../widgets/app_segmented_style.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -200,13 +201,27 @@ class _GameModsPageState extends State<GameModsPage> {
           ),
         ),
         chipTheme: theme.chipTheme.copyWith(
-          labelStyle: textTheme.labelLarge,
+          labelStyle: textTheme.labelLarge?.copyWith(
+            color: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppSegmentedStyle.foreground(context, true)
+                  : textTheme.labelLarge?.color ?? appColor(context, _ink),
+            ),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 2),
           labelPadding: const EdgeInsets.symmetric(horizontal: 7),
-          side: BorderSide(color: appColor(context, _border)),
-          selectedColor: appColor(context, _gold.withValues(alpha: .18)),
+          side: WidgetStateBorderSide.resolveWith(
+            (states) => BorderSide(
+              color: states.contains(WidgetState.selected)
+                  ? AppSegmentedStyle.selectedBorder(context)
+                  : appColor(context, _border),
+            ),
+          ),
+          selectedColor: AppSegmentedStyle.selectedBackground(context),
           backgroundColor: appColor(context, _surface),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSegmentedStyle.itemRadius(compact: true),
+          ),
         ),
         expansionTileTheme: ExpansionTileThemeData(
           iconColor: appColor(context, _muted),

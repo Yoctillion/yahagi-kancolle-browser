@@ -2,6 +2,7 @@ import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../widgets/app_segmented_style.dart';
 import 'senka_catalog.dart';
 import 'senka_controller.dart';
 import 'senka_state.dart';
@@ -851,10 +852,7 @@ class _SortiePanel extends StatelessWidget {
     bool active,
     bool compact,
   ) => Material(
-    color: appColor(
-      context,
-      active ? const Color(0xff3b2f1e) : Colors.transparent,
-    ),
+    color: AppSegmentedStyle.selection(context, active),
     borderRadius: BorderRadius.circular(5),
     child: InkWell(
       onTap: () => onTimeFilterChanged(value),
@@ -869,7 +867,9 @@ class _SortiePanel extends StatelessWidget {
           style: appTextStyle(
             context,
             TextStyle(
-              color: active ? const Color(0xffffdc88) : senkaMuted,
+              color: active
+                  ? AppSegmentedStyle.foreground(context, true)
+                  : senkaMuted,
               fontSize: compact ? 10 : 12,
               fontWeight: FontWeight.w800,
             ),
