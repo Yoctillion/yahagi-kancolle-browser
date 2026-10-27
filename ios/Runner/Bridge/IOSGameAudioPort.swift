@@ -331,7 +331,9 @@ import WebKit
     if let webViewInstance = targetWebView {
       ensureUserScriptInjected(targetWebView: webViewInstance)
 
-      let effectiveBg = isBackground && !isBackgroundPlaybackEnabled
+      // 页面里只有一个静音位，回前台时不带上用户静音就会把它冲掉；
+      // Dart 端看静音状态没变不会补发 setMuted。
+      let effectiveBg = isUserMuted || (isBackground && !isBackgroundPlaybackEnabled)
       let broadcastJS = """
         (function() {
             var isBg = \(effectiveBg ? "true" : "false");

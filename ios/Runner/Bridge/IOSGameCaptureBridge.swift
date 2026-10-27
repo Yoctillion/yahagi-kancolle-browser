@@ -99,8 +99,8 @@ import WebKit
     // Clean up any existing handler or user script
     userContentController.removeScriptMessageHandler(
       forName: IOSGameCaptureBridge.messageObjectName)
-    if userScript != nil {
-      userContentController.removeAllUserScripts()
+    if let existingScript = userScript {
+      userContentController.removeUserScript(existingScript)
       userScript = nil
     }
 
@@ -232,7 +232,9 @@ import WebKit
   @objc public func dispose() {
     if let controller = contentController {
       controller.removeScriptMessageHandler(forName: IOSGameCaptureBridge.messageObjectName)
-      controller.removeAllUserScripts()
+      if let existingScript = userScript {
+        controller.removeUserScript(existingScript)
+      }
     }
     userScript = nil
     contentController = nil

@@ -52,7 +52,8 @@ import WebKit
 
     // Clean up previous registration if any
     userContentController.removeScriptMessageHandler(forName: Self.messageObjectName)
-    if userScript != nil {
+    if let existingScript = userScript {
+      userContentController.removeUserScript(existingScript)
       userScript = nil
     }
 
