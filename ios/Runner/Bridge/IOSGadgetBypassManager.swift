@@ -29,16 +29,15 @@ import WebKit
       result([
         "enabled": isEnabled,
         "endpoint": endpoint,
-        "supported": true,
+        // 原生没有实现请求拦截，如实报不支持，Dart 端会禁用开关并显示提示。
+        "supported": false,
         "cacheBytes": 0,
       ])
     case "clearCache":
       result(["success": true])
     case "diagnose":
-      result([
-        "w00g": ["reachable": true, "statusCode": 200, "elapsedMs": 100, "error": nil],
-        "endpoint": ["reachable": true, "statusCode": 200, "elapsedMs": 100, "error": nil],
-      ])
+      let unsupported: [String: Any] = ["reachable": false, "elapsedMs": 0, "error": "unsupported"]
+      result(["w00g": unsupported, "endpoint": unsupported])
     default:
       result(FlutterMethodNotImplemented)
     }
