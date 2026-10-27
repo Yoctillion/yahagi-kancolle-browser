@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../widgets/app_segmented_style.dart';
 import 'quest_catalog.dart';
 
 enum QuestCenterMode { active, all }
@@ -195,12 +196,8 @@ class QuestModeTabs extends StatelessWidget {
       key: const Key('quest-mode-tabs'),
       width: 220,
       height: 40,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           for (final item in <(QuestCenterMode, String)>[
@@ -212,16 +209,11 @@ class QuestModeTabs extends StatelessWidget {
                 button: true,
                 selected: item.$1 == mode,
                 child: Material(
-                  color: appColor(
-                    context,
-                    item.$1 == mode
-                        ? const Color(0xff8a6628)
-                        : Colors.transparent,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppSegmentedStyle.selection(context, item.$1 == mode),
+                  borderRadius: AppSegmentedStyle.itemRadius(),
                   child: InkWell(
                     onTap: () => onChanged(item.$1),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppSegmentedStyle.itemRadius(),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 5),
                       child: Center(
@@ -229,15 +221,9 @@ class QuestModeTabs extends StatelessWidget {
                           item.$2,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: appTextStyle(
+                          style: AppSegmentedStyle.textStyle(
                             context,
-                            TextStyle(
-                              color: item.$1 == mode
-                                  ? const Color(0xffffdc88)
-                                  : const Color(0xff9fb3bf),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            selected: item.$1 == mode,
                           ),
                         ),
                       ),
@@ -319,30 +305,21 @@ class QuestHeaderControls extends StatelessWidget {
                   onPressed: () => _showQuestQuery(context, filters, mode),
                   style: IconButton.styleFrom(
                     padding: EdgeInsets.zero,
-                    backgroundColor: appColor(
-                      context,
-                      active
-                          ? const Color(0xff8a6628)
-                          : const Color(0xff0b202d),
-                    ),
+                    backgroundColor: active
+                        ? AppSegmentedStyle.selectedBackground(context)
+                        : appColor(context, const Color(0xff0b202d)),
                     side: BorderSide(
-                      color: appColor(
-                        context,
-                        active
-                            ? const Color(0xffb88b38)
-                            : const Color(0xff315064),
-                      ),
+                      color: active
+                          ? AppSegmentedStyle.selectedBorder(context)
+                          : appColor(context, const Color(0xff315064)),
                     ),
                   ),
                   icon: Icon(
                     Icons.search,
                     size: 20,
-                    color: appColor(
-                      context,
-                      active
-                          ? const Color(0xffffdc88)
-                          : const Color(0xff9fb3bf),
-                    ),
+                    color: active
+                        ? AppSegmentedStyle.foreground(context, true)
+                        : appColor(context, const Color(0xff9fb3bf)),
                   ),
                 ),
               ),
@@ -370,7 +347,9 @@ class QuestTranslationToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = _localizations(context);
     final label = enabled ? l10n.japaneseOriginal : l10n.chineseTranslation;
-    final color = enabled ? const Color(0xffffd47a) : const Color(0xff9fb3bf);
+    final color = enabled
+        ? AppSegmentedStyle.foreground(context, true)
+        : appColor(context, const Color(0xff9fb3bf));
     return SizedBox(
       key: const Key('quest-translation-toggle'),
       height: 40,
@@ -380,17 +359,15 @@ class QuestTranslationToggle extends StatelessWidget {
         toggled: enabled,
         label: label,
         child: Material(
-          color: appColor(
-            context,
-            enabled ? const Color(0xff5b4420) : const Color(0xff0b202d),
-          ),
+          color: enabled
+              ? AppSegmentedStyle.selectedBackground(context)
+              : appColor(context, const Color(0xff0b202d)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
-              color: appColor(
-                context,
-                enabled ? const Color(0xffb88b38) : const Color(0xff315064),
-              ),
+              color: enabled
+                  ? AppSegmentedStyle.selectedBorder(context)
+                  : appColor(context, const Color(0xff315064)),
             ),
           ),
           child: InkWell(

@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -508,23 +509,16 @@ class DevelopmentWorkbenchModeTabs extends StatelessWidget {
     return Container(
       key: const Key('development-workbench-mode-tabs'),
       width: 190,
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, const Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      height: AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           for (final value in DevelopmentWorkbenchMode.values)
             Expanded(
               child: Material(
-                color: appColor(
-                  context,
-                  mode == value ? const Color(0xff8a6628) : Colors.transparent,
-                ),
-                borderRadius: BorderRadius.circular(16),
+                color: AppSegmentedStyle.selection(context, mode == value),
+                borderRadius: AppSegmentedStyle.itemRadius(),
                 child: InkWell(
                   key: Key(switch (value) {
                     DevelopmentWorkbenchMode.calculator =>
@@ -532,7 +526,7 @@ class DevelopmentWorkbenchModeTabs extends StatelessWidget {
                     DevelopmentWorkbenchMode.formula =>
                       'development-mode-formula',
                   }),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppSegmentedStyle.itemRadius(),
                   onTap: () => onChanged(value),
                   child: Center(
                     child: Text(
@@ -542,15 +536,9 @@ class DevelopmentWorkbenchModeTabs extends StatelessWidget {
                         DevelopmentWorkbenchMode.formula =>
                           l10n.developmentFormula,
                       },
-                      style: appTextStyle(
+                      style: AppSegmentedStyle.textStyle(
                         context,
-                        TextStyle(
-                          color: mode == value
-                              ? const Color(0xffffdc88)
-                              : const Color(0xff9fb3bf),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        selected: mode == value,
                       ),
                     ),
                   ),
@@ -578,26 +566,19 @@ class ConstructionModeTabs extends StatelessWidget {
     return Container(
       key: const Key('construction-mode-tabs'),
       width: 260,
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, const Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      height: AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           for (final value in ConstructionCenterMode.values)
             Expanded(
               child: Material(
-                color: appColor(
-                  context,
-                  mode == value ? const Color(0xff8a6628) : Colors.transparent,
-                ),
-                borderRadius: BorderRadius.circular(16),
+                color: AppSegmentedStyle.selection(context, mode == value),
+                borderRadius: AppSegmentedStyle.itemRadius(),
                 child: InkWell(
                   key: Key('construction-mode-${value.name}'),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppSegmentedStyle.itemRadius(),
                   onTap: () => onChanged(value),
                   child: Center(
                     child: Text(
@@ -607,15 +588,9 @@ class ConstructionModeTabs extends StatelessWidget {
                         ConstructionCenterMode.development => l10n.development,
                         ConstructionCenterMode.improvement => l10n.improvement,
                       },
-                      style: appTextStyle(
+                      style: AppSegmentedStyle.textStyle(
                         context,
-                        TextStyle(
-                          color: mode == value
-                              ? const Color(0xffffdc88)
-                              : const Color(0xff9fb3bf),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        selected: mode == value,
                       ),
                     ),
                   ),
@@ -640,13 +615,9 @@ class SenkaModeTabs extends StatelessWidget {
     return Container(
       key: const Key('senka-mode-tabs'),
       width: 360,
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      height: AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           for (final value in SenkaCenterMode.values)
@@ -658,30 +629,19 @@ class SenkaModeTabs extends StatelessWidget {
                 excludeSemantics: true,
                 child: Material(
                   key: Key('senka-tab-${value.name}'),
-                  color: appColor(
-                    context,
-                    mode == value
-                        ? const Color(0xff8a6628)
-                        : Colors.transparent,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppSegmentedStyle.selection(context, mode == value),
+                  borderRadius: AppSegmentedStyle.itemRadius(),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppSegmentedStyle.itemRadius(),
                     onTap: () => onChanged(value),
                     child: Center(
                       child: Text(
                         senkaCenterModeLabel(l10n, value),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: appTextStyle(
+                        style: AppSegmentedStyle.textStyle(
                           context,
-                          TextStyle(
-                            color: mode == value
-                                ? const Color(0xffffdc88)
-                                : const Color(0xff9fb3bf),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          selected: mode == value,
                         ),
                       ),
                     ),
@@ -717,13 +677,9 @@ class SettingsSegmented extends StatelessWidget {
       l10n.settingsTabAboutSupport,
     ];
     return Container(
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      height: AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           for (var index = 0; index < labels.length; index++)
@@ -755,29 +711,17 @@ class _SettingsSegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: appColor(
-      context,
-      selected ? const Color(0xff8a6628) : Colors.transparent,
-    ),
-    borderRadius: BorderRadius.circular(16),
+    color: AppSegmentedStyle.selection(context, selected),
+    borderRadius: AppSegmentedStyle.itemRadius(),
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       child: Center(
         child: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: appTextStyle(
-            context,
-            TextStyle(
-              color: selected
-                  ? const Color(0xffffdc88)
-                  : const Color(0xff9fb3bf),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          style: AppSegmentedStyle.textStyle(context, selected: selected),
         ),
       ),
     ),

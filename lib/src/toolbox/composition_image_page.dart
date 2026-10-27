@@ -13,6 +13,7 @@ import '../backup/record_backup.dart';
 import '../layout/adaptive_layout.dart';
 import '../fleet/ship_portrait.dart';
 import '../fleet/ship_portrait_cache.dart';
+import '../widgets/app_segmented_style.dart';
 import '../widgets/top_notice.dart';
 import 'composition_image_card.dart';
 import 'composition_image_port.dart';
@@ -820,14 +821,10 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
     height: _modeBarHeight(context),
     child: LayoutBuilder(
       builder: (context, constraints) => Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: appColor(context, Color(0xff0b202d)),
-          border: Border.all(color: appColor(context, Color(0xff315064))),
-          borderRadius: BorderRadius.circular(20),
-        ),
+        padding: AppSegmentedStyle.padding(),
+        decoration: AppSegmentedStyle.decoration(context),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(17),
+          borderRadius: AppSegmentedStyle.itemRadius(),
           child: Stack(
             children: [
               AnimatedPositioned(
@@ -839,8 +836,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                 curve: Curves.easeOutCubic,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: appColor(context, Color(0xff8a6628)),
-                    borderRadius: BorderRadius.circular(17),
+                    color: AppSegmentedStyle.selectedBackground(context),
+                    borderRadius: AppSegmentedStyle.itemRadius(),
                   ),
                 ),
               ),
@@ -857,6 +854,7 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                                 ? 'composition-saved-tab'
                                 : 'composition-current-tab',
                           ),
+                          borderRadius: AppSegmentedStyle.itemRadius(),
                           onTap: () => setState(() => _showSaved = index == 0),
                           child: Center(
                             child: Row(
@@ -874,15 +872,9 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       textAlign: TextAlign.center,
-                                      style: appTextStyle(
+                                      style: AppSegmentedStyle.textStyle(
                                         context,
-                                        TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                          color: _showSaved == (index == 0)
-                                              ? const Color(0xffffdc88)
-                                              : const Color(0xffa8bac4),
-                                        ),
+                                        selected: _showSaved == (index == 0),
                                       ),
                                     ),
                                   ),
@@ -2000,12 +1992,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
         key: key,
         width: constraints.maxWidth,
         clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: appColor(context, Color(0xff0b202d)),
-          border: Border.all(color: appColor(context, Color(0xff315064))),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        padding: const EdgeInsets.all(3),
+        decoration: AppSegmentedStyle.decoration(context),
+        padding: AppSegmentedStyle.padding(),
         child: Column(
           children: [
             for (var row = 0; row < rows; row++) ...[
@@ -2048,22 +2036,17 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
     enabled: enabled && !_saving,
     child: InkWell(
       key: key,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       onTap: _saving || !enabled ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 190),
         height: 34,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: appColor(
-            context,
-            !enabled
-                ? const Color(0xff1b2e38)
-                : selected
-                ? const Color(0xff8a6628)
-                : Colors.transparent,
-          ),
-          borderRadius: BorderRadius.circular(14),
+          color: !enabled
+              ? appColor(context, const Color(0xff1b2e38))
+              : AppSegmentedStyle.selection(context, selected),
+          borderRadius: AppSegmentedStyle.itemRadius(),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -2084,18 +2067,15 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: appTextStyle(
-                    context,
-                    TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: !enabled
-                          ? const Color(0xff718896)
-                          : selected
-                          ? const Color(0xffffdc88)
-                          : const Color(0xffaabdc6),
-                    ),
-                  ),
+                  style:
+                      AppSegmentedStyle.textStyle(
+                        context,
+                        selected: selected,
+                      ).copyWith(
+                        color: !enabled
+                            ? appColor(context, const Color(0xff718896))
+                            : AppSegmentedStyle.foreground(context, selected),
+                      ),
                 ),
               ],
             ),
@@ -2108,12 +2088,8 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
   Widget _planeCountTabs(CompositionImageStrings strings) => Container(
     key: const Key('composition-plane-count-tabs'),
     height: 40,
-    padding: const EdgeInsets.all(3),
-    decoration: BoxDecoration(
-      color: appColor(context, Color(0xff0b202d)),
-      border: Border.all(color: appColor(context, Color(0xff315064))),
-      borderRadius: BorderRadius.circular(18),
-    ),
+    padding: AppSegmentedStyle.padding(),
+    decoration: AppSegmentedStyle.decoration(context),
     child: Row(
       children: [
         for (final mode in const [
@@ -2126,15 +2102,13 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
               selected: _planeCounts == mode,
               child: Material(
                 key: Key('composition-planes-${mode.name}'),
-                color: appColor(
+                color: AppSegmentedStyle.selection(
                   context,
-                  _planeCounts == mode
-                      ? const Color(0xff8a6628)
-                      : Colors.transparent,
+                  _planeCounts == mode,
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppSegmentedStyle.itemRadius(),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppSegmentedStyle.itemRadius(),
                   onTap: _saving
                       ? null
                       : () => setState(() {
@@ -2148,15 +2122,9 @@ class _CompositionImagePageState extends State<CompositionImagePage> {
                         CompositionPlaneCountMode.current => strings.current,
                         CompositionPlaneCountMode.maximum => strings.maximum,
                       },
-                      style: appTextStyle(
+                      style: AppSegmentedStyle.textStyle(
                         context,
-                        TextStyle(
-                          color: _planeCounts == mode
-                              ? const Color(0xffffdc88)
-                              : const Color(0xff9fb3bf),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        selected: _planeCounts == mode,
                       ),
                     ),
                   ),

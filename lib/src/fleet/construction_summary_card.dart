@@ -198,8 +198,14 @@ class ConstructionSummaryCard extends StatelessWidget {
       builder: (context, constraints) {
         final inline =
             !visible.contains('portrait') && constraints.maxWidth >= 180;
+        // HD slots can be narrower than a portrait plus one name/status line.
+        // Stack those slots so the fixed portrait cannot consume the text width.
+        final stackedPortrait =
+            visible.contains('portrait') && constraints.maxWidth < 92;
         final available = constraints.maxWidth - 18;
-        final portraitWidth = available >= 138
+        final portraitWidth = stackedPortrait
+            ? (constraints.maxWidth - 12).clamp(0.0, 96.0).toDouble()
+            : available >= 138
             ? 96.0
             : (available - 42).clamp(32.0, 96.0).toDouble();
         final iconWidth = portraitWidth < 32 ? portraitWidth : 32.0;
@@ -218,7 +224,8 @@ class ConstructionSummaryCard extends StatelessWidget {
                 color: appColor(context, Color(0xff0d1a26)),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Row(
+              child: Flex(
+                direction: stackedPortrait ? Axis.vertical : Axis.horizontal,
                 children: [
                   if (visible.contains('portrait')) ...[
                     if (master != null) ...[
@@ -228,7 +235,10 @@ class ConstructionSummaryCard extends StatelessWidget {
                         width: portraitWidth,
                         height: 32,
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: stackedPortrait ? 0 : 6,
+                        height: stackedPortrait ? 6 : 0,
+                      ),
                     ] else ...[
                       Container(
                         width: iconWidth,
@@ -250,11 +260,15 @@ class ConstructionSummaryCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: stackedPortrait ? 0 : 6,
+                        height: stackedPortrait ? 6 : 0,
+                      ),
                     ],
                   ],
-                  Expanded(
-                    child: Flex(
+                  _constructionTextPart(
+                    stackedPortrait,
+                    Flex(
                       direction: inline ? Axis.horizontal : Axis.vertical,
                       crossAxisAlignment: inline
                           ? CrossAxisAlignment.center

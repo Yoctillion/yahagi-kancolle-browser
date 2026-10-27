@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
 import 'package:flutter/services.dart';
@@ -589,12 +590,8 @@ class _ScopeTabs extends StatelessWidget {
     return Container(
       key: const Key('equipment-compatibility-scope-tabs'),
       height: 32,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff081923)),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: appColor(context, const Color(0xff315064))),
-      ),
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           Expanded(
@@ -639,27 +636,15 @@ class _ScopeTab extends StatelessWidget {
     excludeSemantics: true,
     onTap: onTap,
     child: Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff8a6628) : Colors.transparent,
-      ),
-      borderRadius: BorderRadius.circular(15),
+      color: AppSegmentedStyle.selection(context, selected),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       child: InkWell(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: AppSegmentedStyle.itemRadius(),
         onTap: onTap,
         child: Center(
           child: Text(
             label,
-            style: appTextStyle(
-              context,
-              TextStyle(
-                color: selected
-                    ? const Color(0xffffdc88)
-                    : const Color(0xff9fb3bf),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            style: AppSegmentedStyle.textStyle(context, selected: selected),
           ),
         ),
       ),
@@ -681,12 +666,8 @@ class _SlotFilters extends StatelessWidget {
     return Container(
       key: const Key('equipment-compatibility-slot-tabs'),
       height: 32,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff081923)),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: appColor(context, Color(0xff315064))),
-      ),
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           for (final value in EquipmentCompatibilitySlotFilter.values)

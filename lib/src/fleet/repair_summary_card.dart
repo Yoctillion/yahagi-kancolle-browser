@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
@@ -574,13 +575,9 @@ class _RepairSummaryModeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('repair-summary-mode-selector'),
-      height: 26,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff10212e)),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: appColor(context, Color(0xff294052))),
-      ),
+      height: AppSegmentedStyle.compactHeight,
+      padding: AppSegmentedStyle.padding(compact: true),
+      decoration: AppSegmentedStyle.decoration(context, compact: true),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final english = Localizations.localeOf(context).languageCode == 'en';
@@ -671,13 +668,10 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff5b4829) : Colors.transparent,
-      ),
-      borderRadius: BorderRadius.circular(5),
+      color: AppSegmentedStyle.selection(context, selected),
+      borderRadius: AppSegmentedStyle.itemRadius(compact: true),
       child: InkWell(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: AppSegmentedStyle.itemRadius(compact: true),
         onTap: onTap,
         child: Center(
           child: Padding(
@@ -687,15 +681,10 @@ class _ModeButton extends StatelessWidget {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final style = DefaultTextStyle.of(context).style.merge(
-                    TextStyle(
-                      color: appColor(
-                        context,
-                        selected
-                            ? const Color(0xffffcf67)
-                            : const Color(0xff8197a5),
-                      ),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                    AppSegmentedStyle.textStyle(
+                      context,
+                      selected: selected,
+                      compact: true,
                     ),
                   );
                   final painter = TextPainter(
@@ -796,13 +785,11 @@ class _AnchorageFleetSelector extends StatelessWidget {
     final vertical = HdModuleColumns.of(context) > 1;
     return Container(
       key: const Key('repair-summary-fleet-selector'),
-      height: vertical ? fleets.length * 26.0 + 4 : 28,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff102331)),
-        border: Border.all(color: appColor(context, Color(0xff294052))),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      height: vertical
+          ? fleets.length * 26.0 + 4
+          : AppSegmentedStyle.compactHeight,
+      padding: AppSegmentedStyle.padding(compact: true),
+      decoration: AppSegmentedStyle.decoration(context, compact: true),
       child: Flex(
         direction: vertical ? Axis.vertical : Axis.horizontal,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -811,31 +798,24 @@ class _AnchorageFleetSelector extends StatelessWidget {
             Expanded(
               child: Material(
                 key: Key('repair-summary-fleet-${fleet.id}'),
-                color: appColor(
+                color: AppSegmentedStyle.selection(
                   context,
-                  fleet.id == selectedFleetId
-                      ? const Color(0xff8a6628)
-                      : Colors.transparent,
+                  fleet.id == selectedFleetId,
                 ),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppSegmentedStyle.itemRadius(compact: true),
                 child: InkWell(
                   onTap: () => onSelected(fleet.id),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppSegmentedStyle.itemRadius(compact: true),
                   child: Center(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
                         _label(fleet),
                         maxLines: 1,
-                        style: appTextStyle(
+                        style: AppSegmentedStyle.textStyle(
                           context,
-                          TextStyle(
-                            color: fleet.id == selectedFleetId
-                                ? const Color(0xffffdc88)
-                                : const Color(0xff9fb3bf),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          selected: fleet.id == selectedFleetId,
+                          compact: true,
                         ),
                       ),
                     ),
