@@ -83,10 +83,18 @@ class SmartPanelController extends ChangeNotifier
       if (_disposed || (scope != null && !accountSession!.isCurrent(scope))) {
         return;
       }
-      final fleetId = firstIdleExpeditionFleet(stateProvider());
-      if (fleetId == null) return;
-      _fleetRequest = ExpeditionFleetRequest(fleetId, ++_requestSerial);
-      notifyListeners();
+      final gameState = stateProvider();
+      final fleetId = firstIdleExpeditionFleet(gameState);
+      if (fleetId != null) {
+        _fleetRequest = ExpeditionFleetRequest(fleetId, ++_requestSerial);
+        notifyListeners();
+      } else if (_state == SmartPanelState.expeditionCheck &&
+          gameState.hasPortData) {
+        // Nothing left to send: the check has nothing to offer, show timers.
+        _state = SmartPanelState.home;
+        _autoSelected = true;
+        notifyListeners();
+      }
     });
   }
 

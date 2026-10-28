@@ -5,10 +5,13 @@ import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/live_battle_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/pre_sortie_check_summary.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_controller.dart';
+import 'package:yahagi_kancolle_browser/src/settings/panel_view_preferences.dart';
 
 void main() {
   testWidgets('主页卡片重建后各自恢复显示模式', (tester) async {
     final bucket = PageStorageBucket();
+    final preferences = PanelViewPreferences();
+    addTearDown(preferences.dispose);
     final gameStateController = GameStateController();
     final battleController = BattleController(
       gameState: () => gameStateController.state,
@@ -24,7 +27,10 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: PageStorage(
           bucket: bucket,
-          child: Scaffold(body: child),
+          child: PanelViewPreferencesScope(
+            preferences: preferences,
+            child: Scaffold(body: child),
+          ),
         ),
       ),
     );

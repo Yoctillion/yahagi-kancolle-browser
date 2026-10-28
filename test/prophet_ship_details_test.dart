@@ -395,8 +395,7 @@ void main() {
         const Offset(0, -60),
       );
       await tester.pump(const Duration(seconds: 1));
-      final cardContext = tester.element(find.byType(LiveBattleCard));
-      expect(PageStorage.of(cardContext).readState(cardContext), 'detailed');
+      expect(find.byKey(const Key('detailed-battle-panel')), findsOneWidget);
       await tester.tap(find.byKey(const Key('battle-ship-details-close')));
       await tester.pump();
     }

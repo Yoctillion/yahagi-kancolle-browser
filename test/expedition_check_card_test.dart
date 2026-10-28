@@ -16,6 +16,7 @@ import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_text_toggle.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_underline_tabs.dart';
+import 'package:yahagi_kancolle_browser/src/settings/panel_view_preferences.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -595,8 +596,11 @@ void main() {
     );
     await tester.tap(find.text('大成功'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('大成功：未通过 ('), findsNothing);
-    expect(find.text('大成功：未通过'), findsOneWidget);
+    // A failed great success still shows how far off the rate is.
+    expect(
+      find.textContaining(RegExp(r'^大成功：未通过 \(\d+\.\d{2}%\)$')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('详细'));
     await tester.pump();
     expect(find.byKey(const Key('expedition-status-text')), findsWidgets);
@@ -707,6 +711,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('view toggles are shared by every checker in the scope', (
+    tester,
+  ) async {
+    final controller = GameStateController();
+    addTearDown(controller.dispose);
+    controller
+      ..accept(start2Event)
+      ..accept(portEvent)
+      ..accept(slotItemEvent);
+    await controller.idle;
+    final preferences = PanelViewPreferences();
+    addTearDown(preferences.dispose);
+
+    Widget checker() => ExpeditionCheckContent(
+      controller: controller,
+      onOpenDetails: (_) {},
+      selectionStore: _MemoryExpeditionSelectionStore(<int, int>{}),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: PanelViewPreferencesScope(
+            preferences: preferences,
+            child: SingleChildScrollView(
+              child: Column(children: [checker(), checker()]),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('预计收入'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('expedition-mode-detailed')).first);
+    await tester.tap(find.byKey(const Key('expedition-success-great')).first);
+    await tester.pumpAndSettle();
+    expect(preferences.expeditionDetailed, isTrue);
+    expect(preferences.expeditionGreatSuccess, isTrue);
+    expect(find.text('预计收入'), findsNWidgets(2));
+    expect(find.textContaining('大成功：'), findsNWidgets(2));
+  });
+
   group('fleetRequest', () {
     late GameStateController controller;
     late _MemoryExpeditionSelectionStore store;
@@ -785,6 +834,20 @@ void main() {
       expect(missionName(tester), startsWith('B3'));
     });
 
+    testWidgets('a saved selection elsewhere re-reads the shown fleet', (
+      tester,
+    ) async {
+      await pump(tester, const ExpeditionFleetRequest(2, 1));
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('A6'));
+
+      // e.g. the dispatch recorder storing the mission fleet 2 was sent on.
+      store.values[2] = 112;
+      store.changes.value++;
+      await tester.pumpAndSettle();
+      expect(missionName(tester), startsWith('B3'));
+    });
+
     testWidgets('initial request selects that fleet', (tester) async {
       await pump(tester, const ExpeditionFleetRequest(3, 1));
       await tester.pumpAndSettle();
@@ -814,6 +877,9 @@ final class _MemoryExpeditionSelectionStore
   _MemoryExpeditionSelectionStore(this.values);
 
   final Map<int, int> values;
+
+  @override
+  final ValueNotifier<int> changes = ValueNotifier<int>(0);
 
   @override
   Future<int?> loadMissionId(int fleetId) async => values[fleetId];

@@ -24,10 +24,31 @@ Fleet _fleet(int id, {int ships = 6, bool onExpedition = false}) => Fleet(
 GameState _state({
   List<Fleet>? fleets,
   CombinedFleetType combined = CombinedFleetType.none,
+  Map<int, int> shipMasters = const <int, int>{},
 }) => GameState.empty.copyWith(
+  hasPortData: true,
   fleets: fleets ?? [_fleet(1), _fleet(2), _fleet(3), _fleet(4)],
   combinedFleetType: combined,
+  ships: {
+    for (final MapEntry(key: shipId, value: masterId) in shipMasters.entries)
+      shipId: OwnedShip(
+        id: shipId,
+        masterId: masterId,
+        level: 1,
+        currentHp: 10,
+        maxHp: 10,
+      ),
+  },
+  masterShips: const {
+    182: MasterShip(id: 182, name: '明石', shipTypeId: 19),
+    953: MasterShip(id: 953, name: '朝日', shipTypeId: 19),
+    996: MasterShip(id: 996, name: '野埼', shipTypeId: 22),
+  },
 );
+
+const _akashi = 182;
+const _asahi = 953;
+const _nosaki = 996;
 
 void main() {
   late GameState state;
@@ -212,6 +233,58 @@ void main() {
     expect(account.admiralName, '提督');
     expect(controller.state, SmartPanelState.quests);
   });
+
+  test('anchorage repair and Nosaki sparkle fleets are skipped', () async {
+    // Fleet 2 flagship Akashi, fleet 3 second ship Nosaki.
+    state = _state(shipMasters: {20: _akashi, 31: _nosaki});
+    await send('api_get_member/mission');
+    expect(controller.expeditionFleetRequest?.fleetId, 4);
+
+    state = _state(shipMasters: {20: _nosaki, 31: _nosaki, 40: _asahi});
+    await send('api_get_member/mission');
+    expect(controller.state, SmartPanelState.home);
+  });
+
+  test('opening expedition with nothing to send returns home', () async {
+    state = _state(
+      combined: CombinedFleetType.carrierTaskForce,
+      fleets: [
+        _fleet(1),
+        _fleet(2),
+        _fleet(3, onExpedition: true),
+        _fleet(4, onExpedition: true),
+      ],
+    );
+    await send('api_get_member/mission');
+    expect(controller.state, SmartPanelState.home);
+    expect(controller.autoSelected, isTrue);
+  });
+
+  test('dispatching the last fleet returns home', () async {
+    await send('api_get_member/mission');
+    expect(controller.state, SmartPanelState.expeditionCheck);
+    state = _state(
+      fleets: [
+        _fleet(1),
+        _fleet(2, onExpedition: true),
+        _fleet(3, onExpedition: true),
+        _fleet(4, onExpedition: true),
+      ],
+    );
+    await send('api_req_mission/start');
+    expect(controller.state, SmartPanelState.home);
+  });
+
+  test(
+    'a manual pick elsewhere is not overridden when nothing is left',
+    () async {
+      state = _state(fleets: [_fleet(1), _fleet(2, onExpedition: true)]);
+      await send('api_get_member/mission');
+      controller.select(SmartPanelState.quests);
+      await send('api_req_mission/start');
+      expect(controller.state, SmartPanelState.quests);
+    },
+  );
 
   test('firstIdleExpeditionFleet returns null when every fleet is busy', () {
     expect(

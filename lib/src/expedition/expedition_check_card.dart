@@ -9,6 +9,7 @@ import '../layout/flat_text_toggle.dart';
 import '../layout/flat_underline_tabs.dart';
 import '../localization/ui_text.dart';
 import '../localization/game_name_localizations.dart';
+import '../settings/panel_view_preferences.dart';
 
 import '../game_state/game_state.dart';
 import '../game_state/game_state_controller.dart';
@@ -45,10 +46,8 @@ class ExpeditionCheckContent extends StatefulWidget {
   State<ExpeditionCheckContent> createState() => _ExpeditionCheckContentState();
 }
 
-class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
-  bool _detailed = false;
-  bool _greatSuccess = false;
-  int _target = 100;
+class _ExpeditionCheckContentState extends State<ExpeditionCheckContent>
+    with PanelViewPreferencesHost {
   int _fleetId = 2;
   int _missionId = 1;
   int _restoreGeneration = 0;
@@ -67,6 +66,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
           accountSession: _accountSession,
         );
     _accountSession.addListener(_onAccountChanged);
+    _selectionStore.changes.addListener(_onSelectionSaved);
     _fleetId = widget.fleetRequest?.fleetId ?? _fleetId;
     _appliedRequestSerial = widget.fleetRequest?.serial ?? 0;
     _restoreMissionForFleet(_fleetId);
@@ -152,6 +152,8 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     }
   }
 
+  void _onSelectionSaved() => _restoreMissionForFleet(_fleetId);
+
   void _onAccountChanged() {
     setState(() {
       _fleetId = 2;
@@ -163,10 +165,14 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
   @override
   void dispose() {
     _accountSession.removeListener(_onAccountChanged);
+    _selectionStore.changes.removeListener(_onSelectionSaved);
     super.dispose();
   }
 
   bool get _flat => PanelStyleScope.isFlat(context);
+  bool get _detailed => panelViewPreferences.expeditionDetailed;
+  bool get _greatSuccess => panelViewPreferences.expeditionGreatSuccess;
+  int get _target => panelViewPreferences.expeditionTarget;
 
   @override
   Widget build(BuildContext context) {
@@ -247,9 +253,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
             onTap: () => widget.onOpenDetails(_fleetId),
           ),
           _statusBox(
-            evaluation.greatSuccessPassed
-                ? '${strings.greatSuccess}：${strings.passed} (${evaluation.greatSuccessRate.toStringAsFixed(2)}%)'
-                : '${strings.greatSuccess}：${strings.failed}',
+            _greatSuccessText(strings, evaluation),
             evaluation.greatSuccessPassed,
             onTap: () => widget.onOpenDetails(_fleetId),
           ),
@@ -266,9 +270,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
               const SizedBox(width: 6),
               Expanded(
                 child: _statusBox(
-                  evaluation.greatSuccessPassed
-                      ? '${strings.greatSuccess}：${strings.passed} (${evaluation.greatSuccessRate.toStringAsFixed(2)}%)'
-                      : '${strings.greatSuccess}：${strings.failed}',
+                  _greatSuccessText(strings, evaluation),
                   evaluation.greatSuccessPassed,
                   onTap: () => widget.onOpenDetails(_fleetId),
                 ),
@@ -300,6 +302,12 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
     );
   }
 
+  String _greatSuccessText(
+    ExpeditionStrings strings,
+    ExpeditionEvaluation evaluation,
+  ) =>
+      '${strings.greatSuccess}：${evaluation.greatSuccessPassed ? strings.passed : strings.failed} (${evaluation.greatSuccessRate.toStringAsFixed(2)}%)';
+
   Widget _controls(ExpeditionStrings strings) => LayoutBuilder(
     builder: (context, constraints) {
       final controlGroups = <Widget>[
@@ -310,13 +318,13 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
               key: const Key('expedition-mode-compact'),
               label: strings.compact,
               selected: !_detailed,
-              onTap: () => setState(() => _detailed = false),
+              onTap: () => panelViewPreferences.expeditionDetailed = false,
             ),
             FlatTextToggleOption(
               key: const Key('expedition-mode-detailed'),
               label: strings.detailed,
               selected: _detailed,
-              onTap: () => setState(() => _detailed = true),
+              onTap: () => panelViewPreferences.expeditionDetailed = true,
             ),
           ],
         ),
@@ -327,13 +335,13 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
               key: const Key('expedition-success-normal'),
               label: strings.success,
               selected: !_greatSuccess,
-              onTap: () => setState(() => _greatSuccess = false),
+              onTap: () => panelViewPreferences.expeditionGreatSuccess = false,
             ),
             FlatTextToggleOption(
               key: const Key('expedition-success-great'),
               label: strings.greatSuccess,
               selected: _greatSuccess,
-              onTap: () => setState(() => _greatSuccess = true),
+              onTap: () => panelViewPreferences.expeditionGreatSuccess = true,
             ),
           ],
         ),
@@ -447,7 +455,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
 
   Widget _targetMenu() => PopupMenuButton<int>(
     initialValue: _target,
-    onSelected: (value) => setState(() => _target = value),
+    onSelected: (value) => panelViewPreferences.expeditionTarget = value,
     color: appColor(context, const Color(0xff1b263b)),
     shape: RoundedRectangleBorder(
       side: BorderSide(color: appColor(context, Color(0xff415a77))),
@@ -483,7 +491,7 @@ class _ExpeditionCheckContentState extends State<ExpeditionCheckContent> {
       ),
     ),
     itemBuilder: (context) => [
-      for (final value in const [80, 85, 90, 95, 100])
+      for (final value in PanelViewPreferences.greatSuccessTargets)
         PopupMenuItem(
           value: value,
           height: 32,
