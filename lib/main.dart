@@ -86,6 +86,7 @@ import 'src/settings/header_resource_settings.dart';
 import 'src/settings/workspace_menu_settings.dart';
 import 'src/fleet/anchorage_repair_navigation.dart';
 import 'src/fleet/anchorage_repair_view.dart';
+import 'src/fleet/fleet_focus_controller.dart';
 import 'src/fleet/fleet_summary_card.dart';
 import 'src/fleet/land_base_summary_card.dart';
 import 'src/expedition/expedition_check_card.dart';
@@ -553,6 +554,12 @@ Future<void> main() async {
   final practiceOpponentController = PracticeOpponentController(
     accountSession: accountSession,
   );
+  final fleetFocusController = FleetFocusController(
+    stateProvider: () => gameStateController.state,
+    waitForGameState: () => gameStateController.idle,
+    enabled: () => layoutSettingsController.fleetAutoSwitch,
+    accountSession: accountSession,
+  );
   gameApiEventPipeline = GameApiEventPipeline(
     settleGameState: () async {
       await gameStateController.idle;
@@ -570,6 +577,7 @@ Future<void> main() async {
       gameInfoNoticeController,
       smartPanelController,
       practiceOpponentController,
+      fleetFocusController,
     ],
     onBackgroundDecodeFallback: (path) {
       if (!kcwikiReportController.enabled) return;
@@ -795,6 +803,7 @@ Future<void> main() async {
     gameInfoNoticeController: gameInfoNoticeController,
     smartPanelController: smartPanelController,
     practiceOpponentController: practiceOpponentController,
+    fleetFocusController: fleetFocusController,
     panelViewPreferences: panelViewPreferences,
     gameMouseWheelSettingsController: gameMouseWheelSettingsController,
     shipSubtitleSettingsController: shipSubtitleSettingsController,
@@ -1090,6 +1099,7 @@ class YahagiApp extends StatelessWidget {
     this.headerNoticeController,
     this.gameInfoNoticeController,
     this.smartPanelController,
+    this.fleetFocusController,
     this.panelViewPreferences,
     this.practiceOpponentController,
     this.gameMouseWheelSettingsController,
@@ -1146,6 +1156,7 @@ class YahagiApp extends StatelessWidget {
   final TopNoticeController? headerNoticeController;
   final GameInfoNoticeController? gameInfoNoticeController;
   final SmartPanelController? smartPanelController;
+  final FleetFocusController? fleetFocusController;
   final PanelViewPreferences? panelViewPreferences;
   final PracticeOpponentController? practiceOpponentController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
@@ -1295,6 +1306,7 @@ class YahagiApp extends StatelessWidget {
                   gameInfoNoticeController: gameInfoNoticeController,
                   smartPanelController: smartPanelController,
                   practiceOpponentController: practiceOpponentController,
+                  fleetFocusController: fleetFocusController,
                   showDeveloperDiagnostics: showDeveloperDiagnostics,
                   diagnosticController: diagnosticController,
                   telemetryController: telemetryController,
@@ -1527,6 +1539,7 @@ class YahagiShell extends StatefulWidget {
     this.headerNoticeController,
     this.gameInfoNoticeController,
     this.smartPanelController,
+    this.fleetFocusController,
     this.practiceOpponentController,
     this.fcdMapController,
     this.questCatalogController,
@@ -1584,6 +1597,7 @@ class YahagiShell extends StatefulWidget {
   final TopNoticeController? headerNoticeController;
   final GameInfoNoticeController? gameInfoNoticeController;
   final SmartPanelController? smartPanelController;
+  final FleetFocusController? fleetFocusController;
   final PracticeOpponentController? practiceOpponentController;
   final bool showDeveloperDiagnostics;
   final DiagnosticController? diagnosticController;
@@ -1672,6 +1686,7 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
     widget.kcwikiReportConsumer?.dispose();
     widget.gameInfoNoticeController?.dispose();
     widget.smartPanelController?.dispose();
+    widget.fleetFocusController?.dispose();
     widget.practiceOpponentController?.dispose();
     _questFilters.dispose();
     _gameModsController.dispose();
@@ -2757,6 +2772,8 @@ class _YahagiShellState extends State<YahagiShell> with WidgetsBindingObserver {
                                                 widget.questCatalogController,
                                             smartPanelController:
                                                 widget.smartPanelController,
+                                            fleetFocusController:
+                                                widget.fleetFocusController,
                                             practiceOpponentController: widget
                                                 .practiceOpponentController,
                                             hdEditing: _hdEditing,
@@ -3932,10 +3949,12 @@ class _InformationPanel extends StatefulWidget {
     this.excludedModules = const {},
     this.bottomSafeArea = 0,
     this.smartPanelController,
+    this.fleetFocusController,
     this.practiceOpponentController,
   });
 
   final SmartPanelController? smartPanelController;
+  final FleetFocusController? fleetFocusController;
   final PracticeOpponentController? practiceOpponentController;
   final bool hd;
   final double bottomSafeArea;
@@ -4280,6 +4299,7 @@ class _InformationPanelState extends State<_InformationPanel> {
                   collapsed: isCollapsed,
                   onToggleCollapse: editing ? () {} : toggle,
                   onOpenFleet: widget.onOpenFleet,
+                  focusController: widget.fleetFocusController,
                 ),
                 'land_base' => LandBaseSummaryCard(
                   showLogo: widget.layoutSettingsController.moduleShowLogo(

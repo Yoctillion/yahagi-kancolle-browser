@@ -294,6 +294,9 @@ void main() {
             .selected,
         isFalse,
       );
+      await tester.ensureVisible(
+        find.byKey(const Key('fleet-ship-type-label-abbreviation')),
+      );
       await tester.tap(
         find.byKey(const Key('fleet-ship-type-label-abbreviation')),
       );
@@ -309,6 +312,7 @@ void main() {
       final number = find.byKey(const Key('fleet-selector-label-number'));
       expect(tester.widget<ChoiceChip>(customName).selected, isTrue);
       expect(tester.widget<ChoiceChip>(number).selected, isFalse);
+      await tester.ensureVisible(number);
       await tester.tap(number);
       await tester.pump();
       expect(controller.fleetSelectorLabelMode, FleetSelectorLabelMode.number);

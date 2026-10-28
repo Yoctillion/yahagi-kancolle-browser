@@ -9,6 +9,7 @@ import 'fleet_display_options.dart';
 import 'module_display_settings.dart';
 import 'layout_settings_store.dart';
 import 'hd_layout_settings.dart';
+import 'fleet_auto_switch_settings.dart';
 import 'smart_panel_settings.dart';
 import 'camera_avoidance_settings.dart';
 
@@ -242,6 +243,10 @@ class LayoutSettingsController extends ChangeNotifier {
           .loadSmartPanelAutoSwitch();
       controller._smartPanelHeaderStyle = await smartPanelStore
           .loadSmartPanelHeaderStyle();
+    }
+    if (store is FleetAutoSwitchSettingsStore) {
+      controller._fleetAutoSwitch =
+          await (store as FleetAutoSwitchSettingsStore).loadFleetAutoSwitch();
     }
     if (store is TopNoticeSettingsStore) {
       final topNoticeStore = store as TopNoticeSettingsStore;
@@ -489,6 +494,21 @@ class LayoutSettingsController extends ChangeNotifier {
   WorkspaceMenuSize get workspaceMenuSize => _uiDisplaySize;
   Future<void> setWorkspaceMenuSize(WorkspaceMenuSize size) =>
       setUiDisplaySize(size);
+
+  bool _fleetAutoSwitch = true;
+
+  bool get fleetAutoSwitch => _fleetAutoSwitch;
+
+  Future<void> setFleetAutoSwitch(bool enabled) async {
+    if (_fleetAutoSwitch == enabled) return;
+    _fleetAutoSwitch = enabled;
+    notifyListeners();
+    if (_store is FleetAutoSwitchSettingsStore) {
+      await (_store as FleetAutoSwitchSettingsStore).saveFleetAutoSwitch(
+        enabled,
+      );
+    }
+  }
 
   bool _smartPanelAutoSwitch = true;
   SmartPanelHeaderStyle _smartPanelHeaderStyle = SmartPanelHeaderStyle.dropdown;

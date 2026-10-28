@@ -22,6 +22,8 @@ abstract final class FleetUiKeys {
   static const smartHeaderIcons = '图标条';
   static const smartAutoSwitch = '自动切换';
   static const fleetSelectorName = '舰队切换名称';
+  static const fleetAutoSwitch = '自动切换当前队伍';
+  static const fleetAutoSwitchHint = '编成、改装、出击、演习与远征时切到对应的队伍';
   static const customFleetName = '自定义舰队名';
   static const shortFleetNumber = '1–4 简称';
   static const summaryGroup = '舰队汇总';
@@ -211,6 +213,20 @@ String fleetText(BuildContext context, String source) {
       "Text tabs",
     ),
     FleetUiKeys.smartHeaderIcons: ("图标条", "圖示列", "アイコンバー", "아이콘 바", "Icon bar"),
+    FleetUiKeys.fleetAutoSwitch: (
+      "自动切换当前队伍",
+      "自動切換目前隊伍",
+      "表示艦隊の自動切り替え",
+      "현재 함대 자동 전환",
+      "Auto switch fleet",
+    ),
+    FleetUiKeys.fleetAutoSwitchHint: (
+      "编成、改装、出击、演习与远征时切到对应的队伍",
+      "編成、改裝、出擊、演習與遠征時切到對應的隊伍",
+      "編成・改装・出撃・演習・遠征時に該当艦隊へ切り替え",
+      "편성·개장·출격·연습·원정 시 해당 함대로 전환",
+      "Follow the fleet being organized, refitted, sortied, in practice or sent on expeditions",
+    ),
     FleetUiKeys.smartAutoSwitch: (
       "自动切换",
       "自動切換",
