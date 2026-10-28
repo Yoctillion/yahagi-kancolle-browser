@@ -28,6 +28,7 @@ import '../layout/panel_style.dart';
 import '../settings/battle_status_effect_settings.dart';
 import '../settings/module_display_settings.dart';
 import 'fleet_air_power_details.dart';
+import 'fleet_focus_controller.dart';
 import 'morale_recovery_display.dart';
 import 'morale_recovery_timer_controller.dart';
 
@@ -48,6 +49,7 @@ class FleetSummaryCard extends StatefulWidget {
     this.showLogo = true,
     this.showTitle = true,
     this.onOpenDisplaySettings,
+    this.focusController,
   });
 
   final GameStateController controller;
@@ -65,12 +67,46 @@ class FleetSummaryCard extends StatefulWidget {
   final bool showTitle;
   final VoidCallback? onOpenDisplaySettings;
 
+  /// Its requests switch the shown fleet; a manual pick holds until the next.
+  final FleetFocusController? focusController;
+
   @override
   State<FleetSummaryCard> createState() => _FleetSummaryCardState();
 }
 
 class _FleetSummaryCardState extends State<FleetSummaryCard> {
   int _selectedFleetId = 1;
+  int _appliedFocusSerial = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.focusController?.addListener(_onFocusRequested);
+    _applyFocusRequest();
+  }
+
+  @override
+  void didUpdateWidget(covariant FleetSummaryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.focusController, widget.focusController)) return;
+    oldWidget.focusController?.removeListener(_onFocusRequested);
+    widget.focusController?.addListener(_onFocusRequested);
+  }
+
+  @override
+  void dispose() {
+    widget.focusController?.removeListener(_onFocusRequested);
+    super.dispose();
+  }
+
+  void _onFocusRequested() => setState(_applyFocusRequest);
+
+  void _applyFocusRequest() {
+    final request = widget.focusController?.request;
+    if (request == null || request.serial == _appliedFocusSerial) return;
+    _appliedFocusSerial = request.serial;
+    _selectedFleetId = request.fleetId;
+  }
 
   @override
   Widget build(BuildContext context) {

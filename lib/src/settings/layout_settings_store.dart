@@ -8,6 +8,7 @@ import 'module_display_settings.dart';
 import 'fleet_display_options.dart';
 import 'hd_layout_settings.dart';
 import 'camera_avoidance_settings.dart';
+import 'fleet_auto_switch_settings.dart';
 import 'smart_panel_settings.dart';
 
 enum FleetMoraleMetricMode { minimumCondition, recoveryCountdown }
@@ -173,6 +174,7 @@ class SharedPreferencesLayoutSettingsStore
         WorkspaceMenuPositionStore,
         TopNoticeSettingsStore,
         SmartPanelSettingsStore,
+        FleetAutoSwitchSettingsStore,
         AppThemeSettingsStore,
         CameraAvoidanceSettingsStore,
         UiLockSettingsStore {
@@ -676,6 +678,20 @@ class SharedPreferencesLayoutSettingsStore
     } else {
       await prefs.setString(_keyLocaleCode, localeCode);
     }
+  }
+
+  static const _keyFleetAutoSwitch = 'fleet_auto_switch';
+
+  @override
+  Future<bool> loadFleetAutoSwitch() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyFleetAutoSwitch) ?? true;
+  }
+
+  @override
+  Future<void> saveFleetAutoSwitch(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFleetAutoSwitch, enabled);
   }
 
   static const _keySmartPanelAutoSwitch = 'smart_panel_auto_switch';

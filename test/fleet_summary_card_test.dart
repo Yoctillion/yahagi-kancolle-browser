@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/src/settings/fleet_display_options.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
+import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
+import 'package:yahagi_kancolle_browser/src/fleet/fleet_focus_controller.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_ship_status_capsule.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/fleet_summary_card.dart';
 import 'package:yahagi_kancolle_browser/src/fleet/separated_wrap.dart';
@@ -109,6 +111,47 @@ void main() {
 
     await tester.tap(find.byType(FleetShipStatusCapsule));
     expect(openedFleetId, 2);
+  });
+
+  testWidgets('focus requests switch the fleet until the next manual pick', (
+    tester,
+  ) async {
+    final controller = await _controllerWithPortData();
+    addTearDown(controller.dispose);
+    final focus = FleetFocusController(
+      stateProvider: () => controller.state,
+      waitForGameState: () async {},
+      enabled: () => true,
+    );
+    addTearDown(focus.dispose);
+    Future<void> organize(int fleetId) async {
+      focus.accept(
+        CapturedApiEvent(
+          path: '/kcsapi/api_req_hensei/change',
+          requestParams: {'api_id': '$fleetId'},
+          responseBody: '{"api_result":1,"api_data":{}}',
+          source: CaptureSource.manual,
+          capturedAt: DateTime(2026, 10, 28),
+        ),
+      );
+      await focus.idle;
+      await tester.pump();
+    }
+
+    await tester.pumpWidget(_card(controller: controller, focus: focus));
+    await tester.pump();
+    expect(find.byType(FleetShipStatusCapsule), findsNWidgets(2));
+
+    await organize(2);
+    expect(find.byType(FleetShipStatusCapsule), findsOneWidget);
+    expect(find.text('吹雪'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('fleet-summary-selector-1')));
+    await tester.pump();
+    expect(find.byType(FleetShipStatusCapsule), findsNWidgets(2));
+
+    await organize(2);
+    expect(find.byType(FleetShipStatusCapsule), findsOneWidget);
   });
 
   testWidgets('fleet selectors can use numeric abbreviations', (tester) async {
@@ -459,6 +502,7 @@ Widget _card({
   DateTime Function()? clock,
   FleetShipTypeLabelMode shipTypeLabelMode =
       FleetShipTypeLabelMode.localizedName,
+  FleetFocusController? focus,
 }) => MaterialApp(
   locale: const Locale('zh'),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -477,6 +521,7 @@ Widget _card({
           : defaultFields,
       shipTypeLabelMode: shipTypeLabelMode,
       clock: clock,
+      focusController: focus,
     ),
   ),
 );

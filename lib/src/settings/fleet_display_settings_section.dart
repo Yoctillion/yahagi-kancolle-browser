@@ -70,6 +70,7 @@ class FleetDisplaySettingsSection extends StatelessWidget {
                     controller.setFleetSelectorLabelMode(
                       FleetSelectorLabelMode.customName,
                     );
+                    controller.setFleetAutoSwitch(true);
                     save({
                       ...defaultFields,
                       if (twoColumns) ...{'firepower', 'anti-sub'},
@@ -158,6 +159,14 @@ class FleetDisplaySettingsSection extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          SwitchListTile(
+            key: const Key('fleet-auto-switch'),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            title: Text(text(FleetUiKeys.fleetAutoSwitch)),
+            subtitle: Text(text(FleetUiKeys.fleetAutoSwitchHint)),
+            value: controller.fleetAutoSwitch,
+            onChanged: controller.setFleetAutoSwitch,
           ),
           for (final group in displayGroups.entries) ...[
             Divider(height: 1, color: appColor(context, Color(0xff294052))),
