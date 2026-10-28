@@ -89,6 +89,7 @@ import 'src/fleet/anchorage_repair_view.dart';
 import 'src/fleet/fleet_summary_card.dart';
 import 'src/fleet/land_base_summary_card.dart';
 import 'src/expedition/expedition_check_card.dart';
+import 'src/expedition/expedition_dispatch_recorder.dart';
 import 'src/fleet/expedition_summary_card.dart';
 import 'src/fleet/repair_summary_card.dart';
 import 'src/fleet/construction_summary_card.dart';
@@ -182,6 +183,7 @@ import 'src/localization/runtime_message_text.dart';
 import 'src/localization/ui_locale.dart';
 import 'src/settings/background_game_retention_controller.dart';
 import 'src/settings/battle_prediction_settings.dart';
+import 'src/settings/panel_view_preferences.dart';
 import 'src/settings/game_frame_rate_settings.dart';
 import 'src/settings/game_connector_controller.dart';
 import 'src/settings/game_connector.dart';
@@ -230,6 +232,7 @@ Future<void> main() async {
       await BattlePredictionSettingsController.load(
         SharedPreferencesBattlePredictionSettingsStore(),
       );
+  final panelViewPreferences = await PanelViewPreferences.load();
   final formationMemoryController = await FormationMemoryController.load(
     SharedPreferencesFormationMemoryStore(),
     accountSession: accountSession,
@@ -537,6 +540,10 @@ Future<void> main() async {
     layoutSettingsController: layoutSettingsController,
     topNoticeController: headerNoticeController,
   );
+  ExpeditionDispatchRecorder(
+    controller: gameStateController,
+    accountSession: accountSession,
+  );
   final smartPanelController = SmartPanelController(
     stateProvider: () => gameStateController.state,
     waitForGameState: () => gameStateController.idle,
@@ -788,6 +795,7 @@ Future<void> main() async {
     gameInfoNoticeController: gameInfoNoticeController,
     smartPanelController: smartPanelController,
     practiceOpponentController: practiceOpponentController,
+    panelViewPreferences: panelViewPreferences,
     gameMouseWheelSettingsController: gameMouseWheelSettingsController,
     shipSubtitleSettingsController: shipSubtitleSettingsController,
     shipSubtitleCatalogController: shipSubtitleCatalogController,
@@ -1082,6 +1090,7 @@ class YahagiApp extends StatelessWidget {
     this.headerNoticeController,
     this.gameInfoNoticeController,
     this.smartPanelController,
+    this.panelViewPreferences,
     this.practiceOpponentController,
     this.gameMouseWheelSettingsController,
     this.gameFrameRefreshShortcutSettings,
@@ -1137,6 +1146,7 @@ class YahagiApp extends StatelessWidget {
   final TopNoticeController? headerNoticeController;
   final GameInfoNoticeController? gameInfoNoticeController;
   final SmartPanelController? smartPanelController;
+  final PanelViewPreferences? panelViewPreferences;
   final PracticeOpponentController? practiceOpponentController;
   final GameMouseWheelSettingsController? gameMouseWheelSettingsController;
   final GameFrameRefreshShortcutSettings? gameFrameRefreshShortcutSettings;
@@ -1151,6 +1161,15 @@ class YahagiApp extends StatelessWidget {
   final RouteObserver<ModalRoute<dynamic>>? gameRouteObserver;
   final void Function(int)? nativeWebViewGenerationSink;
   final ValueListenable<Widget?>? backupMaintenanceOverlay;
+
+  Widget _withPanelViewPreferences(Widget child) =>
+      switch (panelViewPreferences) {
+        final preferences? => PanelViewPreferencesScope(
+          preferences: preferences,
+          child: child,
+        ),
+        null => child,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -1173,19 +1192,21 @@ class YahagiApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           builder: (context, child) => DisplayCornersHost(
-            child: GameNameLocalizationScope(
-              controller: shipSubtitleCatalogController,
-              child: MediaQuery(
-                data: MediaQuery.of(context).copyWith(boldText: true),
-                child: CameraAvoidanceViewport(
-                  enabled: layoutSettingsController.cameraAvoidanceEnabled,
-                  distance: layoutSettingsController.cameraAvoidanceDistance,
-                  child: Stack(
-                    children: [
-                      child ?? const SizedBox.shrink(),
-                      if (backupMaintenanceOverlay?.value case final overlay?)
-                        Positioned.fill(child: overlay),
-                    ],
+            child: _withPanelViewPreferences(
+              GameNameLocalizationScope(
+                controller: shipSubtitleCatalogController,
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(boldText: true),
+                  child: CameraAvoidanceViewport(
+                    enabled: layoutSettingsController.cameraAvoidanceEnabled,
+                    distance: layoutSettingsController.cameraAvoidanceDistance,
+                    child: Stack(
+                      children: [
+                        child ?? const SizedBox.shrink(),
+                        if (backupMaintenanceOverlay?.value case final overlay?)
+                          Positioned.fill(child: overlay),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -4043,8 +4064,8 @@ class _InformationPanelState extends State<_InformationPanel> {
     onOpenFleet: widget.onOpenFleet,
   );
 
-  // Embedded cards keep their own PageStorage keys so mode switches made in the
-  // smart panel never leak into the standalone cards.
+  // Embedded cards keep their own PageStorage keys so the smart panel's fleet
+  // pick never leaks into the standalone cards; view toggles are shared.
   Widget _smartStateBody(BuildContext context, SmartPanelState state) {
     void noop() {}
     return switch (state) {

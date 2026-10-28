@@ -10,6 +10,7 @@ import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_
 import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_executor.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
+import 'package:yahagi_kancolle_browser/src/settings/panel_view_preferences.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -119,9 +120,16 @@ class _Harness extends StatefulWidget {
 
 class _HarnessState extends State<_Harness> {
   final bucket = PageStorageBucket();
+  final preferences = PanelViewPreferences();
   bool visible = true;
   bool collapsed = false;
   void show(bool value) => setState(() => visible = value);
+  @override
+  void dispose() {
+    preferences.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => MaterialApp(
     locale: widget.locale,
@@ -138,19 +146,22 @@ class _HarnessState extends State<_Harness> {
           alignment: Alignment.topLeft,
           child: SizedBox(
             width: widget.width,
-            child: PageStorage(
-              bucket: bucket,
-              child: SingleChildScrollView(
-                key: const PageStorageKey('dashboard-column'),
-                child: visible
-                    ? LiveBattleCard(
-                        key: const PageStorageKey('dashboard-live-battle'),
-                        controller: widget.controller,
-                        collapsed: collapsed,
-                        onToggleCollapse: () =>
-                            setState(() => collapsed = !collapsed),
-                      )
-                    : const SizedBox.shrink(),
+            child: PanelViewPreferencesScope(
+              preferences: preferences,
+              child: PageStorage(
+                bucket: bucket,
+                child: SingleChildScrollView(
+                  key: const PageStorageKey('dashboard-column'),
+                  child: visible
+                      ? LiveBattleCard(
+                          key: const PageStorageKey('dashboard-live-battle'),
+                          controller: widget.controller,
+                          collapsed: collapsed,
+                          onToggleCollapse: () =>
+                              setState(() => collapsed = !collapsed),
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ),
             ),
           ),

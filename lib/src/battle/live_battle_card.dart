@@ -24,13 +24,12 @@ import '../game_state/game_state.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
 import '../settings/module_display_settings.dart';
+import '../settings/panel_view_preferences.dart';
 import 'detailed_battle_panel.dart';
 import 'land_base_raid_panel.dart';
 import 'official_enemy_preview.dart';
 import 'prophet_hp_bar.dart';
 import 'sortie_map_section.dart';
-
-enum BattlePanelMode { compact, detailed }
 
 class LiveBattleCard extends StatefulWidget {
   const LiveBattleCard({
@@ -64,14 +63,9 @@ class LiveBattleCard extends StatefulWidget {
   State<LiveBattleCard> createState() => _LiveBattleCardState();
 }
 
-class _LiveBattleCardState extends State<LiveBattleCard> {
-  BattlePanelMode _mode = BattlePanelMode.detailed;
-  bool _modeRestored = false;
-  bool _mapExpanded = true;
-  bool _mapExpansionRestored = false;
+class _LiveBattleCardState extends State<LiveBattleCard>
+    with PanelViewPreferencesHost {
   SortieMapSection? _cachedMapSection;
-
-  static const _mapExpansionStorageId = 'prophet-sortie-map-expanded';
 
   @override
   void didUpdateWidget(covariant LiveBattleCard oldWidget) {
@@ -81,42 +75,17 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_mapExpansionRestored) {
-      final storedExpansion = PageStorage.maybeOf(
-        context,
-      )?.readState(context, identifier: _mapExpansionStorageId);
-      if (storedExpansion is bool) _mapExpanded = storedExpansion;
-      _mapExpansionRestored = true;
-    }
-    if (_modeRestored) return;
-    final storedMode = PageStorage.maybeOf(context)?.readState(context);
-    if (storedMode is String) {
-      _mode = BattlePanelMode.values.firstWhere(
-        (mode) => mode.name == storedMode,
-        orElse: () => _mode,
-      );
-    }
-    _modeRestored = true;
-  }
-
-  void _setMode(BattlePanelMode mode) {
-    setState(() => _mode = mode);
-    PageStorage.maybeOf(context)?.writeState(context, mode.name);
-  }
+  void _setMode(BattlePanelMode mode) => panelViewPreferences.battleMode = mode;
 
   void _toggleMapExpanded() {
-    setState(() => _mapExpanded = !_mapExpanded);
-    PageStorage.maybeOf(
-      context,
-    )?.writeState(context, _mapExpanded, identifier: _mapExpansionStorageId);
+    final preferences = panelViewPreferences;
+    preferences.battleMapExpanded = !preferences.battleMapExpanded;
   }
 
   SortieMapSection? _buildMapSection(
     LiveBattle? battle, {
     required bool showCurrentNode,
+    required bool expanded,
   }) {
     // DashboardCard does not mount its child while collapsed. Avoid even the
     // first lazy geometry parse until the map can be shown.
@@ -143,7 +112,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
         identical(cached.geometry, geometry) &&
         cached.currentNodeLabel == currentNodeLabel &&
         cached.showCurrentNode == showCurrentNode &&
-        cached.expanded == _mapExpanded) {
+        cached.expanded == expanded) {
       return cached;
     }
     // Reuse only the immutable widget, so its elements still receive inherited
@@ -151,7 +120,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
     return _cachedMapSection = SortieMapSection(
       progress: progress,
       geometry: geometry,
-      expanded: _mapExpanded,
+      expanded: expanded,
       onToggleExpanded: _toggleMapExpanded,
       currentNodeLabel: currentNodeLabel,
       showCurrentNode: showCurrentNode,
@@ -161,6 +130,8 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
   @override
   Widget build(BuildContext context) {
     final flat = PanelStyleScope.isFlat(context);
+    final preferences = panelViewPreferences;
+    final mode = preferences.battleMode;
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -170,6 +141,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
         final mapSection = _buildMapSection(
           battle,
           showCurrentNode: !flat || idle,
+          expanded: preferences.battleMapExpanded,
         );
         return DashboardCard(
           key: const Key('live-battle-card'),
@@ -190,7 +162,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
           titleBadge: idle
               ? (flat ? null : const _IdleBadge())
               : _StatusBadge(battle: battle),
-          trailing: _ModeSwitch(mode: _mode, onChanged: _setMode),
+          trailing: _ModeSwitch(mode: mode, onChanged: _setMode),
           child: Column(
             key: widget.collapsed
                 ? const Key('live-battle-collapsed')
@@ -217,7 +189,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                   SizedBox(height: flat ? flatSectionGap : 9),
                 ],
                 const _IdleBattleContent(),
-              ] else if (_mode == BattlePanelMode.detailed)
+              ] else if (mode == BattlePanelMode.detailed)
                 DetailedBattlePanel(
                   battle: battle,
                   gameState: widget.controller.gameStateSnapshot,

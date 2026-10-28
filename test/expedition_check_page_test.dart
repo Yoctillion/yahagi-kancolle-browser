@@ -442,6 +442,9 @@ final class _MemoryExpeditionSelectionStore
   final Map<int, int> values;
 
   @override
+  final changes = ChangeNotifier();
+
+  @override
   Future<int?> loadMissionId(int fleetId) async => values[fleetId];
 
   @override
