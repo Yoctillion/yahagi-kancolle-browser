@@ -15,6 +15,7 @@ import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
+import 'package:yahagi_kancolle_browser/src/settings/battle_prediction_settings.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -23,7 +24,19 @@ const _tagLine = Key('battle-navigation-tag-line');
 const _formationLine = Key('compact-formation-line');
 const _dropLine = Key('battle-drop-line');
 const _battleTagLine = Key('battle-tag-line');
+const _nodeBadge = Key('battle-node-badge');
+const _navigationHeader = Key('battle-navigation-header');
+const _sideBySideFleets = Key('navigation-side-by-side-fleets');
+const _enemyPreview = Key('official-enemy-preview');
+const _friendFleets = Key('navigation-friendly-fleets');
 const _appFont = 'HarmonyOS_Sans_SC';
+const _allLocales = <Locale>[
+  Locale('zh'),
+  Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+  Locale('ja'),
+  Locale('ko'),
+  Locale('en'),
+];
 
 CapturedApiEvent _battleWithFormation(List<int>? formation) =>
     kcsapiEvent('/kcsapi/api_req_sortie/battle', <String, Object?>{
@@ -177,6 +190,7 @@ void main() {
     double width = 320,
     Locale locale = const Locale('zh'),
     String? fontFamily,
+    List<BattlePredictionSection>? sectionOrder,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -198,6 +212,7 @@ void main() {
                     collapsed: false,
                     onToggleCollapse: () {},
                     showEnemyPortraits: false,
+                    sectionOrder: sectionOrder,
                   ),
                 ),
               ),
@@ -247,9 +262,9 @@ void main() {
         final tagLine = find.byKey(_tagLine);
         expect(tagLine, findsOneWidget);
         final text = tester.widget<Text>(tagLine);
-        expect(text.maxLines, 2);
+        expect(text.maxLines, 3);
         expect(text.overflow, TextOverflow.ellipsis);
-        expect(text.textSpan!.toPlainText(), '节点 1 · 上次：单横阵 · 普通战斗');
+        expect(text.textSpan!.toPlainText(), '节点 1 · 普通战斗\n上次：单横阵');
         expect(
           _spanWithText(text.textSpan!, '普通战斗')!.style!.color,
           nodeTypePillColors('普通战斗').foreground,
@@ -314,38 +329,242 @@ void main() {
       expect(find.byKey(const Key('node-type-pill')), findsOneWidget);
     });
 
-    for (final locale in const [Locale('zh'), Locale('en')]) {
+    for (final locale in _allLocales) {
       for (final compact in [true, false]) {
-        testWidgets(
-          'navigation fits 170 dp (${locale.languageCode}, compact: $compact)',
-          (tester) async {
-            final memory = await FormationMemoryController.load(
-              MemoryFormationMemoryStore(<String, int>{'2-5-3': 14}),
-            );
-            final controller = createController(
-              withMap: true,
-              formationMemory: memory,
-            );
-            await send(
-              controller,
-              _navigation(3, 100, start: true, preview: true),
-            );
+        testWidgets('navigation fits 170 dp ($locale, compact: $compact)', (
+          tester,
+        ) async {
+          final memory = await FormationMemoryController.load(
+            MemoryFormationMemoryStore(<String, int>{'2-5-3': 14}),
+          );
+          final controller = createController(
+            withMap: true,
+            formationMemory: memory,
+          );
+          await send(
+            controller,
+            _navigation(3, 100, start: true, preview: true),
+          );
 
-            await pumpCard(
-              tester,
-              controller,
-              compact: compact,
-              width: 170,
-              locale: locale,
-            );
+          await pumpCard(
+            tester,
+            controller,
+            compact: compact,
+            width: 170,
+            locale: locale,
+          );
 
-            expect(tester.takeException(), isNull);
-            expect(find.byType(ErrorWidget), findsNothing);
-            expect(find.byKey(_tagLine), findsOneWidget);
-          },
-        );
+          expect(tester.takeException(), isNull);
+          expect(find.byType(ErrorWidget), findsNothing);
+          expect(find.byKey(_tagLine), findsOneWidget);
+        });
       }
     }
+  });
+
+  group('flat navigation layout', () {
+    setUpAll(() async {
+      await (FontLoader(
+        _appFont,
+      )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
+    });
+
+    for (final compact in [true, false]) {
+      testWidgets('node header leads the content below the map ($compact)', (
+        tester,
+      ) async {
+        final controller = createController(withMap: true);
+        await send(controller, _navigation(3, 100, start: true, preview: true));
+
+        await pumpCard(tester, controller, compact: compact);
+
+        final map = tester.getRect(find.byKey(_mapSection));
+        final header = tester.getRect(find.byKey(_navigationHeader));
+        expect(header.top, greaterThanOrEqualTo(map.bottom));
+        expect(
+          header.bottom,
+          lessThanOrEqualTo(tester.getTopLeft(find.byKey(_enemyPreview)).dy),
+        );
+      });
+    }
+
+    testWidgets('a resolved node sits on the badge, not in the text', (
+      tester,
+    ) async {
+      final controller = createController(withMap: true);
+      await send(controller, _navigation(3, 100, start: true));
+
+      await pumpCard(tester, controller);
+
+      final letter = controller.current!.context.forecastNodeLabel;
+      expect(
+        find.descendant(
+          of: find.byKey(_nodeBadge),
+          matching: find.text(letter),
+        ),
+        findsOneWidget,
+      );
+      final plain = tester
+          .widget<Text>(find.byKey(_tagLine))
+          .textSpan!
+          .toPlainText();
+      expect(plain, '普通战斗');
+    });
+
+    testWidgets('the header survives a sortie with no map data', (
+      tester,
+    ) async {
+      final controller = createController();
+      await send(controller, mapStartEvent);
+
+      await pumpCard(tester, controller);
+
+      expect(find.byKey(const Key('sortie-map-canvas')), findsNothing);
+      expect(find.byKey(_navigationHeader), findsOneWidget);
+    });
+
+    testWidgets('a custom order keeps the header ahead of the content', (
+      tester,
+    ) async {
+      final controller = createController(withMap: true);
+      await send(controller, _navigation(3, 100, start: true, preview: true));
+
+      await pumpCard(
+        tester,
+        controller,
+        compact: false,
+        sectionOrder: const <BattlePredictionSection>[
+          BattlePredictionSection.enemyPreview,
+          BattlePredictionSection.predictionResult,
+          BattlePredictionSection.sortieMap,
+        ],
+      );
+
+      final header = tester.getRect(find.byKey(_navigationHeader));
+      expect(
+        header.bottom,
+        lessThanOrEqualTo(tester.getTopLeft(find.byKey(_enemyPreview)).dy),
+      );
+      expect(
+        tester.getTopLeft(find.byKey(_friendFleets)).dy,
+        greaterThan(tester.getTopLeft(find.byKey(_enemyPreview)).dy),
+      );
+    });
+
+    testWidgets('friend and enemy share rows when there is room', (
+      tester,
+    ) async {
+      final controller = createController(withMap: true);
+      await send(controller, _navigation(3, 100, start: true, preview: true));
+
+      await pumpCard(tester, controller, fontFamily: _appFont);
+
+      expect(find.byKey(_sideBySideFleets), findsOneWidget);
+      final friend = tester.getRect(find.byKey(_friendFleets));
+      final enemy = tester.getRect(find.byKey(_enemyPreview));
+      expect(friend.top, enemy.top);
+      expect(enemy.left, greaterThanOrEqualTo(friend.right));
+      for (final index in [0, 1]) {
+        expect(
+          tester
+              .getTopLeft(find.byKey(Key('official-enemy-preview-row-$index')))
+              .dy,
+          tester.getTopLeft(find.byKey(Key('battle-ship-friend-$index'))).dy,
+          reason: 'row $index',
+        );
+      }
+    });
+
+    testWidgets('a narrow panel stacks the fleets instead of squeezing', (
+      tester,
+    ) async {
+      final controller = createController(withMap: true);
+      await send(controller, _navigation(3, 100, start: true, preview: true));
+
+      await pumpCard(tester, controller, width: 200);
+
+      expect(find.byKey(_sideBySideFleets), findsNothing);
+      expect(
+        tester.getTopLeft(find.byKey(_friendFleets)).dy,
+        greaterThanOrEqualTo(
+          tester.getBottomLeft(find.byKey(_enemyPreview)).dy,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('no preview leaves the friendly fleet at full width', (
+      tester,
+    ) async {
+      final controller = createController(withMap: true);
+      await send(controller, _navigation(3, 100, start: true));
+
+      await pumpCard(tester, controller);
+
+      expect(find.byKey(_sideBySideFleets), findsNothing);
+      expect(
+        tester.getSize(find.byKey(_friendFleets)).width,
+        tester.getSize(find.byKey(_navigationHeader)).width,
+      );
+    });
+
+    const radarNames = <(Locale, String)>[
+      (Locale('zh'), '雷达射击'),
+      (Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'), '雷達射擊'),
+      (Locale('ja'), 'レーダー射撃'),
+      (Locale('ko'), '레이더 사격'),
+      (Locale('en'), 'Radar ambush'),
+    ];
+    for (final (locale, name) in radarNames) {
+      testWidgets('the header names the node type in $locale', (tester) async {
+        final controller = createController(withMap: true);
+        await send(
+          controller,
+          kcsapiEvent('/kcsapi/api_req_map/next', <String, Object?>{
+            'api_maparea_id': 2,
+            'api_mapinfo_no': 5,
+            'api_no': 3,
+            'api_event_id': 4,
+            'api_event_kind': 8,
+          }, sequence: 100),
+        );
+
+        await pumpCard(tester, controller, locale: locale);
+
+        expect(
+          tester.widget<Text>(find.byKey(_tagLine)).textSpan!.toPlainText(),
+          name,
+        );
+      });
+    }
+
+    for (final locale in _allLocales) {
+      testWidgets('side-by-side fleets fit the threshold in $locale', (
+        tester,
+      ) async {
+        final controller = createController(withMap: true);
+        await send(controller, _navigation(3, 100, start: true, preview: true));
+
+        await pumpCard(tester, controller, locale: locale, width: 262);
+
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(_sideBySideFleets), findsOneWidget);
+      });
+    }
+
+    testWidgets('card style keeps the header above the map', (tester) async {
+      final controller = createController(withMap: true);
+      await send(controller, _navigation(3, 100, start: true, preview: true));
+
+      await pumpCard(tester, controller, flat: false);
+
+      expect(find.byKey(_nodeBadge), findsNothing);
+      expect(find.byKey(_sideBySideFleets), findsNothing);
+      expect(
+        tester.getBottomLeft(find.byKey(_navigationHeader)).dy,
+        lessThanOrEqualTo(tester.getTopLeft(find.byKey(_mapSection)).dy),
+      );
+    });
   });
 
   group('flat sortie map', () {
@@ -464,10 +683,16 @@ void main() {
         for (final divider in dividers) {
           expect(divider.color, const Color(0xff1b3142));
         }
-        // Sections stack at the flat 4 dp rhythm.
+        // Sections stack at the flat 4 dp rhythm, with the node header
+        // leading the content right below the map.
+        final header = find.byKey(_navigationHeader);
         expect(
-          tester.getTopLeft(preview).dy -
+          tester.getTopLeft(header).dy -
               tester.getBottomLeft(find.byKey(_mapSection)).dy,
+          4,
+        );
+        expect(
+          tester.getTopLeft(preview).dy - tester.getBottomLeft(header).dy,
           4,
         );
         final firstShip = find.byKey(const Key('battle-ship-friend-0'));
@@ -494,13 +719,13 @@ void main() {
       return controller;
     }
 
-    for (final locale in const [Locale('zh'), Locale('en')]) {
+    for (final locale in _allLocales) {
       final strings = BattleDetailStrings.forLocale(locale);
       final engagement = strings.localize('同航战');
       final formation = strings.localize('单纵阵');
       for (final width in const <double>[170, 210]) {
         testWidgets('engagement, drop and tags stay whole at $width dp '
-            '(${locale.languageCode})', (tester) async {
+            '($locale)', (tester) async {
           final controller = await resultController();
 
           await pumpCard(
@@ -537,11 +762,15 @@ void main() {
           expect(dropText.maxLines, isNull);
           expect(dropText.overflow, isNot(TextOverflow.ellipsis));
           final dropPlain = _plainTextUnder(tester, drop);
-          if (locale.languageCode == 'zh') {
-            expect(dropPlain, contains('掉落：吹雪'));
-          } else {
-            expect(dropPlain, contains('Drop: '));
-          }
+          expect(
+            dropPlain,
+            contains(switch (locale.languageCode) {
+              'zh' => '掉落：吹雪',
+              'ja' => 'ドロップ：',
+              'ko' => '드롭: ',
+              _ => 'Drop: ',
+            }),
+          );
           expect(dropPlain, contains(' ×1'));
           for (final paragraph in _paragraphsUnder(tester, drop)) {
             expect(paragraph.didExceedMaxLines, isFalse);
@@ -575,6 +804,81 @@ void main() {
         });
       }
     }
+
+    testWidgets('node badge leads the header and the rank closes it', (
+      tester,
+    ) async {
+      final controller = await resultController();
+
+      await pumpCard(tester, controller);
+
+      final badge = tester.getRect(find.byKey(_nodeBadge));
+      final enemyName = tester.getRect(find.text('Test Enemy Fleet'));
+      final rank = tester.getRect(find.byKey(const Key('battle-rank-badge')));
+      expect(badge.right, lessThanOrEqualTo(enemyName.left));
+      expect(rank.left, greaterThan(enemyName.left));
+      expect(rank.left, greaterThan(badge.right));
+    });
+
+    testWidgets('the badge replaces the node type in the tag line', (
+      tester,
+    ) async {
+      final controller = await resultController();
+
+      await pumpCard(tester, controller);
+
+      expect(
+        _plainTextUnder(tester, find.byKey(_battleTagLine)),
+        isNot(contains('普通战斗')),
+      );
+    });
+
+    testWidgets('a submarine battle stays named: the badge cannot show it', (
+      tester,
+    ) async {
+      state = state.copyWith(
+        masterShips: <int, MasterShip>{
+          ...state.masterShips,
+          1501: const MasterShip(id: 1501, name: '潜水ヨ級', shipTypeId: 13),
+          1502: const MasterShip(id: 1502, name: '潜水カ級', shipTypeId: 13),
+        },
+      );
+      final controller = createController();
+      await send(controller, mapStartEvent);
+      await send(
+        controller,
+        kcsapiEvent('/kcsapi/api_req_sortie/battle', <String, Object?>{
+          'api_deck_id': 1,
+          'api_f_nowhps': <int>[30, 15],
+          'api_f_maxhps': <int>[30, 15],
+          'api_e_nowhps': <int>[20, 10],
+          'api_e_maxhps': <int>[20, 10],
+          'api_ship_ke': <int>[1501, 1502],
+        }, sequence: 993),
+      );
+
+      await pumpCard(tester, controller);
+
+      expect(
+        _plainTextUnder(tester, find.byKey(_battleTagLine)),
+        contains('潜艇战'),
+      );
+    });
+
+    testWidgets('card style keeps its pills and rank on the left', (
+      tester,
+    ) async {
+      final controller = await resultController();
+
+      await pumpCard(tester, controller, flat: false);
+
+      expect(find.byKey(_nodeBadge), findsNothing);
+      expect(find.byType(NodeTypePill), findsOneWidget);
+      expect(
+        tester.getTopRight(find.byKey(const Key('battle-rank-badge'))).dx,
+        lessThan(tester.getTopLeft(find.byType(AdaptiveBattleHeader)).dx),
+      );
+    });
 
     testWidgets('wide line aligns formations to the fleet edges', (
       tester,

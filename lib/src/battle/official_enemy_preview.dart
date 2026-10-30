@@ -16,6 +16,7 @@ class OfficialEnemyPreview extends StatelessWidget {
     this.showPortraits = false,
     this.masterShips = const <int, MasterShip>{},
     this.serverOrigin = '',
+    this.alignWithShipRows = false,
   });
 
   final List<EnemyPreviewShip> ships;
@@ -23,6 +24,9 @@ class OfficialEnemyPreview extends StatelessWidget {
   final bool showPortraits;
   final Map<int, MasterShip> masterShips;
   final String serverOrigin;
+
+  /// Beside a friendly fleet, rows keep that fleet's row height.
+  final bool alignWithShipRows;
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +150,7 @@ class OfficialEnemyPreview extends StatelessWidget {
             ),
             const SizedBox(width: 7),
           ],
+          if (alignWithShipRows) const BattleShipRowStrut(),
           Expanded(
             child: Tooltip(
               message: name,

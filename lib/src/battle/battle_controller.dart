@@ -660,6 +660,8 @@ final class BattleController extends ChangeNotifier
       combinedFleetType: _combinedFleetTypeForDeck(state, deckId),
       eventId: _int(data['api_event_id'] ?? _context.eventId),
       eventKind: _int(data['api_event_kind'] ?? _context.eventKind),
+      // No fallback: a stale color would mislabel the next node.
+      colorNo: _int(data['api_color_no']),
       nodeDisplayLabel: nodeLabelResolver.resolve(
         mapAreaId: mapAreaId,
         mapInfoNo: mapInfoNo,

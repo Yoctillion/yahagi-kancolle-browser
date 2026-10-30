@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 
 const _prophetHpThresholds = <double>[0.25, 0.50, 0.75];
 
+const prophetHpBarHeight = 6.0;
+
 class ProphetHpBar extends StatelessWidget {
   const ProphetHpBar({
     super.key,
     required this.value,
     required this.color,
     required this.backgroundColor,
-    this.height = 6,
+    this.height = prophetHpBarHeight,
   });
 
   final double value;

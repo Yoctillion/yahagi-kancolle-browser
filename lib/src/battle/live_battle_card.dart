@@ -12,6 +12,7 @@ import '../layout/module_summaries.dart';
 
 import 'battle_controller.dart';
 import 'battle_models.dart';
+import 'battle_node_badge.dart';
 import 'battle_pills.dart';
 import 'battle_prediction_sections.dart';
 import 'battle_ship_details_popover.dart';
@@ -394,36 +395,68 @@ class _CompactBattlePanel extends StatelessWidget {
       final raid = battle.landBaseRaid;
       final previewShips =
           battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
-      final enemyPreview = OfficialEnemyPreview(
-        ships: previewShips,
-        combined: battle.enemyPreviewCombined,
-      );
       final friendlyFleets = NavigationFriendlyFleets(
         battle: battle,
         damagePulseMode: damagePulseMode,
       );
+      Widget sections({required bool sideBySide}) => BattlePredictionSections(
+        order: sectionOrder,
+        legacyEnemyPreviewPosition: enemyPreviewPosition,
+        sortieMap: mapSection,
+        nodeHeader: flat ? navigationHeader : null,
+        enemyPreview: previewShips.isNotEmpty && !sideBySide
+            ? OfficialEnemyPreview(
+                ships: previewShips,
+                combined: battle.enemyPreviewCombined,
+              )
+            : null,
+        predictionResult: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (raid != null) ...[
+              LandBaseRaidPanel(result: raid, compact: true),
+              SizedBox(height: flat ? flatSectionGap : 9),
+            ],
+            if (sideBySide)
+              Row(
+                key: const Key('navigation-side-by-side-fleets'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(child: friendlyFleets),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: OfficialEnemyPreview(
+                      ships: previewShips,
+                      alignWithShipRows: true,
+                    ),
+                  ),
+                ],
+              )
+            else
+              friendlyFleets,
+          ],
+        ),
+      );
+      // Four combined columns would not fit, so those stay stacked.
+      final canShareRow =
+          flat &&
+          previewShips.isNotEmpty &&
+          !battle.enemyPreviewCombined &&
+          battle.friendEscort.isEmpty;
       return Column(
         key: const Key('compact-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          navigationHeader,
-          SizedBox(height: flat ? flatSectionGap : 7),
-          BattlePredictionSections(
-            order: sectionOrder,
-            legacyEnemyPreviewPosition: enemyPreviewPosition,
-            sortieMap: mapSection,
-            enemyPreview: previewShips.isNotEmpty ? enemyPreview : null,
-            predictionResult: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (raid != null) ...[
-                  LandBaseRaidPanel(result: raid, compact: true),
-                  SizedBox(height: flat ? flatSectionGap : 9),
-                ],
-                friendlyFleets,
-              ],
-            ),
-          ),
+          if (!flat) ...[navigationHeader, const SizedBox(height: 7)],
+          if (canShareRow)
+            LayoutBuilder(
+              builder: (context, constraints) => sections(
+                sideBySide:
+                    constraints.maxWidth >= flatSideBySideFleetsMinWidth,
+              ),
+            )
+          else
+            sections(sideBySide: false),
         ],
       );
     }
@@ -469,16 +502,21 @@ class _CompactBattlePanel extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (battle.rank != BattleRank.unknown) ...<Widget>[
+                  if (flat) ...<Widget>[
+                    BattleNodeBadge(nodeContext: battle.context),
+                    const SizedBox(width: 8),
+                  ] else if (battle.rank != BattleRank.unknown) ...<Widget>[
                     _RankBadge(rank: battle.rank, phone: phone, flat: flat),
-                    SizedBox(width: flat ? 8 : 11),
+                    const SizedBox(width: 11),
                   ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AdaptiveBattleHeader(
-                          nodeLabel: battle.context.forecastNodeLabel,
+                          nodeLabel: flat
+                              ? battle.context.nodeTextBesideBadge
+                              : battle.context.forecastNodeLabel,
                           nodeFontSize: flat ? 12 : 16,
                           enemyName: enemyName,
                           enemyNameIsFallback: battle.enemyFleetName.isEmpty,
@@ -495,12 +533,7 @@ class _CompactBattlePanel extends StatelessWidget {
                           const SizedBox(height: 2),
                           BattleTagLine(
                             battle: battle,
-                            nodeLabel: battle.context.forecastNodeLabel,
                             metaLabels: [for (final chip in metaChips) chip.$1],
-                          ),
-                          BattleDropLine(
-                            dropEntries: dropEntries,
-                            rewardItems: battle.rewardItems,
                           ),
                         ] else if (statusPills.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 5),
@@ -517,8 +550,17 @@ class _CompactBattlePanel extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (flat && battle.rank != BattleRank.unknown) ...<Widget>[
+                    const SizedBox(width: 8),
+                    _RankBadge(rank: battle.rank, phone: phone, flat: flat),
+                  ],
                 ],
               ),
+              if (flat)
+                BattleDropLine(
+                  dropEntries: dropEntries,
+                  rewardItems: battle.rewardItems,
+                ),
               SizedBox(height: flat ? flatSectionGap : 8),
               _CompactFleetGrid(
                 battle: battle,

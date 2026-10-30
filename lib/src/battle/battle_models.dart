@@ -15,6 +15,32 @@ String battleEnemyFleetDisplayName(String name) {
 
 enum BattleDisplayStage { navigation, battle, result }
 
+/// A compass result decoded once for both the type label and the node badge.
+enum BattleNodeKind {
+  start('起点'),
+  quiet('无战斗'),
+  resource('资源获得'),
+  maelstrom('资源损失'),
+  battle('普通战斗'),
+  nightBattle('夜战'),
+  nightToDay('夜转昼战'),
+  airBattle('航空战'),
+  airRaid('长距离空袭战'),
+  radarAmbush('雷达射击'),
+  enemyCombined('敌联合舰队'),
+  antiSubAir('对潜空袭'),
+  escort('护送成功'),
+  transport('运输点'),
+  routeSelect('路线选择'),
+  airRecon('航空侦察'),
+  anchorage('泊地修理'),
+  unknown('节点事件');
+
+  const BattleNodeKind(this.label);
+
+  final String label;
+}
+
 const _unsetNodeDisplayLabel = Object();
 const _unsetNodeTypeOverride = Object();
 const _unsetLandBaseRaid = Object();
@@ -57,6 +83,7 @@ class BattleContext {
     this.practice = false,
     this.eventId = 0,
     this.eventKind = 0,
+    this.colorNo = 0,
     this.nodeDisplayLabel,
     this.nodeTypeOverride,
   });
@@ -70,6 +97,9 @@ class BattleContext {
   final bool practice;
   final int eventId;
   final int eventKind;
+
+  /// `api_color_no` of the compass reply; a few node kinds show up nowhere else.
+  final int colorNo;
   final String? nodeDisplayLabel;
   final String? nodeTypeOverride;
 
@@ -94,6 +124,21 @@ class BattleContext {
     return label != null && label.isNotEmpty ? label : nodeLabel;
   }
 
+  /// What fits on the node badge; a node with no resolved letter gets a mark.
+  String get nodeBadgeLetter {
+    if (practice) return '';
+    final label = nodeDisplayLabel?.trim();
+    return label != null && label.isNotEmpty ? label : '?';
+  }
+
+  /// The node name for text beside a badge that cannot carry it.
+  String? get nodeTextBesideBadge {
+    final label = nodeDisplayLabel?.trim();
+    return !practice && label != null && label.isNotEmpty
+        ? null
+        : forecastNodeLabel;
+  }
+
   String get nodeTypeLabel => nodeTypeLabels.first;
 
   List<String> get nodeTypeLabels {
@@ -104,47 +149,38 @@ class BattleContext {
     return <String>[override];
   }
 
-  String get _baseNodeTypeLabel {
-    if (practice) return '普通战斗';
-    var kind = eventId + 1;
-    if (eventId == 4) {
-      kind = switch (eventKind) {
-        2 => 14,
-        4 => 8,
-        5 => 15,
-        6 => 11,
-        _ => kind,
-      };
-    } else if (eventId == 6) {
-      kind = switch (eventKind) {
-        1 => 7,
-        2 => 12,
-        _ => kind,
-      };
-    } else if (eventId == 7 && eventKind == 0) {
-      kind = 13;
-    } else if (eventId == 10 && eventKind == 0) {
-      kind = 16;
-    }
-    return const <int, String>{
-          1: '起点',
-          2: '无战斗',
-          3: '资源获得',
-          4: '资源损失',
-          5: '普通战斗',
-          6: 'Boss 战',
-          7: '无战斗',
-          8: '空袭战',
-          9: '护送成功',
-          10: '运输点',
-          11: '长距离空袭战',
-          12: '路线选择',
-          13: '航空侦察',
-          14: '夜战',
-          15: '敌联合舰队',
-          16: '泊地修理',
-        }[kind] ??
-        '节点事件';
+  String get _baseNodeTypeLabel => isBossNode ? 'Boss 战' : nodeKind.label;
+
+  bool get isBossNode => !practice && eventId == 5;
+
+  BattleNodeKind get nodeKind {
+    if (practice) return BattleNodeKind.battle;
+    return switch (eventId) {
+      0 => BattleNodeKind.start,
+      1 => BattleNodeKind.quiet,
+      2 => BattleNodeKind.resource,
+      3 => BattleNodeKind.maelstrom,
+      4 || 5 => _battleKind,
+      6 => eventKind == 2 ? BattleNodeKind.routeSelect : BattleNodeKind.quiet,
+      7 => eventKind == 0 ? BattleNodeKind.airRecon : BattleNodeKind.airBattle,
+      8 => BattleNodeKind.escort,
+      9 => BattleNodeKind.transport,
+      10 => eventKind == 0 ? BattleNodeKind.anchorage : BattleNodeKind.airRaid,
+      _ => BattleNodeKind.unknown,
+    };
+  }
+
+  BattleNodeKind get _battleKind {
+    if (colorNo == 15) return BattleNodeKind.antiSubAir;
+    return switch (eventKind) {
+      2 || 3 => BattleNodeKind.nightBattle,
+      4 => BattleNodeKind.airBattle,
+      5 => BattleNodeKind.enemyCombined,
+      6 => BattleNodeKind.airRaid,
+      7 => BattleNodeKind.nightToDay,
+      8 => BattleNodeKind.radarAmbush,
+      _ => BattleNodeKind.battle,
+    };
   }
 
   BattleContext copyWith({
@@ -157,6 +193,7 @@ class BattleContext {
     bool? practice,
     int? eventId,
     int? eventKind,
+    int? colorNo,
     Object? nodeDisplayLabel = _unsetNodeDisplayLabel,
     Object? nodeTypeOverride = _unsetNodeTypeOverride,
   }) {
@@ -170,6 +207,7 @@ class BattleContext {
       practice: practice ?? this.practice,
       eventId: eventId ?? this.eventId,
       eventKind: eventKind ?? this.eventKind,
+      colorNo: colorNo ?? this.colorNo,
       nodeDisplayLabel: identical(nodeDisplayLabel, _unsetNodeDisplayLabel)
           ? this.nodeDisplayLabel
           : nodeDisplayLabel as String?,

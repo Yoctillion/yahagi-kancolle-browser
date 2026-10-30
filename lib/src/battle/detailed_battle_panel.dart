@@ -9,7 +9,6 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
-import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
@@ -63,6 +62,10 @@ class DetailedBattlePanel extends StatelessWidget {
       battle: battle,
       damagePulseMode: damagePulseMode,
     );
+    final navigationOverview = _NavigationOverview(
+      battle: battle,
+      showLastFormationHint: showLastFormationHint,
+    );
     final friendMainTitle = battle.friendFormation > 0
         ? '我方主力（${formationLabel(battle.friendFormation)}）'
         : '我方主力';
@@ -76,17 +79,15 @@ class DetailedBattlePanel extends StatelessWidget {
         key: const Key('detailed-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (navigation) ...[
-            _NavigationOverview(
-              battle: battle,
-              showLastFormationHint: showLastFormationHint,
-            ),
-            SizedBox(height: flat ? flatSectionGap : 7),
+          if (navigation && !flat) ...[
+            navigationOverview,
+            const SizedBox(height: 7),
           ],
           BattlePredictionSections(
             order: sectionOrder,
             legacyEnemyPreviewPosition: enemyPreviewPosition,
             sortieMap: mapSection,
+            nodeHeader: navigation && flat ? navigationOverview : null,
             enemyPreview: navigation && enemyPreviewShips.isNotEmpty
                 ? enemyPreview
                 : null,
@@ -195,6 +196,7 @@ class _NavigationOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     if (PanelStyleScope.isFlat(context)) {
       return Padding(
+        key: const Key('battle-navigation-header'),
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: FlatNavigationHeader(
           battle: battle,

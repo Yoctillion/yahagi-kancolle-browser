@@ -28,6 +28,9 @@ void main() {
     expect(ja.localize('节点 12'), 'マス 12');
     expect(hant.localize('潜艇战'), '潛艇戰');
     expect(ja.localize('潜艇战'), '潜水艦戦');
+    expect(hant.localize('夜转昼战'), '夜轉晝戰');
+    expect(ja.localize('雷达射击'), 'レーダー射撃');
+    expect(ja.localize('对潜空袭'), '対潜空襲');
     expect(ja.localize('Z1点'), 'Z1マス');
     expect(ja.localize('深海棲艦'), '深海棲艦');
     expect(hant.localize('大和改二重'), '大和改二重');

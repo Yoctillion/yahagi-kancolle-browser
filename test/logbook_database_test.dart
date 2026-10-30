@@ -301,7 +301,7 @@ void main() {
     );
 
     final rows = await database.getBattleRecords();
-    expect(rows.single['node_type'], '空袭战');
+    expect(rows.single['node_type'], '航空战');
     expect(rows.single['flagship_name'], '矢矧改二乙');
     expect(rows.single['escort_flagship_name'], '能代改二');
     expect(rows.single['mvp_name'], '雪风改二');
