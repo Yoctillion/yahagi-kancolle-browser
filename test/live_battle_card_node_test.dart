@@ -2060,7 +2060,7 @@ void main() {
       expect(text, contains(' · '));
     });
 
-    testWidgets('real boss node keeps its type segment next to the node name', (
+    testWidgets('a boss node is named by the badge, not the tag line', (
       tester,
     ) async {
       final controller = _createController();
@@ -2081,11 +2081,13 @@ void main() {
 
       await _pumpFlatCompactCard(tester, controller);
 
+      // No map data here, so the node name is still spelled out.
       final nodeName = controller.current!.context.forecastNodeLabel;
-      expect(nodeName, isNot(contains('Boss')));
-      final header = find.byType(AdaptiveBattleHeader);
       expect(
-        find.descendant(of: header, matching: find.text(nodeName)),
+        find.descendant(
+          of: find.byType(AdaptiveBattleHeader),
+          matching: find.text(nodeName),
+        ),
         findsOneWidget,
       );
       final segments = tester
@@ -2100,67 +2102,8 @@ void main() {
           .split('·')
           .map((s) => s.trim())
           .toList();
-      expect(segments, contains('Boss 战'));
-    });
-
-    testWidgets('boss node type is not repeated in the tag line', (
-      tester,
-    ) async {
-      final controller = _createController();
-      addTearDown(controller.dispose);
-      final bossStart =
-          kcsapiEvent('/kcsapi/api_req_map/start', <String, Object?>{
-            'api_maparea_id': 1,
-            'api_mapinfo_no': 1,
-            'api_no': 5,
-            'api_bosscell_no': 5,
-            'api_event_id': 5,
-            'api_event_kind': 0,
-          }, sequence: 20);
-      controller
-        ..accept(bossStart)
-        ..accept(dayBattleEvent);
-      await controller.idle;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('zh'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: Column(
-              children: [
-                BattleTagLine(
-                  key: const Key('tag-with-boss-name'),
-                  battle: controller.current!,
-                  nodeLabel: 'Boss',
-                ),
-                BattleTagLine(
-                  key: const Key('tag-with-other-name'),
-                  battle: controller.current!,
-                  nodeLabel: 'B',
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      List<String> segmentsOf(String key) => tester
-          .widget<Text>(
-            find.descendant(
-              of: find.byKey(Key(key)),
-              matching: find.byType(Text),
-            ),
-          )
-          .textSpan!
-          .toPlainText()
-          .split('·')
-          .map((s) => s.trim())
-          .toList();
-      expect(segmentsOf('tag-with-boss-name'), contains('制空：未知'));
-      expect(segmentsOf('tag-with-boss-name'), isNot(contains('Boss 战')));
-      expect(segmentsOf('tag-with-other-name'), contains('Boss 战'));
+      expect(segments, contains('制空：未知'));
+      expect(segments, isNot(contains('Boss 战')));
     });
 
     testWidgets('bars are 4 high and fleet columns have no backing block', (

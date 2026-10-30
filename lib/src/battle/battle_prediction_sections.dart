@@ -13,6 +13,7 @@ class BattlePredictionSections extends StatelessWidget {
     this.sortieMap,
     this.enemyPreview,
     required this.predictionResult,
+    this.nodeHeader,
   });
 
   final List<BattlePredictionSection>? order;
@@ -20,6 +21,9 @@ class BattlePredictionSections extends StatelessWidget {
   final Widget? sortieMap;
   final Widget? enemyPreview;
   final Widget predictionResult;
+
+  /// Leads the content wherever the shared order puts the map.
+  final Widget? nodeHeader;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +44,18 @@ class BattlePredictionSections extends StatelessWidget {
     );
     final gap = PanelStyleScope.isFlat(context) ? flatSectionGap : 9.0;
     final children = <Widget>[];
+    var pendingHeader = nodeHeader;
     for (final section in effectiveOrder) {
       final content = sections[section];
       if (content == null) continue;
       if (children.isNotEmpty) children.add(SizedBox(height: gap));
+      if (pendingHeader != null &&
+          section != BattlePredictionSection.sortieMap) {
+        children
+          ..add(pendingHeader)
+          ..add(SizedBox(height: gap));
+        pendingHeader = null;
+      }
       children.add(
         KeyedSubtree(
           key: ValueKey('battle-prediction-section-${section.name}'),
