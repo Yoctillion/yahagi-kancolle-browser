@@ -4000,6 +4000,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get smartPanelStatePractice => '연습';
 
   @override
+  String get smartPanelStateItems => '아이템';
+
+  @override
   String get itemPanelTitle => '아이템';
 
   @override

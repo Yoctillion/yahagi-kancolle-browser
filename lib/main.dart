@@ -96,6 +96,7 @@ import 'src/fleet/construction_summary_card.dart';
 import 'src/fleet/nosaki_sparkle_calculator.dart';
 import 'src/fleet/morale_recovery_timer_controller.dart';
 import 'src/fleet/pre_sortie_check_summary.dart';
+import 'src/item_panel/item_panel_view.dart';
 
 import 'src/game_webview.dart';
 import 'src/native_activity_game_surface.dart';
@@ -4112,6 +4113,10 @@ class _InformationPanelState extends State<_InformationPanel> {
         ),
         null => const SizedBox.shrink(),
       },
+      SmartPanelState.items => ItemPanelView(
+        controller: widget.gameStateController,
+        mode: _layout.itemPanelMode,
+      ),
     };
   }
 

@@ -3972,6 +3972,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get smartPanelStatePractice => '演習';
 
   @override
+  String get smartPanelStateItems => 'アイテム';
+
+  @override
   String get itemPanelTitle => 'アイテム';
 
   @override

@@ -13,6 +13,7 @@ enum SmartPanelState {
   quests,
   expeditionCheck,
   practice,
+  items,
 }
 
 /// Infers the game screen from the API calls that open it (KC3 Activity tab
@@ -45,6 +46,8 @@ class SmartPanelController extends ChangeNotifier
     _missionList: SmartPanelState.expeditionCheck,
     '/kcsapi/api_get_member/practice': SmartPanelState.practice,
     '/kcsapi/api_req_member/get_practice_enemyinfo': SmartPanelState.practice,
+    // Only the item and shop screens send this; useitem also fires elsewhere.
+    '/kcsapi/api_get_member/payitem': SmartPanelState.items,
   };
 
   AccountScope? _scope;

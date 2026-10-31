@@ -2041,6 +2041,7 @@
   "smartPanelStateQuests": "임무",
   "smartPanelStateExpeditionCheck": "원정 점검",
   "smartPanelStatePractice": "연습",
+  "smartPanelStateItems": "아이템",
   "itemPanelTitle": "아이템",
   "itemGroupReward": "보상/개장",
   "itemGroupImprovement": "개수 자재",

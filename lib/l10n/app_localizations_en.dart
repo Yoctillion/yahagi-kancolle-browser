@@ -4102,6 +4102,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get smartPanelStatePractice => 'Exercises';
 
   @override
+  String get smartPanelStateItems => 'Items';
+
+  @override
   String get itemPanelTitle => 'Items';
 
   @override

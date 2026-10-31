@@ -7358,6 +7358,12 @@ abstract class AppLocalizations {
   /// **'演习'**
   String get smartPanelStatePractice;
 
+  /// No description provided for @smartPanelStateItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'道具'**
+  String get smartPanelStateItems;
+
   /// No description provided for @itemPanelTitle.
   ///
   /// In zh, this message translates to:

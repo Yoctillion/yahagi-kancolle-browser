@@ -3927,6 +3927,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get smartPanelStatePractice => '演习';
 
   @override
+  String get smartPanelStateItems => '道具';
+
+  @override
   String get itemPanelTitle => '道具';
 
   @override
@@ -7873,6 +7876,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get smartPanelStatePractice => '演習';
+
+  @override
+  String get smartPanelStateItems => '道具';
 
   @override
   String get itemPanelTitle => '道具';
