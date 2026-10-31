@@ -96,6 +96,7 @@ import 'src/fleet/construction_summary_card.dart';
 import 'src/fleet/nosaki_sparkle_calculator.dart';
 import 'src/fleet/morale_recovery_timer_controller.dart';
 import 'src/fleet/pre_sortie_check_summary.dart';
+import 'src/item_panel/item_panel_card.dart';
 import 'src/item_panel/item_panel_view.dart';
 
 import 'src/game_webview.dart';
@@ -4388,6 +4389,21 @@ class _InformationPanelState extends State<_InformationPanel> {
                           context,
                           widget.layoutSettingsController,
                           'pre_sortie',
+                        )
+                      : null,
+                ),
+                'items' => ItemPanelCard(
+                  controller: widget.gameStateController,
+                  mode: _layout.itemPanelMode,
+                  showLogo: _layout.moduleShowLogo('items'),
+                  showTitle: _layout.moduleShowName('items'),
+                  collapsed: isCollapsed,
+                  onToggleCollapse: editing ? () {} : toggle,
+                  onOpenDisplaySettings: editing
+                      ? () => showModuleDisplaySettings(
+                          context,
+                          widget.layoutSettingsController,
+                          'items',
                         )
                       : null,
                 ),

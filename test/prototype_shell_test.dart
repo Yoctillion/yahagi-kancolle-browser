@@ -19,6 +19,8 @@ import 'package:yahagi_kancolle_browser/src/audio/game_audio_store.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_channel.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_controller.dart';
 import 'package:yahagi_kancolle_browser/src/browser/gadget_bypass_store.dart';
+import 'package:yahagi_kancolle_browser/src/item_panel/item_panel_card.dart';
+import 'package:yahagi_kancolle_browser/src/item_panel/item_panel_view.dart';
 import 'package:yahagi_kancolle_browser/src/layout/display_corners.dart';
 import 'package:yahagi_kancolle_browser/src/layout/workspace_context_header.dart';
 import 'package:yahagi_kancolle_browser/src/settings/header_resource_settings.dart';
@@ -219,14 +221,35 @@ void main() {
         await tester.pump();
         expect(find.byType(PracticeOpponentPanel), findsOneWidget);
         expect(find.text('演习对手'), findsOneWidget);
+
+        smart.accept(event('api_get_member/payitem', []));
+        await tester.pump();
+        expect(find.text(zh.smartPanelStateItems), findsOneWidget);
+        expect(find.byType(ItemPanelView), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     }
 
+    testWidgets('items card renders in the detail area', (tester) async {
+      final store = _MemoryLayoutSettingsStore()
+        .._dashboardCardOrder = ['items', 'fleet'];
+      await _pumpMinimalShell(
+        tester,
+        uiSize: UiDisplaySize.normal,
+        layoutStore: store,
+      );
+
+      expect(find.byType(ItemPanelCard), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     test('new card is registered for list and HD layouts', () {
       expect(LayoutSettingsStore.defaultDashboardCardOrder.last, 'smart');
+      expect(LayoutSettingsStore.defaultDashboardCardOrder, contains('items'));
       expect(HdLayoutSettings.moduleIds, contains('smart'));
+      expect(HdLayoutSettings.moduleIds, contains('items'));
       expect(HdLayoutSettings.defaultSidebarOrder, contains('smart'));
+      expect(HdLayoutSettings.defaultSidebarOrder, contains('items'));
     });
   });
 

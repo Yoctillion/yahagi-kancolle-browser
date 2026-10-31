@@ -7,6 +7,15 @@ import 'package:yahagi_kancolle_browser/src/layout/hd_workspace_geometry.dart';
 import 'package:flutter/widgets.dart';
 
 void main() {
+  test('saved sidebar orders gain the items module', () {
+    final settings = HdLayoutSettings.decode(
+      '{"enabled":true,"sidebarOrder":["battle","fleet"]}',
+    );
+
+    expect(settings.orderedModules.take(2), ['battle', 'fleet']);
+    expect(settings.orderedModules, contains('items'));
+  });
+
   test(
     'extension defaults below and preserves position across HD toggles and storage',
     () async {

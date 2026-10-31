@@ -55,6 +55,7 @@ abstract class LayoutSettingsStore {
     'construction',
     'quests',
     'pre_sortie',
+    'items',
     'smart',
   ];
 
