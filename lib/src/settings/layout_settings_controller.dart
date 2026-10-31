@@ -9,6 +9,7 @@ import 'fleet_display_options.dart';
 import 'module_display_settings.dart';
 import 'layout_settings_store.dart';
 import 'hd_layout_settings.dart';
+import 'item_panel_settings.dart';
 import 'smart_panel_settings.dart';
 import 'camera_avoidance_settings.dart';
 
@@ -242,6 +243,10 @@ class LayoutSettingsController extends ChangeNotifier {
           .loadSmartPanelAutoSwitch();
       controller._smartPanelHeaderStyle = await smartPanelStore
           .loadSmartPanelHeaderStyle();
+    }
+    if (store is ItemPanelSettingsStore) {
+      controller._itemPanelMode = await (store as ItemPanelSettingsStore)
+          .loadItemPanelMode();
     }
     if (store is TopNoticeSettingsStore) {
       final topNoticeStore = store as TopNoticeSettingsStore;
@@ -515,6 +520,19 @@ class LayoutSettingsController extends ChangeNotifier {
       await (_store as SmartPanelSettingsStore).saveSmartPanelHeaderStyle(
         style,
       );
+    }
+  }
+
+  ItemPanelMode _itemPanelMode = ItemPanelMode.compact;
+
+  ItemPanelMode get itemPanelMode => _itemPanelMode;
+
+  Future<void> setItemPanelMode(ItemPanelMode mode) async {
+    if (_itemPanelMode == mode) return;
+    _itemPanelMode = mode;
+    notifyListeners();
+    if (_store is ItemPanelSettingsStore) {
+      await (_store as ItemPanelSettingsStore).saveItemPanelMode(mode);
     }
   }
 

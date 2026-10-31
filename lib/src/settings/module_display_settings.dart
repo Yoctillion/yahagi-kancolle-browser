@@ -5,6 +5,7 @@ import '../layout/flat_empty_text.dart';
 import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import 'fleet_display_options.dart';
+import 'item_panel_settings.dart';
 import 'layout_settings_controller.dart';
 import 'smart_panel_settings.dart';
 
@@ -79,6 +80,48 @@ Widget displaySettingsGear(
     ),
     onPressed: onPressed,
   );
+}
+
+// The smart panel opens its own settings, so the shared item view choice has
+// to be reachable from there too.
+bool _showsItemPanelOptions(String module) =>
+    module == 'items' || module == 'smart';
+
+List<Widget> _itemPanelOptions(
+  BuildContext context,
+  LayoutSettingsController controller,
+) {
+  const labels = {
+    ItemPanelMode.compact: FleetUiKeys.itemPanelCompact,
+    ItemPanelMode.detailed: FleetUiKeys.itemPanelDetailed,
+  };
+  return [
+    const SizedBox(height: 12),
+    Divider(height: 1, color: appColor(context, const Color(0xff294052))),
+    const SizedBox(height: 8),
+    Text(
+      fleetText(context, FleetUiKeys.itemPanelView),
+      style: TextStyle(
+        color: appColor(context, const Color(0xffd8ad60)),
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    const SizedBox(height: 4),
+    Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        for (final entry in labels.entries)
+          ChoiceChip(
+            key: Key('item-panel-mode-${entry.key.name}'),
+            label: Text(fleetText(context, entry.value)),
+            selected: controller.itemPanelMode == entry.key,
+            showCheckmark: false,
+            onSelected: (_) => controller.setItemPanelMode(entry.key),
+          ),
+      ],
+    ),
+  ];
 }
 
 List<Widget> _smartPanelOptions(
@@ -192,6 +235,9 @@ Future<void> showModuleDisplaySettings(
                             );
                             controller.setSmartPanelAutoSwitch(true);
                           }
+                          if (_showsItemPanelOptions(module)) {
+                            controller.setItemPanelMode(ItemPanelMode.compact);
+                          }
                         },
                       ),
                       const Spacer(),
@@ -276,6 +322,8 @@ Future<void> showModuleDisplaySettings(
                   ],
                   if (module == 'smart')
                     ..._smartPanelOptions(context, controller),
+                  if (_showsItemPanelOptions(module))
+                    ..._itemPanelOptions(context, controller),
                   if (module == 'repair') ...[
                     const SizedBox(height: 12),
                     Divider(

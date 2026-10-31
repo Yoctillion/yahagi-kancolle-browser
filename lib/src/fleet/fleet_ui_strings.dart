@@ -21,6 +21,9 @@ abstract final class FleetUiKeys {
   static const smartHeaderTabs = '文字标签';
   static const smartHeaderIcons = '图标条';
   static const smartAutoSwitch = '自动切换';
+  static const itemPanelView = '道具视图';
+  static const itemPanelCompact = '精简';
+  static const itemPanelDetailed = '完整';
   static const fleetSelectorName = '舰队切换名称';
   static const customFleetName = '自定义舰队名';
   static const shortFleetNumber = '1–4 简称';
@@ -89,6 +92,7 @@ abstract final class FleetUiKeys {
     },
     'battle': <String, String>{},
     'pre_sortie': <String, String>{},
+    'items': <String, String>{},
     'smart': <String, String>{},
   };
 
@@ -100,6 +104,7 @@ abstract final class FleetUiKeys {
     'quests': '任务简报显示内容',
     'battle': '战斗简报显示内容',
     'pre_sortie': '出击准备显示内容',
+    'items': '道具显示内容',
     'smart': '动态显示内容',
   };
 }
@@ -182,6 +187,22 @@ String fleetText(BuildContext context, String source) {
       "Sortie preparation display",
     ),
     "胶囊外观": ("胶囊外观", "膠囊外觀", "カプセルの外観", "캡슐 모양", "Capsule appearance"),
+    "道具显示内容": (
+      "道具显示内容",
+      "道具顯示內容",
+      "アイテムの表示内容",
+      "아이템 표시 내용",
+      "Item display",
+    ),
+    FleetUiKeys.itemPanelView: (
+      "道具视图",
+      "道具視圖",
+      "アイテム表示",
+      "아이템 보기",
+      "Item view",
+    ),
+    FleetUiKeys.itemPanelCompact: ("精简", "精簡", "コンパクト", "간략", "Compact"),
+    FleetUiKeys.itemPanelDetailed: ("完整", "完整", "詳細", "상세", "Detailed"),
     "动态显示内容": (
       "动态显示内容",
       "動態顯示內容",
