@@ -4102,6 +4102,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get smartPanelStatePractice => 'Exercises';
 
   @override
+  String get itemPanelTitle => 'Items';
+
+  @override
+  String get itemGroupReward => 'Rewards';
+
+  @override
+  String get itemGroupImprovement => 'Improvement';
+
+  @override
+  String get itemGroupSeasonal => 'Seasonal';
+
+  @override
+  String get itemGroupConsumable => 'Consumables';
+
+  @override
+  String get itemGroupOther => 'Other';
+
+  @override
   String practiceSubmarineExpS(int exp) {
     return 'Submarine S-rank $exp';
   }

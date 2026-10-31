@@ -3972,6 +3972,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String get smartPanelStatePractice => '演習';
 
   @override
+  String get itemPanelTitle => 'アイテム';
+
+  @override
+  String get itemGroupReward => '報酬・改装';
+
+  @override
+  String get itemGroupImprovement => '改修資材';
+
+  @override
+  String get itemGroupSeasonal => '期間限定';
+
+  @override
+  String get itemGroupConsumable => '消耗品';
+
+  @override
+  String get itemGroupOther => 'その他';
+
+  @override
   String practiceSubmarineExpS(int exp) {
     return '潜水艦 S勝利 $exp';
   }

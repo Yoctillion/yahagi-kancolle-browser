@@ -1447,6 +1447,12 @@
   "smartPanelStateQuests": "任務",
   "smartPanelStateExpeditionCheck": "遠征チェック",
   "smartPanelStatePractice": "演習",
+  "itemPanelTitle": "アイテム",
+  "itemGroupReward": "報酬・改装",
+  "itemGroupImprovement": "改修資材",
+  "itemGroupSeasonal": "期間限定",
+  "itemGroupConsumable": "消耗品",
+  "itemGroupOther": "その他",
   "practiceSubmarineExpS": "潜水艦 S勝利 {exp}",
   "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

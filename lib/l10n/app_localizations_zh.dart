@@ -3927,6 +3927,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get smartPanelStatePractice => '演习';
 
   @override
+  String get itemPanelTitle => '道具';
+
+  @override
+  String get itemGroupReward => '奖励/改装';
+
+  @override
+  String get itemGroupImprovement => '改修资材';
+
+  @override
+  String get itemGroupSeasonal => '活动限定';
+
+  @override
+  String get itemGroupConsumable => '消耗品';
+
+  @override
+  String get itemGroupOther => '其他';
+
+  @override
   String practiceSubmarineExpS(int exp) {
     return '潜艇 S胜 $exp';
   }
@@ -7855,6 +7873,24 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get smartPanelStatePractice => '演習';
+
+  @override
+  String get itemPanelTitle => '道具';
+
+  @override
+  String get itemGroupReward => '獎勵/改裝';
+
+  @override
+  String get itemGroupImprovement => '改修資材';
+
+  @override
+  String get itemGroupSeasonal => '活動限定';
+
+  @override
+  String get itemGroupConsumable => '消耗品';
+
+  @override
+  String get itemGroupOther => '其他';
 
   @override
   String practiceSubmarineExpS(int exp) {

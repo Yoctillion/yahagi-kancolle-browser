@@ -2041,6 +2041,12 @@
   "smartPanelStateQuests": "임무",
   "smartPanelStateExpeditionCheck": "원정 점검",
   "smartPanelStatePractice": "연습",
+  "itemPanelTitle": "아이템",
+  "itemGroupReward": "보상/개장",
+  "itemGroupImprovement": "개수 자재",
+  "itemGroupSeasonal": "기간 한정",
+  "itemGroupConsumable": "소모품",
+  "itemGroupOther": "기타",
   "practiceSubmarineExpS": "잠수함 S승 {exp}",
   "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }
