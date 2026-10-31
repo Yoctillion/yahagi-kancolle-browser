@@ -1041,6 +1041,8 @@ class GameState {
     this.resources = const <GameResourceType, int>{},
     Map<int, int> useItems = const <int, int>{},
     bool hasUseItemData = false,
+    Map<int, int> payItems = const <int, int>{},
+    bool hasPayItemData = false,
     int furnitureCoins = 0,
     bool hasFurnitureCoinData = false,
     this.masterShipTypes = const <int, MasterShipType>{},
@@ -1082,6 +1084,10 @@ class GameState {
        // ignore: prefer_initializing_formals
        _hasUseItemData = hasUseItemData,
        // ignore: prefer_initializing_formals
+       _payItems = payItems,
+       // ignore: prefer_initializing_formals
+       _hasPayItemData = hasPayItemData,
+       // ignore: prefer_initializing_formals
        _furnitureCoins = furnitureCoins,
        // ignore: prefer_initializing_formals
        _hasFurnitureCoinData = hasFurnitureCoinData,
@@ -1097,6 +1103,8 @@ class GameState {
   final Map<GameResourceType, int> resources;
   final Map<int, int>? _useItems;
   final bool? _hasUseItemData;
+  final Map<int, int>? _payItems;
+  final bool? _hasPayItemData;
   final int? _furnitureCoins;
   final bool? _hasFurnitureCoinData;
   final Map<int, MasterShipType> masterShipTypes;
@@ -1145,6 +1153,9 @@ class GameState {
   Map<int, int> get useItems => _useItems ?? const <int, int>{};
   bool get hasUseItemData => _hasUseItemData ?? false;
   int? useItemCount(int id) => hasUseItemData ? (useItems[id] ?? 0) : null;
+  Map<int, int> get payItems => _payItems ?? const <int, int>{};
+  bool get hasPayItemData => _hasPayItemData ?? false;
+  int payItemCount(int id) => payItems[id] ?? 0;
   int get furnitureCoins => _furnitureCoins ?? 0;
   bool get hasFurnitureCoinData => _hasFurnitureCoinData ?? false;
   int get equipmentCapacityUsed => slotItems.values
@@ -1214,6 +1225,8 @@ class GameState {
     Map<GameResourceType, int>? resources,
     Map<int, int>? useItems,
     bool? hasUseItemData,
+    Map<int, int>? payItems,
+    bool? hasPayItemData,
     int? furnitureCoins,
     bool? hasFurnitureCoinData,
     Map<int, MasterShipType>? masterShipTypes,
@@ -1258,6 +1271,8 @@ class GameState {
       resources: resources ?? this.resources,
       useItems: useItems ?? this.useItems,
       hasUseItemData: hasUseItemData ?? this.hasUseItemData,
+      payItems: payItems ?? this.payItems,
+      hasPayItemData: hasPayItemData ?? this.hasPayItemData,
       furnitureCoins: furnitureCoins ?? this.furnitureCoins,
       hasFurnitureCoinData: hasFurnitureCoinData ?? this.hasFurnitureCoinData,
       masterShipTypes: masterShipTypes ?? this.masterShipTypes,

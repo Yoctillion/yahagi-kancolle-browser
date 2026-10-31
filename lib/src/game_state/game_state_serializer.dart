@@ -13,6 +13,8 @@ class GameStateSerializer {
     'resources': state.resources.map((k, v) => MapEntry(k.apiId.toString(), v)),
     'useItems': state.useItems.map((k, v) => MapEntry(k.toString(), v)),
     'hasUseItemData': state.hasUseItemData,
+    'payItems': state.payItems.map((k, v) => MapEntry(k.toString(), v)),
+    'hasPayItemData': state.hasPayItemData,
     'furnitureCoins': state.furnitureCoins,
     'hasFurnitureCoinData': state.hasFurnitureCoinData,
     'mapDifficulties': state.mapDifficulties.map(
@@ -275,6 +277,18 @@ class GameStateSerializer {
           final count = _int(entry.value);
           if (id != null && id > 0 && count != null) {
             useItems[id] = count.clamp(0, 1 << 31).toInt();
+          }
+        }
+      }
+
+      final payItems = <int, int>{};
+      final rawPayItems = map['payItems'];
+      if (rawPayItems is Map) {
+        for (final entry in rawPayItems.entries) {
+          final id = int.tryParse('${entry.key}');
+          final count = _int(entry.value);
+          if (id != null && id > 0 && count != null) {
+            payItems[id] = count.clamp(0, 1 << 31).toInt();
           }
         }
       }
@@ -723,6 +737,8 @@ class GameStateSerializer {
         resources: resources,
         useItems: useItems,
         hasUseItemData: map['hasUseItemData'] == true || useItems.isNotEmpty,
+        payItems: payItems,
+        hasPayItemData: map['hasPayItemData'] == true,
         furnitureCoins: _int(map['furnitureCoins']) ?? 0,
         hasFurnitureCoinData: map['hasFurnitureCoinData'] == true,
         mapDifficulties: mapDifficulties,
