@@ -212,6 +212,11 @@ void main() {
     // Each entry is intentionally shared: product/game terminology, numerals,
     // protocol names, or a language self-name. Adding a key requires review.
     const reviewedZhHant = <String>{
+      // 道具, 消耗品 and 其他 share the same spelling in both Chinese scripts.
+      'itemPanelTitle',
+      'smartPanelStateItems',
+      'itemGroupConsumable',
+      'itemGroupOther',
       // Admiral ranks below 少将 share the same Han spelling in both scripts.
       'practiceRank5',
       'practiceRank6',
@@ -418,6 +423,8 @@ void main() {
       'themeClassicDark',
     };
     const reviewedJa = <String>{
+      // 消耗品 is the same word in Japanese and Chinese.
+      'itemGroupConsumable',
       // In-game admiral ranks use the same kanji in Japanese.
       'practiceRank2',
       'practiceRank3',
