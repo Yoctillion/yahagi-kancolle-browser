@@ -33,6 +33,11 @@ The name-affix resolution follows KC3Kai/KC3Kai under the MIT license:
 https://github.com/KC3Kai/KC3Kai
 Its full license is retained in assets/data/subtitles/KC3KAI_LICENSE.txt.
 
+The item panel's five-language item names (lib/src/item_panel/use_item_strings.dart)
+and the item icons it adds under assets/images/material/ come from
+KC3Kai/KC3Kai under the same MIT license. The icons depict original game items
+and remain subject to the game's rights.
+
 Voice identifier mapping is adapted from the MIT-licensed poi-plugin-subtitle:
 https://github.com/kcwikizh/poi-plugin-subtitle
 Its copyright and complete MIT license are retained in

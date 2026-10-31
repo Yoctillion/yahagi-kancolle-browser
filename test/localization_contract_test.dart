@@ -86,6 +86,7 @@ void main() {
       'lib/src/battle/battle_detail_strings.dart',
       'lib/src/expedition/expedition_strings.dart',
       'lib/src/fleet/fleet_ui_strings.dart',
+      'lib/src/item_panel/use_item_strings.dart',
       'lib/src/localization/runtime_message_text.dart',
       'lib/src/localization/ui_text.dart',
       'lib/src/localization/record_backup_strings.dart',
