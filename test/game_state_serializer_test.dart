@@ -20,10 +20,11 @@ void main() {
   });
 
   test('caches written before pay items load with none', () {
-    final legacy = jsonDecode(GameStateSerializer.serialize(GameState.empty))
-        as Map<String, Object?>
-      ..remove('payItems')
-      ..remove('hasPayItemData');
+    final legacy =
+        jsonDecode(GameStateSerializer.serialize(GameState.empty))
+              as Map<String, Object?>
+          ..remove('payItems')
+          ..remove('hasPayItemData');
 
     final restored = GameStateSerializer.deserialize(jsonEncode(legacy));
 

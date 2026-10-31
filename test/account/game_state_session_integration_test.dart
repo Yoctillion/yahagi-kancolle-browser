@@ -122,6 +122,69 @@ void main() {
     },
   );
 
+  group('pay item restore', () {
+    Future<void> seedPayItems(int memberId, Map<int, int> counts) async {
+      final cache = GameStateStore(saveDelay: const Duration(hours: 1));
+      final harness = await _Harness.create(cache: cache);
+      await harness.login(memberId);
+      await harness.send(_useItems(<int, int>{57: 4}));
+      await harness.send(_payItems(counts));
+      await cache.flush();
+    }
+
+    test('pay items return after a restart for the same account', () async {
+      await seedPayItems(1001, <int, int>{14: 3});
+
+      final restarted = await _Harness.create();
+      expect(restarted.controller.state.hasPayItemData, isFalse);
+      await restarted.login(1001);
+
+      expect(restarted.controller.state.hasPayItemData, isTrue);
+      expect(restarted.controller.state.payItemCount(14), 3);
+    });
+
+    test('pay items stay with their account', () async {
+      await seedPayItems(1001, <int, int>{14: 3});
+
+      final restarted = await _Harness.create();
+      await restarted.login(2002);
+
+      expect(restarted.controller.state.hasPayItemData, isFalse);
+      expect(restarted.controller.state.payItems, isEmpty);
+    });
+
+    test('switching back and forth keeps each account separate', () async {
+      await seedPayItems(1001, <int, int>{14: 3});
+      await seedPayItems(2002, <int, int>{16: 1});
+
+      final restarted = await _Harness.create();
+      await restarted.login(1001);
+      expect(restarted.controller.state.payItems, <int, int>{14: 3});
+      await restarted.login(2002);
+      expect(restarted.controller.state.payItems, <int, int>{16: 1});
+    });
+
+    test('only pay items are restored from the cached login', () async {
+      await seedPayItems(1001, <int, int>{14: 3});
+
+      final restarted = await _Harness.create();
+      await restarted.login(1001);
+
+      expect(restarted.controller.state.hasUseItemData, isFalse);
+      expect(restarted.controller.state.useItems, isEmpty);
+    });
+
+    test('a live payitem replaces restored counts', () async {
+      await seedPayItems(1001, <int, int>{14: 3});
+
+      final restarted = await _Harness.create();
+      await restarted.login(1001);
+      await restarted.send(_payItems(<int, int>{11: 2}));
+
+      expect(restarted.controller.state.payItems, <int, int>{11: 2});
+    });
+  });
+
   test('same scope metadata retains the claimed quest ledger', () async {
     await _seedLedgers();
     final harness = await _Harness.create();
@@ -275,6 +338,21 @@ CapturedApiEvent _basic(int memberId) => kcsapiEvent(
   <String, Object?>{'api_member_id': '$memberId', 'api_level': 1},
   capturedAt: _now,
 );
+
+CapturedApiEvent _payItems(Map<int, int> counts) => kcsapiEvent(
+  '/kcsapi/api_get_member/payitem',
+  <Object?>[
+    for (final entry in counts.entries)
+      <String, Object?>{'api_payitem_id': entry.key, 'api_count': entry.value},
+  ],
+  capturedAt: _now,
+);
+
+CapturedApiEvent _useItems(Map<int, int> counts) =>
+    kcsapiEvent('/kcsapi/api_get_member/useitem', <Object?>[
+      for (final entry in counts.entries)
+        <String, Object?>{'api_id': entry.key, 'api_count': entry.value},
+    ], capturedAt: _now);
 
 CapturedApiEvent _ships(int ownedId, int masterId) =>
     kcsapiEvent('/kcsapi/api_get_member/ship2', <Object?>[

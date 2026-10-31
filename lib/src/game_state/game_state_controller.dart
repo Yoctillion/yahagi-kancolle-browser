@@ -424,11 +424,16 @@ final class GameStateController extends ChangeNotifier
             previous.memberId != next.memberId) {
           // Restore only this verified account's task state. Inventory and
           // safety flags come from live responses, never from a cached login.
+          // Pay items are the one exception: login never resends them, they
+          // rarely change, and they only feed the display-only item panel.
           final cached = await gameStateStore?.loadForAccount(next.memberId);
           final quests = await _questsFor(next.memberId)?.loadQuests();
           if (!_isCurrent(scope)) return;
+          final restoredPayItems = next.hasPayItemData ? null : cached;
           next = next.copyWith(
             quests: quests?.isNotEmpty == true ? quests : cached?.quests,
+            payItems: restoredPayItems?.payItems,
+            hasPayItemData: restoredPayItems?.hasPayItemData,
           );
           hasAccountScopedQuests = true;
         }
