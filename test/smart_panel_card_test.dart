@@ -176,7 +176,26 @@ void main() {
     expect(controller.state, SmartPanelState.quests);
   });
 
-  testWidgets('tabs show six labels and select on tap', (tester) async {
+  test('every state has an icon', () {
+    expect(smartPanelStateIcons.keys.toSet(), SmartPanelState.values.toSet());
+  });
+
+  for (final style in SmartPanelHeaderStyle.values) {
+    for (final panel in PanelStyle.values) {
+      testWidgets('seven states fit at 320 dp ($style, $panel)', (
+        tester,
+      ) async {
+        await pump(tester, style, panel: panel, width: 320);
+        for (final state in SmartPanelState.values) {
+          controller.select(state);
+          await tester.pump();
+          expect(tester.takeException(), isNull, reason: state.name);
+        }
+      });
+    }
+  }
+
+  testWidgets('tabs show every label and select on tap', (tester) async {
     await pump(tester, SmartPanelHeaderStyle.tabs);
     expect(find.text(_zh.smartPanelTitle), findsOneWidget);
     for (final state in SmartPanelState.values) {
@@ -187,7 +206,7 @@ void main() {
     expect(controller.state, SmartPanelState.practice);
   });
 
-  testWidgets('icons show six buttons and select on tap', (tester) async {
+  testWidgets('icons show every button and select on tap', (tester) async {
     await pump(tester, SmartPanelHeaderStyle.icons);
     for (final state in SmartPanelState.values) {
       expect(find.byKey(Key('smart-panel-icon-${state.name}')), findsOneWidget);
@@ -209,11 +228,25 @@ void main() {
           find.byKey(Key('smart-panel-icon-${state.name}')),
         );
         // Card headers below 220 dp scale as a whole; flat ones do not.
-        final minWidth = panel == PanelStyle.flat ? 24.0 : 22.0;
+        final minWidth = panel == PanelStyle.flat ? 24.0 : 21.0;
         expect(rect.width, greaterThanOrEqualTo(minWidth), reason: '$state');
         expect(rect.height, greaterThanOrEqualTo(22), reason: '$state');
       }
       expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final panel in PanelStyle.values) {
+    testWidgets('icon strip drops the logo only when narrow ($panel)', (
+      tester,
+    ) async {
+      final icon = find.byIcon(smartPanelStateIcons[SmartPanelState.home]!);
+
+      await pump(tester, SmartPanelHeaderStyle.icons, panel: panel, width: 220);
+      expect(icon, findsOneWidget);
+
+      await pump(tester, SmartPanelHeaderStyle.icons, panel: panel, width: 360);
+      expect(icon, findsNWidgets(2));
     });
   }
 

@@ -90,6 +90,7 @@ void main() {
       'api_get_member/practice': SmartPanelState.practice,
       'api_req_practice/battle': SmartPanelState.battle,
       'api_req_member/get_practice_enemyinfo': SmartPanelState.practice,
+      'api_get_member/payitem': SmartPanelState.items,
     };
     for (final entry in cases.entries) {
       await send(entry.key);
@@ -116,6 +117,22 @@ void main() {
     await send('api_port/port');
     expect(controller.state, SmartPanelState.home);
     expect(controller.autoSelected, isTrue);
+  });
+
+  test('manual selection survives useitem', () async {
+    await send('api_get_member/payitem');
+    controller.select(SmartPanelState.quests);
+
+    await send('api_get_member/useitem');
+
+    expect(controller.state, SmartPanelState.quests);
+    expect(controller.autoSelected, isFalse);
+  });
+
+  test('auto switch off ignores payitem', () async {
+    autoSwitch = false;
+    await send('api_get_member/payitem');
+    expect(controller.state, SmartPanelState.home);
   });
 
   test('auto switch off keeps state and sends no fleet request', () async {

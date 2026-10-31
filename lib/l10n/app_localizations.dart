@@ -7358,6 +7358,48 @@ abstract class AppLocalizations {
   /// **'演习'**
   String get smartPanelStatePractice;
 
+  /// No description provided for @smartPanelStateItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'道具'**
+  String get smartPanelStateItems;
+
+  /// No description provided for @itemPanelTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'道具'**
+  String get itemPanelTitle;
+
+  /// No description provided for @itemGroupReward.
+  ///
+  /// In zh, this message translates to:
+  /// **'奖励/改装'**
+  String get itemGroupReward;
+
+  /// No description provided for @itemGroupImprovement.
+  ///
+  /// In zh, this message translates to:
+  /// **'改修资材'**
+  String get itemGroupImprovement;
+
+  /// No description provided for @itemGroupSeasonal.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动限定'**
+  String get itemGroupSeasonal;
+
+  /// No description provided for @itemGroupConsumable.
+  ///
+  /// In zh, this message translates to:
+  /// **'消耗品'**
+  String get itemGroupConsumable;
+
+  /// No description provided for @itemGroupOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他'**
+  String get itemGroupOther;
+
   /// No description provided for @practiceSubmarineExpS.
   ///
   /// In zh, this message translates to:

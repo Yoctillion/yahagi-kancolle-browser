@@ -26,6 +26,7 @@ class GameStateReducer {
       // api_result_msg. Its state transition is driven by request parameters.
       allowMissingData:
           GameCapturePathCatalog.battleRetreat.contains(event.path) ||
+          event.path == '/kcsapi/api_get_member/payitem' ||
           event.path == '/kcsapi/api_req_hensei/change' ||
           event.path == '/kcsapi/api_req_hensei/combined' ||
           event.path == '/kcsapi/api_req_kaisou/slotset' ||
@@ -84,6 +85,12 @@ class GameStateReducer {
       '/kcsapi/api_get_member/useitem' => state.copyWith(
         useItems: _parseUseItems(_requiredList(data, 'useitem')),
         hasUseItemData: true,
+        serverOrigin: origin,
+        updatedAt: event.capturedAt,
+      ),
+      '/kcsapi/api_get_member/payitem' => state.copyWith(
+        payItems: _parsePayItems(_optionalList(data)),
+        hasPayItemData: true,
         serverOrigin: origin,
         updatedAt: event.capturedAt,
       ),
@@ -2230,6 +2237,17 @@ class GameStateReducer {
     for (final value in values) {
       final item = _optionalMap(value);
       final id = _asInt(item?['api_id']);
+      if (id <= 0) continue;
+      result[id] = _asInt(item?['api_count']).clamp(0, 1 << 31).toInt();
+    }
+    return result;
+  }
+
+  Map<int, int> _parsePayItems(List<Object?> values) {
+    final result = <int, int>{};
+    for (final value in values) {
+      final item = _optionalMap(value);
+      final id = _asInt(item?['api_payitem_id']);
       if (id <= 0) continue;
       result[id] = _asInt(item?['api_count']).clamp(0, 1 << 31).toInt();
     }

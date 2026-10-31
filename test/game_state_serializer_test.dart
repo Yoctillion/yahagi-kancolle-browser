@@ -1,8 +1,37 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_serializer.dart';
 
 void main() {
+  test('pay items survive cache serialization', () {
+    const state = GameState(
+      payItems: <int, int>{14: 3, 16: 1},
+      hasPayItemData: true,
+    );
+
+    final restored = GameStateSerializer.deserialize(
+      GameStateSerializer.serialize(state),
+    );
+
+    expect(restored.hasPayItemData, isTrue);
+    expect(restored.payItems, <int, int>{14: 3, 16: 1});
+  });
+
+  test('caches written before pay items load with none', () {
+    final legacy =
+        jsonDecode(GameStateSerializer.serialize(GameState.empty))
+              as Map<String, Object?>
+          ..remove('payItems')
+          ..remove('hasPayItemData');
+
+    final restored = GameStateSerializer.deserialize(jsonEncode(legacy));
+
+    expect(restored.hasPayItemData, isFalse);
+    expect(restored.payItems, isEmpty);
+  });
+
   test(
     'ship experience and expansion-slot state survive cache serialization',
     () {

@@ -5,6 +5,7 @@ abstract final class GameCapturePathCatalog {
     '/kcsapi/api_get_member/basic',
     '/kcsapi/api_get_member/require_info',
     '/kcsapi/api_get_member/useitem',
+    '/kcsapi/api_get_member/payitem',
     '/kcsapi/api_get_member/material',
     '/kcsapi/api_get_member/deck',
     '/kcsapi/api_get_member/ship2',

@@ -39,6 +39,7 @@ class HdLayoutSettings {
     'battle',
     'land_base',
     'pre_sortie',
+    'items',
     'smart',
   ];
   static const defaultSidebarOrder = [
@@ -50,6 +51,7 @@ class HdLayoutSettings {
     'construction',
     'quests',
     'pre_sortie',
+    'items',
     'smart',
   ];
   final List<HdBottomModule>? portraitModules;

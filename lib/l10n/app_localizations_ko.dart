@@ -4000,6 +4000,27 @@ class AppLocalizationsKo extends AppLocalizations {
   String get smartPanelStatePractice => '연습';
 
   @override
+  String get smartPanelStateItems => '아이템';
+
+  @override
+  String get itemPanelTitle => '아이템';
+
+  @override
+  String get itemGroupReward => '보상/개장';
+
+  @override
+  String get itemGroupImprovement => '개수 자재';
+
+  @override
+  String get itemGroupSeasonal => '기간 한정';
+
+  @override
+  String get itemGroupConsumable => '소모품';
+
+  @override
+  String get itemGroupOther => '기타';
+
+  @override
   String practiceSubmarineExpS(int exp) {
     return '잠수함 S승 $exp';
   }

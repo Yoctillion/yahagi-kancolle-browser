@@ -22,6 +22,7 @@ String smartPanelStateLabel(AppLocalizations l10n, SmartPanelState state) =>
       SmartPanelState.quests => l10n.smartPanelStateQuests,
       SmartPanelState.expeditionCheck => l10n.smartPanelStateExpeditionCheck,
       SmartPanelState.practice => l10n.smartPanelStatePractice,
+      SmartPanelState.items => l10n.smartPanelStateItems,
     };
 
 const smartPanelStateIcons = <SmartPanelState, IconData>{
@@ -31,7 +32,10 @@ const smartPanelStateIcons = <SmartPanelState, IconData>{
   SmartPanelState.quests: Icons.assignment_outlined,
   SmartPanelState.expeditionCheck: Icons.fact_check_outlined,
   SmartPanelState.practice: Icons.groups_outlined,
+  SmartPanelState.items: Icons.inventory_2_outlined,
 };
+
+const _iconStripFullWidth = 270.0;
 
 /// Detail-area card whose content follows [SmartPanelController.state]. The
 /// state body is wrapped in [DashboardCardEmbedScope] so existing cards render
@@ -82,6 +86,12 @@ class SmartPanelCard extends StatelessWidget {
       final editing = DashboardEditingScope.isEditing(context);
       final tabs = headerStyle == SmartPanelHeaderStyle.tabs || editing;
       final dropdown = headerStyle == SmartPanelHeaderStyle.dropdown;
+      // Below this width the strip only keeps a usable hit area by taking the
+      // logo's space, and the highlighted icon already names the state.
+      final tightIcons =
+          headerStyle == SmartPanelHeaderStyle.icons &&
+          !editing &&
+          cardWidth < _iconStripFullWidth;
       return DashboardCard(
         title: tabs ? l10n.smartPanelTitle : label,
         icon: Icon(
@@ -91,7 +101,7 @@ class SmartPanelCard extends StatelessWidget {
         ),
         collapsed: collapsed,
         onToggleCollapse: onToggleCollapse,
-        showLogo: showLogo,
+        showLogo: showLogo && !tightIcons,
         // The highlighted icon already names the state, and the strip needs
         // the title's width to keep its buttons tappable.
         showTitle:
@@ -116,7 +126,7 @@ class SmartPanelCard extends StatelessWidget {
           // narrower than 220; the flat header caps trailing itself.
           SmartPanelHeaderStyle.icons => ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: math.max(cardWidth - 24, 220) - 60,
+              maxWidth: math.max(cardWidth - 24, 220) - (tightIcons ? 51 : 60),
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -252,7 +262,10 @@ class _HeaderButton extends StatelessWidget {
     final height = flat ? 22.0 : 28.0;
     return IconButton(
       tooltip: tooltip,
-      constraints: BoxConstraints.tightFor(width: 26, height: height),
+      constraints: BoxConstraints.tightFor(
+        width: flat ? 24 : 26,
+        height: height,
+      ),
       style: const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
       padding: EdgeInsets.zero,
       icon: Icon(

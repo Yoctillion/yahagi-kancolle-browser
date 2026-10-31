@@ -2041,6 +2041,13 @@
   "smartPanelStateQuests": "Quests",
   "smartPanelStateExpeditionCheck": "Expedition check",
   "smartPanelStatePractice": "Exercises",
+  "smartPanelStateItems": "Items",
+  "itemPanelTitle": "Items",
+  "itemGroupReward": "Rewards",
+  "itemGroupImprovement": "Improvement",
+  "itemGroupSeasonal": "Seasonal",
+  "itemGroupConsumable": "Consumables",
+  "itemGroupOther": "Other",
   "practiceSubmarineExpS": "Submarine S-rank {exp}",
   "@practiceSubmarineExpS": {"placeholders": {"exp": {"type": "int"}}}
 }

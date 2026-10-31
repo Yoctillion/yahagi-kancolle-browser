@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/src/capture/game_capture_path_catalog.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/fleet_metrics.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
@@ -335,6 +336,63 @@ void main() {
       );
 
       expect(state.mapDifficulty(62, 2), 3);
+    });
+
+    test('payitem endpoint replaces pay item counts', () {
+      final first = GameStateReducer().reduce(
+        GameState.empty,
+        kcsapiEvent('/kcsapi/api_get_member/payitem', <Object?>[
+          <String, Object?>{'api_payitem_id': '14', 'api_count': 3},
+          <String, Object?>{'api_payitem_id': 16, 'api_count': 1},
+        ]),
+      );
+      expect(first.hasPayItemData, isTrue);
+      expect(first.payItemCount(14), 3);
+      expect(first.payItemCount(16), 1);
+
+      final second = GameStateReducer().reduce(
+        first,
+        kcsapiEvent('/kcsapi/api_get_member/payitem', <Object?>[
+          <String, Object?>{'api_payitem_id': 14, 'api_count': 2},
+        ]),
+      );
+      expect(second.payItemCount(14), 2);
+      expect(second.payItemCount(16), 0);
+    });
+
+    test('payitem without an array keeps the game state alive', () {
+      final events = {
+        'null': kcsapiEvent('/kcsapi/api_get_member/payitem', null),
+        'missing': kcsapiEvent(
+          '/kcsapi/api_get_member/payitem',
+          null,
+          includeApiData: false,
+        ),
+        'map': kcsapiEvent(
+          '/kcsapi/api_get_member/payitem',
+          <String, Object?>{},
+        ),
+      };
+      for (final entry in events.entries) {
+        final state = GameStateReducer().reduce(
+          const GameState(
+            useItems: <int, int>{54: 7},
+            hasUseItemData: true,
+            payItems: <int, int>{14: 3},
+          ),
+          entry.value,
+        );
+        expect(state.hasPayItemData, isTrue, reason: entry.key);
+        expect(state.payItems, isEmpty, reason: entry.key);
+        expect(state.useItemCount(54), 7, reason: entry.key);
+      }
+    });
+
+    test('payitem is captured for game state', () {
+      expect(
+        GameCapturePathCatalog.gameState,
+        contains('/kcsapi/api_get_member/payitem'),
+      );
     });
 
     test('useitem endpoint captures special item counts', () {
