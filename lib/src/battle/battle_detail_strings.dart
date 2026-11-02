@@ -309,6 +309,7 @@ class BattleDetailStrings {
     '潜艇战': ('潛艇戰', '潜水艦戦', '잠수함전', 'Submarine battle'),
     'Boss 战': ('Boss 戰', 'ボス戦', '보스전', 'Boss battle'),
     '空袭战': ('空襲戰', '空襲戦', '공습전', 'Air raid'),
+    '敌方预测': ('敵方預測', '敵予測', '적 예측', 'Enemy forecast'),
     '夜转昼战': ('夜轉晝戰', '払暁戦', '여명돌입전', 'Night-to-day battle'),
     '雷达射击': ('雷達射擊', 'レーダー射撃', '레이더 사격', 'Radar ambush'),
     '对潜空袭': ('對潛空襲', '対潜空襲', '대잠 공습', 'Anti-sub air raid'),

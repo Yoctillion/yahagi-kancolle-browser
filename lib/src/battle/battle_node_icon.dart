@@ -2,48 +2,38 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../layout/flat_style.dart';
 import 'battle_detail_strings.dart';
 import 'battle_models.dart';
 
-// The mark is drawn on a fixed 28-unit grid and scaled to the badge size.
+// The mark is drawn on a fixed 28-unit grid and scaled to the icon size.
 const double _grid = 28;
 const Offset _center = Offset(14, 14);
 const Offset _bossCenter = Offset(14, 15);
+const double _arrowWidth = 3;
 
 const _enemyArrow = Color(0xffff5d4d);
 const _friendArrow = Color(0xff4aa8ff);
 const _radarWave = Color(0xffff9800);
 const _combinedRing = Color(0xffff8c78);
+const _bossRing = Color(0xffffb3a6);
 
-const _battle = _BadgeFill(Color(0xffa8281f), Color(0xfff1e7e2));
-const _night = _BadgeFill(Color(0xff6d4bd8), Color(0xffe3dcff));
-const _resource = _BadgeFill(Color(0xff1f7a45), Color(0xffd6f2e2));
-const _maelstrom = _BadgeFill(
-  Color(0xffd2c6ff),
-  Color(0xff6b5b91),
-  letter: Color(0xff1a1036),
-);
-const _route = _BadgeFill(
-  Color(0xffffffff),
-  Color(0xff8197a5),
-  letter: Color(0xff0d1a24),
-);
-const _quiet = _BadgeFill(Color(0xff0a7d7b), Color(0xffd3efee));
-const _neutral = _BadgeFill(
-  Color(0xff26343e),
-  Color(0xff9db2bf),
-  letter: Color(0xffdfe8ee),
-);
+const _battle = _IconFill(Color(0xffa8281f), Color(0xfff1e7e2));
+const _night = _IconFill(Color(0xff6d4bd8), Color(0xffe3dcff));
+const _resource = _IconFill(Color(0xff1f7a45), Color(0xffd6f2e2));
+const _maelstrom = _IconFill(Color(0xffd2c6ff), Color(0xff6b5b91));
+const _route = _IconFill(Color(0xffffffff), Color(0xff8197a5));
+const _quiet = _IconFill(Color(0xff0a7d7b), Color(0xffd3efee));
+const _neutral = _IconFill(Color(0xff26343e), Color(0xff9db2bf));
 
-class _BadgeFill {
-  const _BadgeFill(this.fill, this.ring, {this.letter = Colors.white});
+class _IconFill {
+  const _IconFill(this.fill, this.ring);
 
   final Color fill;
   final Color ring;
-  final Color letter;
 }
 
-_BadgeFill _fillOf(BattleNodeKind kind) => switch (kind) {
+_IconFill _fillOf(BattleNodeKind kind) => switch (kind) {
   BattleNodeKind.battle ||
   BattleNodeKind.nightToDay ||
   BattleNodeKind.airBattle ||
@@ -63,15 +53,14 @@ _BadgeFill _fillOf(BattleNodeKind kind) => switch (kind) {
   BattleNodeKind.start || BattleNodeKind.unknown => _neutral,
 };
 
-/// A node's letter on a mark that says what kind of node it is, so a narrow
-/// panel needs no separate type text. The marks follow the in-game cell icons
-/// (red arrow for enemy aircraft, blue for ours) but are redrawn around the
-/// letter, which the originals would cover.
-class BattleNodeBadge extends StatelessWidget {
-  const BattleNodeBadge({
-    super.key = const Key('battle-node-badge'),
+/// A small mark for what kind of node this is, set inline before the node
+/// name. The marks follow the in-game cell icons: a red arrow for enemy
+/// aircraft, blue for ours, and a blue ring for submarines.
+class BattleNodeIcon extends StatelessWidget {
+  const BattleNodeIcon({
+    super.key = const Key('battle-node-icon'),
     required this.nodeContext,
-    this.size = _grid,
+    this.size = flatNodeIconSize,
   });
 
   final BattleContext nodeContext;
@@ -80,38 +69,16 @@ class BattleNodeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = BattleDetailStrings.of(context);
-    final kind = nodeContext.nodeKind;
     return Tooltip(
       message: nodeContext.nodeTypeLabels.map(strings.localize).join(' · '),
       child: SizedBox.square(
         dimension: size,
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            CustomPaint(
-              key: const Key('battle-node-badge-mark'),
-              painter: _NodeMarkPainter(kind, boss: nodeContext.isBossNode),
-            ),
-            Padding(
-              padding: EdgeInsets.all(size * .2),
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    nodeContext.nodeBadgeLetter,
-                    maxLines: 1,
-                    textScaler: TextScaler.noScaling,
-                    style: TextStyle(
-                      color: _fillOf(kind).letter,
-                      fontSize: size * .45,
-                      fontWeight: FontWeight.w900,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+        child: CustomPaint(
+          painter: _NodeMarkPainter(
+            nodeContext.nodeKind,
+            boss: nodeContext.isBossNode,
+            submarine: nodeContext.isSubmarineBattle,
+          ),
         ),
       ),
     );
@@ -119,10 +86,15 @@ class BattleNodeBadge extends StatelessWidget {
 }
 
 class _NodeMarkPainter extends CustomPainter {
-  const _NodeMarkPainter(this.kind, {required this.boss});
+  const _NodeMarkPainter(
+    this.kind, {
+    required this.boss,
+    required this.submarine,
+  });
 
   final BattleNodeKind kind;
   final bool boss;
+  final bool submarine;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -134,30 +106,29 @@ class _NodeMarkPainter extends CustomPainter {
     final fill = _fillOf(kind);
     switch (kind) {
       case BattleNodeKind.airBattle:
-        _disc(canvas, 9.5, fill.fill);
+        _disc(canvas, 8.5, fill.fill);
         _arrow(canvas, _enemyArrow);
         _arrow(canvas, _friendArrow, opposite: true);
       case BattleNodeKind.airRaid:
-        _disc(canvas, 9.5, fill.fill);
+        _disc(canvas, 8.5, fill.fill);
         _arrow(canvas, _enemyArrow);
       case BattleNodeKind.antiSubAir:
-        _disc(canvas, 8.4, fill.fill);
-        _ring(canvas, _center, 9.9, _friendArrow, 1.8);
+        _submarineMark(canvas, fill.fill);
         _arrow(canvas, _enemyArrow);
       case BattleNodeKind.radarAmbush:
-        _disc(canvas, 9.5, fill.fill);
+        _disc(canvas, 8.5, fill.fill);
         _radarRing(canvas);
       case BattleNodeKind.enemyCombined:
-        _ring(canvas, _center, 12.2, _combinedRing, 1.4);
-        _disc(canvas, 9.6, fill.fill);
-        _ring(canvas, _center, 9.6, fill.ring, 1.2);
+        _ring(canvas, _center, 12.4, _combinedRing, 2);
+        _disc(canvas, 8.8, fill.fill);
       case BattleNodeKind.nightToDay:
-        _disc(canvas, 11, fill.fill);
-        _nightSwirl(canvas, _center);
-        _ring(canvas, _center, 11, fill.ring, 1.4);
+        _disc(canvas, 12, fill.fill);
+        _nightSwirl(canvas, _center, 12);
+      case _ when submarine:
+        _submarineMark(canvas, fill.fill);
       default:
         _disc(canvas, 11, fill.fill);
-        _ring(canvas, _center, 11, fill.ring, 1.4);
+        _ring(canvas, _center, 11, fill.ring, 2);
     }
   }
 
@@ -165,12 +136,19 @@ class _NodeMarkPainter extends CustomPainter {
   void _paintBoss(Canvas canvas) {
     final horns = Paint()..color = _enemyArrow;
     canvas
-      ..drawPath(_triangle(7.2, 7.8, 4.6, 1, 12, 4.2), horns)
-      ..drawPath(_triangle(20.8, 7.8, 23.4, 1, 16, 4.2), horns);
+      ..drawPath(_triangle(6.6, 8.4, 3.6, 0.4, 12.4, 4.2), horns)
+      ..drawPath(_triangle(21.4, 8.4, 24.4, 0.4, 15.6, 4.2), horns);
     final fill = _fillOf(kind);
     canvas.drawCircle(_bossCenter, 11, Paint()..color = fill.fill);
-    if (kind == BattleNodeKind.nightToDay) _nightSwirl(canvas, _bossCenter);
-    _ring(canvas, _bossCenter, 11, const Color(0xffffb3a6), 1.4);
+    if (kind == BattleNodeKind.nightToDay) {
+      _nightSwirl(canvas, _bossCenter, 11);
+    }
+    _ring(canvas, _bossCenter, 11, submarine ? _friendArrow : _bossRing, 2);
+  }
+
+  void _submarineMark(Canvas canvas, Color fill) {
+    _disc(canvas, 8, fill);
+    _ring(canvas, _center, 10.2, _friendArrow, 2.4);
   }
 
   void _disc(Canvas canvas, double radius, Color color) =>
@@ -211,45 +189,41 @@ class _NodeMarkPainter extends CustomPainter {
         Paint()
           ..color = color
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.2,
+          ..strokeWidth = _arrowWidth,
       )
       ..drawPath(
-        _triangle(3.4, 24.6, 7.6, 20.4, 9.2, 25),
+        _triangle(2.4, 25.6, 8.6, 19.4, 10.2, 26),
         Paint()..color = color,
       )
       ..restore();
   }
 
   void _radarRing(Canvas canvas) {
-    const dashes = 9;
+    const dashes = 6;
     final paint = Paint()
       ..color = _radarWave
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
+      ..strokeWidth = _arrowWidth;
     final bounds = Rect.fromCircle(center: _center, radius: 12);
     const step = 2 * math.pi / dashes;
     for (var index = 0; index < dashes; index++) {
-      canvas.drawArc(bounds, index * step, step * .55, false, paint);
+      canvas.drawArc(bounds, index * step, step * .6, false, paint);
     }
   }
 
-  void _nightSwirl(Canvas canvas, Offset center) {
-    final top = center - const Offset(0, 11);
-    final bottom = center + const Offset(0, 11);
+  void _nightSwirl(Canvas canvas, Offset center, double radius) {
+    final top = center - Offset(0, radius);
+    final bottom = center + Offset(0, radius);
     canvas.drawPath(
       Path()
         ..moveTo(top.dx, top.dy)
-        ..arcToPoint(
-          bottom,
-          radius: const Radius.circular(11),
-          clockwise: false,
-        )
+        ..arcToPoint(bottom, radius: Radius.circular(radius), clockwise: false)
         ..arcToPoint(
           center,
-          radius: const Radius.circular(5.5),
+          radius: Radius.circular(radius / 2),
           clockwise: false,
         )
-        ..arcToPoint(top, radius: const Radius.circular(5.5))
+        ..arcToPoint(top, radius: Radius.circular(radius / 2))
         ..close(),
       Paint()..color = _night.fill,
     );
@@ -270,5 +244,7 @@ class _NodeMarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _NodeMarkPainter oldDelegate) =>
-      oldDelegate.kind != kind || oldDelegate.boss != boss;
+      oldDelegate.kind != kind ||
+      oldDelegate.boss != boss ||
+      oldDelegate.submarine != submarine;
 }

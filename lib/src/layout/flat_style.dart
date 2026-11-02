@@ -11,8 +11,11 @@ const flatSmallFontSize = 10.5;
 const flatRowSpacing = 2.0;
 const flatSectionGap = 4.0;
 
-/// Below this a side-by-side fleet column can no longer hold its title.
-const flatSideBySideFleetsMinWidth = 240.0;
+const flatNodeIconSize = 16.0;
+
+/// Content width below which two fleet columns squeeze ship names and HP
+/// together. The default phone panel is about 210 wide with 198 of content.
+const flatSideBySideFleetsMinWidth = 190.0;
 const flatHeaderHeight = 24.0;
 const flatActionIconSize = 17.0;
 const flatEditRowHeight = 32.0;

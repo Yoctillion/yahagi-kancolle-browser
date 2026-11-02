@@ -68,35 +68,22 @@ void main() {
       expect(context.nodeTypeLabels, <String>['潜艇战']);
     });
 
+    test('an anti-sub air raid keeps its name over the submarine override', () {
+      const context = BattleContext(
+        eventId: 4,
+        colorNo: 15,
+        nodeTypeOverride: '潜艇战',
+      );
+
+      expect(context.nodeTypeLabels, <String>['对潜空袭']);
+    });
+
     test('practice is a plain battle whatever the stale event says', () {
       const context = BattleContext(practice: true, eventId: 5, eventKind: 2);
 
       expect(context.nodeKind, BattleNodeKind.battle);
       expect(context.isBossNode, isFalse);
       expect(context.nodeTypeLabel, '普通战斗');
-    });
-  });
-
-  group('node name on the badge', () {
-    test('a resolved letter sits on the badge and needs no text', () {
-      const context = BattleContext(node: 3, nodeDisplayLabel: ' E ');
-
-      expect(context.nodeBadgeLetter, 'E');
-      expect(context.nodeTextBesideBadge, isNull);
-    });
-
-    test('an unresolved node falls back to a mark plus the spelled name', () {
-      const context = BattleContext(node: 3);
-
-      expect(context.nodeBadgeLetter, '?');
-      expect(context.nodeTextBesideBadge, '节点 3');
-    });
-
-    test('practice has no letter to show', () {
-      const context = BattleContext(practice: true);
-
-      expect(context.nodeBadgeLetter, isEmpty);
-      expect(context.nodeTextBesideBadge, '演习');
     });
   });
 

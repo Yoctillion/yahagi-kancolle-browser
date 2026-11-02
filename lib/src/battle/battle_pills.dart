@@ -2,7 +2,7 @@ import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../layout/flat_style.dart';
-import 'battle_node_badge.dart';
+import 'battle_node_icon.dart';
 import 'battle_ui_text.dart';
 import 'battle_detail_strings.dart';
 
@@ -21,19 +21,20 @@ const TextStyle _battlePillTextStyle = TextStyle(
 class AdaptiveBattleHeader extends StatelessWidget {
   const AdaptiveBattleHeader({
     super.key,
-    this.nodeLabel,
+    required this.nodeLabel,
     required this.enemyName,
     required this.enemyStyle,
     this.enemyNameIsFallback = false,
     this.nodeFontSize = 16,
+    this.nodeIcon,
   });
 
-  /// Null when a badge beside the header already names the node.
-  final String? nodeLabel;
+  final String nodeLabel;
   final String enemyName;
   final TextStyle enemyStyle;
   final bool enemyNameIsFallback;
   final double nodeFontSize;
+  final Widget? nodeIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -45,23 +46,32 @@ class AdaptiveBattleHeader extends StatelessWidget {
     final enemyTitle = enemyNameIsFallback
         ? BattleUiText(enemyName, style: appTextStyle(context, enemyStyle))
         : Text(enemyName, style: appTextStyle(context, enemyStyle));
-    final nodeLabel = this.nodeLabel;
-    if (nodeLabel == null) return enemyTitle;
+    final node = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (nodeIcon case final icon?) ...<Widget>[
+          icon,
+          const SizedBox(width: 4),
+        ],
+        Flexible(
+          child: BattleUiText(
+            nodeLabel,
+            style: appTextStyle(context, nodeStyle),
+          ),
+        ),
+      ],
+    );
     if (Localizations.localeOf(context).languageCode == 'en') {
       return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          BattleUiText(nodeLabel, style: appTextStyle(context, nodeStyle)),
-          const SizedBox(height: 3),
-          enemyTitle,
-        ],
+        children: [node, const SizedBox(height: 3), enemyTitle],
       );
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
-        BattleUiText(nodeLabel, style: appTextStyle(context, nodeStyle)),
+        node,
         const SizedBox(width: 6),
         Expanded(child: enemyTitle),
       ],
@@ -79,9 +89,8 @@ const TextSpan flatSegmentSeparator = TextSpan(
 );
 
 /// Flat-style replacement for the status pill row: plain text with only the
-/// air state colored. The node badge carries the node type, so only the
-/// submarine override, which it cannot show, stays. Drops and rewards live in
-/// [BattleDropLine].
+/// air state colored. The node icon carries the node type. Drops and rewards
+/// live in [BattleDropLine].
 class BattleTagLine extends StatelessWidget {
   const BattleTagLine({
     super.key = const Key('battle-tag-line'),
@@ -99,8 +108,6 @@ class BattleTagLine extends StatelessWidget {
         lookupAppLocalizations(const Locale('zh'));
     final strings = BattleDetailStrings.of(context);
     final segments = <(String, Color)>[
-      if (battle.context.nodeTypeOverride case final override?)
-        (strings.localize(override), flatMutedColor),
       if (battle.airSuperiority != null)
         (
           l10n.airStateLabel(strings.localize(battle.airSuperiority!)),
@@ -247,8 +254,8 @@ List<Widget> navigationHeaderPills(
     },
 ];
 
-/// Flat-style navigation header: the node badge, then what the node gave or
-/// is on one line and the remaining navigation pill contents on the next.
+/// Flat-style navigation header: the node icon, then the node name and the
+/// navigation pill contents as one run of text, what the node gave or is first.
 class FlatNavigationHeader extends StatelessWidget {
   const FlatNavigationHeader({
     super.key,
@@ -314,11 +321,7 @@ class FlatNavigationHeader extends StatelessWidget {
       NodeTypeHeaderSegment(:final label) => [
         TextSpan(
           text: strings.localize(label),
-          style: TextStyle(
-            color: nodeTypePillColors(label).foreground,
-            fontSize: flatRowFontSize,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(color: nodeTypePillColors(label).foreground),
         ),
       ],
     };
@@ -330,29 +333,10 @@ class FlatNavigationHeader extends StatelessWidget {
         segment is ResourceChangesHeaderSegment ||
         segment is RewardItemsHeaderSegment ||
         segment is NodeTypeHeaderSegment;
-    final nodeText = battle.context.nodeTextBesideBadge;
-    final firstLine = <List<InlineSpan>>[
-      if (nodeText != null)
-        [
-          TextSpan(
-            text: strings.localize(nodeText),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: flatRowFontSize,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      for (final segment in segments.where(isOutcome)) spansOf(segment),
-    ];
-    final secondLine = <List<InlineSpan>>[
-      for (final segment in segments)
-        if (!isOutcome(segment)) spansOf(segment),
-    ];
     return Row(
       children: <Widget>[
-        BattleNodeBadge(nodeContext: battle.context),
-        const SizedBox(width: 8),
+        BattleNodeIcon(nodeContext: battle.context),
+        const SizedBox(width: 4),
         Expanded(
           child: Text.rich(
             key: const Key('battle-navigation-tag-line'),
@@ -364,15 +348,27 @@ class FlatNavigationHeader extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
                 children: <InlineSpan>[
-                  ..._joinSegments(firstLine),
-                  if (secondLine.isNotEmpty) ...[
-                    const TextSpan(text: '\n'),
-                    ..._joinSegments(secondLine),
+                  TextSpan(
+                    text: strings.localize(battle.context.forecastNodeLabel),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: flatRowFontSize,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  for (final segment in segments.where(isOutcome)) ...[
+                    flatSegmentSeparator,
+                    ...spansOf(segment),
                   ],
+                  for (final segment in segments)
+                    if (!isOutcome(segment)) ...[
+                      flatSegmentSeparator,
+                      ...spansOf(segment),
+                    ],
                 ],
               ),
             ),
-            maxLines: 3,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -380,13 +376,6 @@ class FlatNavigationHeader extends StatelessWidget {
     );
   }
 }
-
-List<InlineSpan> _joinSegments(List<List<InlineSpan>> segments) => <InlineSpan>[
-  for (var index = 0; index < segments.length; index++) ...[
-    if (index > 0) flatSegmentSeparator,
-    ...segments[index],
-  ],
-];
 
 class AirSuperiorityPillColors {
   const AirSuperiorityPillColors({
