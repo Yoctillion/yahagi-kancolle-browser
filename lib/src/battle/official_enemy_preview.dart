@@ -7,6 +7,7 @@ import '../game_state/game_state.dart';
 import '../layout/panel_style.dart';
 import 'battle_fleet_block.dart';
 import 'battle_models.dart';
+import 'battle_ui_text.dart';
 
 class OfficialEnemyPreview extends StatelessWidget {
   const OfficialEnemyPreview({
@@ -16,7 +17,7 @@ class OfficialEnemyPreview extends StatelessWidget {
     this.showPortraits = false,
     this.masterShips = const <int, MasterShip>{},
     this.serverOrigin = '',
-    this.alignWithShipRows = false,
+    this.besideShipRows = false,
   });
 
   final List<EnemyPreviewShip> ships;
@@ -25,8 +26,9 @@ class OfficialEnemyPreview extends StatelessWidget {
   final Map<int, MasterShip> masterShips;
   final String serverOrigin;
 
-  /// Beside a friendly fleet, rows keep that fleet's row height.
-  final bool alignWithShipRows;
+  /// Beside a friendly fleet: half the width for the title, and rows that
+  /// keep that fleet's row height.
+  final bool besideShipRows;
 
   @override
   Widget build(BuildContext context) {
@@ -39,16 +41,24 @@ class OfficialEnemyPreview extends StatelessWidget {
     final flat = PanelStyleScope.isFlat(context);
     const cardRowPadding = EdgeInsets.symmetric(horizontal: 9, vertical: 4);
     const flatRowPadding = EdgeInsets.symmetric(vertical: 2);
+    final titleStyle = battleFleetTitleStyle.copyWith(
+      color: const Color(0xffff8c78),
+    );
     return BattleFleetBlock(
       key: const Key('official-enemy-preview'),
-      title: Text(
-        '敌方部队（战前预测）',
-        key: const Key('official-enemy-preview-title'),
-        style: appTextStyle(
-          context,
-          battleFleetTitleStyle.copyWith(color: const Color(0xffff8c78)),
-        ),
-      ),
+      title: besideShipRows
+          ? BattleUiText(
+              '敌方预测',
+              key: const Key('official-enemy-preview-title'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: titleStyle,
+            )
+          : Text(
+              '敌方部队（战前预测）',
+              key: const Key('official-enemy-preview-title'),
+              style: appTextStyle(context, titleStyle),
+            ),
       rows: <Widget>[
         if (!combined)
           for (var index = 0; index < ships.length; index++)
@@ -150,7 +160,7 @@ class OfficialEnemyPreview extends StatelessWidget {
             ),
             const SizedBox(width: 7),
           ],
-          if (alignWithShipRows) const BattleShipRowStrut(),
+          if (besideShipRows) const BattleShipRowStrut(),
           Expanded(
             child: Tooltip(
               message: name,

@@ -11,7 +11,7 @@ import '../layout/module_summaries.dart';
 
 import 'battle_controller.dart';
 import 'battle_models.dart';
-import 'battle_node_badge.dart';
+import 'battle_node_icon.dart';
 import 'battle_pills.dart';
 import 'battle_prediction_sections.dart';
 import 'battle_ship_details_popover.dart';
@@ -466,7 +466,7 @@ class _CompactBattlePanel extends StatelessWidget {
                   Expanded(
                     child: OfficialEnemyPreview(
                       ships: previewShips,
-                      alignWithShipRows: true,
+                      besideShipRows: true,
                     ),
                   ),
                 ],
@@ -541,10 +541,7 @@ class _CompactBattlePanel extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (flat) ...<Widget>[
-                    BattleNodeBadge(nodeContext: battle.context),
-                    const SizedBox(width: 8),
-                  ] else if (battle.rank != BattleRank.unknown) ...<Widget>[
+                  if (!flat && battle.rank != BattleRank.unknown) ...<Widget>[
                     _RankBadge(rank: battle.rank, phone: phone, flat: flat),
                     const SizedBox(width: 11),
                   ],
@@ -553,9 +550,10 @@ class _CompactBattlePanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AdaptiveBattleHeader(
-                          nodeLabel: flat
-                              ? battle.context.nodeTextBesideBadge
-                              : battle.context.forecastNodeLabel,
+                          nodeLabel: battle.context.forecastNodeLabel,
+                          nodeIcon: flat
+                              ? BattleNodeIcon(nodeContext: battle.context)
+                              : null,
                           nodeFontSize: flat ? 12 : 16,
                           enemyName: enemyName,
                           enemyNameIsFallback: battle.enemyFleetName.isEmpty,

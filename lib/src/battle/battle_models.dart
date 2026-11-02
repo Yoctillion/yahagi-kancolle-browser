@@ -124,27 +124,15 @@ class BattleContext {
     return label != null && label.isNotEmpty ? label : nodeLabel;
   }
 
-  /// What fits on the node badge; a node with no resolved letter gets a mark.
-  String get nodeBadgeLetter {
-    if (practice) return '';
-    final label = nodeDisplayLabel?.trim();
-    return label != null && label.isNotEmpty ? label : '?';
-  }
-
-  /// The node name for text beside a badge that cannot carry it.
-  String? get nodeTextBesideBadge {
-    final label = nodeDisplayLabel?.trim();
-    return !practice && label != null && label.isNotEmpty
-        ? null
-        : forecastNodeLabel;
-  }
-
   String get nodeTypeLabel => nodeTypeLabels.first;
 
   List<String> get nodeTypeLabels {
     final baseLabel = _baseNodeTypeLabel;
     final override = nodeTypeOverride;
-    if (override == null) return <String>[baseLabel];
+    // Anti-sub air raid nodes are all submarines; their own name says more.
+    if (override == null || nodeKind == BattleNodeKind.antiSubAir) {
+      return <String>[baseLabel];
+    }
     if (baseLabel == 'Boss 战') return <String>[baseLabel, override];
     return <String>[override];
   }
@@ -152,6 +140,8 @@ class BattleContext {
   String get _baseNodeTypeLabel => isBossNode ? 'Boss 战' : nodeKind.label;
 
   bool get isBossNode => !practice && eventId == 5;
+
+  bool get isSubmarineBattle => nodeTypeOverride == '潜艇战';
 
   BattleNodeKind get nodeKind {
     if (practice) return BattleNodeKind.battle;

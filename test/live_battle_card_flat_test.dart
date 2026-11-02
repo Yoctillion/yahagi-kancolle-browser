@@ -24,7 +24,7 @@ const _tagLine = Key('battle-navigation-tag-line');
 const _formationLine = Key('compact-formation-line');
 const _dropLine = Key('battle-drop-line');
 const _battleTagLine = Key('battle-tag-line');
-const _nodeBadge = Key('battle-node-badge');
+const _nodeIcon = Key('battle-node-icon');
 const _navigationHeader = Key('battle-navigation-header');
 const _sideBySideFleets = Key('navigation-side-by-side-fleets');
 const _enemyPreview = Key('official-enemy-preview');
@@ -262,9 +262,9 @@ void main() {
         final tagLine = find.byKey(_tagLine);
         expect(tagLine, findsOneWidget);
         final text = tester.widget<Text>(tagLine);
-        expect(text.maxLines, 3);
+        expect(text.maxLines, 2);
         expect(text.overflow, TextOverflow.ellipsis);
-        expect(text.textSpan!.toPlainText(), '节点 1 · 普通战斗\n上次：单横阵');
+        expect(text.textSpan!.toPlainText(), '节点 1 · 普通战斗 · 上次：单横阵');
         expect(
           _spanWithText(text.textSpan!, '普通战斗')!.style!.color,
           nodeTypePillColors('普通战斗').foreground,
@@ -388,27 +388,26 @@ void main() {
       });
     }
 
-    testWidgets('a resolved node sits on the badge, not in the text', (
+    testWidgets('the header reads icon, node, then type on one line', (
       tester,
     ) async {
       final controller = createController(withMap: true);
       await send(controller, _navigation(3, 100, start: true));
 
-      await pumpCard(tester, controller);
+      await pumpCard(tester, controller, width: 210, fontFamily: _appFont);
 
       final letter = controller.current!.context.forecastNodeLabel;
+      final line = find.byKey(_tagLine);
       expect(
-        find.descendant(
-          of: find.byKey(_nodeBadge),
-          matching: find.text(letter),
-        ),
-        findsOneWidget,
+        tester.widget<Text>(line).textSpan!.toPlainText(),
+        '$letter · 普通战斗',
       );
-      final plain = tester
-          .widget<Text>(find.byKey(_tagLine))
-          .textSpan!
-          .toPlainText();
-      expect(plain, '普通战斗');
+      expect(
+        tester.getTopRight(find.byKey(_nodeIcon)).dx,
+        lessThanOrEqualTo(tester.getTopLeft(line).dx),
+      );
+      // The flat header's single-line height, icon included.
+      expect(tester.getSize(find.byKey(_navigationHeader)).height, 20);
     });
 
     testWidgets('the header survives a sortie with no map data', (
@@ -475,6 +474,22 @@ void main() {
       }
     });
 
+    testWidgets('a default phone panel shares rows too', (tester) async {
+      final controller = createController(withMap: true);
+      await send(controller, _navigation(3, 100, start: true, preview: true));
+
+      await pumpCard(tester, controller, width: 210, fontFamily: _appFont);
+
+      expect(find.byKey(_sideBySideFleets), findsOneWidget);
+      expect(
+        tester
+            .getTopLeft(find.byKey(const Key('official-enemy-preview-row-0')))
+            .dy,
+        tester.getTopLeft(find.byKey(const Key('battle-ship-friend-0'))).dy,
+      );
+      expect(find.text('敌方预测'), findsOneWidget);
+    });
+
     testWidgets('a narrow panel stacks the fleets instead of squeezing', (
       tester,
     ) async {
@@ -533,7 +548,7 @@ void main() {
 
         expect(
           tester.widget<Text>(find.byKey(_tagLine)).textSpan!.toPlainText(),
-          name,
+          contains(name),
         );
       });
     }
@@ -545,7 +560,7 @@ void main() {
         final controller = createController(withMap: true);
         await send(controller, _navigation(3, 100, start: true, preview: true));
 
-        await pumpCard(tester, controller, locale: locale, width: 262);
+        await pumpCard(tester, controller, locale: locale, width: 202);
 
         expect(tester.takeException(), isNull);
         expect(find.byKey(_sideBySideFleets), findsOneWidget);
@@ -558,7 +573,7 @@ void main() {
 
       await pumpCard(tester, controller, flat: false);
 
-      expect(find.byKey(_nodeBadge), findsNothing);
+      expect(find.byKey(_nodeIcon), findsNothing);
       expect(find.byKey(_sideBySideFleets), findsNothing);
       expect(
         tester.getBottomLeft(find.byKey(_navigationHeader)).dy,
@@ -805,14 +820,14 @@ void main() {
       }
     }
 
-    testWidgets('node badge leads the header and the rank closes it', (
+    testWidgets('node icon leads the header and the rank closes it', (
       tester,
     ) async {
       final controller = await resultController();
 
       await pumpCard(tester, controller);
 
-      final badge = tester.getRect(find.byKey(_nodeBadge));
+      final badge = tester.getRect(find.byKey(_nodeIcon));
       final enemyName = tester.getRect(find.text('Test Enemy Fleet'));
       final rank = tester.getRect(find.byKey(const Key('battle-rank-badge')));
       expect(badge.right, lessThanOrEqualTo(enemyName.left));
@@ -820,7 +835,7 @@ void main() {
       expect(rank.left, greaterThan(badge.right));
     });
 
-    testWidgets('the badge replaces the node type in the tag line', (
+    testWidgets('the icon replaces the node type in the tag line', (
       tester,
     ) async {
       final controller = await resultController();
@@ -833,9 +848,7 @@ void main() {
       );
     });
 
-    testWidgets('a submarine battle stays named: the badge cannot show it', (
-      tester,
-    ) async {
+    testWidgets('the icon carries a submarine battle too', (tester) async {
       state = state.copyWith(
         masterShips: <int, MasterShip>{
           ...state.masterShips,
@@ -861,8 +874,9 @@ void main() {
 
       expect(
         _plainTextUnder(tester, find.byKey(_battleTagLine)),
-        contains('潜艇战'),
+        isNot(contains('潜艇战')),
       );
+      expect(find.byTooltip('潜艇战'), findsOneWidget);
     });
 
     testWidgets('card style keeps its pills and rank on the left', (
@@ -872,7 +886,7 @@ void main() {
 
       await pumpCard(tester, controller, flat: false);
 
-      expect(find.byKey(_nodeBadge), findsNothing);
+      expect(find.byKey(_nodeIcon), findsNothing);
       expect(find.byType(NodeTypePill), findsOneWidget);
       expect(
         tester.getTopRight(find.byKey(const Key('battle-rank-badge'))).dx,
