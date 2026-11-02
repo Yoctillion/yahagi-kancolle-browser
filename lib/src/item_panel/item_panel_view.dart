@@ -18,6 +18,7 @@ const _rowHeight = 24.0;
 const _rowIconSize = 20.0;
 const _columnGap = 8.0;
 const _zeroOpacity = 0.3;
+const _capsuleColor = Color(0xe6142735);
 const _grayscale = ColorFilter.matrix(<double>[
   0.2126, 0.7152, 0.0722, 0, 0, //
   0.2126, 0.7152, 0.0722, 0, 0, //
@@ -190,13 +191,16 @@ class _ItemCell extends StatelessWidget {
           children: [
             _ItemIcon(entry: entry, size: _cellIconSize),
             Positioned(
-              left: 2,
-              right: 2,
-              bottom: 0,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
+              left: 1,
+              right: 1,
+              bottom: 1,
+              child: Align(
                 alignment: Alignment.centerRight,
-                child: _ItemCount(entry: entry, overlaid: true),
+                heightFactor: 1,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: _CountCapsule(entry),
+                ),
               ),
             ),
           ],
@@ -204,6 +208,27 @@ class _ItemCell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The icon artwork is busy, so the count needs its own backdrop to stay
+/// readable over any item.
+class _CountCapsule extends StatelessWidget {
+  const _CountCapsule(this.entry);
+
+  final ItemPanelEntry entry;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    key: Key('item-count-capsule-${entry.id}'),
+    decoration: BoxDecoration(
+      color: appColor(context, _capsuleColor),
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: _ItemCount(entry: entry, overlaid: true),
+    ),
+  );
 }
 
 class _RowGrid extends StatelessWidget {
@@ -326,11 +351,8 @@ class _ItemCount extends StatelessWidget {
           ? flatRowFontSize
           : 12,
       fontWeight: FontWeight.w700,
+      height: overlaid ? 1.25 : null,
       fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-      // The count sits on the icon artwork, so it needs its own edge.
-      shadows: overlaid && entry.count > 0
-          ? const <Shadow>[Shadow(blurRadius: 2)]
-          : null,
     ),
   );
 }

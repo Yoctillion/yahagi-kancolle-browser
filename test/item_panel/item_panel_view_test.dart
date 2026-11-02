@@ -174,6 +174,42 @@ void main() {
     }
   });
 
+  testWidgets('compact counts sit on a capsule inside the cell', (
+    tester,
+  ) async {
+    final controller = await controllerWith(tester, {57: 43});
+    for (final style in PanelStyle.values) {
+      await tester.pumpWidget(
+        app(controller, ItemPanelMode.compact, style: style),
+      );
+      await tester.pump();
+
+      final capsule = find.byKey(const Key('item-count-capsule-57'));
+      final decoration =
+          tester.widget<DecoratedBox>(capsule).decoration as BoxDecoration;
+      expect(decoration.color, isNotNull, reason: style.name);
+      expect(decoration.borderRadius, isNotNull, reason: style.name);
+
+      final cell = tester.getRect(find.byKey(const Key('item-cell-57')));
+      final bounds = tester.getRect(capsule);
+      expect(bounds.right, lessThanOrEqualTo(cell.right), reason: style.name);
+      expect(bounds.bottom, lessThanOrEqualTo(cell.bottom), reason: style.name);
+      expect(
+        tester.getRect(find.text('43')).width,
+        lessThan(bounds.width),
+        reason: style.name,
+      );
+    }
+  });
+
+  testWidgets('detailed rows have no count capsule', (tester) async {
+    final controller = await controllerWith(tester, {57: 43});
+    await tester.pumpWidget(app(controller, ItemPanelMode.detailed));
+    await tester.pump();
+
+    expect(find.byKey(const Key('item-count-capsule-57')), findsNothing);
+  });
+
   testWidgets('flat style renders both views', (tester) async {
     final controller = await controllerWith(tester, {57: 43});
     for (final mode in ItemPanelMode.values) {

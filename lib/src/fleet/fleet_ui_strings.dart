@@ -195,13 +195,7 @@ String fleetText(BuildContext context, String source) {
       "Sortie preparation display",
     ),
     "胶囊外观": ("胶囊外观", "膠囊外觀", "カプセルの外観", "캡슐 모양", "Capsule appearance"),
-    "道具显示内容": (
-      "道具显示内容",
-      "道具顯示內容",
-      "アイテムの表示内容",
-      "아이템 표시 내용",
-      "Item display",
-    ),
+    "道具显示内容": ("道具显示内容", "道具顯示內容", "アイテムの表示内容", "아이템 표시 내용", "Item display"),
     FleetUiKeys.itemPanelView: (
       "道具视图",
       "道具視圖",
