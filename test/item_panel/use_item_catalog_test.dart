@@ -14,16 +14,27 @@ void main() {
       useItemCatalog.firstWhere((item) => item.id == id);
 
   test('catalog follows the spec order', () {
-    expect(ids(ItemGroup.reward), [57, 61, 58, 65, 74, 78, 70, 101, 98, 99]);
-    expect(ids(ItemGroup.improvement), [75, 77, 94, 92, 91, 104, 100, 95, 71]);
+    expect(ids(ItemGroup.reward), [
+      57,
+      61,
+      58,
+      65,
+      74,
+      78,
+      70,
+      101,
+      98,
+      99,
+      64,
+      105,
+    ]);
+    expect(ids(ItemGroup.improvement), [75, 77, 94, 92, 104, 100, 71]);
     expect(ids(ItemGroup.seasonal), [
       96,
       68,
       93,
       62,
       90,
-      56,
-      60,
       80,
       85,
       86,
@@ -50,10 +61,13 @@ void main() {
       69,
       102,
       73,
-      64,
       63,
+      91,
+      95,
+      56,
+      60,
     ]);
-    expect(ids(ItemGroup.other), [10, 11, 12, 49, 103, 53, 105, 55]);
+    expect(ids(ItemGroup.other), [10, 11, 12, 49, 103, 53, 55]);
   });
 
   test('catalog ids are unique', () {
