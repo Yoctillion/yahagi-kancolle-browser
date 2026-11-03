@@ -201,6 +201,10 @@ AttackPhaseProfile? computeNightProfile(
   );
   final basic = nightBasicPrecap(l, kind);
   final modelD = modelDSmallGunMod(l);
+  final fitBonus = cruiserFitBonus(l);
+  // Fractional hit counts blend single and double variants; the double
+  // variants need Lv 80.
+  final canDoubleHit = l.ship.level >= 80;
 
   final rates = sequentialRates(
     _nightCutinOrder.where(possible.contains),
@@ -212,13 +216,15 @@ AttackPhaseProfile? computeNightProfile(
     // Night cut-in multipliers apply before the cap, unlike day ones.
     final precap =
         basic *
-        (def?.powerMod ?? 1) *
-        (_modelDCutins.contains(def) ? modelD : 1);
+            (def?.powerMod ?? 1) *
+            (_modelDCutins.contains(def) ? modelD : 1) +
+        fitBonus;
+    final hits = def?.hits ?? 1;
     return AttackStyleRow(
       label: def?.label ?? normalAttackLabel,
       rate: rate,
       powerMod: def?.powerMod ?? 1,
-      hits: def?.hits ?? 1,
+      hits: canDoubleHit ? hits : hits.floorToDouble(),
       powerPerHit: floorPower(softCap(precap, nightPowerCap)),
       capped: precap > nightPowerCap,
     );

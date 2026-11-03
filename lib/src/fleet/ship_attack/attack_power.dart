@@ -37,11 +37,20 @@ double dayBasicPrecap(ShipLoadout l) {
   final aerialBonus = _sumBonus(l, carrierAerialImprovementBonus);
   final aerial =
       (1.3 * l.sumEquipment((g) => g.bombing)).floor() +
-      l.sumEquipment((g) => g.torpedo) +
+      _equipmentTorpedoWithBonus(l) +
       15;
   return ((basic + aerialBonus + aerial) * 1.5).floor() +
       25 +
       cruiserFitBonus(l);
+}
+
+/// The API torpedo stat already folds in visible bonuses; only bombing
+/// bonuses are unavailable on the ship side.
+int _equipmentTorpedoWithBonus(ShipLoadout l) {
+  final modernization = l.ship.modernization.length > 1
+      ? l.ship.modernization[1]
+      : 0;
+  return math.max(0, l.ship.torpedo - (l.master.baseTorpedo + modernization));
 }
 
 double cruiserFitBonus(ShipLoadout l) {

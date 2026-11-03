@@ -1156,17 +1156,9 @@ class _FleetFocusPanel extends StatelessWidget {
                                             text: mechanism.detailedShortLabel,
                                             color: appColor(
                                               context,
-                                              switch (mechanism.tone) {
-                                                MechanismTone.antiAir =>
-                                                  const Color(0xffffc861),
-                                                MechanismTone.specialAttack =>
-                                                  const Color(0xffff8b88),
-                                                MechanismTone.nightAttack =>
-                                                  const Color(0xffbfa4ff),
-                                                MechanismTone.neutral ||
-                                                MechanismTone.antiSubmarine =>
-                                                  const Color(0xff8ec6e8),
-                                              },
+                                              _mechanismToneForeground(
+                                                mechanism.tone,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -1697,13 +1689,7 @@ class _ShipParameterDetails extends StatelessWidget {
                       final valueText = mech.rate != null
                           ? '${(mech.rate! * 100).round()}%'
                           : fleetText(context, '有效');
-                      final labelColor = switch (mech.tone) {
-                        MechanismTone.antiAir => const Color(0xffffc861),
-                        MechanismTone.specialAttack => const Color(0xffff8b88),
-                        MechanismTone.nightAttack => const Color(0xffbfa4ff),
-                        MechanismTone.neutral ||
-                        MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-                      };
+                      final labelColor = _mechanismToneForeground(mech.tone);
 
                       return Material(
                         color: appColor(context, Color(0xff102331)),
@@ -1794,7 +1780,7 @@ class _ShipParameterDetails extends StatelessWidget {
                   style: appTextStyle(
                     context,
                     TextStyle(
-                      color: _mechanismToneColor(cell.tone),
+                      color: _mechanismToneForeground(cell.tone),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1822,25 +1808,11 @@ class _ShipParameterDetails extends StatelessWidget {
     );
   }
 
-  static Color _mechanismToneColor(MechanismTone tone) => switch (tone) {
-    MechanismTone.antiAir => const Color(0xffffc861),
-    MechanismTone.specialAttack => const Color(0xffff8b88),
-    MechanismTone.nightAttack => const Color(0xffbfa4ff),
-    MechanismTone.neutral ||
-    MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-  };
-
   static Future<void> _showMechanismDetails(
     BuildContext context,
     EquipmentMechanismDisplay mechanism,
   ) {
-    final foregroundColor = switch (mechanism.tone) {
-      MechanismTone.antiAir => const Color(0xffffc861),
-      MechanismTone.specialAttack => const Color(0xffff8b88),
-      MechanismTone.nightAttack => const Color(0xffbfa4ff),
-      MechanismTone.neutral ||
-      MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-    };
+    final foregroundColor = _mechanismToneForeground(mechanism.tone);
 
     return showDialog<void>(
       context: context,
@@ -3034,20 +3006,8 @@ class _ShipRow extends StatelessWidget {
       backgroundColor = const Color(0xff5a2528);
       foregroundColor = const Color(0xffff8b88);
     } else {
-      backgroundColor = switch (mechanism.tone) {
-        MechanismTone.antiAir => const Color(0xff4b3a1d),
-        MechanismTone.specialAttack => const Color(0xff5a2528),
-        MechanismTone.nightAttack => const Color(0xff392854),
-        MechanismTone.neutral ||
-        MechanismTone.antiSubmarine => const Color(0xff29445a),
-      };
-      foregroundColor = switch (mechanism.tone) {
-        MechanismTone.antiAir => const Color(0xffffc861),
-        MechanismTone.specialAttack => const Color(0xffff8b88),
-        MechanismTone.nightAttack => const Color(0xffbfa4ff),
-        MechanismTone.neutral ||
-        MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-      };
+      backgroundColor = _mechanismToneBackground(mechanism.tone);
+      foregroundColor = _mechanismToneForeground(mechanism.tone);
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -3228,20 +3188,8 @@ class _MechanismChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = switch (mechanism.tone) {
-      MechanismTone.antiAir => const Color(0xff4b3a1d),
-      MechanismTone.specialAttack => const Color(0xff5a2528),
-      MechanismTone.nightAttack => const Color(0xff392854),
-      MechanismTone.neutral ||
-      MechanismTone.antiSubmarine => const Color(0xff29445a),
-    };
-    final foregroundColor = switch (mechanism.tone) {
-      MechanismTone.antiAir => const Color(0xffffc861),
-      MechanismTone.specialAttack => const Color(0xffff8b88),
-      MechanismTone.nightAttack => const Color(0xffbfa4ff),
-      MechanismTone.neutral ||
-      MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-    };
+    final backgroundColor = _mechanismToneBackground(mechanism.tone);
+    final foregroundColor = _mechanismToneForeground(mechanism.tone);
     final label = mechanism.detailedShortLabel;
     return Material(
       color: appColor(
@@ -3284,13 +3232,7 @@ class _MechanismChip extends StatelessWidget {
             TextStyle(
               color: isSpecialAttack
                   ? const Color(0xffff8b88)
-                  : switch (mechanism.tone) {
-                      MechanismTone.antiAir => const Color(0xffffc861),
-                      MechanismTone.specialAttack => const Color(0xffff8b88),
-                      MechanismTone.nightAttack => const Color(0xffbfa4ff),
-                      MechanismTone.neutral ||
-                      MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
-                    },
+                  : _mechanismToneForeground(mechanism.tone),
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -3624,3 +3566,19 @@ class _ShipStatusBar extends StatelessWidget {
     );
   }
 }
+
+Color _mechanismToneForeground(MechanismTone tone) => switch (tone) {
+  MechanismTone.antiAir => const Color(0xffffc861),
+  MechanismTone.specialAttack => const Color(0xffff8b88),
+  MechanismTone.nightAttack => const Color(0xffbfa4ff),
+  MechanismTone.neutral ||
+  MechanismTone.antiSubmarine => const Color(0xff8ec6e8),
+};
+
+Color _mechanismToneBackground(MechanismTone tone) => switch (tone) {
+  MechanismTone.antiAir => const Color(0xff4b3a1d),
+  MechanismTone.specialAttack => const Color(0xff5a2528),
+  MechanismTone.nightAttack => const Color(0xff392854),
+  MechanismTone.neutral ||
+  MechanismTone.antiSubmarine => const Color(0xff29445a),
+};

@@ -43,6 +43,7 @@ void main() {
         id: 1,
         shipTypeId: 11,
         firepower: 70,
+        torpedo: 13,
         gears: <GearSpec?>[
           GearSpec(gear(24, t2: 7, bombing: 11)),
           GearSpec(gear(52, t2: 8, torpedo: 13)),

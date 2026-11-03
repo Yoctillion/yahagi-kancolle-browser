@@ -33,16 +33,16 @@ abstract final class ShipTypeIds {
 }
 
 abstract final class ShipClassIds {
-  static const ise = 2;
   static const zara = 64;
   static const arkRoyal = 78;
   static const toku2tl = 115;
-  static const toku1tl = 119;
+  static const toku1tl = 132;
 }
 
 abstract final class ShipIds {
   static const hayasuiKai = 352;
   static const shimanemaruKai = 1008;
+  static const iseClassKai2 = <int>{553, 554};
   static const nightCarriers = <int>{545, 599, 610, 883, 1008};
 }
 

@@ -81,12 +81,9 @@ Set<CutinDef> _possibleDayCutins(ShipLoadout l) {
   final mainGuns = l.count((g) => g.isMainGun);
   if (mainGuns == 0) return set;
 
-  final sortSuffix = l.master.sortNo % 10;
-  final isIseKai2 =
-      l.master.classTypeId == ShipClassIds.ise &&
-      sortSuffix >= 6 &&
-      sortSuffix < 9;
-  if (isIseKai2) {
+  // fleethub keys Kai Ni off api_sort_id, which this app does not store;
+  // api_sortno (MasterShip.sortNo) is the encyclopedia number instead.
+  if (ShipIds.iseClassKai2.contains(l.master.id)) {
     if (l.countNonZeroSlot((g) => GearIds.iseZuiun.contains(g.id)) >= 2) {
       set.add(_zuiun);
     }

@@ -74,6 +74,7 @@ void main() {
         id: 1,
         shipTypeId: 11,
         firepower: 70,
+        torpedo: 13,
         luck: 10,
         lineOfSight: 70,
         gears: <GearSpec?>[
