@@ -330,9 +330,10 @@ const String gamePageAlignmentScript = r'''
       });
     }
 
-    if (document.readyState === 'complete') {
-      window.__yahagiMobileAlignGame();
-    } else {
+    // iOS reveals the game before load, and viewport changes in the meantime
+    // arrive through resync; load only adds a final fit.
+    window.__yahagiMobileAlignGame();
+    if (document.readyState !== 'complete') {
       window.addEventListener('load', window.__yahagiMobileAlignGame);
     }
   };

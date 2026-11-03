@@ -54,7 +54,7 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
   const frameWindow = {frameElement: ooiFrame, scrollTo() {frameScrolls++;}};
   ooiFrame.contentWindow = tag === 'iframe' ? frameWindow : undefined;
   const context = {location: {hostname, pathname}, getComputedStyle: element => ({display:element === ooiFrame && ooiHidden ? 'none' : 'block',visibility:'visible'}),
-    document: {readyState:'complete', documentElement: {}, body:{},
+    document: {readyState:'complete', documentElement: element('html'), body:{},
       head: {appendChild:append}, createElement: element,
       addEventListener: on, removeEventListener: off,
       getElementById: id => elements.get(id), querySelector: selector => ooiVisible && matchesOoiFrame(selector) ? ooiFrame : null,
@@ -95,7 +95,7 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
     emit: event => {for (const callback of [...(listeners.get(event) || [])]) callback();},
     flush: (kind) => {for (const id of [...scheduled.keys()]) {const task = scheduled.get(id); if(task && (!kind || task.kind === kind)) {scheduled.delete(id);task.callback();}}},
     emptyDocument: () => {context.document.documentElement = null;context.document.head = null;context.document.body = null;},
-    readyDocument: () => {context.document.documentElement = {};context.document.head = {appendChild:append};context.document.body = {};},
+    readyDocument: () => {context.document.documentElement = element('html');context.document.head = {appendChild:append};context.document.body = {};},
     noAnimationFrame: () => {delete context.window.requestAnimationFrame;},
     viewport: (width, height) => {context.window.visualViewport.width = width;context.window.visualViewport.height = height;},
     read: () => context.window.__yahagiMobileReadPresentation?.(),
@@ -413,3 +413,14 @@ assert.equal(oldViewportRestores,1,'A runtime upgrade must release the previous 
 upgradedViewportPage.dialog(true);upgradedViewportPage.run();
 assert.equal(upgradedViewportMeta.getAttribute('content'),originalViewport,'Upgrade cleanup must retain the pre-takeover viewport');
 console.log('Game viewport ownership, multiple/missing metadata, idempotent resize, runtime upgrade and web/OOI cleanup passed');
+
+// iOS reveals the game before the load event; CSS fitting must not wait for it.
+const earlyFit = page();
+earlyFit.loading(true);
+earlyFit.viewport(600, 360);
+assert.equal(earlyFit.run(), 'game');
+assert.equal(earlyFit.property('--yahagi-game-scale'), '0.5', 'A game installed before load is fitted immediately');
+earlyFit.viewport(900, 540);earlyFit.emit('resize');earlyFit.flush();
+assert.equal(earlyFit.property('--yahagi-game-scale'), '0.75', 'Viewport changes before load refit the game');
+assert.equal(earlyFit.listeners.get('load')?.size, 1, 'Load still schedules one final fit');
+console.log('Pre-load CSS fitting passed');
