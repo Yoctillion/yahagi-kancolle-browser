@@ -93,8 +93,6 @@ class ShipLoadout {
       (ship.modernization.isEmpty ? 0 : ship.modernization[0]);
 
   /// Approximation: visible LoS bonuses from equipment are not subtracted.
-  int get nakedLineOfSight => math.max(
-    0,
-    ship.lineOfSight - sumEquipment((item) => item.lineOfSight),
-  );
+  int get nakedLineOfSight =>
+      math.max(0, ship.lineOfSight - sumEquipment((item) => item.lineOfSight));
 }

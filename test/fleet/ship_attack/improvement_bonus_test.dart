@@ -37,11 +37,14 @@ void main() {
     expect(shellingImprovementBonus(gear(226, t2: 15), 4), 0);
   });
 
-  test('carrier aerial bonus for torpedo bomber and non-fighter dive bomber', () {
-    expect(carrierAerialImprovementBonus(gear(52, t2: 8), 5), 1.0);
-    expect(carrierAerialImprovementBonus(gear(24, t2: 7), 5), 1.0);
-    expect(carrierAerialImprovementBonus(gear(60, t2: 7), 5), 0);
-  });
+  test(
+    'carrier aerial bonus for torpedo bomber and non-fighter dive bomber',
+    () {
+      expect(carrierAerialImprovementBonus(gear(52, t2: 8), 5), 1.0);
+      expect(carrierAerialImprovementBonus(gear(24, t2: 7), 5), 1.0);
+      expect(carrierAerialImprovementBonus(gear(60, t2: 7), 5), 0);
+    },
+  );
 
   test('zero stars give no bonus', () {
     expect(shellingImprovementBonus(gear(8, t2: 3, firepower: 20), 0), 0);
