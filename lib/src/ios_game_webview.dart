@@ -96,6 +96,21 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
   bool? _lastNativeBackgroundPlaybackEnabled;
   int _presentationSyncEpoch = 0;
 
+  // didFinishNavigation waits for the whole DMM iframe tree including the
+  // multi-megabyte main.js; the account is already logged in long before
+  // that. Reveal as soon as the game frame or a login page is on screen.
+  static const _earlyRevealProbeInterval = Duration(milliseconds: 500);
+  static const _revealDeadline = Duration(seconds: 15);
+  // The initial about:blank document is already "complete"; only a real
+  // page may install the presentation runtime.
+  static const _documentReadyProbe = '''
+    (() => /^https?:/i.test(location.href) && document.readyState !== 'loading'
+      && document.body ? '__yahagiIOSDocumentReady' : '')();
+  ''';
+  Timer? _earlyRevealProbe;
+  Timer? _revealDeadlineTimer;
+  bool _earlyRevealProbeInFlight = false;
+
   GameStartupState _startupState = GameStartupState.loadingSettings;
   String _startupErrorMessage = '';
 
@@ -153,6 +168,13 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
         NavigationDelegate(
           onNavigationRequest: _onNavigationRequest,
           onPageStarted: (url) async {
+            if (!mounted) return;
+            if (_startupState == GameStartupState.networkReady) {
+              setState(() => _startupState = GameStartupState.loadingGame);
+            }
+            if (_startupState == GameStartupState.loadingGame) {
+              _startEarlyReveal();
+            }
             _frameRateRuntimeController?.onPageStarted();
             await _prepareCapture();
             await _injectAudioContextTracker();
@@ -163,23 +185,22 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
                   ? GameSurfaceStage.localPrototype
                   : GameSurfaceStage.login,
             );
-            if (_startupState == GameStartupState.networkReady) {
-              setState(() => _startupState = GameStartupState.loadingGame);
-            }
           },
           onPageFinished: (url) async {
-            await _frameRateRuntimeController?.onPageReady();
-            widget.controller.onPageFinished(url);
-            widget.browserController.onPageFinished(url);
+            try {
+              await _frameRateRuntimeController?.onPageReady();
+              widget.controller.onPageFinished(url);
+              widget.browserController.onPageFinished(url);
 
-            // iOS-specific: inject AudioContext tracker again on page finish
-            await _injectAudioContextTracker();
-            await _synchronizeGamePresentation();
-            await _prepareCapture();
-            await _attachAudioPortOnce();
-
-            if (_startupState == GameStartupState.loadingGame) {
-              setState(() => _startupState = GameStartupState.ready);
+              // iOS-specific: inject AudioContext tracker again on page finish
+              await _injectAudioContextTracker();
+              await _synchronizeGamePresentation();
+              await _prepareCapture();
+              await _attachAudioPortOnce();
+            } catch (error, stackTrace) {
+              debugPrint('iOS game page finish failed: $error\n$stackTrace');
+            } finally {
+              _revealGame();
             }
           },
           onWebResourceError: (error) {
@@ -206,8 +227,67 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
     _executeStartupSequence();
   }
 
+  void _startEarlyReveal() {
+    _revealDeadlineTimer ??= Timer(_revealDeadline, _revealGame);
+    // A new main-frame document invalidates any runtime installed earlier.
+    _earlyRevealProbe?.cancel();
+    _earlyRevealProbe = Timer.periodic(
+      _earlyRevealProbeInterval,
+      (_) => unawaited(_probeDocumentReady()),
+    );
+  }
+
+  void _stopEarlyReveal() {
+    _earlyRevealProbe?.cancel();
+    _earlyRevealProbe = null;
+    _revealDeadlineTimer?.cancel();
+    _revealDeadlineTimer = null;
+  }
+
+  Future<void> _probeDocumentReady() async {
+    if (_earlyRevealProbeInFlight ||
+        !mounted ||
+        _startupState != GameStartupState.loadingGame) {
+      return;
+    }
+    _earlyRevealProbeInFlight = true;
+    try {
+      final result = await _webViewController.runJavaScriptReturningResult(
+        _documentReadyProbe,
+      );
+      if (!mounted ||
+          _startupState != GameStartupState.loadingGame ||
+          !result.toString().contains('__yahagiIOSDocumentReady')) {
+        return;
+      }
+      // Installing the runtime once is enough: a still-pending game frame is
+      // reported later through YahagiPresentation by its MutationObserver.
+      _earlyRevealProbe?.cancel();
+      _earlyRevealProbe = null;
+      await _synchronizeGamePresentation();
+    } catch (_) {
+      // The document may be replaced mid-probe; the next tick retries.
+    } finally {
+      _earlyRevealProbeInFlight = false;
+    }
+  }
+
+  void _revealGame() {
+    _stopEarlyReveal();
+    if (!mounted || _startupState != GameStartupState.loadingGame) return;
+    setState(() => _startupState = GameStartupState.ready);
+  }
+
   /// iOS-specific: inject WebAudio AudioContext tracking and MediaSession clearing.
   Future<void> _injectAudioContextTracker() async {
+    try {
+      await _runAudioContextTracker();
+    } catch (_) {
+      // Best effort: a document torn down mid-navigation rejects evaluation.
+    }
+  }
+
+  Future<void> _runAudioContextTracker() async {
     await _webViewController.runJavaScript('''
       (function() {
         if (window.__yahagiAudioTrackerInjected) return;
@@ -251,10 +331,16 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
       final gameSurfaceResult = await _webViewController
           .runJavaScriptReturningResult(gamePageAlignmentScript);
       if (epoch != _presentationSyncEpoch || !mounted) return;
-      await _applyGamePresentation(
-        decodeGamePresentationState(gameSurfaceResult),
-        epoch,
-      );
+      final state = decodeGamePresentationState(gameSurfaceResult);
+      try {
+        await _applyGamePresentation(state, epoch);
+      } finally {
+        // A failed native fit must not keep a visible game behind the overlay.
+        if (state == GamePresentationState.game ||
+            state == GamePresentationState.web) {
+          _revealGame();
+        }
+      }
     } catch (_) {
       // Ignore presentation synchronization errors on transient page transitions.
     }
@@ -289,6 +375,7 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
   }
 
   Future<void> _executeStartupSequence() async {
+    _stopEarlyReveal();
     setState(() => _startupState = GameStartupState.applyingNetwork);
 
     await _compatibilityReady;
@@ -550,6 +637,7 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
 
   @override
   void dispose() {
+    _stopEarlyReveal();
     WidgetsBinding.instance.removeObserver(this);
     _frameRateRuntimeController?.dispose();
     widget.audioController.removeListener(_onAudioControllerChanged);
