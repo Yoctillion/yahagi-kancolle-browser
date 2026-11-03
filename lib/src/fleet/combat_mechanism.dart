@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import '../game_state/game_state.dart';
 import 'equipment_display.dart';
+import 'ship_attack/attack_power.dart';
+import 'ship_attack/ship_loadout.dart';
 
 List<EquipmentMechanismDisplay> detectShipCombatMechanisms(
   GameState state,
@@ -51,7 +53,7 @@ List<EquipmentMechanismDisplay> detectShipCombatMechanisms(
       ),
     );
   }
-  if (_canNightCarrierAttack(master, equipment)) {
+  if (_canNightCarrierAttack(state, ship)) {
     result.add(
       const EquipmentMechanismDisplay(
         label: '空母夜间航空攻击',
@@ -437,36 +439,12 @@ bool _canAntiAirRocketBarrage(
       equipment.any((item) => item.master?.id == 274);
 }
 
-bool _canNightCarrierAttack(MasterShip master, List<ShipEquipment> equipment) {
-  if (!_isCarrier(master)) {
-    return false;
-  }
-
-  // api_id: Ark Royal / Kai, Saratoga Mk.II, Akagi / Kaga / Ryuuhou night forms.
-  // 565 (Fukae) and 900 (Yamashio Maru) are not aircraft carriers.
-  const nativeNightCarriers = <int>{393, 515, 545, 599, 610, 883};
-  final isNativeNightCarrier = nativeNightCarriers.contains(master.id);
-
-  final hasNightPersonnel = equipment.any(
-    (item) => const <int>{258, 259}.contains(item.master?.id),
-  );
-
-  if (!isNativeNightCarrier && !hasNightPersonnel) {
-    return false;
-  }
-
-  // api_type[2] is the equipment category; api_type[3] is its icon.
-  // Night fighter / torpedo bomber / dive bomber icons are 45 / 46 / 58.
-  // Ordinary-icon exceptions: Iwai fighter-bomber, photoelectric Suisei,
-  // and the three carrier-based Swordfish (not their seaplane variants).
-  const specialNightAircraftIds = <int>{154, 242, 243, 244, 320};
-  return equipment.any((item) {
-    final aircraft = item.master;
-    if (aircraft == null) return false;
-    if (!const <int>{6, 7, 8}.contains(_type(aircraft))) return false;
-    return const <int>{45, 46, 58}.contains(_icon(aircraft)) ||
-        specialNightAircraftIds.contains(aircraft.id);
-  });
+bool _canNightCarrierAttack(GameState state, OwnedShip ship) {
+  final loadout = ShipLoadout.fromState(state, ship);
+  if (loadout == null) return false;
+  final kind = nightAttackKind(loadout);
+  return kind == NightAttackKind.carrierAerial ||
+      kind == NightAttackKind.swordfish;
 }
 
 bool _nelsonPositionsAreValid(List<MasterShip?> masters) {

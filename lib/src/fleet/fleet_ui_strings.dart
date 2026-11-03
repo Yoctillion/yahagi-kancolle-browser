@@ -6,6 +6,22 @@ import '../../l10n/app_localizations.dart';
 /// structure and Chinese lookup keys together so UI call sites contain no
 /// untranslated literals.
 abstract final class FleetUiKeys {
+  static const dayAttackExpectation = '昼战期望';
+  static const nightAttackExpectation = '夜战期望';
+  static const notParticipating = '不参加';
+  static const expected = '期望';
+  static const powerCap = '上限';
+  static const attackStyle = '攻击方式';
+  static const triggerRate = '发动率';
+  static const powerModifier = '倍率';
+  static const attackPower = '攻击力';
+  static const lineAhead = '单纵阵';
+  static const parallelEngagement = '同航战';
+  static const airSupremacy = '制空确保';
+  static const undamaged = '未受损';
+  static const ignoresArmorAndAccuracy = '不计装甲与命中';
+  static const bombingBonusExcluded = '未计爆装加成';
+  static const confirm = '确定';
   static const unknownShipType = '未知舰种';
   static const unknownShip = '未知舰娘';
   static const noFurtherRemodel = '无后续改造';
@@ -459,6 +475,53 @@ String fleetText(BuildContext context, String source) {
       "野埼のコンディション不足（Cond≥30が必要）",
       "노사키 컨디션 부족(Cond≥30 필요)",
       "Nosaki morale too low (requires Cond≥30)",
+    ),
+    FleetUiKeys.dayAttackExpectation: (
+      "昼战期望",
+      "晝戰期望",
+      "昼戦期待値",
+      "주간전 기대치",
+      "Day exp.",
+    ),
+    FleetUiKeys.nightAttackExpectation: (
+      "夜战期望",
+      "夜戰期望",
+      "夜戦期待値",
+      "야간전 기대치",
+      "Night exp.",
+    ),
+    FleetUiKeys.notParticipating: ("不参加", "不參加", "不参加", "불참", "N/A"),
+    "通常攻撃": ("通常攻击", "通常攻擊", "通常攻撃", "통상 공격", "Normal attack"),
+    "連撃": ("连击", "連擊", "連撃", "연격", "Double attack"),
+    FleetUiKeys.expected: ("期望", "期望", "期待値", "기대치", "Expected"),
+    FleetUiKeys.powerCap: ("上限", "上限", "キャップ", "상한", "cap"),
+    FleetUiKeys.attackStyle: ("攻击方式", "攻擊方式", "攻撃種別", "공격 방식", "Attack"),
+    FleetUiKeys.triggerRate: ("发动率", "發動率", "発動率", "발동률", "Rate"),
+    FleetUiKeys.powerModifier: ("倍率", "倍率", "倍率", "배율", "Mod"),
+    FleetUiKeys.attackPower: ("攻击力", "攻擊力", "攻撃力", "공격력", "Power"),
+    FleetUiKeys.lineAhead: ("单纵阵", "單縱陣", "単縦陣", "단종진", "Line ahead"),
+    FleetUiKeys.parallelEngagement: ("同航战", "同航戰", "同航戦", "동항전", "Parallel"),
+    FleetUiKeys.airSupremacy: (
+      "制空确保",
+      "制空確保",
+      "制空権確保",
+      "제공권 확보",
+      "Air supremacy",
+    ),
+    FleetUiKeys.undamaged: ("未受损", "未受損", "無傷", "무손상", "Undamaged"),
+    FleetUiKeys.ignoresArmorAndAccuracy: (
+      "不计装甲与命中",
+      "不計裝甲與命中",
+      "装甲・命中は考慮しない",
+      "장갑·명중 미반영",
+      "Ignores armor & accuracy",
+    ),
+    FleetUiKeys.bombingBonusExcluded: (
+      "未计爆装加成",
+      "未計爆裝加成",
+      "爆装ボーナス未反映",
+      "폭장 보너스 미반영",
+      "Bombing bonus excluded",
     ),
   };
   final resource = resources[source];
