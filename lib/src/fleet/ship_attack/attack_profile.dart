@@ -40,7 +40,7 @@ class AttackPhaseProfile {
       rows.fold<double>(0, (sum, row) => sum + row.rate * row.totalPower);
 }
 
-const normalAttackLabel = '通常攻击';
+const normalAttackLabel = '通常攻撃';
 
 /// Each cut-in is rolled only if all earlier ones failed; whatever
 /// probability remains falls through to the normal attack.

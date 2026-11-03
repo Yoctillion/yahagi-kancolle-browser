@@ -59,12 +59,12 @@ void main() {
     _expectRow(profile.rows[0], label: '主主徹', rate: 0.346667, power: 232);
     _expectRow(
       profile.rows[1],
-      label: '连击',
+      label: '連撃',
       rate: 0.261333,
       power: 186,
       hits: 2,
     );
-    _expectRow(profile.rows[2], label: '通常攻击', rate: 0.392, power: 155);
+    _expectRow(profile.rows[2], label: '通常攻撃', rate: 0.392, power: 155);
     expect(profile.expectedPower, closeTo(238.40, 0.01));
   });
 
@@ -99,7 +99,7 @@ void main() {
     expect(profile.rows, hasLength(3));
     _expectRow(profile.rows[0], label: '戦爆攻', rate: 0.456, power: 250);
     _expectRow(profile.rows[1], label: '爆攻', rate: 0.200052, power: 230);
-    _expectRow(profile.rows[2], label: '通常攻击', rate: 0.343948, power: 200);
+    _expectRow(profile.rows[2], label: '通常攻撃', rate: 0.343948, power: 200);
     expect(profile.expectedPower, closeTo(228.80, 0.01));
   });
 
@@ -124,13 +124,13 @@ void main() {
     final l = _loadout(battleship(seaplane: false));
     final profile = computeDayProfile(l, fleetLosMod: 10, isFlagship: true)!;
     expect(profile.rows, hasLength(1));
-    _expectRow(profile.rows.single, label: '通常攻击', rate: 1, power: 155);
+    _expectRow(profile.rows.single, label: '通常攻撃', rate: 1, power: 155);
   });
 
   test('zero-plane observation slot disables spotting', () {
     final l = _loadout(battleship(seaplaneCapacity: 0));
     final profile = computeDayProfile(l, fleetLosMod: 10, isFlagship: true)!;
-    expect(profile.rows.map((row) => row.label), <String>['通常攻击']);
+    expect(profile.rows.map((row) => row.label), <String>['通常攻撃']);
   });
 
   test('ship outside fleet uses own LoS only', () {

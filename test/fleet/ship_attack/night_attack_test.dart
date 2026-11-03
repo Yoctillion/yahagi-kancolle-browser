@@ -41,7 +41,7 @@ void main() {
       isFlagship: false,
       fleet: _noLights,
     )!;
-    expect(profile.rows.map((row) => row.label), <String>['主魚電', '主魚', '通常攻击']);
+    expect(profile.rows.map((row) => row.label), <String>['主魚電', '主魚', '通常攻撃']);
     expect(profile.rows[0].rate, closeTo(0.631579, 1e-6));
     expect(profile.rows[0].powerPerHit, 243);
     expect(profile.rows[0].hits, 1.65);
@@ -139,7 +139,7 @@ void main() {
       isFlagship: false,
       fleet: _noLights,
     )!;
-    expect(profile.rows.map((row) => row.label), <String>['主主主', '通常攻击']);
+    expect(profile.rows.map((row) => row.label), <String>['主主主', '通常攻撃']);
   });
 
   test('double attack fixed rate', () {
@@ -156,7 +156,7 @@ void main() {
       isFlagship: false,
       fleet: _noLights,
     )!;
-    expect(profile.rows.first.label, '连击');
+    expect(profile.rows.first.label, '連撃');
     expect(profile.rows.first.rate, closeTo(109 / 110, 1e-12));
     expect(profile.rows.first.hits, 2);
   });
@@ -196,7 +196,7 @@ void main() {
       '夜襲CI 1.25',
       '夜襲CI 1.20',
       '夜襲CI 1.18',
-      '通常攻击',
+      '通常攻撃',
     ]);
     final r1 = 32 / 105;
     final r2 = (1 - r1) * 32 / 115;
