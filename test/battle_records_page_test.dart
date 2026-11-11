@@ -124,8 +124,8 @@ void main() {
     expect(find.byKey(const Key('detailed-battle-panel')), findsOneWidget);
     expect(find.text('我方主力（单纵阵）'), findsOneWidget);
     expect(find.text('敌方主力（单纵阵）'), findsOneWidget);
-    expect(find.text('18 / 30 (-12)'), findsOneWidget);
-    expect(find.text('18 / 30 (-12)'), findsOneWidget);
+    expect(find.text('18 / 30'), findsOneWidget);
+    expect(find.byKey(const Key('prophet-hp-ghost')), findsWidgets);
     expect(find.byKey(const Key('battle-mvp-friend-0')), findsOneWidget);
 
     final friendTitle = tester.getTopLeft(find.text('我方主力（单纵阵）'));

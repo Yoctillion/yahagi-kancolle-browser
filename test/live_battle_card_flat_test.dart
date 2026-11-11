@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_detail_strings.dart';
+import 'package:yahagi_kancolle_browser/src/battle/battle_fleet_grid.dart';
+import 'package:yahagi_kancolle_browser/src/battle/battle_models.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_node_label_resolver.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_pills.dart';
 import 'package:yahagi_kancolle_browser/src/battle/fcd_map_dataset.dart';
@@ -16,6 +18,7 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_prediction_settings.dart';
+import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -1074,6 +1077,148 @@ void main() {
       );
       expect(find.byKey(_formationLine), findsNothing);
       expect(find.byKey(_dropLine), findsNothing);
+    });
+  });
+
+  group('flat fleet grid ship names and ghost', () {
+    BattleShipSnapshot ship(
+      BattleSide side,
+      int position, {
+      String name = '夕張',
+      int initialHp = 30,
+      int currentHp = 30,
+      int maxHp = 50,
+      int damageReceived = 0,
+      bool isEscaped = false,
+    }) => BattleShipSnapshot(
+      masterId: 115,
+      name: name,
+      side: side,
+      fleetRole: BattleFleetRole.main,
+      position: position,
+      initialHp: initialHp,
+      maxHp: maxHp,
+      currentHp: currentHp,
+      damageReceived: damageReceived,
+      isEscaped: isEscaped,
+    );
+
+    Future<void> pumpGrid(
+      WidgetTester tester,
+      LiveBattle battle, {
+      bool showShipNames = true,
+    }) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(420, 900);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          theme: ThemeData(brightness: Brightness.dark, fontFamily: _appFont),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 210,
+                child: PanelStyleScope(
+                  style: PanelStyle.flat,
+                  child: BattleFleetGrid(
+                    battle: battle,
+                    damagePulseMode: DamagePulseFilter.off,
+                    showShipNames: showShipNames,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    LiveBattle battleOf(
+      List<BattleShipSnapshot> friends, {
+      List<BattleShipSnapshot> enemies = const <BattleShipSnapshot>[],
+      BattleDisplayStage stage = BattleDisplayStage.battle,
+      List<EnemyPreviewShip>? preview,
+    }) => LiveBattle(
+      context: const BattleContext(),
+      friendMain: friends,
+      enemyMain: enemies,
+      displayStage: stage,
+      enemyPreviewShips: preview,
+    );
+
+    testWidgets('shows ship names when showShipNames', (tester) async {
+      await pumpGrid(
+        tester,
+        battleOf(<BattleShipSnapshot>[ship(BattleSide.friend, 0)]),
+      );
+
+      final row = find.byKey(const Key('compact-name-friend-0'));
+      expect(row, findsOneWidget);
+      expect(
+        find.descendant(of: row, matching: find.text('夕張')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('drops damage suffix and paints ghost', (tester) async {
+      await pumpGrid(
+        tester,
+        battleOf(<BattleShipSnapshot>[
+          ship(
+            BattleSide.friend,
+            0,
+            initialHp: 50,
+            currentHp: 20,
+            damageReceived: 30,
+          ),
+        ]),
+      );
+
+      expect(find.textContaining('(-'), findsNothing);
+      expect(find.byKey(const Key('prophet-hp-ghost')), findsWidgets);
+    });
+
+    testWidgets('damage-control revive shows no ghost', (tester) async {
+      await pumpGrid(
+        tester,
+        battleOf(<BattleShipSnapshot>[
+          ship(BattleSide.friend, 0, initialHp: 5, currentHp: 10),
+        ]),
+      );
+
+      expect(find.byKey(const Key('prophet-hp-ghost')), findsNothing);
+    });
+
+    testWidgets('preview names align with named rows', (tester) async {
+      await pumpGrid(
+        tester,
+        battleOf(
+          <BattleShipSnapshot>[
+            ship(BattleSide.friend, 0),
+            ship(BattleSide.friend, 1),
+          ],
+          stage: BattleDisplayStage.navigation,
+          preview: const <EnemyPreviewShip>[
+            EnemyPreviewShip(masterId: 1501, name: '駆逐イ級'),
+            EnemyPreviewShip(masterId: 1502, name: '駆逐ロ級'),
+          ],
+        ),
+      );
+
+      for (var i = 0; i < 2; i++) {
+        expect(
+          tester.getTopLeft(find.byKey(Key('compact-preview-enemy-$i'))).dy,
+          tester.getTopLeft(find.byKey(Key('compact-bar-friend-$i'))).dy,
+        );
+      }
+      expect(
+        tester.getSize(find.byKey(const Key('compact-preview-enemy-0'))).height,
+        tester.getSize(find.byKey(const Key('compact-bar-friend-0'))).height,
+      );
     });
   });
 }

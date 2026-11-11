@@ -13,6 +13,7 @@ import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'battle_fleet_block.dart';
+import 'battle_fleet_grid.dart' show battleHpGhost;
 import 'battle_models.dart';
 import 'battle_pills.dart';
 import 'battle_prediction_sections.dart';
@@ -463,9 +464,8 @@ class _BattleShipRow extends StatelessWidget {
         : shipHpBarColor(ratio, isZeroHp: isZeroHp);
     final hpText = isEscaped
         ? '${ship.currentHp} / ${ship.maxHp} (退避)'
-        : (ship.damageReceived > 0
-              ? '${ship.currentHp} / ${ship.maxHp} (-${ship.damageReceived})'
-              : '${ship.currentHp} / ${ship.maxHp}');
+        : '${ship.currentHp} / ${ship.maxHp}';
+    final ghost = battleHpGhost(ship);
 
     Widget hpContent({double opacity = 1, bool pulsing = false}) {
       if (isEscaped) {
@@ -513,6 +513,10 @@ class _BattleShipRow extends StatelessWidget {
               value: ratio,
               color: appColor(context, hpBarColor),
               backgroundColor: appColor(context, const Color(0xff263e4d)),
+              ghostValue: ghost.value,
+              ghostColor: ghost.color == null
+                  ? null
+                  : appColor(context, ghost.color!),
             ),
           ],
         ),

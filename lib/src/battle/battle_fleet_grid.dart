@@ -11,6 +11,7 @@ import 'battle_pills.dart';
 import 'battle_ship_details_popover.dart';
 import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
+import '../layout/flat_style.dart';
 import '../layout/panel_style.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'prophet_hp_bar.dart';
@@ -59,12 +60,22 @@ class _PreviewNameColumn extends StatelessWidget {
 
 const double _flatBarHeight = 4;
 
+/// Pre-battle HP as a faint bar behind the current one; null when nothing was
+/// lost (a damage-control revive can leave current HP above the pre-battle
+/// value) or the ship is escaped.
+({double? value, Color? color}) battleHpGhost(BattleShipSnapshot ship) {
+  if (ship.isEscaped || ship.maxHp <= 0) return (value: null, color: null);
+  final pre = ship.initialHp.clamp(0, ship.maxHp) / ship.maxHp;
+  return (value: pre, color: shipHpBarColor(pre, isZeroHp: false));
+}
+
 class BattleFleetGrid extends StatelessWidget {
   const BattleFleetGrid({
     super.key,
     required this.battle,
     required this.damagePulseMode,
     this.lastFormation,
+    this.showShipNames = false,
   });
 
   final LiveBattle battle;
@@ -72,6 +83,10 @@ class BattleFleetGrid extends StatelessWidget {
 
   /// While navigating, the formation remembered for this node.
   final int? lastFormation;
+
+  /// Puts each ship's name above its bar, in the height the nameless row
+  /// already has, so the enemy preview names still line up.
+  final bool showShipNames;
 
   bool get _navigation => battle.displayStage == BattleDisplayStage.navigation;
 
@@ -121,6 +136,7 @@ class BattleFleetGrid extends StatelessWidget {
           ships: battle.friendMain,
           mvpPositions: mvpPositions,
           damagePulseMode: damagePulseMode,
+          showShipNames: showShipNames,
         ),
       );
       friendColumns.add(
@@ -130,6 +146,7 @@ class BattleFleetGrid extends StatelessWidget {
           mvpPositions: mvpPositions,
           positionOffset: 6,
           damagePulseMode: damagePulseMode,
+          showShipNames: showShipNames,
         ),
       );
     } else {
@@ -139,6 +156,7 @@ class BattleFleetGrid extends StatelessWidget {
           ships: battle.friendMain,
           mvpPositions: mvpPositions,
           damagePulseMode: damagePulseMode,
+          showShipNames: showShipNames,
         ),
       );
     }
@@ -152,6 +170,7 @@ class BattleFleetGrid extends StatelessWidget {
           mvpPositions: const <int>[],
           positionOffset: 6,
           damagePulseMode: damagePulseMode,
+          showShipNames: showShipNames,
         ),
       );
       enemyColumns.add(
@@ -160,6 +179,7 @@ class BattleFleetGrid extends StatelessWidget {
           ships: battle.enemyMain,
           mvpPositions: const <int>[],
           damagePulseMode: damagePulseMode,
+          showShipNames: showShipNames,
         ),
       );
     } else {
@@ -169,6 +189,7 @@ class BattleFleetGrid extends StatelessWidget {
           ships: battle.enemyMain,
           mvpPositions: const <int>[],
           damagePulseMode: damagePulseMode,
+          showShipNames: showShipNames,
         ),
       );
     }
@@ -424,6 +445,7 @@ class _CompactFleetColumn extends StatelessWidget {
     required this.ships,
     required this.mvpPositions,
     required this.damagePulseMode,
+    required this.showShipNames,
     this.positionOffset = 0,
   });
 
@@ -431,6 +453,7 @@ class _CompactFleetColumn extends StatelessWidget {
   final List<BattleShipSnapshot> ships;
   final List<int> mvpPositions;
   final DamagePulseFilter damagePulseMode;
+  final bool showShipNames;
   final int positionOffset;
 
   @override
@@ -448,6 +471,7 @@ class _CompactFleetColumn extends StatelessWidget {
               index: index,
               isMvp: mvpPositions.contains(index + positionOffset),
               damagePulseMode: damagePulseMode,
+              showShipNames: showShipNames,
             ),
           ),
       ],
@@ -462,6 +486,7 @@ class _CompactBarRow extends StatelessWidget {
     required this.index,
     required this.isMvp,
     required this.damagePulseMode,
+    required this.showShipNames,
   });
 
   final BattleShipSnapshot ship;
@@ -469,6 +494,7 @@ class _CompactBarRow extends StatelessWidget {
   final int index;
   final bool isMvp;
   final DamagePulseFilter damagePulseMode;
+  final bool showShipNames;
 
   @override
   Widget build(BuildContext context) {
@@ -486,11 +512,64 @@ class _CompactBarRow extends StatelessWidget {
         : shipHpBarColor(ratio, isZeroHp: isZeroHp);
     final hpText = isEscaped
         ? '${ship.currentHp} / ${ship.maxHp} (退避)'
-        : (ship.damageReceived > 0
-              ? '${ship.currentHp} / ${ship.maxHp} (-${ship.damageReceived})'
-              : '${ship.currentHp} / ${ship.maxHp}');
+        : '${ship.currentHp} / ${ship.maxHp}';
+    final ghost = battleHpGhost(ship);
+    final shipName = gameNames(
+      context,
+    ).shipName(ship.name, shipId: ship.masterId);
+    final mvpIcon = Icon(
+      Icons.emoji_events_rounded,
+      key: Key('compact-mvp-$keyName-$index'),
+      size: 9,
+      color: appColor(context, Color(0xffffd65c)),
+    );
+    Widget nameLine(Widget trailing) => Row(
+      key: Key('compact-name-$keyName-$index'),
+      children: <Widget>[
+        Flexible(
+          child: Text(
+            shipName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: appTextStyle(
+              context,
+              TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: isEscaped ? const Color(0xff8197a5) : null,
+              ),
+            ),
+          ),
+        ),
+        if (isMvp) ...<Widget>[const SizedBox(width: 2), mvpIcon],
+        const Spacer(),
+        const SizedBox(width: 3),
+        trailing,
+      ],
+    );
 
     Widget hpContent({double opacity = 1, bool pulsing = false}) {
+      if (isEscaped && showShipNames) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            nameLine(
+              BattleUiText(
+                '退避',
+                style: appTextStyle(
+                  context,
+                  const TextStyle(
+                    color: Color(0xff8197a5),
+                    fontSize: flatNamedHpFontSize,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2 + _flatBarHeight),
+          ],
+        );
+      }
       if (isEscaped) {
         return Align(
           alignment: Alignment.centerLeft,
@@ -530,30 +609,47 @@ class _CompactBarRow extends StatelessWidget {
           color: appColor(context, hpBarColor),
           backgroundColor: appColor(context, const Color(0xff263e4d)),
           height: flat ? _flatBarHeight : 6,
+          ghostValue: ghost.value,
+          ghostColor: ghost.color == null
+              ? null
+              : appColor(context, ghost.color!),
         ),
       );
       final content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                hpNumber,
-                if (isMvp) ...<Widget>[
-                  const SizedBox(width: 2),
-                  Icon(
-                    Icons.emoji_events_rounded,
-                    key: Key('compact-mvp-$keyName-$index'),
-                    size: 9,
-                    color: appColor(context, Color(0xffffd65c)),
+          if (showShipNames)
+            nameLine(
+              Opacity(
+                key: pulsing
+                    ? Key('compact-damage-hp-number-$keyName-$index')
+                    : null,
+                opacity: opacity,
+                child: Text(
+                  hpText,
+                  style: appTextStyle(
+                    context,
+                    TextStyle(
+                      color: hpValueColor,
+                      fontSize: flatNamedHpFontSize,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
+                ),
+              ),
+            )
+          else
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  hpNumber,
+                  if (isMvp) ...<Widget>[const SizedBox(width: 2), mvpIcon],
                 ],
-              ],
+              ),
             ),
-          ),
           const SizedBox(height: 2),
           hpBar,
         ],

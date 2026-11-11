@@ -16,3 +16,6 @@ const flatNodeIconSize = 16.0;
 const flatHeaderHeight = 24.0;
 const flatActionIconSize = 17.0;
 const flatEditRowHeight = 32.0;
+
+// 舰名行里的当前/最大血量，比无舰名行的 10 小一号，给舰名让宽度。
+const flatNamedHpFontSize = 9.0;
