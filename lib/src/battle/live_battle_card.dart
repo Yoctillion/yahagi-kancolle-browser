@@ -28,6 +28,7 @@ import '../settings/module_display_settings.dart';
 import 'detailed_battle_panel.dart';
 import 'land_base_raid_panel.dart';
 import 'official_enemy_preview.dart';
+import 'flat_air_battle_section.dart';
 import 'flat_battle_header.dart';
 import 'sortie_map_progress.dart';
 import 'sortie_map_section.dart';
@@ -685,6 +686,12 @@ class _FlatBattlePanel extends StatelessWidget {
           ? battle.rank
           : null,
     );
+    final dayAir = detailed && !(battle.dayAir?.isEmpty ?? true)
+        ? battle.dayAir
+        : null;
+    final night = detailed && !(battle.night?.isEmpty ?? true)
+        ? battle.night
+        : null;
     return Column(
       key: Key(detailed ? 'detailed-battle-panel' : 'compact-battle-panel'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -710,6 +717,24 @@ class _FlatBattlePanel extends StatelessWidget {
           lastFormation: showLastFormationHint ? battle.lastFormation : null,
           showShipNames: detailed,
         ),
+        if (dayAir != null) ...[
+          const SizedBox(height: flatSectionGap),
+          FlatAirBattleSection(
+            report: dayAir,
+            friendShips: battle.friendShips,
+            slotItems: gameState.masterSlotItems,
+          ),
+        ],
+        if (night != null) ...[
+          const SizedBox(height: flatSectionGap),
+          FlatNightBattleSection(
+            report: night,
+            friendMain: battle.friendMain,
+            friendEscort: battle.friendEscort,
+            enemyEscort: battle.enemyEscort,
+            slotItems: gameState.masterSlotItems,
+          ),
+        ],
       ],
     );
   }

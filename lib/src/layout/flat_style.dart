@@ -19,3 +19,11 @@ const flatEditRowHeight = 32.0;
 
 // 舰名行里的当前/最大血量，比无舰名行的 10 小一号，给舰名让宽度。
 const flatNamedHpFontSize = 9.0;
+
+// 航空战 / 夜战区块。
+const flatAllyLossColor = Color(0xffe6a04a);
+const flatEnemyLossColor = Color(0xffff8c78);
+const flatSectionTitleColor = Color(0xff70c7bc);
+const flatAirTableFontSize = 10.0;
+const flatAirPhaseFontSize = 9.5;
+const flatAirHeadFontSize = 9.0;
