@@ -5,6 +5,8 @@ const _prophetHpThresholds = <double>[0.25, 0.50, 0.75];
 
 const prophetHpBarHeight = 6.0;
 
+const _ghostOpacity = 0.32;
+
 class ProphetHpBar extends StatelessWidget {
   const ProphetHpBar({
     super.key,
@@ -12,16 +14,21 @@ class ProphetHpBar extends StatelessWidget {
     required this.color,
     required this.backgroundColor,
     this.height = prophetHpBarHeight,
+    this.ghostValue,
+    this.ghostColor,
   });
 
   final double value;
   final Color color;
   final Color backgroundColor;
   final double height;
+  final double? ghostValue;
+  final Color? ghostColor;
 
   @override
   Widget build(BuildContext context) {
     final ratio = value.clamp(0.0, 1.0).toDouble();
+    final ghostRatio = ghostValue?.clamp(0.0, 1.0).toDouble();
     return ClipRRect(
       borderRadius: BorderRadius.circular(height / 2),
       child: SizedBox(
@@ -30,11 +37,30 @@ class ProphetHpBar extends StatelessWidget {
           builder: (context, constraints) => Stack(
             fit: StackFit.expand,
             children: <Widget>[
+              ColoredBox(color: appColor(context, backgroundColor)),
+              if (ghostRatio != null && ghostRatio > ratio)
+                Positioned(
+                  key: const Key('prophet-hp-ghost'),
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: constraints.maxWidth * ghostRatio,
+                  child: ColoredBox(
+                    color: appColor(
+                      context,
+                      (ghostColor ?? color).withValues(alpha: _ghostOpacity),
+                    ),
+                  ),
+                ),
+              // 圆角只交给外层 ClipRRect；指示器自带圆角/轨道间隙会在虚影接缝处露底。
               LinearProgressIndicator(
                 minHeight: height,
                 value: ratio,
                 color: appColor(context, color),
-                backgroundColor: appColor(context, backgroundColor),
+                backgroundColor: Colors.transparent,
+                borderRadius: BorderRadius.zero,
+                trackGap: 0,
+                stopIndicatorRadius: 0,
               ),
               ClipRect(
                 clipper: _ProphetHpFillClipper(ratio),

@@ -3,7 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/src/battle/prophet_hp_bar.dart';
 
 void main() {
-  Future<void> pumpBar(WidgetTester tester, double value) async {
+  Future<void> pumpBar(
+    WidgetTester tester,
+    double value, {
+    double? ghost,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Center(
@@ -13,6 +17,7 @@ void main() {
               value: value,
               color: Colors.green,
               backgroundColor: const Color(0xff263e4d),
+              ghostValue: ghost,
             ),
           ),
         ),
@@ -79,5 +84,31 @@ void main() {
       1.0,
     );
     expect(find.byKey(const Key('prophet-hp-threshold-75')), findsOneWidget);
+  });
+
+  testWidgets('paints ghost from zero to pre-battle ratio under the fill', (
+    tester,
+  ) async {
+    await pumpBar(tester, 0.43, ghost: 1.0);
+    final ghost = find.byKey(const Key('prophet-hp-ghost'));
+    expect(ghost, findsOneWidget);
+    expect(tester.getSize(ghost).width, moreOrLessEquals(400, epsilon: 0.01));
+    expect(
+      tester.getTopLeft(ghost).dx,
+      tester.getTopLeft(find.byType(ProphetHpBar)).dx,
+    );
+  });
+
+  testWidgets('no ghost when current HP exceeds pre-battle HP', (
+    tester,
+  ) async {
+    await pumpBar(tester, 1.0, ghost: 0.2);
+    expect(find.byKey(const Key('prophet-hp-ghost')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('no ghost without ghostValue', (tester) async {
+    await pumpBar(tester, 0.5);
+    expect(find.byKey(const Key('prophet-hp-ghost')), findsNothing);
   });
 }
