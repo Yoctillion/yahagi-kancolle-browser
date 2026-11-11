@@ -9,7 +9,6 @@ import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../fleet/status_density.dart';
 import '../game_state/game_state.dart';
-import '../layout/panel_style.dart';
 import '../settings/battle_prediction_settings.dart';
 import '../settings/battle_status_effect_settings.dart';
 import 'battle_fleet_block.dart';
@@ -48,7 +47,6 @@ class DetailedBattlePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.isFlat(context);
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     final enemyPreviewShips =
         battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
@@ -80,7 +78,7 @@ class DetailedBattlePanel extends StatelessWidget {
         key: const Key('detailed-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (navigation && !flat) ...[
+          if (navigation) ...[
             navigationOverview,
             const SizedBox(height: 7),
           ],
@@ -88,7 +86,6 @@ class DetailedBattlePanel extends StatelessWidget {
             order: sectionOrder,
             legacyEnemyPreviewPosition: enemyPreviewPosition,
             sortieMap: mapSection,
-            nodeHeader: navigation && flat ? navigationOverview : null,
             enemyPreview: navigation && enemyPreviewShips.isNotEmpty
                 ? enemyPreview
                 : null,
@@ -195,16 +192,6 @@ class _NavigationOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PanelStyleScope.isFlat(context)) {
-      return Padding(
-        key: const Key('battle-navigation-header'),
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: FlatNavigationHeader(
-          battle: battle,
-          showLastFormationHint: showLastFormationHint,
-        ),
-      );
-    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
@@ -449,7 +436,6 @@ class _BattleShipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flat = PanelStyleScope.isFlat(context);
     final isEscaped = ship.isEscaped;
     final side = ship.side == BattleSide.friend ? 'friend' : 'enemy';
     final ratio = ship.maxHp <= 0
@@ -528,9 +514,7 @@ class _BattleShipRow extends StatelessWidget {
         if (background != null) Positioned.fill(child: background),
         Padding(
           key: Key('battle-ship-$side-$absolutePosition'),
-          padding: flat
-              ? const EdgeInsets.symmetric(vertical: 2)
-              : const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [

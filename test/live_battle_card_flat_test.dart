@@ -16,6 +16,7 @@ import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_
 import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_prediction_settings.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
@@ -305,18 +306,19 @@ void main() {
         final text = tester.widget<Text>(tagLine);
         expect(text.maxLines, 2);
         expect(text.overflow, TextOverflow.ellipsis);
-        expect(text.textSpan!.toPlainText(), '节点 1 · 普通战斗 · 上次：单横阵');
+        expect(text.textSpan!.toPlainText(), '普通战斗');
         expect(
           _spanWithText(text.textSpan!, '普通战斗')!.style!.color,
           nodeTypePillColors('普通战斗').foreground,
         );
         expect(
-          _spanWithText(text.textSpan!, '上次：单横阵')!.style!.color,
-          const Color(0xff8197a5),
+          _plainTextUnder(tester, find.byKey(_formationLine)),
+          contains('上次：单横阵'),
         );
-        final node = _spanWithText(text.textSpan!, '节点 1')!.style!;
-        expect(node.fontSize, 11);
-        expect(node.fontWeight, FontWeight.w700);
+        final node = tester.widget<Text>(
+          find.byKey(const Key('flat-battle-header-node')),
+        );
+        expect(node.data, '节点 1');
       });
     }
 
@@ -431,7 +433,7 @@ void main() {
 
     {
       const compact = false;
-      testWidgets('node header leads the content below the map ($compact)', (
+      testWidgets('node header leads the grid and holds the map ($compact)', (
         tester,
       ) async {
         final controller = createController(withMap: true);
@@ -439,12 +441,19 @@ void main() {
 
         await pumpCard(tester, controller, compact: compact);
 
-        final map = tester.getRect(find.byKey(_mapSection));
-        final header = tester.getRect(find.byKey(_navigationHeader));
-        expect(header.top, greaterThanOrEqualTo(map.bottom));
+        expect(find.byKey(_enemyPreview), findsNothing);
+        final header = find.byKey(_navigationHeader);
         expect(
-          header.bottom,
-          lessThanOrEqualTo(tester.getTopLeft(find.byKey(_enemyPreview)).dy),
+          find.descendant(
+            of: header,
+            matching: find.byKey(const Key('sortie-map-toggle')),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          tester.getTopLeft(find.byKey(const Key('compact-fleet-grid'))).dy -
+              tester.getBottomLeft(header).dy,
+          greaterThanOrEqualTo(flatSectionGap),
         );
       });
     }
@@ -488,7 +497,7 @@ void main() {
       expect(find.byKey(_navigationHeader), findsOneWidget);
     });
 
-    testWidgets('a custom order keeps the header ahead of the content', (
+    testWidgets('a custom order no longer applies to the flat panel', (
       tester,
     ) async {
       final controller = createController(withMap: true);
@@ -506,13 +515,11 @@ void main() {
       );
 
       final header = tester.getRect(find.byKey(_navigationHeader));
+      expect(find.byKey(_enemyPreview), findsNothing);
+      expect(find.byKey(_friendFleets), findsNothing);
       expect(
-        header.bottom,
-        lessThanOrEqualTo(tester.getTopLeft(find.byKey(_enemyPreview)).dy),
-      );
-      expect(
-        tester.getTopLeft(find.byKey(_friendFleets)).dy,
-        greaterThan(tester.getTopLeft(find.byKey(_enemyPreview)).dy),
+        tester.getTopLeft(find.byKey(const Key('compact-fleet-grid'))).dy,
+        greaterThanOrEqualTo(header.bottom),
       );
     });
 
@@ -705,72 +712,6 @@ void main() {
     });
   });
 
-  group('flat navigation sections', () {
-    // The compact layout folds both into its grid.
-    {
-      const compact = false;
-      testWidgets('enemy preview and fleets lose their blocks ($compact)', (
-        tester,
-      ) async {
-        final controller = createController(withMap: true);
-        await send(controller, _navigation(3, 100, start: true, preview: true));
-
-        await pumpCard(tester, controller, compact: compact);
-
-        final preview = find.byKey(const Key('official-enemy-preview'));
-        expect(
-          tester
-              .widget<Container>(
-                find
-                    .descendant(of: preview, matching: find.byType(Container))
-                    .first,
-              )
-              .decoration,
-          isNull,
-        );
-        final fleets = find.byKey(const Key('navigation-friendly-fleets'));
-        final containers = tester
-            .widgetList<Container>(
-              find.descendant(of: fleets, matching: find.byType(Container)),
-            )
-            .toList();
-        expect(containers, isNotEmpty);
-        for (final container in containers) {
-          final decoration = container.decoration;
-          if (decoration is BoxDecoration) {
-            expect(decoration.color, isNot(const Color(0xff10212e)));
-          }
-        }
-        final dividers = tester
-            .widgetList<Divider>(
-              find.descendant(of: fleets, matching: find.byType(Divider)),
-            )
-            .toList();
-        expect(dividers, isNotEmpty);
-        for (final divider in dividers) {
-          expect(divider.color, const Color(0xff1b3142));
-        }
-        // Sections stack at the flat 4 dp rhythm, with the node header
-        // leading the content right below the map.
-        final header = find.byKey(_navigationHeader);
-        expect(
-          tester.getTopLeft(header).dy -
-              tester.getBottomLeft(find.byKey(_mapSection)).dy,
-          4,
-        );
-        expect(
-          tester.getTopLeft(preview).dy - tester.getBottomLeft(header).dy,
-          4,
-        );
-        final firstShip = find.byKey(const Key('battle-ship-friend-0'));
-        expect(
-          tester.widget<Padding>(firstShip).padding,
-          const EdgeInsets.symmetric(vertical: 2),
-        );
-      });
-    }
-  });
-
   group('flat battle result', () {
     setUpAll(() async {
       await (FontLoader(
@@ -871,6 +812,54 @@ void main() {
         });
       }
     }
+
+    testWidgets('flat detailed mode shares the compact header', (
+      tester,
+    ) async {
+      final controller = createController(withMap: true);
+      await send(controller, mapStartEvent);
+      await send(controller, dayBattleEvent);
+      await send(controller, battleResultEvent);
+
+      await pumpCard(tester, controller, compact: false);
+      await tester.tap(find.byKey(const Key('battle-mode-detailed')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('battle-result-header')), findsOneWidget);
+      expect(find.byKey(const Key('sortie-map-toggle')), findsOneWidget);
+      expect(find.byKey(const Key('battle-rank-badge')), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is BattleRankBadge && (widget.size == 48 || widget.size == 50),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('battle-side-by-side-fleets')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('detailed-battle-panel')), findsOneWidget);
+      expect(find.byKey(const Key('compact-battle-panel')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('flat detailed navigation uses the grid', (tester) async {
+      final memory = await FormationMemoryController.load(
+        MemoryFormationMemoryStore(<String, int>{'1-1-1': 5}),
+      );
+      final controller = createController(formationMemory: memory);
+      await send(controller, mapStartEvent);
+
+      await pumpCard(tester, controller, compact: false);
+      await tester.tap(find.byKey(const Key('battle-mode-detailed')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('compact-fleet-grid')), findsOneWidget);
+      expect(find.byKey(_formationLine), findsOneWidget);
+      expect(find.byKey(_friendFleets), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets('node icon leads the header and the rank closes it', (
       tester,

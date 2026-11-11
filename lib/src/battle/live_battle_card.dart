@@ -204,8 +204,8 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
       builder: (context, _) {
         final battle = widget.controller.current;
         final idle = battle == null || battle.friendShips.isEmpty;
-        // The flat compact header carries the map toggle on its own row.
-        final headerMap = flat && !idle && _mode == BattlePanelMode.compact
+        // The flat header carries the map toggle on its own row.
+        final headerMap = flat && !idle
             ? _buildHeaderMap(battle)
             : null;
         // Flat battle and navigation headers already name the current node.
@@ -258,7 +258,22 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                   SizedBox(height: flat ? flatSectionGap : 9),
                 ],
                 const _IdleBattleContent(),
-              ] else if (_mode == BattlePanelMode.detailed)
+              ] else if (flat)
+                BattleShipDetailsHost(
+                  battle: battle,
+                  latestGameState: () => widget.controller.gameStateSnapshot,
+                  child: _FlatBattlePanel(
+                    battle: battle,
+                    gameState: widget.controller.gameStateSnapshot,
+                    damagePulseMode: widget.damagePulseMode,
+                    showLastFormationHint: widget.showLastFormationHint,
+                    detailed: _mode == BattlePanelMode.detailed,
+                    mapSection: mapSection,
+                    mapToggle: headerMap?.toggle,
+                    mapBody: headerMap?.body,
+                  ),
+                )
+              else if (_mode == BattlePanelMode.detailed)
                 DetailedBattlePanel(
                   battle: battle,
                   gameState: widget.controller.gameStateSnapshot,
@@ -282,8 +297,6 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
                     enemyPreviewPosition: widget.enemyPreviewPosition,
                     sectionOrder: widget.sectionOrder,
                     mapSection: mapSection,
-                    mapToggle: headerMap?.toggle,
-                    mapBody: headerMap?.body,
                   ),
                 ),
             ],
@@ -397,8 +410,6 @@ class _CompactBattlePanel extends StatelessWidget {
     required this.enemyPreviewPosition,
     this.sectionOrder,
     this.mapSection,
-    this.mapToggle,
-    this.mapBody,
   });
 
   final LiveBattle battle;
@@ -408,24 +419,10 @@ class _CompactBattlePanel extends StatelessWidget {
   final EnemyPreviewPosition enemyPreviewPosition;
   final List<BattlePredictionSection>? sectionOrder;
   final Widget? mapSection;
-  final Widget? mapToggle;
-  final Widget? mapBody;
 
   @override
   Widget build(BuildContext context) {
     final phone = isPhoneDensity(context);
-    final flat = PanelStyleScope.isFlat(context);
-    if (flat) {
-      return _FlatCompactBattle(
-        battle: battle,
-        gameState: gameState,
-        damagePulseMode: damagePulseMode,
-        showLastFormationHint: showLastFormationHint,
-        mapToggle: mapToggle,
-        mapBody: mapBody,
-        mapSection: mapSection,
-      );
-    }
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     if (navigation) {
       final raid = battle.landBaseRaid;
@@ -594,15 +591,17 @@ class _CompactBattlePanel extends StatelessWidget {
   }
 }
 
-/// Flat compact layout shared by navigation and battle: one header row with
-/// the node, enemy fleet name and map toggle, then the formation line and the
-/// friend/enemy grid, so the panel keeps its shape when the battle starts.
-class _FlatCompactBattle extends StatelessWidget {
-  const _FlatCompactBattle({
+/// Flat layout shared by navigation, battle and both panel modes: one header
+/// row with the node, enemy fleet name and map toggle, then the formation line
+/// and the friend/enemy grid, so the panel keeps its shape when the battle
+/// starts or the mode switches. Detailed mode only adds ship names.
+class _FlatBattlePanel extends StatelessWidget {
+  const _FlatBattlePanel({
     required this.battle,
     required this.gameState,
     required this.damagePulseMode,
     required this.showLastFormationHint,
+    required this.detailed,
     this.mapToggle,
     this.mapBody,
     this.mapSection,
@@ -612,6 +611,7 @@ class _FlatCompactBattle extends StatelessWidget {
   final GameState gameState;
   final DamagePulseFilter damagePulseMode;
   final bool showLastFormationHint;
+  final bool detailed;
   final Widget? mapToggle;
   final Widget? mapBody;
 
@@ -686,7 +686,7 @@ class _FlatCompactBattle extends StatelessWidget {
           : null,
     );
     return Column(
-      key: const Key('compact-battle-panel'),
+      key: Key(detailed ? 'detailed-battle-panel' : 'compact-battle-panel'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (mapSection case final section?) ...[
@@ -708,6 +708,7 @@ class _FlatCompactBattle extends StatelessWidget {
           battle: battle,
           damagePulseMode: damagePulseMode,
           lastFormation: showLastFormationHint ? battle.lastFormation : null,
+          showShipNames: detailed,
         ),
       ],
     );

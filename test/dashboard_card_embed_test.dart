@@ -102,13 +102,17 @@ void main() {
             ),
           ),
         );
-        expect(find.byType(DetailedBattlePanel), findsOneWidget);
+        // Flat shares one panel between the modes and tells them by key.
+        final detailed = style == PanelStyle.flat
+            ? find.byKey(const Key('detailed-battle-panel'))
+            : find.byType(DetailedBattlePanel);
+        expect(detailed, findsOneWidget);
         await tester.tap(find.byKey(const Key('battle-mode-compact')));
         await tester.pump();
-        expect(find.byType(DetailedBattlePanel), findsNothing);
+        expect(detailed, findsNothing);
         await tester.tap(find.byKey(const Key('battle-mode-detailed')));
         await tester.pump();
-        expect(find.byType(DetailedBattlePanel), findsOneWidget);
+        expect(detailed, findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     }
