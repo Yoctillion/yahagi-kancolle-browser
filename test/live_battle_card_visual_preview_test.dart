@@ -161,6 +161,7 @@ CapturedApiEvent _airBattle(int sequence) =>
 
 CapturedApiEvent _nightBattle(int sequence) =>
     kcsapiEvent('/kcsapi/api_req_battle_midnight/battle', <String, Object?>{
+      'api_formation': <int>[5, 4, 1],
       'api_f_nowhps': <int>[31, 19],
       'api_f_maxhps': <int>[31, 47],
       'api_e_nowhps': <int>[0, 34, 34],
