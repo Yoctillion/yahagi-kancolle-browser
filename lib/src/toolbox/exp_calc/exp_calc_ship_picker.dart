@@ -1,4 +1,5 @@
 import '../../theme/app_palette.dart';
+import '../../widgets/app_segmented_style.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
@@ -200,11 +201,9 @@ class _ShipDialogState extends State<_ShipDialog> {
                               selected: category == value,
                               button: true,
                               child: Material(
-                                color: appColor(
+                                color: AppSegmentedStyle.selection(
                                   context,
-                                  category == value
-                                      ? const Color(0xff244b69)
-                                      : Colors.transparent,
+                                  category == value,
                                 ),
                                 child: InkWell(
                                   key: Key(
@@ -221,7 +220,12 @@ class _ShipDialogState extends State<_ShipDialog> {
                                       style: appTextStyle(
                                         context,
                                         TextStyle(
-                                          color: Colors.white,
+                                          color: category == value
+                                              ? AppSegmentedStyle.foreground(
+                                                  context,
+                                                  true,
+                                                )
+                                              : Colors.white,
                                           fontFamily: fontFamily,
                                           fontFamilyFallback:
                                               fontStyle?.fontFamilyFallback,

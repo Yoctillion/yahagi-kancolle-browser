@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import '../settings/fleet_display_options.dart';
 import 'package:flutter/material.dart';
@@ -337,41 +338,29 @@ class _FleetSegmentedSwitcher extends StatelessWidget {
     final visibleFleets = fleets.take(4).toList();
     return Container(
       key: const Key('fleet-summary-switcher'),
-      height: 28,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff102331)),
-        border: Border.all(color: appColor(context, Color(0xff294052))),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      height: AppSegmentedStyle.compactHeight,
+      padding: AppSegmentedStyle.padding(compact: true),
+      decoration: AppSegmentedStyle.decoration(context, compact: true),
       child: Row(
         children: visibleFleets.map((fleet) {
           final isSelected = fleet.id == selectedFleetId;
           return Expanded(
             child: Material(
               key: Key('fleet-summary-selector-${fleet.id}'),
-              color: appColor(
-                context,
-                isSelected ? const Color(0xff8a6628) : Colors.transparent,
-              ),
-              borderRadius: BorderRadius.circular(6),
+              color: AppSegmentedStyle.selection(context, isSelected),
+              borderRadius: AppSegmentedStyle.itemRadius(compact: true),
               child: InkWell(
                 onTap: () => onSelected(fleet.id),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppSegmentedStyle.itemRadius(compact: true),
                 child: Center(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       _fleetSelectorLabel(fleet),
-                      style: TextStyle(
-                        color: appColor(
-                          context,
-                          isSelected
-                              ? const Color(0xffffdc88)
-                              : const Color(0xff9fb3bf),
-                        ),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                      style: AppSegmentedStyle.textStyle(
+                        context,
+                        selected: isSelected,
+                        compact: true,
                       ),
                     ),
                   ),

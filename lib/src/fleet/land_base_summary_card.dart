@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
@@ -181,37 +182,32 @@ class _LandBaseAreaSwitcher extends StatelessWidget {
     return Container(
       key: const Key('land-base-area-switcher'),
       constraints: const BoxConstraints(minWidth: 42, maxWidth: 150),
-      height: 22,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: const Color(0xff102331),
-        border: Border.all(color: const Color(0xff294052)),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      height: AppSegmentedStyle.compactHeight,
+      padding: AppSegmentedStyle.padding(compact: true),
+      decoration: AppSegmentedStyle.decoration(context, compact: true),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           for (final areaId in areaIds)
             Material(
               key: Key('land-base-area-selector-$areaId'),
-              color: areaId == selectedAreaId
-                  ? const Color(0xff8a6628)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
+              color: AppSegmentedStyle.selection(
+                context,
+                areaId == selectedAreaId,
+              ),
+              borderRadius: AppSegmentedStyle.itemRadius(compact: true),
               child: InkWell(
                 onTap: () => onSelected(areaId),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppSegmentedStyle.itemRadius(compact: true),
                 child: SizedBox(
                   width: 32,
                   child: Center(
                     child: Text(
                       '$areaId',
-                      style: TextStyle(
-                        color: areaId == selectedAreaId
-                            ? const Color(0xffffdc88)
-                            : const Color(0xff9fb3bf),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                      style: AppSegmentedStyle.textStyle(
+                        context,
+                        selected: areaId == selectedAreaId,
+                        compact: true,
                       ),
                     ),
                   ),

@@ -10,6 +10,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import '../fleet/equipment_type_icon.dart';
 import '../game_state/game_state.dart';
 import '../inventory/owned_inventory_projection.dart';
+import '../widgets/app_segmented_style.dart';
 import '../widgets/filter_controls.dart';
 import '../widgets/adaptive_input_dialog.dart';
 import '../widgets/frozen_data_table.dart';
@@ -110,20 +111,14 @@ class _WeekdayFilter extends StatelessWidget {
             width: 30,
             height: 30,
             child: Material(
-              color: appColor(
-                context,
-                controller.favoritesOnly
-                    ? const Color(0xff8a6628)
-                    : const Color(0xff102936),
-              ),
+              color: controller.favoritesOnly
+                  ? AppSegmentedStyle.selectedBackground(context)
+                  : appColor(context, const Color(0xff102936)),
               shape: CircleBorder(
                 side: BorderSide(
-                  color: appColor(
-                    context,
-                    controller.favoritesOnly
-                        ? const Color(0xffffc85a)
-                        : const Color(0xff315064),
-                  ),
+                  color: controller.favoritesOnly
+                      ? AppSegmentedStyle.selectedBorder(context)
+                      : appColor(context, const Color(0xff315064)),
                 ),
               ),
               child: InkWell(
@@ -401,29 +396,26 @@ class _SlidingSegment<T> extends StatelessWidget {
       options.indexWhere((item) => item.value == selected),
     );
     final scale = _englishTextLayoutScale(context);
+    final inset = AppSegmentedStyle.padding(compact: true);
     return SizedBox(
       width: segmentWidth * options.length,
       height: 30 * scale,
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: appColor(context, Color(0xff102936)),
-          border: Border.all(color: appColor(context, Color(0xff315064))),
-          borderRadius: BorderRadius.circular(15),
-        ),
+        decoration: AppSegmentedStyle.decoration(context, compact: true),
         child: Stack(
           children: [
             AnimatedPositioned(
               key: sliderKey,
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
-              left: selectedIndex * segmentWidth + 2,
-              top: 2,
-              width: segmentWidth - 4,
+              left: selectedIndex * segmentWidth + inset.left,
+              top: inset.top,
+              width: segmentWidth - inset.horizontal,
               height: 24 * scale,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: appColor(context, Color(0xff8a6628)),
-                  borderRadius: BorderRadius.circular(13),
+                  color: AppSegmentedStyle.selectedBackground(context),
+                  borderRadius: AppSegmentedStyle.itemRadius(compact: true),
                 ),
               ),
             ),
@@ -437,20 +429,18 @@ class _SlidingSegment<T> extends StatelessWidget {
                       color: appColor(context, Colors.transparent),
                       child: InkWell(
                         key: option.key,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppSegmentedStyle.itemRadius(
+                          compact: true,
+                        ),
                         onTap: () => onChanged(option.value),
                         child: Center(
                           child: Text(
                             uiText(context, option.label),
-                            style: appTextStyle(
+                            style: AppSegmentedStyle.textStyle(
                               context,
-                              TextStyle(
-                                color: option.value == selected
-                                    ? const Color(0xffffdc88)
-                                    : const Color(0xffa8bac4),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                              ),
+                              selected: option.value == selected,
+                              compact: true,
+                              fontSize: 11,
                             ),
                           ),
                         ),

@@ -7,7 +7,7 @@
 // is used. No packages, browser downloads, screenshots, or account data are used.
 // Example: node tool/test_ooi_viewport_browser_smoke.cjs --round 1 --out ../outputs/ooi-smoke/browser
 // Device labels describe screen/DPR emulation, not physical Android validation.
-// Native canvas fits are bridge assertions, never simulated Android scaling.
+// Native OOI/canvas fits are bridge assertions, never simulated Android scaling.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -19,7 +19,7 @@ function option(name, fallback) {
   return at < 0 ? fallback : args[at + 1];
 }
 if (args.includes('--help')) {
-  console.log('Usage: node tool/test_ooi_viewport_browser_smoke.cjs [--round 1] [--out DIRECTORY] [--quick | --access-probe | --ownership-probe | --lifecycle-probe]\nEnvironment: PLAYWRIGHT_MODULE, CHROME_PATH. --quick runs the route and scroll probes only. --lifecycle-probe tests local login/retry, viewport ownership and runtime reuse; it never authenticates with OOI.');
+  console.log('Usage: node tool/test_ooi_viewport_browser_smoke.cjs [--round 1] [--out DIRECTORY] [--quick | --access-probe | --ownership-probe | --lifecycle-probe | --lifecycle-regression-probe]\nEnvironment: PLAYWRIGHT_MODULE, CHROME_PATH. --quick runs the route and scroll probes only. --lifecycle-probe tests local login/retry, viewport ownership and runtime reuse; it never authenticates with OOI. --lifecycle-regression-probe runs active OOI hide/dialog/login-form regressions only.');
   process.exit(0);
 }
 const round = String(option('--round', '1'));
@@ -28,6 +28,7 @@ const quick = args.includes('--quick');
 const accessProbe = args.includes('--access-probe');
 const ownershipProbe = args.includes('--ownership-probe');
 const lifecycleProbe = args.includes('--lifecycle-probe');
+const lifecycleRegressionProbe = args.includes('--lifecycle-regression-probe');
 const repo = path.resolve(__dirname, '..');
 const sourceFile = path.join(repo, 'lib/src/browser/game_page_alignment_script.dart');
 const dart = fs.readFileSync(sourceFile, 'utf8');
@@ -50,7 +51,7 @@ try {
 }
 const report = {
   round, startedAt: new Date().toISOString(), sourceSha256: hash(dart),
-  mode: lifecycleProbe ? 'lifecycle-probe' : ownershipProbe ? 'ownership-probe' : accessProbe ? 'access-probe' : quick ? 'quick' : 'full', browser: null, checks: [], failures: [],
+  mode: lifecycleRegressionProbe ? 'lifecycle-regression-probe' : lifecycleProbe ? 'lifecycle-probe' : ownershipProbe ? 'ownership-probe' : accessProbe ? 'access-probe' : quick ? 'quick' : 'full', browser: null, checks: [], failures: [],
   pageErrors: [], diagnostics: [], capabilityBoundaries: [], measurements: [],
   limits: {pages: 1, contexts: 1, rasterThreads: 2, maximumEmulatedPixels: 7000000, screenshots: 0},
   scope: 'Offline wrapper fixtures and Chromium device metrics; not live OOI, Android WebView, physical vivo, system UI, or native scale validation.',
@@ -102,7 +103,7 @@ function childHtml(scrollable) {
     </script>`;
 }
 function fixture(shape, tag = 'iframe', delayed = false, surfaceUrl = childUrl, initialScrolling = null) {
-  const surface = `<${tag} id="externalswf" width="1280" height="800" ${tag === 'embed' ? 'type="text/html"' : ''} ${initialScrolling === null ? '' : `scrolling="${initialScrolling}"`} src="${surfaceUrl}"></${tag}>`;
+  const surface = `<${tag} id="${shape === 'htmlWrap' ? 'htmlWrap' : 'externalswf'}" width="1280" height="800" ${tag === 'embed' ? 'type="text/html"' : ''} ${initialScrolling === null ? '' : `scrolling="${initialScrolling}"`} src="${surfaceUrl}"></${tag}>`;
   const active = delayed ? '' : surface;
   const ooi = value => `<div id="ooi-page"><header id="ooi-header">Header</header><main id="ooi-content"><div id="ooi-game"><p>Help</p>${value}</div></main><footer id="ooi-footer">Footer</footer></div>`;
   const body = shape === 'canvas' ? '<canvas width="1200" height="720"></canvas>'
@@ -145,7 +146,8 @@ function initProbe() {
   };
 }
 function metrics() {
-  const frame = document.querySelector('#externalswf');
+  const frame = document.querySelector('#externalswf, iframe#htmlWrap');
+  const frameStyle = frame && getComputedStyle(frame);
   const rect = element => {
     if (!element) return null;
     const {x, y, width, height, right, bottom} = element.getBoundingClientRect();
@@ -155,14 +157,16 @@ function metrics() {
     url: location.href, state: window.__yahagiMobileReadPresentation?.(), runtime: window.__yahagiMobilePresentationRuntimeVersion,
     viewport: {width: innerWidth, height: innerHeight, visualWidth: visualViewport.width, visualHeight: visualViewport.height, dpr: devicePixelRatio, screenWidth: screen.width, screenHeight: screen.height},
     frame: rect(frame), canvas: rect(document.querySelector('canvas')),
-    scale: Number(frame?.parentElement.style.getPropertyValue('--yahagi-ooi-scale')),
+    frameCss: frameStyle && Object.fromEntries(['position', 'left', 'top', 'width', 'height', 'transform'].map(name => [name, frameStyle[name]])),
+    ancestorTransforms: frame ? Array.from((function* () { for (let ancestor = frame.parentElement; ancestor; ancestor = ancestor.parentElement) yield ancestor; })()).map(element => getComputedStyle(element).transform) : [],
+    viewportMetadata: Array.from(document.querySelectorAll('meta[name]')).filter(meta => meta.getAttribute('name').toLowerCase() === 'viewport').map(meta => meta.getAttribute('content')),
     scroll: {x: scrollX, y: scrollY}, fullscreen: !!document.fullscreenElement,
     ooiStyles: document.querySelectorAll('#__yahagi_mobile_ooi_browser__').length,
     gameStyles: document.querySelectorAll('#__yahagi_mobile_fixed_canvas__').length,
     probe: {...window.__probe}, messages: [...window.__messages], childReady: window.__childReady,
   };
 }
-let browser, context, page, cdp, activeFixture, scrollableChild = false, activeChildUrl = childUrl;
+let browser, context, page, cdp, activeFixture, activeDevice, scrollableChild = false, activeChildUrl = childUrl;
 let requests = 0, mainNavigations = 0, clicksSent = 0;
 const counts = () => ({requests, mainNavigations});
 async function settle() {
@@ -177,6 +181,7 @@ async function device(profile, width = profile.width, height = profile.height) {
     screenHeight: profile.screenHeight || Math.max(profile.height, height),
     screenOrientation: {type: width > height ? 'landscapePrimary' : 'portraitPrimary', angle: width > height ? 90 : 0},
   });
+  activeDevice = {...profile, width, height};
   assert.equal(await page.evaluate(() => devicePixelRatio), profile.dpr, 'The requested DPR must be applied by the real browser');
 }
 async function setup(url, shape, tag = 'iframe', profile = profiles[0], delayed = false, scrollable = false, sameOrigin = false, initialScrolling = null) {
@@ -190,48 +195,51 @@ async function setup(url, shape, tag = 'iframe', profile = profiles[0], delayed 
   if (shape !== 'canvas' && !delayed) await page.waitForFunction(() => window.__childReady > 0);
   return activeFixture;
 }
+function visibleCorners(m) {
+  return corners.filter(({x, y}) => m.frame.x + x >= 0 && m.frame.y + y >= 0 && m.frame.x + x < m.viewport.visualWidth && m.frame.y + y < m.viewport.visualHeight);
+}
 async function clickCorners(m) {
-  const {visualWidth: width, visualHeight: height} = m.viewport;
-  const scale = Math.min(width / 1200, height / 720);
-  const left = Math.max(0, (width - 1200 * scale) / 2), top = Math.max(0, (height - 720 * scale) / 2);
+  assert.equal(activeDevice.mobile, false, 'Trusted child clicks require the unscaled desktop fixture; mobile native input is tested on Android');
+  const targets = visibleCorners(m);
+  assert.ok(targets.length > 0, 'The desktop fixture must expose at least one unscaled child corner');
   const start = await page.evaluate(() => window.__clicks.length);
-  for (const corner of corners) await page.mouse.click(left + corner.x * scale, top + corner.y * scale);
-  clicksSent += 4;
-  await page.waitForFunction(start => window.__clicks.length >= start + 4, start);
+  for (const corner of targets) await page.mouse.click(m.frame.x + corner.x, m.frame.y + corner.y);
+  clicksSent += targets.length;
+  await page.waitForFunction(({start, length}) => window.__clicks.length >= start + length, {start, length: targets.length});
   return page.evaluate(start => window.__clicks.slice(start), start);
 }
 async function geometryAndClicks(label, click = true) {
   const m = await page.evaluate(metrics);
-  report.measurements.push({label, ...m});
-  const {visualWidth: width, visualHeight: height} = m.viewport;
-  const scale = Math.min(width / 1200, height / 720);
-  const left = Math.max(0, (width - 1200 * scale) / 2);
-  const top = Math.max(0, (height - 720 * scale) / 2);
-  assert.equal(m.state, 'web');
+  report.measurements.push({label, emulatedDevice: activeDevice.name, nativeScaleValidated: false, ...m});
+  assert.equal(m.state, 'game');
   assert.equal(m.runtime, expectedRuntime);
   assert.equal(m.ooiStyles, 1);
-  assert.equal(m.gameStyles, 0);
-  assert.equal(m.messages.at(-1), 'web', 'The current OOI wrapper must use web presentation, including after pending or canvas states');
-  for (const [actual, expected, description] of [[m.scale, scale, 'scale'], [m.frame.x, left, 'left'], [m.frame.y, top, 'top'], [m.frame.width, 1280 * scale, 'frame width'], [m.frame.height, 800 * scale, 'frame height']]) {
+  assert.equal(m.gameStyles, 1);
+  assert.ok(['game', 'game-fit'].includes(m.messages.at(-1)), 'OOI must request native game presentation, including after pending or canvas states');
+  assert.deepEqual(m.frameCss, {position: 'fixed', left: '0px', top: '0px', width: '1280px', height: '800px', transform: 'none'}, 'The original OOI embedding surface must stay fixed and untransformed for native fitting');
+  assert.ok(m.ancestorTransforms.every(value => value === 'none'), 'No ancestor may add a CSS transform to the embedding surface');
+  assert.ok(m.viewportMetadata.length > 0);
+  m.viewportMetadata.forEach(content => assert.match(content, /minimum-scale=0\.01, maximum-scale=10, user-scalable=yes/, 'OOI must own the same game viewport as a canvas'));
+  for (const [actual, expected, description] of [[m.frame.x, 0, 'left'], [m.frame.y, 0, 'top'], [m.frame.width, 1280, 'frame width'], [m.frame.height, 800, 'frame height']]) {
     assert.ok(Math.abs(actual - expected) < .1, `${description}: ${actual} != ${expected}`);
   }
-  assert.ok(left + 1200 * scale <= width + .1 && top + 720 * scale <= height + .1, 'All four game corners must be visible');
-  assert.ok(await page.evaluate(points => points.every(({x, y}) => document.elementFromPoint(x, y)?.id === 'externalswf'), corners.map(corner => ({x: left + corner.x * scale, y: top + corner.y * scale}))), 'Each game corner must hit the real embedding surface');
-  if (click) {
+  if (click && !activeDevice.mobile) {
+    const targets = visibleCorners(m);
+    assert.ok(await page.evaluate(points => points.every(({x, y}) => ['externalswf', 'htmlWrap'].includes(document.elementFromPoint(x, y)?.id)), targets.map(corner => ({x: m.frame.x + corner.x, y: m.frame.y + corner.y}))), 'Each visible unscaled corner must hit the real embedding surface');
     const clicks = await clickCorners(m);
-    // Chromium can quantize the outer input to a CSS pixel, then expose integer
-    // child clientX/clientY. Convert those two rounding steps to game units.
-    const inputTolerance = 1 / scale + 1;
-    assert.equal(clicks.length, 4);
+    const inputTolerance = 1;
+    assert.equal(clicks.length, targets.length);
     clicks.forEach((value, index) => {
-      assert.equal(value.corner, corners[index].name, 'Trusted click must reach the corresponding child canvas corner');
+      assert.equal(value.corner, targets[index].name, 'Trusted unscaled click must reach the corresponding visible child canvas corner');
       assert.equal(value.targetCanvas, true);
       assert.equal(value.trusted, true);
-      assert.ok(Math.abs(value.x - corners[index].x) <= inputTolerance && Math.abs(value.y - corners[index].y) <= inputTolerance, `Child click coordinate mismatch: ${JSON.stringify(value)}`);
+      assert.ok(Math.abs(value.x - targets[index].x) <= inputTolerance && Math.abs(value.y - targets[index].y) <= inputTolerance, `Child click coordinate mismatch: ${JSON.stringify(value)}`);
     });
     report.measurements.at(-1).clicks = clicks;
     report.measurements.at(-1).inputToleranceGameCssPx = inputTolerance;
     assert.deepEqual(await page.evaluate(() => window.__messages), m.messages, 'Clicking an OOI wrapper must not add native fit notifications');
+  } else if (activeDevice.mobile) {
+    report.measurements.at(-1).inputScope = 'Bridge and untransformed CSS geometry only; Chromium device emulation does not apply Android WebView native scale or verify scaled corner taps.';
   }
   return m;
 }
@@ -252,10 +260,10 @@ async function observerSettles(label, mutate = false) {
     assert.equal(first.messages, before.messages);
   }
 }
-async function nativeFit(label) {
+async function nativeFit(label, ooi = false) {
   const before = await page.evaluate(metrics);
   assert.equal(before.state, 'game');
-  assert.equal(before.ooiStyles, 0);
+  assert.equal(before.ooiStyles, ooi ? 1 : 0);
   assert.equal(before.gameStyles, 1);
   const messages = before.messages.length;
   await page.evaluate(source);
@@ -290,13 +298,14 @@ async function scrollingOwnershipChecks() {
       report.diagnostics.push({label: 'scrolling-owned-surface-removed', tag, original, restored});
       assert.equal(restored, original, 'Leaving OOI wrapper mode must restore the original attribute even on the detached owned surface');
       const m = await page.evaluate(metrics);
-      assert.equal(m.state, 'pending'); assert.equal(m.ooiStyles, 0);
+      assert.equal(m.state, 'web'); assert.equal(m.ooiStyles, 0); assert.equal(m.gameStyles, 0);
+      assert.equal(m.messages.at(-1), 'web', 'Removing an owned game frame must release the native game fit');
       await observerSettles(`scrolling ownership ${tag}/${original}`);
     });
   }
 }
 
-async function lifecycleChecks() {
+async function lifecycleChecks(focused = false) {
   const original = [
     'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
     'WIDTH=1200; MINIMUM-SCALE=1; maximum-scale=2',
@@ -304,13 +313,13 @@ async function lifecycleChecks() {
   const metadata = async () => page.evaluate(() => Array.from(document.querySelectorAll('meta[name]'))
     .filter(meta => meta.getAttribute('name').toLowerCase() === 'viewport')
     .map(meta => meta.getAttribute('content')));
-  async function boot(url, shape, tag = 'iframe', metaValues = original, runtime = source) {
+  async function boot(url, shape, tag = 'iframe', metaValues = original, runtime = source, initialSurface = false, decorate = html => html) {
     await device(profiles[3]);
     activeChildUrl = childUrl;
     scrollableChild = false;
-    activeFixture = fixture(shape, tag, shape !== 'canvas');
+    activeFixture = fixture(shape, tag, shape !== 'canvas' && !initialSurface);
     const tags = metaValues.map(value => value === null ? '<meta name="viewport">' : `<meta name="viewport" content="${value}">`).join('');
-    activeFixture.html = activeFixture.html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">', tags);
+    activeFixture.html = decorate(activeFixture.html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">', tags));
     await page.goto(url, {waitUntil:'load'});
     await page.evaluate(runtime);
     await settle();
@@ -322,6 +331,69 @@ async function lifecycleChecks() {
     },open);
     await settle();
   }
+  const ooiVariants=[{shape:'flash',tag:'iframe'},{shape:'flash',tag:'embed'},{shape:'htmlWrap',tag:'iframe'}];
+  for(const {shape,tag} of ooiVariants) await check(`lifecycle active OOI inline display ${shape}/${tag}`,async()=>{
+    await boot('https://ooi.moe/poi',shape,tag,original,source,true);
+    await geometryAndClicks(`active before inline hide ${shape}/${tag}`);
+    const selector=shape==='htmlWrap'?'#htmlWrap':'#externalswf';
+    const inlineStyle=await page.locator(selector).getAttribute('style');
+    const before=counts();
+    await page.locator(selector).evaluate(frame=>{frame.style.display='none';});
+    await page.waitForTimeout(250);await settle();
+    const hidden=await page.evaluate(metrics);
+    assert.equal(hidden.state,'web','Setting display:none on an active OOI frame must release native presentation');
+    assert.equal(hidden.ooiStyles,0);assert.equal(hidden.gameStyles,0);
+    assert.equal(hidden.messages.at(-1),'web');
+    assert.deepEqual(await metadata(),original,'Inline hiding must restore the exact original login viewport');
+    assert.equal(await page.locator(selector).getAttribute('scrolling'),null);
+    await page.locator(selector).evaluate((frame,inlineStyle)=>{
+      if(inlineStyle===null) frame.removeAttribute('style');else frame.setAttribute('style',inlineStyle);
+    },inlineStyle);await settle();
+    await geometryAndClicks(`active inline display restored ${shape}/${tag}`);
+    await nativeFit(`active inline display native fit ${shape}/${tag}`,true);
+    await observerSettles(`active inline display ${shape}/${tag}`,true);
+    assert.deepEqual(counts(),before,'Inline visibility changes must preserve the child document');
+  });
+  for(const {shape,tag} of [...ooiVariants,{shape:'ooi',tag:'iframe'},{shape:'ooi',tag:'embed'}]) for(const kind of ['dialog','nested-dialog','password-form','password-toggle-name','password-toggle-autocomplete']) await check(`lifecycle OOI internal ${kind} ${shape}/${tag}`,async()=>{
+    await boot('https://ooi.moe/poi',shape,tag,original,source,true);
+    await geometryAndClicks(`active before internal ${kind} ${shape}/${tag}`);
+    const before=counts();
+    await page.evaluate(({shape,kind})=>{
+      const wrapper=document.querySelector(shape==='ooi'?'#ooi-game':'#flashWrap');
+      if(kind==='dialog'||kind==='nested-dialog') {
+        const dialog=document.createElement('dialog');dialog.id='internal-login';dialog.textContent='Local fixture account dialog';
+        if(kind==='nested-dialog') {const host=document.createElement('div');host.id='internal-login-host';host.append(dialog);wrapper.append(host);} else wrapper.append(dialog);
+        dialog.showModal();
+      } else {
+        const identity=kind==='password-toggle-name'?'name="password" autocomplete="off"':kind==='password-toggle-autocomplete'?'autocomplete="current-password"':'autocomplete="off"';
+        wrapper.insertAdjacentHTML('beforeend',`<form id="internal-login"><label>Fixture password <input type="password" ${identity}></label><button type="button">Local retry</button></form>`);
+      }
+    },{shape,kind});await settle();
+    const blocked=await page.evaluate(metrics);
+    assert.equal(blocked.state,'web',`An OOI wrapper containing a visible ${kind} must release game presentation before hiding its login controls`);
+    assert.equal(blocked.ooiStyles,0);assert.equal(blocked.gameStyles,0);
+    assert.equal(blocked.messages.at(-1),'web');assert.deepEqual(await metadata(),original);
+    assert.equal(await page.locator('#internal-login').isVisible(),true,'OOI presentation CSS must preserve its own internal login controls');
+    if(kind.startsWith('password')) {
+      await page.locator('#internal-login input').fill('offline-fixture-password');
+      assert.equal(await page.locator('#internal-login input').inputValue(),'offline-fixture-password');
+      if(kind.startsWith('password-toggle')) {
+        await page.locator('#internal-login input').evaluate(input=>{input.type='text';});await settle();
+        const toggled=await page.evaluate(metrics);
+        assert.equal(toggled.state,'web','Showing a password as text must preserve the visible login page and release native fitting');
+        assert.equal(toggled.ooiStyles,0);assert.equal(toggled.gameStyles,0);assert.equal(toggled.messages.at(-1),'web');
+        assert.deepEqual(await metadata(),original);
+        assert.equal(await page.locator('#internal-login input').isVisible(),true);
+        assert.equal(await page.locator('#internal-login input').getAttribute('type'),'text');
+      }
+    }
+    await page.locator('#internal-login').evaluate(element=>{const host=element.closest('#internal-login-host');if(host) host.remove();else element.remove();});await settle();
+    await geometryAndClicks(`internal ${kind} closed ${shape}/${tag}`);
+    await nativeFit(`internal ${kind} native fit ${shape}/${tag}`,true);
+    await observerSettles(`internal ${kind} ${shape}/${tag}`,true);
+    assert.deepEqual(counts(),before,'Showing and closing local login controls must not reload the game document');
+  });
+  if(focused) return;
   for(const route of ['/poi','/flash','/kancolle']) for(const tag of ['iframe','embed']) {
     await check(`lifecycle failed login retry delayed ${route}/${tag}`,async()=>{
       await boot('https://ooi.moe'+route,'flash',tag);
@@ -341,7 +413,10 @@ async function lifecycleChecks() {
       await page.waitForFunction(()=>window.__childReady>0&&!!document.querySelector('#__yahagi_mobile_ooi_browser__'));
       await settle();
       await geometryAndClicks(`local login recovered ${route}/${tag}`);
-      assert.deepEqual(await metadata(),original,'OOI wrappers must keep the original login viewport');
+      const owned = await metadata();
+      assert.equal(owned.length, original.length);
+      owned.forEach(content => assert.match(content,/minimum-scale=0\.01, maximum-scale=10, user-scalable=yes/,'An active OOI frame must own the native game viewport'));
+      await nativeFit(`OOI explicit fit after login ${route}/${tag}`,true);
       assert.equal(counts().mainNavigations,before.mainNavigations);
       await page.locator('#externalswf').evaluate(frame=>{frame.setAttribute('width','640');frame.setAttribute('height','400');});
       await device(profiles[3],873,393);await settle();
@@ -349,8 +424,8 @@ async function lifecycleChecks() {
       await observerSettles(`login ${route}/${tag}/settled`,true);
     });
   }
-  for(const values of [original,[],[null]]) await check(`lifecycle standalone metadata ${JSON.stringify(values)}`,async()=>{
-    await boot('https://ooi.moe/kcs2/index.php','canvas','iframe',values);
+  for(const shape of ['canvas','flash','htmlWrap']) for(const values of [original,[],[null]]) await check(`lifecycle ${shape} metadata ${JSON.stringify(values)}`,async()=>{
+    await boot('https://ooi.moe/kcs2/index.php',shape,'iframe',values,source,true);
     const owned=await metadata();
     assert.equal(owned.length,Math.max(values.length,1));
     owned.forEach(content=>assert.match(content,/minimum-scale=0\.01, maximum-scale=10, user-scalable=yes/));
@@ -364,7 +439,7 @@ async function lifecycleChecks() {
       assert.equal(await page.evaluate(()=>window.__yahagiMobileReadPresentation()),'game');
       assert.deepEqual(await metadata(),owned,'Returning to game must take a fresh identical viewport snapshot');
     }
-    await observerSettles('standalone viewport stability',true);
+    await observerSettles(`${shape} viewport stability`,true);
     assert.deepEqual(counts(),before,'Metadata ownership must not cause document requests');
   });
   for(const tag of ['iframe','embed']) await check(`lifecycle interleaved wrapper standalone dialog ${tag}`,async()=>{
@@ -384,11 +459,79 @@ async function lifecycleChecks() {
     await page.evaluate(surface=>{document.querySelector('canvas').remove();document.querySelector('#flashWrap').innerHTML=surface;},fixture('flash',tag).surface);
     await page.waitForFunction(()=>window.__childReady>0);await settle();
     await geometryAndClicks(`interleaved final wrapper ${tag}`);
-    assert.deepEqual(await metadata(),original,'Wrapper takeover must restore standalone viewport metadata');
-    assert.equal(await page.evaluate(()=>document.querySelectorAll('#__yahagi_mobile_fixed_canvas__').length),0);
+    assert.deepEqual(await metadata(),owned,'Wrapper and standalone canvas must retain the same owned game viewport');
+    assert.equal(await page.evaluate(()=>document.querySelectorAll('#__yahagi_mobile_fixed_canvas__').length),1);
     await observerSettles('interleaved request settlement '+tag,true);
   });
-  await check('lifecycle runtime 4 upgrade and runtime 5 reinjection snapshot',async()=>{
+  for(const variant of ooiVariants) {
+    const {shape,tag}=variant;
+    await check(`lifecycle active OOI release and resume ${shape}/${tag}`,async()=>{
+      await boot('https://ooi.moe/poi',shape,tag,original,'void 0',true);
+      const originalStyles=await page.evaluate(()=>{
+        window.scrollTo(0,150);
+        const styles=element=>Object.fromEntries(['overflow','touchAction','minWidth','minHeight'].map(key=>[key,getComputedStyle(element)[key]]));
+        return {html:styles(document.documentElement),body:styles(document.body),scroll:{x:scrollX,y:scrollY}};
+      });
+      assert.equal(originalStyles.scroll.y,150,'The original wrapper fixture must genuinely scroll');
+      await page.evaluate(source);await settle();
+      await geometryAndClicks(`active before release ${shape}/${tag}`);
+      await nativeFit(`active OOI native fit ${shape}/${tag}`,true);
+      const before=counts();
+      const messages=await page.evaluate(()=>[...window.__messages]);
+      await page.evaluate(()=>{for(let i=0;i<30;i++) window.__yahagiMobileReadPresentation();});
+      await settle();
+      assert.deepEqual(await page.evaluate(()=>window.__messages),messages,'Native acknowledgement reads must not send game or game-fit messages back');
+      await page.evaluate(()=>{document.querySelector('#flashWrap').hidden=true;});await settle();
+      assert.equal(await page.evaluate(()=>window.__yahagiMobileReadPresentation()),'web','Hiding an active game surface must release native presentation');
+      assert.deepEqual(await metadata(),original);
+      assert.equal(await page.evaluate(()=>window.__messages.at(-1)),'web');
+      await page.evaluate(()=>{document.querySelector('#flashWrap').hidden=false;});await settle();
+      await geometryAndClicks(`active unhidden ${shape}/${tag}`);
+      await page.evaluate(()=>{window.__removedSurface=document.querySelector('#externalswf,iframe#htmlWrap');window.__removedSurface.remove();});await settle();
+      const released=await page.evaluate(()=>{
+        window.scrollTo(0,150);
+        const styles=element=>Object.fromEntries(['overflow','touchAction','minWidth','minHeight'].map(key=>[key,getComputedStyle(element)[key]]));
+        return {state:window.__yahagiMobileReadPresentation(),html:styles(document.documentElement),body:styles(document.body),scroll:{x:scrollX,y:scrollY},scrolling:window.__removedSurface.getAttribute('scrolling'),locks:[typeof window.__yahagiMobileScrollLock,typeof window.__yahagiMobileAlignGame,typeof window.__yahagiMobileOoiAlignGame],styleCount:document.querySelectorAll('#__yahagi_mobile_fixed_canvas__,#__yahagi_mobile_ooi_browser__').length,messages:[...window.__messages]};
+      });
+      await settle();
+      assert.equal(released.state,'web','A previously active OOI game removed from the document must become web, not pending');
+      assert.equal(released.styleCount,0);
+      assert.deepEqual(released.html,originalStyles.html);assert.deepEqual(released.body,originalStyles.body);
+      assert.deepEqual(released.scroll,originalStyles.scroll,'Removing the surface must restore real top-level scrollability');
+      assert.deepEqual(await page.evaluate(()=>({x:scrollX,y:scrollY})),released.scroll,'A stale scroll listener must not pull the released web page back to zero');
+      assert.equal(released.scrolling,null,'The detached frame must recover its original scrolling attribute');
+      assert.deepEqual(released.locks,['undefined','undefined','undefined']);
+      assert.deepEqual(await metadata(),original);assert.equal(released.messages.at(-1),'web');
+      await page.evaluate(source);await settle();
+      assert.deepEqual(await page.evaluate(()=>window.__messages),released.messages,'Repeated fits on a released web page must not request native game scaling');
+      assert.deepEqual(counts(),before,'Hide, release and native state acknowledgement must not reload documents');
+      const ready=await page.evaluate(()=>window.__childReady);
+      await page.evaluate(surface=>document.querySelector('#flashWrap').insertAdjacentHTML('beforeend',surface),activeFixture.surface);
+      await page.waitForFunction(previous=>window.__childReady>previous,ready);await settle();
+      await geometryAndClicks(`active reappeared ${shape}/${tag}`);
+      await observerSettles(`OOI release resume ${shape}/${tag}`,true);
+    });
+    for(const hidden of ['surface-hidden','surface-visibility','ancestor-hidden']) await check(`lifecycle initial hidden OOI ${shape}/${tag}/${hidden}`,async()=>{
+      const selector=shape==='htmlWrap'?'#htmlWrap':'#externalswf';
+      await boot('https://ooi.moe/poi',shape,tag,original,source,true,html=>{
+        if(hidden==='ancestor-hidden') return html.replace('id="flashWrap"','id="flashWrap" hidden');
+        return html.replace(`id="${shape==='htmlWrap'?'htmlWrap':'externalswf'}"`,`id="${shape==='htmlWrap'?'htmlWrap':'externalswf'}" ${hidden==='surface-hidden'?'hidden':'style="visibility:hidden"'}`);
+      });
+      const initial=await page.evaluate(metrics);
+      assert.equal(initial.state,'pending','An initially hidden OOI surface must not take over the login page');
+      assert.equal(initial.ooiStyles,0);assert.equal(initial.gameStyles,0);
+      assert.deepEqual(await metadata(),original);
+      assert.equal(initial.messages.some(message=>message.startsWith('game')),false);
+      await page.evaluate(({selector,hidden})=>{
+        if(hidden==='ancestor-hidden') document.querySelector('#flashWrap').hidden=false;
+        else if(hidden==='surface-hidden') document.querySelector(selector).hidden=false;
+        else document.querySelector(selector).style.visibility='visible';
+      },{selector,hidden});await settle();
+      await geometryAndClicks(`initial hidden became visible ${shape}/${tag}/${hidden}`);
+      await observerSettles(`initial hidden ${shape}/${tag}/${hidden}`,true);
+    });
+  }
+  await check(`lifecycle runtime 4 upgrade and runtime ${expectedRuntime} reinjection snapshot`,async()=>{
     const git=(...args)=>require('node:child_process').execFileSync('git',args,{cwd:repo,encoding:'utf8'});
     const revisions=git('log','-n','32','--format=%H','--','lib/src/browser/game_page_alignment_script.dart').trim().split(/\s+/);
     let oldSource;
@@ -448,7 +591,7 @@ async function run() {
   page.on('crash', () => { report.failures.push({name: 'browser page crashed', passed: false}); save(); });
   await context.route('**/*', route => route.fulfill({status: 200, contentType: 'text/html', body: route.request().frame() !== page.mainFrame() ? childHtml(scrollableChild) : activeFixture.html}));
 
-  if (lifecycleProbe) { await lifecycleChecks(); return; }
+  if (lifecycleProbe || lifecycleRegressionProbe) { await lifecycleChecks(lifecycleRegressionProbe); return; }
 
   if (ownershipProbe) { await scrollingOwnershipChecks(); return; }
 
@@ -477,15 +620,24 @@ async function run() {
       await setup('https://ooi.moe' + route, shape, tag);
       const before = counts();
       await geometryAndClicks(`routes ${route} ${shape}/${tag}`);
+      await nativeFit(`routes explicit native fit ${route} ${shape}/${tag}`,true);
       assert.deepEqual(counts(), before, 'Fit and clicks must not reload or request documents');
     });
   }
+  for(const route of quick?['/poi']:routes) await check(`routes ${route} htmlWrap/iframe`,async()=>{
+    await setup('https://ooi.moe'+route,'htmlWrap');
+    const before=counts();
+    await geometryAndClicks(`routes ${route} htmlWrap/iframe`);
+    await nativeFit(`routes explicit native fit ${route} htmlWrap/iframe`,true);
+    await observerSettles(`htmlWrap ${route}`,true);
+    assert.deepEqual(counts(),before);
+  });
 
   // Scroll probes distinguish a fitting child (cannot scroll) from a deliberately
   // scrollable child. The latter is a robustness fixture, not a claim about OOI.
   for (const tag of ['iframe', 'embed']) for (const scrollable of [false, true]) {
     await check(`manual fit child scroll ${tag} scrollable=${scrollable}`, async () => {
-      await setup('https://ooi.moe/poi', 'flash', tag, profiles[2], false, scrollable);
+      await setup('https://ooi.moe/poi', 'flash', tag, profiles[0], false, scrollable);
       await geometryAndClicks(`child scroll initial ${tag} ${scrollable}`);
       const before = counts();
       const child = page.frames().find(frame => frame.url() === childUrl);
@@ -511,7 +663,7 @@ async function run() {
     });
   }
   for (const tag of ['iframe', 'embed']) await check(`manual fit same-origin OOI proxy child scroll ${tag}`, async () => {
-    await setup('https://ooi.moe/poi', 'flash', tag, profiles[2], false, true, true);
+    await setup('https://ooi.moe/poi', 'flash', tag, profiles[0], false, true, true);
     await geometryAndClicks(`same-origin child initial ${tag}`);
     const before = counts();
     const child = page.frames().find(frame => frame !== page.mainFrame() && frame.url() === activeChildUrl);
@@ -586,15 +738,17 @@ async function run() {
     await check(`manual fit corruption ${shape}/${tag}`, async () => {
       await setup('https://ooi.moe/kancolle/', shape, tag, profiles[3]);
       const before = counts();
-      for (const kind of ['variables', 'style-deletion', 'style-text', 'parent-scroll']) {
+      for (const kind of ['frame-attributes', 'style-deletion', 'style-text', 'game-style-deletion', 'game-style-text', 'parent-scroll']) {
         const broken = await page.evaluate(({source, kind}) => {
-          const frame = document.querySelector('#externalswf'), game = frame.parentElement;
-          if (kind === 'variables') {
-            for (const [key, value] of [['scale', '.11'], ['left', '240px'], ['top', '180px'], ['frame-width', '640px'], ['frame-height', '400px']]) game.style.setProperty('--yahagi-ooi-' + key, value);
+          const frame = document.querySelector('#externalswf');
+          if (kind === 'frame-attributes') {
+            frame.setAttribute('width','640');frame.setAttribute('height','400');
           } else if (kind === 'style-text') document.querySelector('#__yahagi_mobile_ooi_browser__').textContent = 'iframe,embed{transform:scale(.1)!important}';
+          else if (kind === 'game-style-deletion') document.querySelector('#__yahagi_mobile_fixed_canvas__').remove();
+          else if (kind === 'game-style-text') document.querySelector('#__yahagi_mobile_fixed_canvas__').textContent = 'html,body{min-width:2000px!important;overflow:auto!important}';
           else {
             document.querySelector('#__yahagi_mobile_ooi_browser__').remove();
-            if (kind === 'parent-scroll') window.scrollTo(120, 400);
+            if (kind === 'parent-scroll') {document.querySelector('#__yahagi_mobile_fixed_canvas__').remove();window.scrollTo(120, 400);}
           }
           const r = frame.getBoundingClientRect();
           const broken = {kind, x: scrollX, y: scrollY, frame: {x: r.x, y: r.y, width: r.width, height: r.height}};
@@ -609,8 +763,8 @@ async function run() {
       }
       // Separately verify observer-only repair when manual fit is not invoked.
       await page.evaluate(() => {
-        document.querySelector('#externalswf').parentElement.style.setProperty('--yahagi-ooi-scale', '.1');
         document.querySelector('#__yahagi_mobile_ooi_browser__').remove();
+        document.querySelector('#__yahagi_mobile_fixed_canvas__').remove();
       });
       await settle();
       await geometryAndClicks(`observer corruption repair ${shape}/${tag}`);
@@ -674,6 +828,7 @@ async function run() {
     await geometryAndClicks(`query/case ${route}`);
   });
   await scrollingOwnershipChecks();
+  await lifecycleChecks();
 }
 
 (async () => {

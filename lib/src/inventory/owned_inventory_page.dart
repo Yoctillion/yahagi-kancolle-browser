@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -618,13 +619,9 @@ class OwnedInventoryOwnershipSegmented extends StatelessWidget {
     return Container(
       key: const Key('owned-inventory-ownership-segmented'),
       width: 180,
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      height: AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           Expanded(
@@ -1129,13 +1126,9 @@ class OwnedInventorySegmented extends StatelessWidget {
     return Container(
       key: const Key('owned-inventory-segmented'),
       width: 260,
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: appColor(context, Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      height: AppSegmentedStyle.regularHeight,
+      padding: AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context),
       child: Row(
         children: [
           Expanded(
@@ -1172,29 +1165,17 @@ class _SegmentButton extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Material(
-    color: appColor(
-      context,
-      selected ? const Color(0xff8a6628) : Colors.transparent,
-    ),
-    borderRadius: BorderRadius.circular(16),
+    color: AppSegmentedStyle.selection(context, selected),
+    borderRadius: AppSegmentedStyle.itemRadius(),
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       child: Center(
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
             label,
-            style: appTextStyle(
-              context,
-              TextStyle(
-                color: selected
-                    ? const Color(0xffffdc88)
-                    : const Color(0xff9fb3bf),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            style: AppSegmentedStyle.textStyle(context, selected: selected),
           ),
         ),
       ),
@@ -1386,22 +1367,20 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     height: 28,
     child: Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff60491f) : const Color(0xff102936),
-      ),
+      color: selected
+          ? AppSegmentedStyle.selectedBackground(context)
+          : appColor(context, const Color(0xff102936)),
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: appColor(
-            context,
-            selected ? const Color(0xffb7832a) : const Color(0xff315064),
-          ),
+          color: selected
+              ? AppSegmentedStyle.selectedBorder(context)
+              : appColor(context, const Color(0xff315064)),
         ),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: AppSegmentedStyle.itemRadius(compact: true),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: AppSegmentedStyle.itemRadius(compact: true),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Center(
@@ -1411,7 +1390,7 @@ class _FilterChip extends StatelessWidget {
                 context,
                 TextStyle(
                   color: selected
-                      ? const Color(0xffffcf62)
+                      ? AppSegmentedStyle.foreground(context, true)
                       : const Color(0xffa8bac4),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,

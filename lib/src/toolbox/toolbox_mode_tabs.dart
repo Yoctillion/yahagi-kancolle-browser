@@ -1,7 +1,7 @@
-import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../widgets/app_segmented_style.dart';
 import 'composition_image_strings.dart';
 import 'sortie_map_query/sortie_map_query_strings.dart';
 import 'toolbox_mode.dart';
@@ -68,12 +68,8 @@ class _ToolboxModeTabsState extends State<ToolboxModeTabs> {
       key: const Key('toolbox-mode-tabs'),
       width: compact ? null : 480,
       height: compact ? 36 : 38,
-      padding: EdgeInsets.all(compact ? 1 : 3),
-      decoration: BoxDecoration(
-        color: appColor(context, const Color(0xff0b202d)),
-        border: Border.all(color: appColor(context, const Color(0xff315064))),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      padding: compact ? const EdgeInsets.all(1) : AppSegmentedStyle.padding(),
+      decoration: AppSegmentedStyle.decoration(context, compact: compact),
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           controller: _scrollController,
@@ -93,30 +89,27 @@ class _ToolboxModeTabsState extends State<ToolboxModeTabs> {
                       onTap: () => onChanged(value),
                       child: Material(
                         key: Key('toolbox-tab-${value.name}'),
-                        color: appColor(
+                        color: AppSegmentedStyle.selection(
                           context,
-                          mode == value
-                              ? const Color(0xff8a6628)
-                              : Colors.transparent,
+                          mode == value,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: AppSegmentedStyle.itemRadius(
+                          compact: compact,
+                        ),
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppSegmentedStyle.itemRadius(
+                            compact: compact,
+                          ),
                           onTap: () => onChanged(value),
                           child: Center(
                             child: Text(
                               label(value),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: appTextStyle(
+                              style: AppSegmentedStyle.textStyle(
                                 context,
-                                TextStyle(
-                                  color: mode == value
-                                      ? const Color(0xffffdc88)
-                                      : const Color(0xff9fb3bf),
-                                  fontSize: compact ? 10 : 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                selected: mode == value,
+                                compact: compact,
                               ),
                             ),
                           ),

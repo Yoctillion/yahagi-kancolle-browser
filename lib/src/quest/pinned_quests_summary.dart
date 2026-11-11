@@ -123,159 +123,7 @@ class PinnedQuestsSummary extends StatelessWidget {
                                         ),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: LayoutBuilder(
-                                        builder: (context, constraints) {
-                                          final english =
-                                              Localizations.maybeLocaleOf(
-                                                context,
-                                              )?.languageCode ==
-                                              'en';
-                                          // Narrow cards and enlarged text need room
-                                          // for the name and confirmation label.
-                                          final wrapping =
-                                              english ||
-                                              constraints.maxWidth < 320 ||
-                                              MediaQuery.textScalerOf(
-                                                    context,
-                                                  ).scale(12) >
-                                                  12;
-                                          final children = <Widget>[
-                                            if (visible.contains('type')) ...[
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: appColor(
-                                                    context,
-                                                    q.categoryColor.withValues(
-                                                      alpha: 0.2,
-                                                    ),
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  _categoryLabel(l10n, q),
-                                                  style: TextStyle(
-                                                    color: appColor(
-                                                      context,
-                                                      q.categoryColor,
-                                                    ),
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                            ],
-                                            if (visible.contains('number')) ...[
-                                              Container(
-                                                key: Key(
-                                                  'quest-summary-number-${q.id}',
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: appColor(
-                                                    context,
-                                                    q.categoryColor.withValues(
-                                                      alpha: 0.2,
-                                                    ),
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  catalogController?.catalog
-                                                          .byGameId(q.id)
-                                                          ?.code ??
-                                                      '#${q.id}',
-                                                  style: TextStyle(
-                                                    color: appColor(
-                                                      context,
-                                                      q.categoryColor,
-                                                    ),
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                            ],
-                                            if (visible.contains('name'))
-                                              if (wrapping)
-                                                Text(
-                                                  gameNames(
-                                                    context,
-                                                  ).entityText(q.title),
-                                                  style: TextStyle(
-                                                    color: appColor(
-                                                      context,
-                                                      const Color(0xffecf3f5),
-                                                    ),
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                )
-                                              else
-                                                Expanded(
-                                                  child: Text(
-                                                    gameNames(
-                                                      context,
-                                                    ).entityText(q.title),
-                                                    style: TextStyle(
-                                                      color: appColor(
-                                                        context,
-                                                        const Color(0xffecf3f5),
-                                                      ),
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                            if (!visible.contains('name') &&
-                                                !wrapping)
-                                              const Spacer(),
-                                            if (visible.contains(
-                                              'progress',
-                                            )) ...[
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                _getProgressText(q, l10n),
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: appColor(
-                                                    context,
-                                                    _getProgressColor(q),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ];
-                                          return wrapping
-                                              ? Wrap(
-                                                  runSpacing: 4,
-                                                  crossAxisAlignment:
-                                                      WrapCrossAlignment.center,
-                                                  children: children,
-                                                )
-                                              : Row(children: children);
-                                        },
-                                      ),
+                                      child: _standardRow(context, l10n, q),
                                     ),
                                   ),
                                 ),
@@ -304,6 +152,109 @@ class PinnedQuestsSummary extends StatelessWidget {
       },
     );
   }
+
+  Widget _standardRow(
+    BuildContext context,
+    AppLocalizations l10n,
+    GameQuest q,
+  ) => LayoutBuilder(
+    builder: (context, constraints) {
+      Widget tag(String text, {Key? key}) => Container(
+        key: key,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: appColor(context, q.categoryColor.withValues(alpha: .2)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          style: TextStyle(
+            color: appColor(context, q.categoryColor),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+      final tags = <Widget>[
+        if (visible.contains('type')) tag(_categoryLabel(l10n, q)),
+        if (visible.contains('type') && visible.contains('number'))
+          const SizedBox(width: 4),
+        if (visible.contains('number'))
+          tag(
+            catalogController?.catalog.byGameId(q.id)?.code ?? '#${q.id}',
+            key: Key('quest-summary-number-${q.id}'),
+          ),
+      ];
+      final showName = visible.contains('name');
+      final progress = visible.contains('progress')
+          ? _getProgressText(q, l10n)
+          : '';
+      final gap = (constraints.maxWidth * .025).clamp(0.0, 6.0);
+      // Keep badges and progress visible; the name receives the remaining
+      // width. Only constrained badges/status scale down, never onto a new row.
+      return Row(
+        children: [
+          if (tags.isNotEmpty) ...[
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth:
+                    constraints.maxWidth *
+                    (showName || progress.isNotEmpty ? .45 : 1),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(mainAxisSize: MainAxisSize.min, children: tags),
+              ),
+            ),
+            if (showName || progress.isNotEmpty) SizedBox(width: gap),
+          ],
+          Expanded(
+            child: showName
+                ? Text(
+                    gameNames(context).entityText(q.title),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: appColor(context, const Color(0xffecf3f5)),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          if (progress.isNotEmpty) ...[
+            if (showName || tags.isNotEmpty) SizedBox(width: gap),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth:
+                    constraints.maxWidth *
+                    (showName || tags.isNotEmpty ? .45 : 1),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  progress,
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: appColor(context, _getProgressColor(q)),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    },
+  );
 
   String _categoryLabel(AppLocalizations l10n, GameQuest q) =>
       switch (q.category) {
@@ -346,10 +297,12 @@ class PinnedQuestsSummary extends StatelessWidget {
             : null,
         trailing: progress.isEmpty
             ? null
-            : flatRowText(
-                context,
-                progress,
-                color: q.isCompleted ? flatDoneColor : _getProgressColor(q),
+            : flatRowTrailing(
+                flatRowText(
+                  context,
+                  progress,
+                  color: q.isCompleted ? flatDoneColor : _getProgressColor(q),
+                ),
               ),
       ),
     );

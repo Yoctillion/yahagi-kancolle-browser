@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yahagi_kancolle_browser/src/widgets/app_segmented_style.dart';
 import 'package:yahagi_kancolle_browser/src/account/account_session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
@@ -438,7 +439,13 @@ void main() {
         matching: find.text('全部'),
       ),
     );
-    expect(allLabel.style?.color, const Color(0xffffcf62));
+    expect(
+      allLabel.style?.color,
+      AppSegmentedStyle.foreground(
+        tester.element(find.byKey(const Key('unowned-equipment-filter-all'))),
+        true,
+      ),
+    );
     expect(
       tester
           .widget<Text>(
@@ -456,7 +463,13 @@ void main() {
         matching: find.text('DD'),
       ),
     );
-    expect(ddLabel.style?.color, const Color(0xffffcf62));
+    expect(
+      ddLabel.style?.color,
+      AppSegmentedStyle.foreground(
+        tester.element(find.byKey(const Key('unowned-ship-filter-dd'))),
+        true,
+      ),
+    );
   });
 
   testWidgets('matches the confirmed compact ship and equipment controls', (

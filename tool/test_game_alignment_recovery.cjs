@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../lib/src/browser/game_page_alignment_script.dart'), 'utf8').split("r'''")[1].split("''';")[0];
-function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wrapper = 'ooi-game', tag = 'iframe'} = {}) {
+function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wrapper = 'ooi-game', tag = 'iframe', id = 'externalswf'} = {}) {
   const elements = new Map();
   const messages = [];
   let observer;
@@ -14,8 +14,10 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
   let frameScrolls = 0;
   let visible = true;
   let dialogOpen = false;
+  let loginFormVisible = false;
   let canvasVisible = false;
   let ooiVisible = false;
+  let ooiHidden = false;
   const metas = [];
   let observerOptions;
   let automaticMutations = false;
@@ -44,14 +46,14 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
   const canvas = {...element(), width: 1200, height: 720};
   const ooiFrame = element();
   const matchesOoiFrame = selector => selector.split(',').some(part =>
-    part.trim() === `${tag}#externalswf` ||
-    part.trim() === `${wrapper === 'ooi-game' ? '#ooi-page #ooi-game' : '#flashWrap'} > ${tag}#externalswf`);
+    part.trim() === `${tag}#${id}` ||
+    part.trim() === `${wrapper === 'ooi-game' ? '#ooi-page #ooi-game' : '#flashWrap'} > ${tag}#${id}`);
   const ooi = {...element(), querySelector: selector => ooiVisible && matchesOoiFrame(selector) ? ooiFrame : null};
   elements.set(wrapper, ooi);
   ooiFrame.parentElement = ooi;
   const frameWindow = {frameElement: ooiFrame, scrollTo() {frameScrolls++;}};
   ooiFrame.contentWindow = tag === 'iframe' ? frameWindow : undefined;
-  const context = {location: {hostname, pathname}, getComputedStyle: () => ({display:'block',visibility:'visible'}),
+  const context = {location: {hostname, pathname}, getComputedStyle: element => ({display:element === ooiFrame && ooiHidden ? 'none' : 'block',visibility:'visible'}),
     document: {readyState:'complete', documentElement: {}, body:{},
       head: {appendChild:append}, createElement: element,
       addEventListener: on, removeEventListener: off,
@@ -59,6 +61,7 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
       querySelectorAll: s => {scans++; return s === 'meta[name]' ? metas.filter(e=>e.isConnected&&e.getAttribute('name')!==null)
         : s === '#game_frame, #game-container' && visible ? [elements.get('game_frame')]
         : s === 'canvas' && canvasVisible ? [canvas] : s === 'dialog[open]' && dialogOpen ? [element()]
+        : s === 'input[type="password"], input[name="password"], input[autocomplete="current-password"], input[autocomplete="new-password"]' && loginFormVisible ? [element()]
         : ooiVisible && matchesOoiFrame(s) ? [ooiFrame] : [];}},
     MutationObserver: class {constructor(cb) {observer=cb;observerCount++;} disconnect() {} observe(_target,options) {observerOptions=options;}},
     setTimeout: cb => {const id = ++nextTask; scheduled.set(id, {kind:'timer',callback:cb}); return id;},
@@ -72,7 +75,9 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
   vm.createContext(context);
   return {messages, listeners, loading: value => {context.document.readyState = value ? 'loading' : 'complete';},
     show: value => {visible = value;}, dialog: value => {dialogOpen = value;},
+    loginForm: value => {loginFormVisible = value;},
     canvas: value => {canvasVisible = value;}, ooi: value => {ooiVisible = value;},
+    hideOoi: value => {ooiHidden = value;}, hasStyle: id => elements.has(id),
     legacyOoiRuntime: () => {
       context.window.__yahagiMobilePresentationRuntimeVersion = 3;
       context.window.__yahagiMobileSyncPresentation = () => 'web';
@@ -100,6 +105,51 @@ function page(hostname = 'play.games.dmm.com', pathname = '/game/kancolle', {wra
     frameAttribute: name => ooiFrame.getAttribute(name),
     setFrameAttribute: (name, value) => ooiFrame.setAttribute(name, value)};
 }
+
+// Entry/exit regressions: use the actual production runtime and its owned DOM state.
+for (const tag of ['iframe', 'embed']) {
+  const lifecycle = page('ooi.moe', '/poi', {wrapper:'flashWrap', tag});
+  lifecycle.show(false);
+  const original = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+  const viewport = lifecycle.addMeta(original);
+  assert.equal(lifecycle.run(), 'pending', 'An initial OOI loading page remains pending');
+  assert.equal(lifecycle.hasStyle('__yahagi_mobile_fixed_canvas__'), false);
+  lifecycle.ooi(true); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'game');
+  assert.match(viewport.getAttribute('content'), /minimum-scale=0\.01/);
+  lifecycle.ooi(false); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'web', 'An active OOI surface removal must release native fitting');
+  assert.equal(lifecycle.messages.at(-1), 'web');
+  assert.equal(lifecycle.hasStyle('__yahagi_mobile_fixed_canvas__'), false, 'Exit removes game CSS');
+  assert.equal(lifecycle.hasStyle('__yahagi_mobile_ooi_browser__'), false);
+  assert.equal(lifecycle.listeners.get('scroll')?.size || 0, 0, 'Exit removes the scroll lock');
+  assert.equal(viewport.getAttribute('content'), original, 'Exit restores original viewport exactly');
+  lifecycle.ooi(true); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'game', 'A replacement OOI surface can acquire a fresh fit');
+  lifecycle.dialog(true); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'web', 'A blocking dialog takes priority over an OOI surface');
+  assert.equal(viewport.getAttribute('content'), original);
+  lifecycle.dialog(false); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'game');
+  lifecycle.loginForm(true); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'web', 'A visible OOI login form takes priority over a retained game frame');
+  assert.equal(viewport.getAttribute('content'), original);
+  lifecycle.loginForm(false); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'game');
+  lifecycle.hideOoi(true); lifecycle.mutate(); lifecycle.flush();
+  assert.equal(lifecycle.read(), 'web', 'An active hidden OOI surface must release fitting');
+}
+const hiddenOoi = page('ooi.moe', '/poi', {wrapper:'flashWrap'});
+hiddenOoi.show(false); hiddenOoi.ooi(true); hiddenOoi.hideOoi(true);
+assert.equal(hiddenOoi.run(), 'pending', 'A hidden frame cannot seize an initial login/loading page');
+assert.equal(hiddenOoi.hasStyle('__yahagi_mobile_fixed_canvas__'), false);
+for (const wrapper of ['ooi-game', 'flashWrap']) {
+  const htmlWrap = page('ooi.moe', '/poi', {wrapper, id:'htmlWrap'});
+  htmlWrap.show(false); htmlWrap.ooi(true);
+  assert.equal(htmlWrap.run(), 'game', 'Visible htmlWrap uses native fit');
+}
+console.log('OOI native entry, dialog priority, hidden-frame isolation, exact viewport/scroll release and htmlWrap passed');
+
 const game = page();
 assert.equal(game.run(), 'game');
 const before = game.messages.length;
@@ -196,9 +246,10 @@ assert.equal(parsing.messages.at(-1),'game','A parsed game document must recover
 
 const ooiGame = page('ooi.moe', '/kancolle');
 ooiGame.show(false);ooiGame.run();ooiGame.ooi(true);ooiGame.mutate();ooiGame.flush();
-assert.equal(ooiGame.property('--yahagi-ooi-scale'), '1', 'Late Ooi frame must be fitted');
+assert.equal(ooiGame.read(), 'game', 'Late Ooi frame must request native game fitting');
 ooiGame.viewport(600, 360);ooiGame.emit('resize');ooiGame.flush();
-assert.equal(ooiGame.property('--yahagi-ooi-scale'), '0.5', 'Fold/resize must refit the Ooi surface');
+assert.equal(ooiGame.read(), 'game', 'Fold/resize keeps native game presentation');
+assert.equal(ooiGame.property('--yahagi-ooi-scale'), undefined, 'OOI must not layer CSS scaling over native scaling');
 console.log('Runtime reuse, bounded mutation scans, popup recovery, standalone canvas and Ooi resize passed');
 
 const readOnly = page();readOnly.run();
@@ -216,7 +267,7 @@ assert.deepEqual(readOnly.effects(),unchanged,'Pure probes must not fit, mutate,
 const loginBeforeRead = login.effects();
 assert.equal(login.read(),'web');assert.deepEqual(login.effects(),loginBeforeRead);
 const ooiBeforeRead = ooiGame.effects();
-assert.equal(ooiGame.read(),'web');assert.deepEqual(ooiGame.effects(),ooiBeforeRead);
+assert.equal(ooiGame.read(),'game');assert.deepEqual(ooiGame.effects(),ooiBeforeRead);
 console.log('Pure current-document presentation reads have no fitting, mutation or notification side effects');
 
 for (const [route, wrapper] of [
@@ -228,10 +279,12 @@ for (const [route, wrapper] of [
     const ooiMode = page('ooi.moe', route, {wrapper, tag});
     ooiMode.show(false);ooiMode.run();
     ooiMode.viewport(600, 360);ooiMode.ooi(true);ooiMode.mutate();ooiMode.flush();
-    assert.equal(ooiMode.property('--yahagi-ooi-scale'), '0.5', `${route} ${tag} must fit a late game surface`);
-    assert.deepEqual(ooiMode.messages.filter(message => message.startsWith('game')), [], 'OOI wrappers must not also request native scaling');
+    assert.equal(ooiMode.read(), 'game', `${route} ${tag} must fit a late game surface`);
+    assert.equal(ooiMode.messages.at(-1), 'game', 'OOI wrappers request the shared native fit');
+    const messagesBeforeResize = ooiMode.messages.length;
     ooiMode.viewport(1500, 900);ooiMode.emit('resize');ooiMode.flush();
-    assert.equal(ooiMode.property('--yahagi-ooi-scale'), '1.25', `${route} ${tag} must fill a large tablet panel`);
+    assert.equal(ooiMode.read(), 'game', `${route} ${tag} remains game after resize`);
+    assert.equal(ooiMode.messages.length, messagesBeforeResize, 'Native layout fitting must not be amplified by JS resize notifications');
     const beforeRepair = ooiMode.frameScrolls();
     ooiMode.run();
     assert.ok(ooiMode.frameScrolls() > beforeRepair, `${route} ${tag} manual fit must reset a same-origin child scroll offset`);
@@ -259,7 +312,7 @@ console.log('OOI browser/poi/flash routes, iframe/embed surfaces, standalone can
 const twoOoiContainers = page('ooi.moe', '/poi', {wrapper: 'flashWrap'});
 twoOoiContainers.emptyOoiContainer();twoOoiContainers.show(false);twoOoiContainers.ooi(true);twoOoiContainers.viewport(600, 360);
 twoOoiContainers.run();
-assert.equal(twoOoiContainers.property('--yahagi-ooi-scale'), '0.5', 'The fitted wrapper must be the parent of the detected game frame');
+assert.equal(twoOoiContainers.read(), 'game', 'The visible detected game frame must select native fitting');
 
 const releasedOoiFrame = page('ooi.moe', '/poi', {wrapper: 'flashWrap'});
 releasedOoiFrame.show(false);releasedOoiFrame.ooi(true);releasedOoiFrame.setFrameAttribute('scrolling', 'auto');
@@ -271,7 +324,7 @@ assert.equal(releasedOoiFrame.frameAttribute('scrolling'), 'auto', 'Leaving an O
 const upgradedOoi = page('ooi.moe', '/poi', {wrapper: 'flashWrap', tag: 'embed'});
 upgradedOoi.show(false);upgradedOoi.ooi(true);upgradedOoi.viewport(600, 360);upgradedOoi.legacyOoiRuntime();
 upgradedOoi.run();
-assert.equal(upgradedOoi.property('--yahagi-ooi-scale'), '0.5', 'A retained document must replace an older cached OOI alignment hook');
+assert.equal(upgradedOoi.read(), 'game', 'A retained document must replace an older cached OOI alignment hook');
 assert.ok(upgradedOoi.frameScrolls() > 0, 'Runtime upgrade must use the new same-origin embed scroll repair');
 
 const viewportGame = page();
@@ -345,7 +398,7 @@ const ooiViewport = viewportOoi.addMeta('width=device-width, user-scalable=no');
 viewportOoi.show(false);viewportOoi.canvas(true);viewportOoi.run();
 assert.match(ooiViewport.getAttribute('content'),/minimum-scale=0\.01/);
 viewportOoi.ooi(true);viewportOoi.mutate();viewportOoi.flush();
-assert.equal(ooiViewport.getAttribute('content'),'width=device-width, user-scalable=no','OOI browser mode must restore the game viewport');
+assert.match(ooiViewport.getAttribute('content'),/minimum-scale=0\.01/,'OOI wrapper takeover keeps the native game viewport');
 const viewportLogin = page('accounts.dmm.com','/login');
 const loginViewport = viewportLogin.addMeta('width=device-width, maximum-scale=1');
 viewportLogin.run();

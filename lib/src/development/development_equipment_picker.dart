@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -161,11 +162,9 @@ class _DevelopmentEquipmentPickerState
                           final group = groups[index];
                           final selected = group.key == selectedGroupKey;
                           return Material(
-                            color: appColor(
+                            color: AppSegmentedStyle.selection(
                               context,
-                              selected
-                                  ? const Color(0xff244b69)
-                                  : Colors.transparent,
+                              selected,
                             ),
                             child: InkWell(
                               key: Key(
@@ -185,6 +184,12 @@ class _DevelopmentEquipmentPickerState
                                   style: appTextStyle(
                                     context,
                                     TextStyle(
+                                      color: selected
+                                          ? AppSegmentedStyle.foreground(
+                                              context,
+                                              true,
+                                            )
+                                          : null,
                                       fontSize: 12,
                                       fontWeight: selected
                                           ? FontWeight.w800

@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import '../localization/game_name_localizations.dart';
 import 'dart:convert';
 
@@ -257,13 +258,9 @@ class _LogbookSegmentedState extends State<LogbookSegmented> {
         constraints: const BoxConstraints(maxWidth: 680),
         child: Container(
           key: const Key('logbook-segmented'),
-          height: 38,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: appColor(context, Color(0xff0b202d)),
-            border: Border.all(color: appColor(context, Color(0xff315064))),
-            borderRadius: BorderRadius.circular(20),
-          ),
+          height: AppSegmentedStyle.regularHeight,
+          padding: AppSegmentedStyle.padding(),
+          decoration: AppSegmentedStyle.decoration(context),
           child: LayoutBuilder(
             builder: (context, constraints) {
               if (_viewportWidth != constraints.maxWidth) {
@@ -343,25 +340,15 @@ class _LogbookSegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: appColor(
-      context,
-      selected ? const Color(0xff8a6628) : Colors.transparent,
-    ),
-    borderRadius: BorderRadius.circular(16),
+    color: AppSegmentedStyle.selection(context, selected),
+    borderRadius: AppSegmentedStyle.itemRadius(),
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       child: Center(
         child: Text(
           label,
-          style: appTextStyle(
-            context,
-            _logbookTabStyle.copyWith(
-              color: selected
-                  ? const Color(0xffffdc88)
-                  : const Color(0xff9fb3bf),
-            ),
-          ),
+          style: AppSegmentedStyle.textStyle(context, selected: selected),
         ),
       ),
     ),

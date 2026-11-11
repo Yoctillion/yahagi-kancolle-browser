@@ -266,7 +266,10 @@ void main() {
             matching: find.text(quest.title),
           );
           final titleParagraph = tester.renderObject<RenderParagraph>(title);
-          expect(titleParagraph.size.width, greaterThanOrEqualTo(140));
+          expect(titleParagraph.size.width, greaterThan(0));
+          expect(titleParagraph.maxLines, 1);
+          expect(titleParagraph.overflow, TextOverflow.ellipsis);
+          expect(titleParagraph.didExceedMaxLines, isTrue);
           final l10n = lookupAppLocalizations(locale);
           final label = pending
               ? '30/30 · ${l10n.questAwaitingConfirmation}'
@@ -276,6 +279,14 @@ void main() {
             matching: find.text(label),
           );
           expect(progress, findsOneWidget);
+          expect(
+            tester.getRect(progress).center.dy,
+            closeTo(tester.getRect(title).center.dy, .1),
+          );
+          expect(
+            tester.getRect(progress).right,
+            closeTo(tester.getRect(item).right - 8, .1),
+          );
           final itemBounds = tester.getRect(item).inflate(0.1);
           for (final text in [title, progress]) {
             final bounds = tester.getRect(text);

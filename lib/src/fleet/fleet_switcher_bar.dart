@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'fleet_ui_strings.dart';
@@ -99,10 +100,9 @@ class _FleetButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final phone = usesCompactFleetLayout(context);
     return Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff3a3020) : const Color(0xff102331),
-      ),
+      color: selected
+          ? AppSegmentedStyle.selectedBackground(context)
+          : appColor(context, const Color(0xff102331)),
       borderRadius: BorderRadius.circular(9),
       child: InkWell(
         onTap: onTap,
@@ -116,10 +116,9 @@ class _FleetButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(9),
             border: Border.all(
-              color: appColor(
-                context,
-                selected ? const Color(0xff8d7040) : const Color(0xff294052),
-              ),
+              color: selected
+                  ? AppSegmentedStyle.selectedBorder(context)
+                  : AppSegmentedStyle.border(context),
             ),
           ),
           child: Row(
@@ -137,7 +136,7 @@ class _FleetButton extends StatelessWidget {
                           context,
                           TextStyle(
                             color: selected
-                                ? const Color(0xfff0c675)
+                                ? AppSegmentedStyle.foreground(context, true)
                                 : const Color(0xffe1e9ed),
                             fontWeight: FontWeight.w700,
                             fontSize: phone ? 12 : 15,

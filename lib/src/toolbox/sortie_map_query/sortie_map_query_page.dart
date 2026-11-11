@@ -9,6 +9,7 @@ import '../../fleet/ship_portrait.dart';
 import '../../game_state/game_state.dart';
 import '../../localization/game_name_localizations.dart';
 import '../../layout/adaptive_layout.dart';
+import '../../widgets/app_segmented_style.dart';
 import 'sortie_map_catalog.dart';
 import 'sortie_map_catalog_controller.dart';
 import 'enemy_catalog.dart';
@@ -1451,18 +1452,14 @@ class _NodeButton extends StatelessWidget {
             dimension: 32,
             child: Material(
               key: Key('sortie-map-node-visual-${node.point}'),
-              color: appColor(
-                context,
-                selected ? const Color(0xff8a6628) : const Color(0xff132d3b),
-              ),
+              color: selected
+                  ? AppSegmentedStyle.selectedBackground(context)
+                  : appColor(context, const Color(0xff132d3b)),
               shape: CircleBorder(
                 side: BorderSide(
-                  color: appColor(
-                    context,
-                    selected
-                        ? const Color(0xff8a6628)
-                        : const Color(0xff3b5c6c),
-                  ),
+                  color: selected
+                      ? AppSegmentedStyle.selectedBorder(context)
+                      : appColor(context, const Color(0xff3b5c6c)),
                 ),
               ),
               child: InkWell(
@@ -1479,12 +1476,9 @@ class _NodeButton extends StatelessWidget {
                         if (node.isBoss) ...[
                           Icon(
                             Icons.flag,
-                            color: appColor(
-                              context,
-                              selected
-                                  ? const Color(0xffffdc88)
-                                  : const Color(0xffdce9ee),
-                            ),
+                            color: selected
+                                ? AppSegmentedStyle.foreground(context, true)
+                                : appColor(context, const Color(0xffdce9ee)),
                             size: 11,
                           ),
                           const SizedBox(width: 1),
@@ -1495,7 +1489,7 @@ class _NodeButton extends StatelessWidget {
                             context,
                             TextStyle(
                               color: selected
-                                  ? const Color(0xffffdc88)
+                                  ? AppSegmentedStyle.foreground(context, true)
                                   : const Color(0xffdce9ee),
                               fontSize: 10,
                               fontWeight: FontWeight.w900,

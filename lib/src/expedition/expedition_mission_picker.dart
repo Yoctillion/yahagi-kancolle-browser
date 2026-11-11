@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -326,10 +327,7 @@ class _AreaList extends StatelessWidget {
         final group = groups[index];
         final selected = group.areaId == selectedAreaId;
         return Material(
-          color: appColor(
-            context,
-            selected ? const Color(0xff244b69) : Colors.transparent,
-          ),
+          color: AppSegmentedStyle.selection(context, selected),
           child: InkWell(
             key: Key('expedition-area-${group.areaId}'),
             onTap: () => onSelected(group.areaId),
@@ -342,7 +340,9 @@ class _AreaList extends StatelessWidget {
                 style: appTextStyle(
                   context,
                   TextStyle(
-                    color: selected ? Colors.white : const Color(0xffc3d0d7),
+                    color: selected
+                        ? AppSegmentedStyle.foreground(context, true)
+                        : const Color(0xffc3d0d7),
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   ),

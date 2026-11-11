@@ -8,6 +8,8 @@ import '../layout/panel_style.dart';
 import 'battle_detail_strings.dart';
 import 'battle_ui_text.dart';
 import 'fcd_map_geometry.dart';
+import 'sortie_map_label_layout.dart';
+import 'sortie_map_route_layout.dart';
 import 'sortie_map_progress.dart';
 
 const _background = Color(0xff10212e);
@@ -175,18 +177,24 @@ class _SortieMapSectionState extends State<SortieMapSection> {
                 if (scene.hasGeometry)
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 430),
+                      constraints: const BoxConstraints(maxWidth: 326),
                       child: LayoutBuilder(
                         builder: (context, constraints) => SizedBox(
+                          key: const Key('sortie-map-canvas'),
                           width: constraints.maxWidth,
-                          height: (constraints.maxWidth * .44 + 16).clamp(
-                            125.0,
-                            175.0,
-                          ),
+                          height:
+                              constraints.maxWidth /
+                              _MapProjection.canvasSize.aspectRatio,
                           child: RepaintBoundary(
-                            child: _MapCanvas(
-                              key: const Key('sortie-map-canvas'),
-                              scene: scene,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: SizedBox.fromSize(
+                                size: _MapProjection.canvasSize,
+                                child: _MapCanvas(
+                                  key: const Key('sortie-map-logical-canvas'),
+                                  scene: scene,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -345,24 +353,35 @@ class _MapCanvas extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           CustomPaint(
-            painter: _MapPainter(scene, projection, AppPalette.of(context)),
+            painter: _MapPainter(
+              scene,
+              projection,
+              AppPalette.of(context),
+              Theme.of(context).textTheme.bodyMedium?.fontFamily,
+            ),
           ),
           for (final entry in scene.geometry!.routes.entries)
-            if (projection.points[entry.value.from] case final from?)
-              if (projection.points[entry.value.to] case final to?)
-                Positioned.fromRect(
-                  rect: Rect.fromPoints(from, to).inflate(3),
-                  child: Semantics(
-                    container: true,
-                    label: [
-                      scene.routeLabel(entry.key),
-                      '${entry.value.from} → ${entry.value.to}',
-                      if (scene.routeIds.contains(entry.key))
-                        scene.strings.mapVisited,
-                    ].join(' · '),
-                    child: const SizedBox.expand(),
-                  ),
+            if (projection.routePaths[entry.key] case final path?)
+              Positioned.fromRect(
+                rect: path
+                    .skip(1)
+                    .fold<Rect>(
+                      Rect.fromPoints(path.first, path.first),
+                      (bounds, point) =>
+                          bounds.expandToInclude(Rect.fromPoints(point, point)),
+                    )
+                    .inflate(3),
+                child: Semantics(
+                  container: true,
+                  label: [
+                    scene.routeLabel(entry.key),
+                    '${entry.value.from} → ${entry.value.to}',
+                    if (scene.routeIds.contains(entry.key))
+                      scene.strings.mapVisited,
+                  ].join(' · '),
+                  child: const SizedBox.expand(),
                 ),
+              ),
           for (final entry in projection.points.entries)
             Positioned.fromRect(
               rect: Rect.fromCircle(center: entry.value, radius: 10),
@@ -379,6 +398,24 @@ class _MapCanvas extends StatelessWidget {
 }
 
 class _MapProjection {
+  // The old 360px preview has 326px of drawable width after card padding.
+  // Lay out once at that reference width, then scale the complete scene.
+  static const canvasSize = Size(326, 240);
+
+  static double _referenceHeight(FcdMapGeometry geometry) {
+    final compact = canvasSize.width * .44 + 16;
+    final nodes = geometry.spots.length;
+    if (nodes <= 10) return compact;
+    return math.max(
+      compact,
+      nodes >= 30
+          ? 240.0
+          : nodes >= 18
+          ? 210.0
+          : 180.0,
+    );
+  }
+
   _MapProjection(FcdMapGeometry geometry, Size size) {
     final xs = geometry.spots.values.map((spot) => spot.x);
     final ys = geometry.spots.values.map((spot) => spot.y);
@@ -386,41 +423,69 @@ class _MapProjection {
     final minY = ys.reduce(math.min);
     final rangeX = xs.reduce(math.max) - minX;
     final rangeY = ys.reduce(math.max) - minY;
-    final scale = math.min(
-      math.max(0, size.width - 52) / math.max(1, rangeX),
-      math.max(0, size.height - 52) / math.max(1, rangeY),
-    );
+    // Retain each map's composition at the reference width. Sparse maps are
+    // centered in the common canvas instead of stretching them to fill it.
+    contentSize = Size(size.width, _referenceHeight(geometry));
+    contentOffset = Offset(0, (size.height - contentSize.height) / 2);
+    final scaleX = math.max(0, size.width - 40) / math.max(1, rangeX);
+    final scaleY = math.max(0, contentSize.height - 40) / math.max(1, rangeY);
     final origin = Offset(
-      (size.width - rangeX * scale) / 2,
-      (size.height - rangeY * scale) / 2,
+      (size.width - rangeX * scaleX) / 2,
+      (contentSize.height - rangeY * scaleY) / 2,
     );
-    points = {
+    contentPoints = {
       for (final entry in geometry.spots.entries)
         entry.key:
-            origin + Offset(entry.value.x - minX, entry.value.y - minY) * scale,
+            origin +
+            Offset(
+              (entry.value.x - minX) * scaleX,
+              (entry.value.y - minY) * scaleY,
+            ),
+    };
+    final contentPaths = layoutSortieMapRoutes(
+      routes: geometry.routes,
+      points: contentPoints,
+      canvas: contentSize,
+    );
+    contentSegments = [
+      for (final path in contentPaths.values)
+        for (var index = 1; index < path.length; index++)
+          (path[index - 1], path[index]),
+    ];
+    points = {
+      for (final entry in contentPoints.entries)
+        entry.key: entry.value + contentOffset,
+    };
+    routePaths = {
+      for (final entry in contentPaths.entries)
+        entry.key: [for (final point in entry.value) point + contentOffset],
     };
   }
 
   late final Map<String, Offset> points;
+  late final Map<int, List<Offset>> routePaths;
+  late final Size contentSize;
+  late final Offset contentOffset;
+  late final Map<String, Offset> contentPoints;
+  late final List<(Offset, Offset)> contentSegments;
 }
 
 class _MapPainter extends CustomPainter {
-  _MapPainter(this.scene, this.projection, this.palette);
+  _MapPainter(this.scene, this.projection, this.palette, this.fontFamily);
   final _MapScene scene;
   final _MapProjection projection;
   final AppPalette palette;
+  final String? fontFamily;
 
   @override
   void paint(Canvas canvas, Size size) {
     final geometry = scene.geometry!;
     final paint = Paint()..strokeCap = StrokeCap.round;
-    for (final route in geometry.routes.values) {
-      final from = projection.points[route.from];
-      final to = projection.points[route.to];
-      if (from != null && to != null) {
+    for (final path in projection.routePaths.values) {
+      for (var index = 1; index < path.length; index++) {
         canvas.drawLine(
-          from,
-          to,
+          path[index - 1],
+          path[index],
           paint
             ..color = palette.color(_edge.withValues(alpha: .55))
             ..strokeWidth = 1.1,
@@ -428,13 +493,12 @@ class _MapPainter extends CustomPainter {
       }
     }
     for (final id in scene.progress.routeIds) {
-      final route = geometry.routes[id];
-      final from = projection.points[route?.from];
-      final to = projection.points[route?.to];
-      if (from != null && to != null) {
+      final path = projection.routePaths[id];
+      if (path == null) continue;
+      for (var index = 1; index < path.length; index++) {
         canvas.drawLine(
-          from,
-          to,
+          path[index - 1],
+          path[index],
           paint
             ..color = palette.color(_teal)
             ..strokeWidth = 2.8,
@@ -442,8 +506,7 @@ class _MapPainter extends CustomPainter {
       }
     }
     final visited = scene.visited;
-    final labelBounds = <Rect>[];
-    final labels = <String, ({TextPainter painter, Rect bounds})>{};
+    final labels = <String, TextPainter>{};
     final labelOrder = [
       ...projection.points.entries.where((entry) => entry.key == scene.current),
       ...projection.points.entries.where((entry) => entry.key != scene.current),
@@ -463,6 +526,7 @@ class _MapPainter extends CustomPainter {
           text: entry.key,
           style: TextStyle(
             color: palette.color(at ? _gold : color),
+            fontFamily: fontFamily,
             fontSize: 10,
             fontWeight: at ? FontWeight.w800 : FontWeight.w600,
             shadows: [Shadow(color: palette.color(_background), blurRadius: 3)],
@@ -472,43 +536,25 @@ class _MapPainter extends CustomPainter {
         maxLines: 1,
         ellipsis: '…',
       )..layout(maxWidth: math.max(0, size.width - 4));
-      final point = entry.value;
-      final preferred = _labelBounds(
-        point + Offset(-label.width / 2, point.dy < 40 ? 9 : -label.height - 9),
-        label.size,
-        size,
-      );
-      final bounds = _avoidLabelBounds(
-        point,
-        label.size,
-        size,
-        preferred,
-        labelBounds,
-      );
-      labels[entry.key] = (painter: label, bounds: bounds);
-      labelBounds.add(bounds);
+      labels[entry.key] = label;
     }
-    // A displaced label still identifies its source node unambiguously. Paint
-    // the short guides underneath every marker and label, including current.
-    for (final entry in labels.entries) {
-      final point = projection.points[entry.key]!;
-      final bounds = entry.value.bounds;
-      final nearest = Offset(
-        point.dx.clamp(bounds.left, bounds.right),
-        point.dy.clamp(bounds.top, bounds.bottom),
-      );
-      final delta = nearest - point;
-      if (delta.distance <= 12) continue;
-      final direction = delta / delta.distance;
-      final at = entry.key == scene.current;
-      canvas.drawLine(
-        point + direction * (at ? 9 : 5),
-        nearest - direction * 2,
-        Paint()
-          ..color = palette.color((at ? _gold : _muted).withValues(alpha: .4))
-          ..strokeWidth = .6,
-      );
-    }
+    final labelBounds = layoutSortieMapLabels(
+      points: projection.contentPoints,
+      labelSizes: {
+        for (final entry in labels.entries) entry.key: entry.value.size,
+      },
+      routes: projection.contentSegments,
+      canvas: projection.contentSize,
+      current: scene.current,
+      markerClearances: {
+        for (final entry in geometry.spots.entries)
+          entry.key: entry.key == scene.current
+              ? 9.0
+              : entry.key == scene.boss || entry.value.type == 'start'
+              ? 5.5
+              : 4.5,
+      },
+    );
     // Keep the captured position above every other marker and label on dense
     // maps without changing any of the source map's node positions.
     final nodes = [
@@ -564,66 +610,16 @@ class _MapPainter extends CustomPainter {
       } else {
         canvas.drawCircle(point, at ? 4.5 : 3.2, fill);
       }
-      final label = labels[node]!;
-      label.painter.paint(canvas, label.bounds.topLeft);
+      labels[node]!.paint(
+        canvas,
+        labelBounds[node]!.topLeft + projection.contentOffset,
+      );
     }
-  }
-
-  Rect _labelBounds(Offset offset, Size label, Size canvas) => Rect.fromLTWH(
-    offset.dx.clamp(2.0, math.max(2, canvas.width - label.width - 2)),
-    offset.dy.clamp(2.0, math.max(2, canvas.height - label.height - 2)),
-    label.width,
-    label.height,
-  );
-
-  Rect _avoidLabelBounds(
-    Offset point,
-    Size label,
-    Size canvas,
-    Rect preferred,
-    List<Rect> labels,
-  ) {
-    final obstacles = [
-      ...labels.map((rect) => rect.inflate(1)),
-      for (final node in projection.points.values)
-        Rect.fromCircle(
-          center: node,
-          radius: node == projection.points[scene.current] ? 9 : 6,
-        ),
-    ];
-    final candidates = [
-      preferred,
-      for (final y in [
-        -label.height - 9,
-        9.0,
-        -label.height / 2,
-        -label.height - 21,
-        21.0,
-      ])
-        for (final x in [0.0, -16.0, 16.0, -32.0, 32.0])
-          _labelBounds(point + Offset(-label.width / 2 + x, y), label, canvas),
-    ];
-    var best = preferred;
-    var bestOverlap = double.infinity;
-    for (final candidate in candidates) {
-      var overlap = 0.0;
-      for (final obstacle in obstacles) {
-        if (candidate.overlaps(obstacle)) {
-          final intersection = candidate.intersect(obstacle);
-          overlap += intersection.width * intersection.height;
-        }
-      }
-      if (overlap == 0) return candidate;
-      if (overlap < bestOverlap) {
-        best = candidate;
-        bestOverlap = overlap;
-      }
-    }
-    return best;
   }
 
   @override
   bool shouldRepaint(covariant _MapPainter oldDelegate) =>
+      oldDelegate.fontFamily != fontFamily ||
       oldDelegate.palette.mode != palette.mode ||
       oldDelegate.scene.geometry != scene.geometry ||
       oldDelegate.scene.progress != scene.progress ||

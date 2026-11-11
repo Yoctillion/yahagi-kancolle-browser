@@ -1,4 +1,5 @@
 import '../theme/app_palette.dart';
+import '../widgets/app_segmented_style.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -246,11 +247,9 @@ class _DevelopmentSecretaryPickerDialogState
                         itemBuilder: (context, index) {
                           final selected = index == groupIndex;
                           return Material(
-                            color: appColor(
+                            color: AppSegmentedStyle.selection(
                               context,
-                              selected
-                                  ? const Color(0xff244b69)
-                                  : Colors.transparent,
+                              selected,
                             ),
                             child: InkWell(
                               key: Key('development-secretary-group-$index'),
@@ -268,6 +267,12 @@ class _DevelopmentSecretaryPickerDialogState
                                   style: appTextStyle(
                                     context,
                                     TextStyle(
+                                      color: selected
+                                          ? AppSegmentedStyle.foreground(
+                                              context,
+                                              true,
+                                            )
+                                          : null,
                                       fontWeight: selected
                                           ? FontWeight.w800
                                           : FontWeight.w600,

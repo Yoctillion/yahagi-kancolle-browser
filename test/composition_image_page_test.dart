@@ -10,6 +10,7 @@ import 'package:yahagi_kancolle_browser/src/toolbox/toolbox_page.dart';
 import 'package:yahagi_kancolle_browser/src/toolbox/composition_image_page.dart';
 import 'package:yahagi_kancolle_browser/src/toolbox/composition_image_port.dart';
 import 'package:yahagi_kancolle_browser/src/widgets/top_notice.dart';
+import 'package:yahagi_kancolle_browser/src/widgets/app_segmented_style.dart';
 
 void main() {
   testWidgets('no target and no air base are the default choices', (
@@ -310,7 +311,10 @@ void main() {
     for (final chip in tester.widgetList<FilterChip>(find.byType(FilterChip))) {
       expect(chip.showCheckmark, isFalse);
     }
-    expect(cellColor(fleet), const Color(0xff8a6628));
+    expect(
+      cellColor(fleet),
+      AppSegmentedStyle.selectedBackground(tester.element(fleet)),
+    );
     await tester.tap(fleet);
     await tester.pumpAndSettle();
     expect(cellColor(fleet), Colors.transparent);

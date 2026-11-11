@@ -1,3 +1,4 @@
+import '../widgets/app_segmented_style.dart';
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import '../localization/game_name_localizations.dart';
@@ -167,7 +168,7 @@ class _RepairModeTabsState extends State<RepairModeTabs> {
     final style = DefaultTextStyle.of(
       context,
     ).style.merge(const TextStyle(fontSize: 12, fontWeight: FontWeight.w800));
-    var height = 38.0;
+    var height = AppSegmentedStyle.regularHeight;
     double labelWidth(String label) {
       final painter = TextPainter(
         text: TextSpan(text: label, style: appTextStyle(context, style)),
@@ -242,12 +243,8 @@ class _RepairModeTabsState extends State<RepairModeTabs> {
               key: const Key('repair-mode-segmented'),
               width: constraints.maxWidth,
               height: height,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: appColor(context, Color(0xff0b202d)),
-                border: Border.all(color: appColor(context, Color(0xff315064))),
-                borderRadius: BorderRadius.circular(20),
-              ),
+              padding: AppSegmentedStyle.padding(),
+              decoration: AppSegmentedStyle.decoration(context),
               child: scrolling
                   ? SingleChildScrollView(
                       controller: _scroll,
@@ -280,14 +277,11 @@ class _RepairModeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: appColor(
-        context,
-        selected ? const Color(0xff8a6628) : Colors.transparent,
-      ),
-      borderRadius: BorderRadius.circular(16),
+      color: AppSegmentedStyle.selection(context, selected),
+      borderRadius: AppSegmentedStyle.itemRadius(),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppSegmentedStyle.itemRadius(),
         child: Center(
           child: Tooltip(
             message: tooltip,
@@ -297,16 +291,7 @@ class _RepairModeTab extends StatelessWidget {
                 label,
                 maxLines: 1,
                 softWrap: false,
-                style: appTextStyle(
-                  context,
-                  TextStyle(
-                    color: selected
-                        ? const Color(0xffffdc88)
-                        : const Color(0xff9fb3bf),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                style: AppSegmentedStyle.textStyle(context, selected: selected),
               ),
             ),
           ),

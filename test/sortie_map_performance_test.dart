@@ -75,7 +75,7 @@ void main() {
       for (final label in geometry.spots.keys) {
         scene.nodeDescription(label);
       }
-      painter.paint(TestRecordingCanvas(), tester.getSize(_canvas()));
+      painter.paint(TestRecordingCanvas(), tester.getSize(_mapPaint()));
 
       expect(visited, {'A', 'B', 'C'});
       expect(identical(scene.visited, visited), isTrue);
@@ -122,17 +122,20 @@ void main() {
           isNot(oldB),
         );
         final originalSize = tester.getSize(_canvas());
+        final logicalSize = tester.getSize(_mapPaint());
+        expect(logicalSize, const Size(326, 240));
 
         await tester.pumpWidget(
           _app(movedGeometry, latestProgress, parent, width: 200),
         );
         final resized = tester.getSize(_canvas());
         expect(resized.width, lessThan(originalSize.width));
-        expect(resized.height, 125);
+        expect(resized.height, closeTo(resized.width * 240 / 326, .01));
         expect(
           originalSize.height,
-          (originalSize.width * .44 + 16).clamp(125, 175),
+          closeTo(originalSize.width * 240 / 326, .01),
         );
+        expect(tester.getSize(_mapPaint()), logicalSize);
         expect(_mapPicture(boundary), isNot(same(geometryPicture)));
         expect(tester.takeException(), isNull);
       } finally {
