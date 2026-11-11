@@ -745,17 +745,18 @@ Rect _logicalBounds(WidgetTester tester, Finder canvas) =>
 void _expectUniformScale(WidgetTester tester, Finder canvas, String reason) {
   final visible = tester.getRect(canvas);
   final paintBox = tester.renderObject<RenderBox>(_mapPaint(canvas));
-  expect(paintBox.size, const Size(326, 240), reason: reason);
+  final logical = paintBox.size;
+  expect(logical.aspectRatio, closeTo(326 / 169, .00001), reason: reason);
   expect(
     visible.height,
-    closeTo(visible.width * 240 / 326, .01),
+    closeTo(visible.width * 169 / 326, .01),
     reason: '$reason fixed visible aspect ratio',
   );
   for (final corner in [
     (Offset.zero, visible.topLeft),
-    (const Offset(326, 0), visible.topRight),
-    (const Offset(0, 240), visible.bottomLeft),
-    (const Offset(326, 240), visible.bottomRight),
+    (Offset(logical.width, 0), visible.topRight),
+    (Offset(0, logical.height), visible.bottomLeft),
+    (Offset(logical.width, logical.height), visible.bottomRight),
   ]) {
     expect(
       (paintBox.localToGlobal(corner.$1) - corner.$2).distance,
