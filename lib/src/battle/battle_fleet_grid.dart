@@ -510,9 +510,7 @@ class _CompactBarRow extends StatelessWidget {
     final hpBarColor = isEscaped
         ? yahagiStatusZeroHp
         : shipHpBarColor(ratio, isZeroHp: isZeroHp);
-    final hpText = isEscaped
-        ? '${ship.currentHp} / ${ship.maxHp} (退避)'
-        : '${ship.currentHp} / ${ship.maxHp}';
+    final hpText = '${ship.currentHp} / ${ship.maxHp}';
     final ghost = battleHpGhost(ship);
     final shipName = gameNames(
       context,

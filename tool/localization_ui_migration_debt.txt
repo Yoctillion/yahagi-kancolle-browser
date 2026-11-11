@@ -112,7 +112,6 @@
 "lib/src/battle/battle_fleet_grid.dart|我方舰队$friendFormation"
 "lib/src/battle/battle_fleet_grid.dart|敌方舰队$enemyFormation"
 "lib/src/battle/battle_fleet_grid.dart|退避"
-"lib/src/battle/battle_fleet_grid.dart|${ship.currentHp} / ${ship.maxHp} (退避)"
 "lib/src/battle/land_base_raid_panel.dart|基地空袭"
 "lib/src/battle/land_base_raid_panel.dart|第$baseId基地航空隊"
 "lib/src/battle/land_base_raid_panel.dart|第一基地航空隊"

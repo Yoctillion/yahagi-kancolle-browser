@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_air_report.dart';
@@ -14,6 +15,8 @@ import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
 import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
+import 'package:yahagi_kancolle_browser/src/theme/app_palette.dart';
+import 'package:yahagi_kancolle_browser/src/theme/app_theme.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
 
@@ -81,7 +84,8 @@ void main() {
       tester,
       FlatAirBattleSection(
         report: _fullReport,
-        friendShips: [..._main.take(6), ..._escort],
+        friendMain: _main.take(6).toList(),
+        friendEscort: _escort,
         slotItems: _slotItems,
       ),
     );
@@ -106,7 +110,8 @@ void main() {
             enemy: PlaneCount(3, 3),
           ),
         ),
-        friendShips: _main,
+        friendMain: _main,
+        friendEscort: const [],
         slotItems: _slotItems,
       ),
     );
@@ -133,7 +138,8 @@ void main() {
             ),
           ],
         ),
-        friendShips: _main,
+        friendMain: _main,
+        friendEscort: const [],
         slotItems: _slotItems,
       ),
     );
@@ -174,7 +180,8 @@ void main() {
             AirPhaseLine(kind: AirPhaseKind.supportAir, damage: 90),
           ],
         ),
-        friendShips: _main,
+        friendMain: _main,
+        friendEscort: const [],
         slotItems: _slotItems,
       ),
     );
@@ -198,6 +205,7 @@ void main() {
         ),
         friendMain: _main.take(6).toList(),
         friendEscort: _escort,
+        enemyMain: _main.take(6).toList(),
         enemyEscort: _escort,
         slotItems: _slotItems,
       ),
@@ -218,12 +226,13 @@ void main() {
         ),
         friendMain: _main,
         friendEscort: const [],
+        enemyMain: _main,
         enemyEscort: const [],
         slotItems: _slotItems,
       ),
     );
     expect(_rich('我 #7 主6'), findsOneWidget);
-    expect(_rich('敌 #7'), findsOneWidget);
+    expect(_rich('敌 #7 主6'), findsOneWidget);
   });
 
   testWidgets('guards out-of-range flare index', (tester) async {
@@ -233,6 +242,7 @@ void main() {
         report: const NightReport(friendFlarePosition: 5),
         friendMain: _main.take(2).toList(),
         friendEscort: const [],
+        enemyMain: _main,
         enemyEscort: const [],
         slotItems: _slotItems,
       ),
@@ -289,7 +299,8 @@ void main() {
           children: [
             FlatAirBattleSection(
               report: report,
-              friendShips: [..._main.take(6), ..._escort],
+              friendMain: _main.take(6).toList(),
+              friendEscort: _escort,
               slotItems: _slotItems,
             ),
             FlatNightBattleSection(
@@ -302,6 +313,7 @@ void main() {
               ),
               friendMain: _main.take(6).toList(),
               friendEscort: _escort,
+              enemyMain: _main.take(6).toList(),
               enemyEscort: _escort,
               slotItems: _slotItems,
             ),
@@ -312,6 +324,134 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     expect(find.text('Night'), findsOneWidget);
+  });
+
+  testWidgets('shows the AACI kind with locale brackets', (tester) async {
+    await _pump(
+      tester,
+      FlatAirBattleSection(
+        report: _fullReport,
+        friendMain: _main.take(6).toList(),
+        friendEscort: _escort,
+        slotItems: _slotItems,
+      ),
+      locale: const Locale('en'),
+    );
+    expect(_rich('AACI 主1(type 5)'), findsOneWidget);
+    expect(_rich('（'), findsNothing);
+  });
+
+  testWidgets('resolves AACI position past a short main fleet to the escort', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      FlatAirBattleSection(
+        report: const DayAirReport(
+          fighter: PlaneExchange(friend: PlaneCount(1, 0)),
+          antiAirCutIns: [AntiAirCutIn(position: 7, kind: 5)],
+        ),
+        friendMain: _main.take(5).toList(),
+        friendEscort: _escort,
+        slotItems: _slotItems,
+      ),
+    );
+    expect(_rich('对空CI 随1'), findsOneWidget);
+  });
+
+  testWidgets('names the enemy star shell ship only for a single fleet', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      FlatNightBattleSection(
+        report: const NightReport(enemyFlarePosition: 2),
+        friendMain: _main,
+        friendEscort: const [],
+        enemyMain: _main,
+        enemyEscort: const [],
+        slotItems: _slotItems,
+      ),
+    );
+    expect(_rich('敌 #3 主2'), findsOneWidget);
+  });
+
+  testWidgets('keeps phase labels untruncated at a larger text scale', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+          child: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 210,
+                child: FlatAirBattleSection(
+                  report: const DayAirReport(
+                    phases: [
+                      AirPhaseLine(
+                        kind: AirPhaseKind.landBase,
+                        baseId: 1,
+                        wave: 2,
+                        planes: PlaneExchange(enemy: PlaneCount(8, 1)),
+                      ),
+                    ],
+                  ),
+                  friendMain: _main,
+                  friendEscort: const [],
+                  slotItems: _slotItems,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final label = find.text('基地 1-2');
+    final paragraph = tester.renderObject<RenderParagraph>(label);
+    expect(paragraph.didExceedMaxLines, isFalse);
+    final scaled = TextPainter(
+      text: const TextSpan(
+        text: '基地 1-2',
+        style: TextStyle(fontSize: flatAirPhaseFontSize),
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: const TextScaler.linear(1.3),
+    )..layout();
+    expect(tester.getSize(label).width, greaterThanOrEqualTo(scaled.width));
+    scaled.dispose();
+  });
+
+  testWidgets('maps section colors through the light palette', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: createAppTheme(mode: AppThemeMode.skyBlue),
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 210,
+            child: FlatAirBattleSection(
+              report: _fullReport,
+              friendMain: _main.take(6).toList(),
+              friendEscort: _escort,
+              slotItems: _slotItems,
+            ),
+          ),
+        ),
+      ),
+    );
+    final context = tester.element(find.byType(FlatAirBattleSection));
+    final expected = appColor(context, flatSectionTitleColor);
+    expect(expected, isNot(flatSectionTitleColor));
+    final title = tester.widget<Text>(find.text('航空战 ×2'));
+    expect(title.style?.color, expected);
   });
 
   testWidgets('panel shows sections only in detailed mode', (tester) async {

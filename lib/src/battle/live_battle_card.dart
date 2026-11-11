@@ -721,7 +721,8 @@ class _FlatBattlePanel extends StatelessWidget {
           const SizedBox(height: flatSectionGap),
           FlatAirBattleSection(
             report: dayAir,
-            friendShips: battle.friendShips,
+            friendMain: battle.friendMain,
+            friendEscort: battle.friendEscort,
             slotItems: gameState.masterSlotItems,
           ),
         ],
@@ -731,6 +732,7 @@ class _FlatBattlePanel extends StatelessWidget {
             report: night,
             friendMain: battle.friendMain,
             friendEscort: battle.friendEscort,
+            enemyMain: battle.enemyMain,
             enemyEscort: battle.enemyEscort,
             slotItems: gameState.masterSlotItems,
           ),

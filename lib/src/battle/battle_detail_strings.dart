@@ -43,7 +43,7 @@ class BattleDetailStrings {
   String get airContact => _text('触接', '觸接', '触接', '촉접', 'Contact');
   String get antiAirCutIn => _text('对空CI', '對空CI', '対空CI', '대공CI', 'AACI');
   String antiAirKind(int n) =>
-      _text('第 $n 种', '第 $n 種', '$n種', '$n종', 'type $n');
+      _text('（第 $n 种）', '（第 $n 種）', '（$n種）', '($n종)', '(type $n)');
   String get landBaseJet => _text('基地喷气', '基地噴射', '基地噴式', '기지 제트', 'LB jet');
   String landBaseWave(int base, int wave) => _text(
     '基地 $base-$wave',

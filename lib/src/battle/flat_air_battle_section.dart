@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game_state/game_state.dart';
 import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
+import '../theme/app_palette.dart';
 import 'battle_air_report.dart';
 import 'battle_detail_strings.dart';
 import 'battle_models.dart';
@@ -19,15 +20,16 @@ String _equipmentLabel(
 }
 
 // lost 为 0 也显示「−0」，让「没损失」与「没数据」可区分。
-TextSpan _planeSpan(PlaneCount count, Color lossColor) => TextSpan(
-  children: [
-    TextSpan(text: '${count.count} '),
+TextSpan _planeSpan(BuildContext context, PlaneCount count, Color lossColor) =>
     TextSpan(
-      text: '−${count.lost}',
-      style: TextStyle(color: lossColor),
-    ),
-  ],
-);
+      children: [
+        TextSpan(text: '${count.count} '),
+        TextSpan(
+          text: '−${count.lost}',
+          style: TextStyle(color: appColor(context, lossColor)),
+        ),
+      ],
+    );
 
 class _SectionFrame extends StatelessWidget {
   const _SectionFrame({required this.children});
@@ -36,8 +38,10 @@ class _SectionFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
-      border: Border(top: BorderSide(color: flatDividerColor)),
+    decoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(color: appColor(context, flatDividerColor)),
+      ),
     ),
     child: Padding(
       padding: const EdgeInsets.only(top: flatSectionGap),
@@ -53,14 +57,16 @@ class FlatAirBattleSection extends StatelessWidget {
   const FlatAirBattleSection({
     super.key = const Key('flat-air-section'),
     required this.report,
-    required this.friendShips,
+    required this.friendMain,
+    required this.friendEscort,
     required this.slotItems,
   });
 
   final DayAirReport report;
+  final List<BattleShipSnapshot> friendMain;
 
-  /// `[...friendMain, ...friendEscort]`; AACI positions >= 6 index the escort.
-  final List<BattleShipSnapshot> friendShips;
+  /// AACI positions >= 6 index the escort when the fleet is combined.
+  final List<BattleShipSnapshot> friendEscort;
   final Map<int, MasterSlotItem> slotItems;
 
   String _phaseLabel(BattleDetailStrings s, AirPhaseLine line) =>
@@ -85,8 +91,11 @@ class FlatAirBattleSection extends StatelessWidget {
       children.add(_mainTable(context, s));
       for (final ci in report.antiAirCutIns) {
         final index = ci.position;
-        final ship = index >= 0 && index < friendShips.length
-            ? friendShips[index]
+        final inEscort = friendEscort.isNotEmpty && index >= 6;
+        final fleet = inEscort ? friendEscort : friendMain;
+        final fleetIndex = inEscort ? index - 6 : index;
+        final ship = fleetIndex >= 0 && fleetIndex < fleet.length
+            ? fleet[fleetIndex]
             : null;
         final name = ship == null
             ? '#${index + 1}'
@@ -95,12 +104,12 @@ class FlatAirBattleSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: flatRowSpacing),
             child: Text(
-              '${s.antiAirCutIn} $name（${s.antiAirKind(ci.kind)}）',
+              '${s.antiAirCutIn} $name${s.antiAirKind(ci.kind)}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: flatAirPhaseFontSize,
-                color: flatMutedColor,
+                color: appColor(context, flatMutedColor),
               ),
             ),
           ),
@@ -117,9 +126,9 @@ class FlatAirBattleSection extends StatelessWidget {
   }
 
   Widget _mainTable(BuildContext context, BattleDetailStrings s) {
-    const headStyle = TextStyle(
+    final headStyle = TextStyle(
       fontSize: flatAirHeadFontSize,
-      color: flatMutedColor,
+      color: appColor(context, flatMutedColor),
     );
     const cellStyle = TextStyle(fontSize: flatAirTableFontSize);
     final hasContact =
@@ -134,7 +143,7 @@ class FlatAirBattleSection extends StatelessWidget {
 
     Widget cell(PlaneCount? count, Color lossColor) => count == null
         ? const Text(_none, style: cellStyle)
-        : Text.rich(_planeSpan(count, lossColor), style: cellStyle);
+        : Text.rich(_planeSpan(context, count, lossColor), style: cellStyle);
 
     TableRow row(String label, PlaneExchange? exchange) => TableRow(
       children: [
@@ -155,9 +164,9 @@ class FlatAirBattleSection extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: flatAirHeadFontSize,
-                color: flatSectionTitleColor,
+                color: appColor(context, flatSectionTitleColor),
               ),
             ),
             if (hasContact) ...[
@@ -200,56 +209,52 @@ class FlatAirBattleSection extends StatelessWidget {
 
   Widget _phaseRows(BuildContext context, BattleDetailStrings s) {
     const style = TextStyle(fontSize: flatAirPhaseFontSize);
-    const labelStyle = TextStyle(
+    final labelStyle = TextStyle(
       fontSize: flatAirPhaseFontSize,
-      color: flatMutedColor,
+      color: appColor(context, flatMutedColor),
     );
-    final labels = [for (final line in report.phases) _phaseLabel(s, line)];
-    final scaler = MediaQuery.textScalerOf(context);
-    var labelWidth = 0.0;
-    for (final label in labels) {
-      final painter = TextPainter(
-        text: TextSpan(text: label, style: labelStyle),
-        textDirection: TextDirection.ltr,
-        textScaler: scaler,
-      )..layout();
-      if (painter.width > labelWidth) labelWidth = painter.width;
-      painter.dispose();
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Table(
+      defaultVerticalAlignment: TableCellVerticalAlignment.top,
+      columnWidths: const {0: IntrinsicColumnWidth(), 1: FlexColumnWidth()},
       children: [
-        for (var i = 0; i < labels.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: flatRowSpacing),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: labelWidth.ceilToDouble() + 1,
-                  child: Text(labels[i], style: labelStyle, softWrap: false),
+        for (final line in report.phases)
+          TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  right: 6,
+                  bottom: flatRowSpacing,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text.rich(
-                      _phaseSpan(s, report.phases[i]),
-                      style: style,
-                      maxLines: 1,
-                      softWrap: false,
-                    ),
+                child: Text(
+                  _phaseLabel(s, line),
+                  style: labelStyle,
+                  softWrap: false,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: flatRowSpacing),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text.rich(
+                    _phaseSpan(context, s, line),
+                    style: style,
+                    maxLines: 1,
+                    softWrap: false,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
       ],
     );
   }
 
-  TextSpan _phaseSpan(BattleDetailStrings s, AirPhaseLine line) {
+  TextSpan _phaseSpan(
+    BuildContext context,
+    BattleDetailStrings s,
+    AirPhaseLine line,
+  ) {
     final parts = <InlineSpan>[];
     void add(InlineSpan span) {
       if (parts.isNotEmpty) parts.add(const TextSpan(text: ' · '));
@@ -263,7 +268,7 @@ class FlatAirBattleSection extends StatelessWidget {
         TextSpan(
           children: [
             TextSpan(text: '${s.airAllyShort} '),
-            _planeSpan(friend, flatAllyLossColor),
+            _planeSpan(context, friend, flatAllyLossColor),
           ],
         ),
       );
@@ -273,7 +278,7 @@ class FlatAirBattleSection extends StatelessWidget {
         TextSpan(
           children: [
             TextSpan(text: '${s.airEnemyShort} '),
-            _planeSpan(enemy, flatEnemyLossColor),
+            _planeSpan(context, enemy, flatEnemyLossColor),
           ],
         ),
       );
@@ -282,7 +287,7 @@ class FlatAirBattleSection extends StatelessWidget {
       add(
         TextSpan(
           text: '${s.airDamage} ${line.damage}',
-          style: const TextStyle(color: flatAccentColor),
+          style: TextStyle(color: appColor(context, flatAccentColor)),
         ),
       );
     }
@@ -296,6 +301,7 @@ class FlatNightBattleSection extends StatelessWidget {
     required this.report,
     required this.friendMain,
     required this.friendEscort,
+    required this.enemyMain,
     required this.enemyEscort,
     required this.slotItems,
   });
@@ -303,6 +309,7 @@ class FlatNightBattleSection extends StatelessWidget {
   final NightReport report;
   final List<BattleShipSnapshot> friendMain;
   final List<BattleShipSnapshot> friendEscort;
+  final List<BattleShipSnapshot> enemyMain;
   final List<BattleShipSnapshot> enemyEscort;
   final Map<int, MasterSlotItem> slotItems;
 
@@ -310,9 +317,9 @@ class FlatNightBattleSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = BattleDetailStrings.of(context);
     const style = TextStyle(fontSize: flatAirPhaseFontSize);
-    const labelStyle = TextStyle(
+    final labelStyle = TextStyle(
       fontSize: flatAirPhaseFontSize,
-      color: flatMutedColor,
+      color: appColor(context, flatMutedColor),
     );
     Widget line(String label, String body, {Color? bodyColor}) => Padding(
       padding: const EdgeInsets.only(top: flatRowSpacing),
@@ -322,7 +329,9 @@ class FlatNightBattleSection extends StatelessWidget {
             TextSpan(text: '$label  ', style: labelStyle),
             TextSpan(
               text: body,
-              style: bodyColor == null ? null : TextStyle(color: bodyColor),
+              style: bodyColor == null
+                  ? null
+                  : TextStyle(color: appColor(context, bodyColor)),
             ),
           ],
         ),
@@ -333,9 +342,9 @@ class FlatNightBattleSection extends StatelessWidget {
     final children = <Widget>[
       Text(
         s.nightBattle,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: flatAirHeadFontSize,
-          color: flatSectionTitleColor,
+          color: appColor(context, flatSectionTitleColor),
         ),
       ),
     ];
@@ -357,7 +366,8 @@ class FlatNightBattleSection extends StatelessWidget {
       final parts = <String>[
         if (friendFlare >= 0)
           '${s.airAllyShort} ${_friendFlare(context, friendFlare)}',
-        if (enemyFlare >= 0) '${s.airEnemyShort} #${enemyIndex + 1}',
+        if (enemyFlare >= 0)
+          '${s.airEnemyShort} ${_enemyFlare(context, enemyIndex)}',
       ];
       children.add(line(s.starShell, parts.join(' · ')));
     }
@@ -371,6 +381,16 @@ class FlatNightBattleSection extends StatelessWidget {
       );
     }
     return _SectionFrame(children: children);
+  }
+
+  // 敌联合舰队时 raw 所属舰队不可考，只给序号。
+  String _enemyFlare(BuildContext context, int index) {
+    final label = '#${index + 1}';
+    if (enemyEscort.isNotEmpty || index < 0 || index >= enemyMain.length) {
+      return label;
+    }
+    final ship = enemyMain[index];
+    return '$label ${gameNames(context).shipName(ship.name, shipId: ship.masterId)}';
   }
 
   // 联合舰队夜战由随伴舰队打，api_flare_pos 要折回随伴；单舰队 7 艘时 raw 可为 6。
