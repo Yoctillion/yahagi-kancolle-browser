@@ -7,7 +7,6 @@ import '../game_state/game_state.dart';
 import '../layout/panel_style.dart';
 import 'battle_fleet_block.dart';
 import 'battle_models.dart';
-import 'battle_ui_text.dart';
 
 class OfficialEnemyPreview extends StatelessWidget {
   const OfficialEnemyPreview({
@@ -17,7 +16,6 @@ class OfficialEnemyPreview extends StatelessWidget {
     this.showPortraits = false,
     this.masterShips = const <int, MasterShip>{},
     this.serverOrigin = '',
-    this.besideShipRows = false,
   });
 
   final List<EnemyPreviewShip> ships;
@@ -25,10 +23,6 @@ class OfficialEnemyPreview extends StatelessWidget {
   final bool showPortraits;
   final Map<int, MasterShip> masterShips;
   final String serverOrigin;
-
-  /// Beside a friendly fleet: half the width for the title, and rows that
-  /// keep that fleet's row height.
-  final bool besideShipRows;
 
   @override
   Widget build(BuildContext context) {
@@ -46,19 +40,11 @@ class OfficialEnemyPreview extends StatelessWidget {
     );
     return BattleFleetBlock(
       key: const Key('official-enemy-preview'),
-      title: besideShipRows
-          ? BattleUiText(
-              '敌方预测',
-              key: const Key('official-enemy-preview-title'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: titleStyle,
-            )
-          : Text(
-              '敌方部队（战前预测）',
-              key: const Key('official-enemy-preview-title'),
-              style: appTextStyle(context, titleStyle),
-            ),
+      title: Text(
+        '敌方部队（战前预测）',
+        key: const Key('official-enemy-preview-title'),
+        style: appTextStyle(context, titleStyle),
+      ),
       rows: <Widget>[
         if (!combined)
           for (var index = 0; index < ships.length; index++)
@@ -160,7 +146,6 @@ class OfficialEnemyPreview extends StatelessWidget {
             ),
             const SizedBox(width: 7),
           ],
-          if (besideShipRows) const BattleShipRowStrut(),
           Expanded(
             child: Tooltip(
               message: name,

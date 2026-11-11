@@ -156,99 +156,7 @@ class _SortieMapSectionState extends State<SortieMapSection> {
             ),
           ),
         ),
-        if (expanded)
-          Container(
-            key: const Key('sortie-map-body'),
-            padding: flat
-                ? const EdgeInsets.fromLTRB(0, 2, 0, 4)
-                : const EdgeInsets.fromLTRB(9, 2, 9, 8),
-            decoration: flat
-                ? null
-                : BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: appColor(context, const Color(0xff203746)),
-                      ),
-                    ),
-                  ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (scene.hasGeometry)
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 326),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => SizedBox(
-                          key: const Key('sortie-map-canvas'),
-                          width: constraints.maxWidth,
-                          height:
-                              constraints.maxWidth /
-                              _MapProjection._aspectRatio,
-                          child: RepaintBoundary(
-                            child: FittedBox(
-                              fit: BoxFit.contain,
-                              child: SizedBox.fromSize(
-                                size: _MapProjection.canvasSizeFor(
-                                  scene.geometry!,
-                                ),
-                                child: _MapCanvas(
-                                  key: const Key('sortie-map-logical-canvas'),
-                                  scene: scene,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    child: BattleUiText(
-                      scene.strings.mapUnavailable,
-                      textAlign: TextAlign.center,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, _muted),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (scene.hasGeometry && scene.needsUpdate)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 5),
-                    child: BattleUiText(
-                      scene.strings.mapUnavailable,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, _gold),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (progress.isPartial)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: BattleUiText(
-                      scene.strings.mapPartial,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, _muted),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+        if (expanded) _mapBody(context, scene, flat: flat),
       ],
     );
     if (flat) {
@@ -267,6 +175,172 @@ class _SortieMapSectionState extends State<SortieMapSection> {
       child: content,
     );
   }
+}
+
+Widget _mapBody(BuildContext context, _MapScene scene, {required bool flat}) {
+  final progress = scene.progress;
+  return Container(
+    key: const Key('sortie-map-body'),
+    padding: flat
+        ? const EdgeInsets.fromLTRB(0, 2, 0, 4)
+        : const EdgeInsets.fromLTRB(9, 2, 9, 8),
+    decoration: flat
+        ? null
+        : BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: appColor(context, const Color(0xff203746)),
+              ),
+            ),
+          ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (scene.hasGeometry)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 326),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SizedBox(
+                  key: const Key('sortie-map-canvas'),
+                  width: constraints.maxWidth,
+                  height: constraints.maxWidth / _MapProjection._aspectRatio,
+                  child: RepaintBoundary(
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox.fromSize(
+                        size: _MapProjection.canvasSizeFor(scene.geometry!),
+                        child: _MapCanvas(
+                          key: const Key('sortie-map-logical-canvas'),
+                          scene: scene,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: BattleUiText(
+              scene.strings.mapUnavailable,
+              textAlign: TextAlign.center,
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _muted), fontSize: 11),
+              ),
+            ),
+          ),
+        if (scene.hasGeometry && scene.needsUpdate)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 5),
+            child: BattleUiText(
+              scene.strings.mapUnavailable,
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _gold), fontSize: 10),
+              ),
+            ),
+          ),
+        if (progress.isPartial)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: BattleUiText(
+              scene.strings.mapPartial,
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _muted), fontSize: 10),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+/// The map's expander for a header that already names the current node: the
+/// map key and a chevron, sized to sit at the end of that header row.
+class SortieMapToggle extends StatelessWidget {
+  const SortieMapToggle({
+    super.key = const Key('sortie-map-toggle'),
+    required this.progress,
+    required this.expanded,
+    required this.onToggleExpanded,
+  });
+
+  final SortieMapProgress progress;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = BattleDetailStrings.of(context);
+    return Semantics(
+      button: true,
+      expanded: expanded,
+      label: '${strings.sortieMapTitle} ${progress.mapKey}',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onToggleExpanded,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 6, top: 1, bottom: 1),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                progress.mapKey,
+                maxLines: 1,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, _muted),
+                    fontSize: flatSmallFontSize,
+                  ),
+                ),
+              ),
+              Icon(
+                expanded ? Icons.expand_less : Icons.expand_more,
+                color: appColor(context, _muted),
+                size: 15,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The expanded map alone, for use under a header holding [SortieMapToggle].
+class SortieMapBody extends StatelessWidget {
+  const SortieMapBody({
+    super.key,
+    required this.progress,
+    required this.geometry,
+    this.currentNodeLabel,
+  });
+
+  final SortieMapProgress progress;
+  final FcdMapGeometry? geometry;
+  final String? currentNodeLabel;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    key: const Key('sortie-map-section'),
+    type: MaterialType.transparency,
+    child: _mapBody(
+      context,
+      _MapScene(
+        progress,
+        geometry,
+        currentNodeLabel,
+        BattleDetailStrings.of(context),
+      ),
+      flat: PanelStyleScope.isFlat(context),
+    ),
+  );
 }
 
 class _MapScene {

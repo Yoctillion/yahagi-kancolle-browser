@@ -8,6 +8,7 @@ import 'package:yahagi_kancolle_browser/src/battle/battle_models.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_node_label_resolver.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_pills.dart';
 import 'package:yahagi_kancolle_browser/src/battle/detailed_battle_panel.dart';
+import 'package:yahagi_kancolle_browser/src/battle/flat_battle_header.dart';
 import 'package:yahagi_kancolle_browser/src/battle/formation_memory.dart';
 import 'package:yahagi_kancolle_browser/src/battle/live_battle_card.dart';
 import 'package:yahagi_kancolle_browser/src/battle/official_enemy_preview.dart';
@@ -2006,10 +2007,13 @@ void main() {
 
       await _pumpFlatCompactCard(tester, controller);
 
-      final header = tester.widget<Container>(
-        find.byKey(const Key('battle-navigation-header')),
+      final filled = find.descendant(
+        of: find.byKey(const Key('battle-navigation-header')),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Container && widget.decoration != null,
+        ),
       );
-      expect(header.decoration, isNull);
+      expect(filled, findsNothing);
       expect(find.text('航向'), findsOneWidget);
       expect(filledContainer(const Color(0xff18343c)), findsNothing);
     });
@@ -2084,11 +2088,10 @@ void main() {
       // No map data here, so the node name is still spelled out.
       final nodeName = controller.current!.context.forecastNodeLabel;
       expect(
-        find.descendant(
-          of: find.byType(AdaptiveBattleHeader),
-          matching: find.text(nodeName),
-        ),
-        findsOneWidget,
+        tester
+            .widget<Text>(find.byKey(const Key('flat-battle-header-node')))
+            .data,
+        nodeName,
       );
       final segments = tester
           .widget<Text>(
@@ -2139,7 +2142,7 @@ void main() {
       }
       expect(
         tester.getSize(find.byKey(const Key('battle-rank-badge'))).width,
-        28,
+        FlatBattleHeader.rankBadgeSize,
       );
     });
   });
