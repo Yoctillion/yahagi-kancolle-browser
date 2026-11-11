@@ -12,6 +12,7 @@ import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_
 import 'package:yahagi_kancolle_browser/src/battle/prediction/battle_prediction_executor.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state.dart';
 import 'package:yahagi_kancolle_browser/src/game_state/game_state_reducer.dart';
+import 'package:yahagi_kancolle_browser/src/layout/flat_style.dart';
 import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 
 import 'fixtures/kcsapi_fixtures.dart';
@@ -112,6 +113,40 @@ void main() {
     expect(find.text('喷气'), findsNothing);
     expect(find.text('对空'), findsOneWidget);
     expect(_rich('12 −0'), findsOneWidget);
+  });
+
+  testWidgets('keeps a land-base jet phase row on one line at 210px', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      FlatAirBattleSection(
+        report: const DayAirReport(
+          phases: [
+            AirPhaseLine(
+              kind: AirPhaseKind.landBaseJet,
+              planes: PlaneExchange(
+                friend: PlaneCount(36, 14),
+                enemy: PlaneCount(80, 8),
+              ),
+              damage: 50,
+            ),
+          ],
+        ),
+        friendShips: _main,
+        slotItems: _slotItems,
+      ),
+    );
+    final value = find.byWidgetPredicate(
+      (w) => w is RichText && w.text.toPlainText().contains('伤害 50'),
+    );
+    expect(value, findsOneWidget);
+    expect(
+      tester
+          .getSize(find.ancestor(of: value, matching: find.byType(FittedBox)))
+          .height,
+      lessThan(flatAirPhaseFontSize * 1.5),
+    );
   });
 
   testWidgets('lists phases in order', (tester) async {

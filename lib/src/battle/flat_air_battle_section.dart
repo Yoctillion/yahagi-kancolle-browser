@@ -231,9 +231,15 @@ class FlatAirBattleSection extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text.rich(
-                    _phaseSpan(s, report.phases[i]),
-                    style: style,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text.rich(
+                      _phaseSpan(s, report.phases[i]),
+                      style: style,
+                      maxLines: 1,
+                      softWrap: false,
+                    ),
                   ),
                 ),
               ],
