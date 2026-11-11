@@ -950,7 +950,7 @@ class _CompactFleetGrid extends StatelessWidget {
                     strings.localize(formationLabel(lastFormation!)),
                   ),
             engagement: null,
-            enemy: enemyColumns.isEmpty ? null : strings.localize('敌方预测'),
+            enemy: enemyColumns.isEmpty ? null : l10n.battleSectionEnemyPreview,
           )
         : _FlatFormationLine(
             key: const Key('compact-formation-line'),
