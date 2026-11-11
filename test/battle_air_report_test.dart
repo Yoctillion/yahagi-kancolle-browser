@@ -110,6 +110,16 @@ void main() {
       (3, 1),
       (3, 2),
     ]);
+    for (final line in lands) {
+      expect(
+        line.planes,
+        const PlaneExchange(
+          friend: PlaneCount(18, 0),
+          enemy: PlaneCount(50, 10),
+        ),
+      );
+      expect(line.damage, 40);
+    }
     final jet = report.phases.first;
     expect(jet.planes.friend, const PlaneCount(36, 14));
     expect(jet.damage, 90);
@@ -170,8 +180,14 @@ void main() {
     final night = parseNightReport({
       'api_flare_pos': [9, -1],
     })!;
-    expect(night.friendFlarePosition, 3);
+    expect(night.friendFlarePosition, 9);
     expect(night.enemyFlarePosition, -1);
+    expect(
+      parseNightReport({
+        'api_flare_pos': [6, -1],
+      })!.friendFlarePosition,
+      6,
+    );
   });
 
   test('tolerates missing stages and fields', () {
@@ -227,5 +243,107 @@ void main() {
       }),
       isNull,
     );
+  });
+
+  test('orders friendly kouku between land base and support', () {
+    final report = parseDayAirReport({
+      'api_air_base_attack': [_landBase(1)],
+      'api_friendly_kouku': {
+        'api_stage1': _stage1(fCount: 20, fLost: 1, eCount: 40, eLost: 8),
+        'api_stage2': _stage2(fLost: 3),
+        'api_stage3': _stage3([12.9, 5]),
+      },
+      'api_support_flag': 3,
+      'api_support_info': {
+        'api_support_hourai': {
+          'api_damage': [7.5, 0, 3],
+        },
+      },
+    })!;
+    expect(report.phases.map((p) => p.kind).toList(), [
+      AirPhaseKind.landBase,
+      AirPhaseKind.friendly,
+      AirPhaseKind.supportTorpedo,
+    ]);
+    final friendly = report.phases[1];
+    expect(
+      friendly.planes,
+      const PlaneExchange(friend: PlaneCount(20, 4), enemy: PlaneCount(40, 8)),
+    );
+    expect(friendly.damage, 17);
+    expect(report.phases[2].damage, 10);
+  });
+
+  test('reads anti-sub support damage', () {
+    final report = parseDayAirReport({
+      'api_support_flag': 4,
+      'api_support_info': {
+        'api_support_airatack': {
+          'api_stage3': _stage3([30.5, 4]),
+        },
+      },
+    })!;
+    expect(report.phases.single.kind, AirPhaseKind.supportAntiSub);
+    expect(report.phases.single.damage, 34);
+  });
+
+  test('appends second-wave AACI after the first wave', () {
+    final report = parseDayAirReport({
+      'api_kouku': {
+        'api_stage1': _stage1(fCount: 10, eCount: 10),
+        'api_stage2': _stage2(
+          fCount: 10,
+          airFire: {'api_idx': 1, 'api_kind': 4},
+        ),
+      },
+      'api_kouku2': {
+        'api_stage1': _stage1(),
+        'api_stage2': _stage2(airFire: {'api_idx': 7, 'api_kind': 8}),
+      },
+    })!;
+    expect(report.antiAirCutIns, const [
+      AntiAirCutIn(position: 1, kind: 4),
+      AntiAirCutIn(position: 7, kind: 8),
+    ]);
+  });
+
+  test('tolerates non-map and non-list garbage', () {
+    final report = parseDayAirReport({
+      'api_kouku': 'x',
+      'api_kouku2': 3,
+      'api_injection_kouku': [],
+      'api_air_base_attack': 5,
+      'api_air_base_injection': 'y',
+      'api_friendly_kouku': 1,
+      'api_support_flag': 'z',
+      'api_support_info': 'q',
+    });
+    expect(report, isNull);
+    expect(
+      parseNightReport({
+        'api_touch_plane': 'x',
+        'api_flare_pos': 7,
+        'api_n_support_info': [],
+      }),
+      isNull,
+    );
+  });
+
+  test('all-empty exchanges give no main table', () {
+    final report = parseDayAirReport({
+      'api_injection_kouku': {'api_stage1': _stage1(), 'api_stage2': _stage2()},
+      'api_kouku': {'api_stage1': _stage1(), 'api_stage2': _stage2()},
+      'api_support_flag': 2,
+      'api_support_info': {
+        'api_support_hourai': {
+          'api_damage': [5],
+        },
+      },
+    })!;
+    expect(report.hasMainTable, isFalse);
+    expect(report.jet, isNull);
+    expect(report.fighter, isNull);
+    expect(report.antiAir, isNull);
+    expect(report.phases, hasLength(1));
   });
 }

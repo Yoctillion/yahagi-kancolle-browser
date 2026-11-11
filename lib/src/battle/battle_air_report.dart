@@ -131,6 +131,7 @@ final class NightReport {
 
   final int friendContactPlaneId;
   final int enemyContactPlaneId;
+  // 原始 api_flare_pos；联合舰队夜战时是否折回随伴舰队由展示层决定。
   final int friendFlarePosition;
   final int enemyFlarePosition;
   final int? supportDamage;
@@ -356,10 +357,9 @@ int _contact(List<Object?> touch, int index) {
   return id > 0 ? id : -1;
 }
 
-// 联合舰队夜战由随伴舰队进行，序号需折回该舰队内。
 int _flare(List<Object?> flare, int index) {
   final position = index < flare.length ? _int(flare[index]) : -1;
-  return position >= 0 ? position % 6 : -1;
+  return position >= 0 ? position : -1;
 }
 
 Map<String, Object?>? _map(Object? value) => value is Map
