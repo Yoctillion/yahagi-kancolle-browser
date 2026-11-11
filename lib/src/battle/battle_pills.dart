@@ -4,7 +4,6 @@ import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 import '../layout/flat_style.dart';
-import 'battle_node_icon.dart';
 import 'battle_ui_text.dart';
 import 'battle_detail_strings.dart';
 
@@ -255,72 +254,6 @@ List<Widget> navigationHeaderPills(
       NodeTypeHeaderSegment(:final label) => NodeTypePill(label: label),
     },
 ];
-
-/// Flat-style navigation header: the node icon, then the node name and the
-/// navigation pill contents as one run of text, what the node gave or is first.
-class FlatNavigationHeader extends StatelessWidget {
-  const FlatNavigationHeader({
-    super.key,
-    required this.battle,
-    required this.showLastFormationHint,
-  });
-
-  final LiveBattle battle;
-  final bool showLastFormationHint;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = BattleDetailStrings.of(context);
-    List<InlineSpan> spansOf(NavigationHeaderSegment segment) =>
-        _navigationSegmentSpans(context, segment);
-    final segments = navigationHeaderSegments(
-      battle,
-      showLastFormationHint: showLastFormationHint,
-    );
-    const isOutcome = _isNavigationOutcome;
-    return Row(
-      children: <Widget>[
-        BattleNodeIcon(nodeContext: battle.context),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text.rich(
-            key: const Key('battle-navigation-tag-line'),
-            appTextSpan(
-              context,
-              TextSpan(
-                style: const TextStyle(
-                  fontSize: flatSmallFontSize,
-                  fontWeight: FontWeight.w600,
-                ),
-                children: <InlineSpan>[
-                  TextSpan(
-                    text: strings.localize(battle.context.forecastNodeLabel),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: flatRowFontSize,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  for (final segment in segments.where(isOutcome)) ...[
-                    flatSegmentSeparator,
-                    ...spansOf(segment),
-                  ],
-                  for (final segment in segments)
-                    if (!isOutcome(segment)) ...[
-                      flatSegmentSeparator,
-                      ...spansOf(segment),
-                    ],
-                ],
-              ),
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 List<InlineSpan> _navigationSegmentSpans(
   BuildContext context,
