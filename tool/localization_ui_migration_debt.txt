@@ -131,7 +131,6 @@
 "lib/src/battle/live_battle_card.dart|预判"
 "lib/src/battle/live_battle_card.dart|${ship.currentHp} / ${ship.maxHp} (退避)"
 "lib/src/battle/official_enemy_preview.dart|敌方部队（战前预测）"
-"lib/src/battle/official_enemy_preview.dart|敌方预测"
 "lib/src/bridge/captured_api_event.dart|模拟数据"
 "lib/src/browser/game_browser_controller.dart|WebView 尚未就绪"
 "lib/src/browser/game_browser_controller.dart|暂不支持的外部跳转：$scheme"
