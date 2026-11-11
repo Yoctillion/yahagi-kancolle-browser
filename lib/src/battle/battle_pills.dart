@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
@@ -898,8 +900,8 @@ class BattleRankBadge extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: appColor(context, colors.background),
-        // 9 at the full 50px size; small badges keep the same proportion.
-        borderRadius: BorderRadius.circular(size * .18),
+        // Full-size badges keep 9; small ones round less so they stay square.
+        borderRadius: BorderRadius.circular(math.min(9, size * .3)),
         border: Border.all(color: appColor(context, colors.border)),
       ),
       child: Text(
