@@ -1164,6 +1164,27 @@ void main() {
       );
     });
 
+    testWidgets('long ship name takes all width left of the hp text', (
+      tester,
+    ) async {
+      await pumpGrid(
+        tester,
+        battleOf(<BattleShipSnapshot>[
+          ship(BattleSide.friend, 0, name: 'Graf Zeppelin改 Graf Zeppelin改'),
+        ]),
+      );
+
+      final row = find.byKey(const Key('compact-name-friend-0'));
+      final name = find.descendant(
+        of: row,
+        matching: find.textContaining('Graf'),
+      );
+      final hp = find.descendant(of: row, matching: find.text('30 / 50'));
+      final rowWidth = tester.getSize(row).width;
+      final hpWidth = tester.getSize(hp).width;
+      expect(tester.getSize(name).width, closeTo(rowWidth - hpWidth - 3, 1));
+    });
+
     testWidgets('drops damage suffix and paints ghost', (tester) async {
       await pumpGrid(
         tester,

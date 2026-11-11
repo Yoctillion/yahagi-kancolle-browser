@@ -526,7 +526,7 @@ class _CompactBarRow extends StatelessWidget {
     Widget nameLine(Widget trailing) => Row(
       key: Key('compact-name-$keyName-$index'),
       children: <Widget>[
-        Flexible(
+        Expanded(
           child: Text(
             shipName,
             maxLines: 1,
@@ -542,7 +542,6 @@ class _CompactBarRow extends StatelessWidget {
           ),
         ),
         if (isMvp) ...<Widget>[const SizedBox(width: 2), mvpIcon],
-        const Spacer(),
         const SizedBox(width: 3),
         trailing,
       ],
