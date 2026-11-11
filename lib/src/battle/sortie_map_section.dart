@@ -156,97 +156,7 @@ class _SortieMapSectionState extends State<SortieMapSection> {
             ),
           ),
         ),
-        if (expanded)
-          Container(
-            key: const Key('sortie-map-body'),
-            padding: flat
-                ? const EdgeInsets.fromLTRB(0, 2, 0, 4)
-                : const EdgeInsets.fromLTRB(9, 2, 9, 8),
-            decoration: flat
-                ? null
-                : BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: appColor(context, const Color(0xff203746)),
-                      ),
-                    ),
-                  ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (scene.hasGeometry)
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 326),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => SizedBox(
-                          key: const Key('sortie-map-canvas'),
-                          width: constraints.maxWidth,
-                          height:
-                              constraints.maxWidth /
-                              _MapProjection.canvasSize.aspectRatio,
-                          child: RepaintBoundary(
-                            child: FittedBox(
-                              fit: BoxFit.contain,
-                              child: SizedBox.fromSize(
-                                size: _MapProjection.canvasSize,
-                                child: _MapCanvas(
-                                  key: const Key('sortie-map-logical-canvas'),
-                                  scene: scene,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    child: BattleUiText(
-                      scene.strings.mapUnavailable,
-                      textAlign: TextAlign.center,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, _muted),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (scene.hasGeometry && scene.needsUpdate)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 5),
-                    child: BattleUiText(
-                      scene.strings.mapUnavailable,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, _gold),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (progress.isPartial)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: BattleUiText(
-                      scene.strings.mapPartial,
-                      style: appTextStyle(
-                        context,
-                        TextStyle(
-                          color: appColor(context, _muted),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+        if (expanded) _mapBody(context, scene, flat: flat),
       ],
     );
     if (flat) {
@@ -265,6 +175,172 @@ class _SortieMapSectionState extends State<SortieMapSection> {
       child: content,
     );
   }
+}
+
+Widget _mapBody(BuildContext context, _MapScene scene, {required bool flat}) {
+  final progress = scene.progress;
+  return Container(
+    key: const Key('sortie-map-body'),
+    padding: flat
+        ? const EdgeInsets.fromLTRB(0, 2, 0, 4)
+        : const EdgeInsets.fromLTRB(9, 2, 9, 8),
+    decoration: flat
+        ? null
+        : BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: appColor(context, const Color(0xff203746)),
+              ),
+            ),
+          ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (scene.hasGeometry)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 326),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SizedBox(
+                  key: const Key('sortie-map-canvas'),
+                  width: constraints.maxWidth,
+                  height: constraints.maxWidth / _MapProjection._aspectRatio,
+                  child: RepaintBoundary(
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox.fromSize(
+                        size: _MapProjection.canvasSizeFor(scene.geometry!),
+                        child: _MapCanvas(
+                          key: const Key('sortie-map-logical-canvas'),
+                          scene: scene,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: BattleUiText(
+              scene.strings.mapUnavailable,
+              textAlign: TextAlign.center,
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _muted), fontSize: 11),
+              ),
+            ),
+          ),
+        if (scene.hasGeometry && scene.needsUpdate)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 5),
+            child: BattleUiText(
+              scene.strings.mapUnavailable,
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _gold), fontSize: 10),
+              ),
+            ),
+          ),
+        if (progress.isPartial)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: BattleUiText(
+              scene.strings.mapPartial,
+              style: appTextStyle(
+                context,
+                TextStyle(color: appColor(context, _muted), fontSize: 10),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+/// The map's expander for a header that already names the current node: the
+/// map key and a chevron, sized to sit at the end of that header row.
+class SortieMapToggle extends StatelessWidget {
+  const SortieMapToggle({
+    super.key = const Key('sortie-map-toggle'),
+    required this.progress,
+    required this.expanded,
+    required this.onToggleExpanded,
+  });
+
+  final SortieMapProgress progress;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = BattleDetailStrings.of(context);
+    return Semantics(
+      button: true,
+      expanded: expanded,
+      label: '${strings.sortieMapTitle} ${progress.mapKey}',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onToggleExpanded,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 6, top: 1, bottom: 1),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                progress.mapKey,
+                maxLines: 1,
+                style: appTextStyle(
+                  context,
+                  TextStyle(
+                    color: appColor(context, _muted),
+                    fontSize: flatSmallFontSize,
+                  ),
+                ),
+              ),
+              Icon(
+                expanded ? Icons.expand_less : Icons.expand_more,
+                color: appColor(context, _muted),
+                size: 15,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The expanded map alone, for use under a header holding [SortieMapToggle].
+class SortieMapBody extends StatelessWidget {
+  const SortieMapBody({
+    super.key,
+    required this.progress,
+    required this.geometry,
+    this.currentNodeLabel,
+  });
+
+  final SortieMapProgress progress;
+  final FcdMapGeometry? geometry;
+  final String? currentNodeLabel;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    key: const Key('sortie-map-section'),
+    type: MaterialType.transparency,
+    child: _mapBody(
+      context,
+      _MapScene(
+        progress,
+        geometry,
+        currentNodeLabel,
+        BattleDetailStrings.of(context),
+      ),
+      flat: PanelStyleScope.isFlat(context),
+    ),
+  );
 }
 
 class _MapScene {
@@ -398,49 +474,57 @@ class _MapCanvas extends StatelessWidget {
 }
 
 class _MapProjection {
-  // The old 360px preview has 326px of drawable width after card padding.
-  // Lay out once at that reference width, then scale the complete scene.
-  static const canvasSize = Size(326, 240);
+  // FCD spots are in the game's 1200x720 coordinates. Every map is framed by
+  // the same window, the sea area above the in-game bottom banner, so each
+  // keeps its in-game composition and proportions instead of being stretched
+  // to fill the canvas.
+  static const _gameFrame = Rect.fromLTRB(60, 85, 1140, 595);
+  static const _margin = 14.0;
+  static const _canvasWidth = 326.0;
+  static final _aspectRatio =
+      _canvasWidth /
+      (_gameFrame.height * (_canvasWidth - 2 * _margin) / _gameFrame.width +
+              2 * _margin)
+          .roundToDouble();
 
-  static double _referenceHeight(FcdMapGeometry geometry) {
-    final compact = canvasSize.width * .44 + 16;
-    final nodes = geometry.spots.length;
-    if (nodes <= 10) return compact;
-    return math.max(
-      compact,
-      nodes >= 30
-          ? 240.0
-          : nodes >= 18
-          ? 210.0
-          : 180.0,
-    );
+  /// Every map shows at the same aspect ratio. The densest maps lay out on a
+  /// wider logical canvas, so after scaling to fit their labels are smaller
+  /// relative to the geometry instead of colliding with each other.
+  static Size canvasSizeFor(FcdMapGeometry geometry) {
+    final width = geometry.spots.length >= 50
+        ? _canvasWidth * 1.2
+        : _canvasWidth;
+    return Size(width, width / _aspectRatio);
   }
 
   _MapProjection(FcdMapGeometry geometry, Size size) {
     final xs = geometry.spots.values.map((spot) => spot.x);
     final ys = geometry.spots.values.map((spot) => spot.y);
-    final minX = xs.reduce(math.min);
-    final minY = ys.reduce(math.min);
-    final rangeX = xs.reduce(math.max) - minX;
-    final rangeY = ys.reduce(math.max) - minY;
-    // Retain each map's composition at the reference width. Sparse maps are
-    // centered in the common canvas instead of stretching them to fill it.
-    contentSize = Size(size.width, _referenceHeight(geometry));
-    contentOffset = Offset(0, (size.height - contentSize.height) / 2);
-    final scaleX = math.max(0, size.width - 40) / math.max(1, rangeX);
-    final scaleY = math.max(0, contentSize.height - 40) / math.max(1, rangeY);
-    final origin = Offset(
-      (size.width - rangeX * scaleX) / 2,
-      (contentSize.height - rangeY * scaleY) / 2,
+    // A map with spots outside the usual window widens it rather than clips.
+    final frame = _gameFrame.expandToInclude(
+      Rect.fromLTRB(
+        xs.reduce(math.min),
+        ys.reduce(math.min),
+        xs.reduce(math.max),
+        ys.reduce(math.max),
+      ),
     );
+    final scale = math.min(
+      math.max(0, size.width - 2 * _margin) / frame.width,
+      math.max(0, size.height - 2 * _margin) / frame.height,
+    );
+    final origin = Offset(
+      (size.width - frame.width * scale) / 2,
+      (size.height - frame.height * scale) / 2,
+    );
+    contentSize = size;
+    contentOffset = Offset.zero;
     contentPoints = {
       for (final entry in geometry.spots.entries)
         entry.key:
             origin +
-            Offset(
-              (entry.value.x - minX) * scaleX,
-              (entry.value.y - minY) * scaleY,
-            ),
+            Offset(entry.value.x - frame.left, entry.value.y - frame.top) *
+                scale,
     };
     final contentPaths = layoutSortieMapRoutes(
       routes: geometry.routes,
@@ -452,14 +536,8 @@ class _MapProjection {
         for (var index = 1; index < path.length; index++)
           (path[index - 1], path[index]),
     ];
-    points = {
-      for (final entry in contentPoints.entries)
-        entry.key: entry.value + contentOffset,
-    };
-    routePaths = {
-      for (final entry in contentPaths.entries)
-        entry.key: [for (final point in entry.value) point + contentOffset],
-    };
+    points = contentPoints;
+    routePaths = contentPaths;
   }
 
   late final Map<String, Offset> points;

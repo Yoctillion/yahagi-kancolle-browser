@@ -268,71 +268,14 @@ class FlatNavigationHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n =
-        AppLocalizations.of(context) ??
-        lookupAppLocalizations(const Locale('zh'));
     final strings = BattleDetailStrings.of(context);
-    List<InlineSpan> spansOf(
-      NavigationHeaderSegment segment,
-    ) => switch (segment) {
-      LastFormationHeaderSegment(:final formation) => [
-        TextSpan(
-          text: l10n.battleLastFormation(
-            strings.localize(formationLabel(formation)),
-          ),
-          style: const TextStyle(color: flatMutedColor),
-        ),
-      ],
-      CombinedFleetHeaderSegment(:final type) => [
-        TextSpan(
-          text: strings.localize(type.label),
-          style: const TextStyle(color: flatMutedColor),
-        ),
-      ],
-      ResourceChangesHeaderSegment(:final changes) => [
-        for (var index = 0; index < changes.length; index++) ...[
-          if (index > 0) const TextSpan(text: ' '),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Image.asset(
-              'assets/images/material/${changes[index].type.apiId.toString().padLeft(2, '0')}.png',
-              key: Key('battle-resource-icon-${changes[index].type.apiId}'),
-              width: 11,
-              height: 11,
-              fit: BoxFit.contain,
-            ),
-          ),
-          TextSpan(
-            text: _signed(changes[index].amount),
-            style: TextStyle(
-              color: changes[index].amount < 0
-                  ? _flatLossColor
-                  : _flatGainColor,
-            ),
-          ),
-        ],
-      ],
-      RewardItemsHeaderSegment(:final items) => [
-        TextSpan(
-          text: _rewardItemsText(items),
-          style: const TextStyle(color: flatAccentColor),
-        ),
-      ],
-      NodeTypeHeaderSegment(:final label) => [
-        TextSpan(
-          text: strings.localize(label),
-          style: TextStyle(color: nodeTypePillColors(label).foreground),
-        ),
-      ],
-    };
+    List<InlineSpan> spansOf(NavigationHeaderSegment segment) =>
+        _navigationSegmentSpans(context, segment);
     final segments = navigationHeaderSegments(
       battle,
       showLastFormationHint: showLastFormationHint,
     );
-    bool isOutcome(NavigationHeaderSegment segment) =>
-        segment is ResourceChangesHeaderSegment ||
-        segment is RewardItemsHeaderSegment ||
-        segment is NodeTypeHeaderSegment;
+    const isOutcome = _isNavigationOutcome;
     return Row(
       children: <Widget>[
         BattleNodeIcon(nodeContext: battle.context),
@@ -373,6 +316,111 @@ class FlatNavigationHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+List<InlineSpan> _navigationSegmentSpans(
+  BuildContext context,
+  NavigationHeaderSegment segment,
+) {
+  final l10n =
+      AppLocalizations.of(context) ??
+      lookupAppLocalizations(const Locale('zh'));
+  final strings = BattleDetailStrings.of(context);
+  return switch (segment) {
+    LastFormationHeaderSegment(:final formation) => [
+      TextSpan(
+        text: l10n.battleLastFormation(
+          strings.localize(formationLabel(formation)),
+        ),
+        style: const TextStyle(color: flatMutedColor),
+      ),
+    ],
+    CombinedFleetHeaderSegment(:final type) => [
+      TextSpan(
+        text: strings.localize(type.label),
+        style: const TextStyle(color: flatMutedColor),
+      ),
+    ],
+    ResourceChangesHeaderSegment(:final changes) => [
+      for (var index = 0; index < changes.length; index++) ...[
+        if (index > 0) const TextSpan(text: ' '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Image.asset(
+            'assets/images/material/${changes[index].type.apiId.toString().padLeft(2, '0')}.png',
+            key: Key('battle-resource-icon-${changes[index].type.apiId}'),
+            width: 11,
+            height: 11,
+            fit: BoxFit.contain,
+          ),
+        ),
+        TextSpan(
+          text: _signed(changes[index].amount),
+          style: TextStyle(
+            color: changes[index].amount < 0 ? _flatLossColor : _flatGainColor,
+          ),
+        ),
+      ],
+    ],
+    RewardItemsHeaderSegment(:final items) => [
+      TextSpan(
+        text: _rewardItemsText(items),
+        style: const TextStyle(color: flatAccentColor),
+      ),
+    ],
+    NodeTypeHeaderSegment(:final label) => [
+      TextSpan(
+        text: strings.localize(label),
+        style: TextStyle(color: nodeTypePillColors(label).foreground),
+      ),
+    ],
+  };
+}
+
+bool _isNavigationOutcome(NavigationHeaderSegment segment) =>
+    segment is ResourceChangesHeaderSegment ||
+    segment is RewardItemsHeaderSegment ||
+    segment is NodeTypeHeaderSegment;
+
+/// The navigation header's text after the node, for a header that shows the
+/// node itself. The last formation is left to the formation line.
+class FlatNavigationTagLine extends StatelessWidget {
+  const FlatNavigationTagLine({super.key, required this.battle});
+
+  final LiveBattle battle;
+
+  @override
+  Widget build(BuildContext context) {
+    final segments = navigationHeaderSegments(
+      battle,
+      showLastFormationHint: false,
+    );
+    if (segments.isEmpty) return const SizedBox.shrink();
+    final ordered = <NavigationHeaderSegment>[
+      ...segments.where(_isNavigationOutcome),
+      ...segments.where((segment) => !_isNavigationOutcome(segment)),
+    ];
+    return Text.rich(
+      key: const Key('battle-navigation-tag-line'),
+      appTextSpan(
+        context,
+        TextSpan(
+          style: const TextStyle(
+            fontSize: flatSmallFontSize,
+            fontWeight: FontWeight.w600,
+          ),
+          children: <InlineSpan>[
+            for (var index = 0; index < ordered.length; index++) ...[
+              if (index > 0) flatSegmentSeparator,
+              ..._navigationSegmentSpans(context, ordered[index]),
+            ],
+          ],
+        ),
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -850,7 +898,8 @@ class BattleRankBadge extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: appColor(context, colors.background),
-        borderRadius: BorderRadius.circular(9),
+        // 9 at the full 50px size; small badges keep the same proportion.
+        borderRadius: BorderRadius.circular(size * .18),
         border: Border.all(color: appColor(context, colors.border)),
       ),
       child: Text(

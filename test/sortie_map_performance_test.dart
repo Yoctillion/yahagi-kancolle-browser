@@ -123,17 +123,17 @@ void main() {
         );
         final originalSize = tester.getSize(_canvas());
         final logicalSize = tester.getSize(_mapPaint());
-        expect(logicalSize, const Size(326, 240));
+        expect(logicalSize, const Size(326, 169));
 
         await tester.pumpWidget(
           _app(movedGeometry, latestProgress, parent, width: 200),
         );
         final resized = tester.getSize(_canvas());
         expect(resized.width, lessThan(originalSize.width));
-        expect(resized.height, closeTo(resized.width * 240 / 326, .01));
+        expect(resized.height, closeTo(resized.width * 169 / 326, .01));
         expect(
           originalSize.height,
-          closeTo(originalSize.width * 240 / 326, .01),
+          closeTo(originalSize.width * 169 / 326, .01),
         );
         expect(tester.getSize(_mapPaint()), logicalSize);
         expect(_mapPicture(boundary), isNot(same(geometryPicture)));

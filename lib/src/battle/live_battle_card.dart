@@ -31,6 +31,8 @@ import 'detailed_battle_panel.dart';
 import 'land_base_raid_panel.dart';
 import 'official_enemy_preview.dart';
 import 'prophet_hp_bar.dart';
+import 'flat_battle_header.dart';
+import 'sortie_map_progress.dart';
 import 'sortie_map_section.dart';
 
 class LiveBattleCard extends StatefulWidget {
@@ -68,6 +70,7 @@ class LiveBattleCard extends StatefulWidget {
 class _LiveBattleCardState extends State<LiveBattleCard>
     with PanelViewPreferencesHost {
   SortieMapSection? _cachedMapSection;
+  SortieMapBody? _cachedMapBody;
 
   @override
   void didUpdateWidget(covariant LiveBattleCard oldWidget) {
@@ -82,6 +85,50 @@ class _LiveBattleCardState extends State<LiveBattleCard>
   void _toggleMapExpanded() {
     final preferences = panelViewPreferences;
     preferences.battleMapExpanded = !preferences.battleMapExpanded;
+  }
+
+  String? _currentNodeLabel(LiveBattle? battle, SortieMapProgress progress) =>
+      battle != null &&
+          battle.context.mapAreaId == progress.mapAreaId &&
+          battle.context.mapInfoNo == progress.mapInfoNo &&
+          battle.context.node == progress.currentRouteId
+      ? battle.context.nodeDisplayLabel
+      : null;
+
+  /// The map split for a flat header that already names the node: its toggle
+  /// and, while expanded, the map to show under that header.
+  ({Widget toggle, Widget? body})? _buildHeaderMap(
+    LiveBattle battle, {
+    required bool expanded,
+  }) {
+    final progress = widget.controller.sortieMapProgress;
+    if (widget.collapsed || battle.context.practice || progress == null) {
+      _cachedMapBody = null;
+      return null;
+    }
+    final toggle = SortieMapToggle(
+      progress: progress,
+      expanded: expanded,
+      onToggleExpanded: _toggleMapExpanded,
+    );
+    if (!expanded) return (toggle: toggle, body: null);
+    final geometry = widget.controller.sortieMapGeometry;
+    final currentNodeLabel = _currentNodeLabel(battle, progress);
+    final cached = _cachedMapBody;
+    if (cached != null &&
+        identical(cached.progress, progress) &&
+        identical(cached.geometry, geometry) &&
+        cached.currentNodeLabel == currentNodeLabel) {
+      return (toggle: toggle, body: cached);
+    }
+    return (
+      toggle: toggle,
+      body: _cachedMapBody = SortieMapBody(
+        progress: progress,
+        geometry: geometry,
+        currentNodeLabel: currentNodeLabel,
+      ),
+    );
   }
 
   SortieMapSection? _buildMapSection(
@@ -101,13 +148,7 @@ class _LiveBattleCardState extends State<LiveBattleCard>
       return null;
     }
     final geometry = widget.controller.sortieMapGeometry;
-    final currentNodeLabel =
-        battle != null &&
-            battle.context.mapAreaId == progress.mapAreaId &&
-            battle.context.mapInfoNo == progress.mapInfoNo &&
-            battle.context.node == progress.currentRouteId
-        ? battle.context.nodeDisplayLabel
-        : null;
+    final currentNodeLabel = _currentNodeLabel(battle, progress);
     final cached = _cachedMapSection;
     if (cached != null &&
         identical(cached.progress, progress) &&
@@ -139,12 +180,18 @@ class _LiveBattleCardState extends State<LiveBattleCard>
       builder: (context, _) {
         final battle = widget.controller.current;
         final idle = battle == null || battle.friendShips.isEmpty;
+        // The flat compact header carries the map toggle on its own row.
+        final headerMap = flat && !idle && mode == BattlePanelMode.compact
+            ? _buildHeaderMap(battle, expanded: preferences.battleMapExpanded)
+            : null;
         // Flat battle and navigation headers already name the current node.
-        final mapSection = _buildMapSection(
-          battle,
-          showCurrentNode: !flat || idle,
-          expanded: preferences.battleMapExpanded,
-        );
+        final mapSection = headerMap != null
+            ? null
+            : _buildMapSection(
+                battle,
+                showCurrentNode: !flat || idle,
+                expanded: preferences.battleMapExpanded,
+              );
         return DashboardCard(
           key: const Key('live-battle-card'),
           collapsedSummary: widget.collapsed
@@ -215,6 +262,8 @@ class _LiveBattleCardState extends State<LiveBattleCard>
                     enemyPreviewPosition: widget.enemyPreviewPosition,
                     sectionOrder: widget.sectionOrder,
                     mapSection: mapSection,
+                    mapToggle: headerMap?.toggle,
+                    mapBody: headerMap?.body,
                   ),
                 ),
             ],
@@ -328,6 +377,8 @@ class _CompactBattlePanel extends StatelessWidget {
     required this.enemyPreviewPosition,
     this.sectionOrder,
     this.mapSection,
+    this.mapToggle,
+    this.mapBody,
   });
 
   final LiveBattle battle;
@@ -337,126 +388,97 @@ class _CompactBattlePanel extends StatelessWidget {
   final EnemyPreviewPosition enemyPreviewPosition;
   final List<BattlePredictionSection>? sectionOrder;
   final Widget? mapSection;
+  final Widget? mapToggle;
+  final Widget? mapBody;
 
   @override
   Widget build(BuildContext context) {
     final phone = isPhoneDensity(context);
     final flat = PanelStyleScope.isFlat(context);
+    if (flat) {
+      return _FlatCompactBattle(
+        battle: battle,
+        gameState: gameState,
+        damagePulseMode: damagePulseMode,
+        showLastFormationHint: showLastFormationHint,
+        mapToggle: mapToggle,
+        mapBody: mapBody,
+        mapSection: mapSection,
+      );
+    }
     final navigation = battle.displayStage == BattleDisplayStage.navigation;
     if (navigation) {
-      final navigationHeader = Container(
-        key: const Key('battle-navigation-header'),
-        padding: flat
-            ? const EdgeInsets.symmetric(vertical: 2)
-            : const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-        decoration: flat
-            ? null
-            : BoxDecoration(
-                color: appColor(context, const Color(0xff10212e)),
-                borderRadius: BorderRadius.circular(7),
-              ),
-        child: flat
-            ? FlatNavigationHeader(
-                battle: battle,
-                showLastFormationHint: showLastFormationHint,
-              )
-            : Row(
-                children: [
-                  Icon(
-                    Icons.explore_outlined,
-                    size: 18,
-                    color: appColor(context, const Color(0xff70c7bc)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: BattleUiText(
-                      battle.context.forecastNodeLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 2,
-                    child: Wrap(
-                      spacing: 5,
-                      runSpacing: 4,
-                      alignment: WrapAlignment.end,
-                      children: navigationHeaderPills(
-                        battle,
-                        showLastFormationHint: showLastFormationHint,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-      );
       final raid = battle.landBaseRaid;
       final previewShips =
           battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
-      final friendlyFleets = NavigationFriendlyFleets(
-        battle: battle,
-        damagePulseMode: damagePulseMode,
-      );
-      Widget sections({required bool sideBySide}) => BattlePredictionSections(
-        order: sectionOrder,
-        legacyEnemyPreviewPosition: enemyPreviewPosition,
-        sortieMap: mapSection,
-        nodeHeader: flat ? navigationHeader : null,
-        enemyPreview: previewShips.isNotEmpty && !sideBySide
-            ? OfficialEnemyPreview(
-                ships: previewShips,
-                combined: battle.enemyPreviewCombined,
-              )
-            : null,
-        predictionResult: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (raid != null) ...[
-              LandBaseRaidPanel(result: raid, compact: true),
-              SizedBox(height: flat ? flatSectionGap : 9),
-            ],
-            if (sideBySide)
-              Row(
-                key: const Key('navigation-side-by-side-fleets'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Expanded(child: friendlyFleets),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: OfficialEnemyPreview(
-                      ships: previewShips,
-                      besideShipRows: true,
-                    ),
-                  ),
-                ],
-              )
-            else
-              friendlyFleets,
-          ],
-        ),
-      );
-      // Four combined columns would not fit, so those stay stacked.
-      final canShareRow =
-          flat &&
-          previewShips.isNotEmpty &&
-          !battle.enemyPreviewCombined &&
-          battle.friendEscort.isEmpty;
       return Column(
         key: const Key('compact-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (!flat) ...[navigationHeader, const SizedBox(height: 7)],
-          if (canShareRow)
-            LayoutBuilder(
-              builder: (context, constraints) => sections(
-                sideBySide:
-                    constraints.maxWidth >= flatSideBySideFleetsMinWidth,
-              ),
-            )
-          else
-            sections(sideBySide: false),
+          Container(
+            key: const Key('battle-navigation-header'),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+            decoration: BoxDecoration(
+              color: appColor(context, const Color(0xff10212e)),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.explore_outlined,
+                  size: 18,
+                  color: appColor(context, const Color(0xff70c7bc)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: BattleUiText(
+                    battle.context.forecastNodeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: Wrap(
+                    spacing: 5,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.end,
+                    children: navigationHeaderPills(
+                      battle,
+                      showLastFormationHint: showLastFormationHint,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 7),
+          BattlePredictionSections(
+            order: sectionOrder,
+            legacyEnemyPreviewPosition: enemyPreviewPosition,
+            sortieMap: mapSection,
+            enemyPreview: previewShips.isNotEmpty
+                ? OfficialEnemyPreview(
+                    ships: previewShips,
+                    combined: battle.enemyPreviewCombined,
+                  )
+                : null,
+            predictionResult: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (raid != null) ...[
+                  LandBaseRaidPanel(result: raid, compact: true),
+                  const SizedBox(height: 9),
+                ],
+                NavigationFriendlyFleets(
+                  battle: battle,
+                  damagePulseMode: damagePulseMode,
+                ),
+              ],
+            ),
+          ),
         ],
       );
     }
@@ -469,24 +491,17 @@ class _CompactBattlePanel extends StatelessWidget {
           context,
         ).shipName(gameState.masterShips[id]?.name ?? 'ID: $id', shipId: id),
     ];
-    final dropEntries = <String>[
-      if (dropShipNames.isNotEmpty) l10n.dropLabel(dropShipNames.join('、')),
-    ];
-    final rawEnemyName = battle.enemyFleetName.isNotEmpty
-        ? battle.enemyFleetName
-        : '敌方舰队';
-    final enemyName = rawEnemyName;
     final enemyCombined =
-        battle.enemyEscort.isNotEmpty || rawEnemyName.contains('联合舰队');
-    // Flat shows the engagement on the formation line above the fleets.
-    final metaChips = _compactMetaChips(battle, includeEngagement: !flat);
+        battle.enemyEscort.isNotEmpty || battle.enemyFleetName.contains('联合舰队');
+    final metaChips = _compactMetaChips(battle, includeEngagement: true);
     final statusPills = <Widget>[
       for (final label in battle.context.nodeTypeLabels)
         NodeTypePill(label: label),
       if (battle.airSuperiority != null)
         AirSuperiorityPill(label: battle.airSuperiority!),
       for (final chip in metaChips) MetaChip(label: chip.$1, color: chip.$2),
-      for (final entry in dropEntries) DropPill(text: entry),
+      if (dropShipNames.isNotEmpty)
+        DropPill(text: l10n.dropLabel(dropShipNames.join('、'))),
     ];
 
     return Column(
@@ -502,8 +517,12 @@ class _CompactBattlePanel extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (!flat && battle.rank != BattleRank.unknown) ...<Widget>[
-                    _RankBadge(rank: battle.rank, phone: phone, flat: flat),
+                  if (battle.rank != BattleRank.unknown) ...<Widget>[
+                    BattleRankBadge(
+                      rank: battle.rank,
+                      size: phone ? 50 : 48,
+                      fontSize: phone ? 21 : 20,
+                    ),
                     const SizedBox(width: 11),
                   ],
                   Expanded(
@@ -512,14 +531,12 @@ class _CompactBattlePanel extends StatelessWidget {
                       children: [
                         AdaptiveBattleHeader(
                           nodeLabel: battle.context.forecastNodeLabel,
-                          nodeIcon: flat
-                              ? BattleNodeIcon(nodeContext: battle.context)
-                              : null,
-                          nodeFontSize: flat ? 12 : 16,
-                          enemyName: enemyName,
+                          enemyName: battle.enemyFleetName.isNotEmpty
+                              ? battle.enemyFleetName
+                              : '敌方舰队',
                           enemyNameIsFallback: battle.enemyFleetName.isEmpty,
                           enemyStyle: TextStyle(
-                            fontSize: flat ? 11 : (phone ? 13 : 14),
+                            fontSize: phone ? 13 : 14,
                             fontWeight: FontWeight.w600,
                             color: appColor(
                               context,
@@ -527,13 +544,7 @@ class _CompactBattlePanel extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (flat) ...<Widget>[
-                          const SizedBox(height: 2),
-                          BattleTagLine(
-                            battle: battle,
-                            metaLabels: [for (final chip in metaChips) chip.$1],
-                          ),
-                        ] else if (statusPills.isNotEmpty) ...<Widget>[
+                        if (statusPills.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 5),
                           Wrap(
                             spacing: 4,
@@ -541,25 +552,16 @@ class _CompactBattlePanel extends StatelessWidget {
                             children: statusPills,
                           ),
                         ],
-                        if (!flat && battle.rewardItems.isNotEmpty) ...<Widget>[
+                        if (battle.rewardItems.isNotEmpty) ...<Widget>[
                           const SizedBox(height: 4),
                           RewardItemsPill(items: battle.rewardItems),
                         ],
                       ],
                     ),
                   ),
-                  if (flat && battle.rank != BattleRank.unknown) ...<Widget>[
-                    const SizedBox(width: 8),
-                    _RankBadge(rank: battle.rank, phone: phone, flat: flat),
-                  ],
                 ],
               ),
-              if (flat)
-                BattleDropLine(
-                  dropEntries: dropEntries,
-                  rewardItems: battle.rewardItems,
-                ),
-              SizedBox(height: flat ? flatSectionGap : 8),
+              const SizedBox(height: 8),
               _CompactFleetGrid(
                 battle: battle,
                 damagePulseMode: damagePulseMode,
@@ -572,14 +574,208 @@ class _CompactBattlePanel extends StatelessWidget {
   }
 }
 
+/// Flat compact layout shared by navigation and battle: one header row with
+/// the node, enemy fleet name and map toggle, then the formation line and the
+/// friend/enemy grid, so the panel keeps its shape when the battle starts.
+class _FlatCompactBattle extends StatelessWidget {
+  const _FlatCompactBattle({
+    required this.battle,
+    required this.gameState,
+    required this.damagePulseMode,
+    required this.showLastFormationHint,
+    this.mapToggle,
+    this.mapBody,
+    this.mapSection,
+  });
+
+  final LiveBattle battle;
+  final GameState gameState;
+  final DamagePulseFilter damagePulseMode;
+  final bool showLastFormationHint;
+  final Widget? mapToggle;
+  final Widget? mapBody;
+
+  /// Only when the toggle could not join the header.
+  final Widget? mapSection;
+
+  @override
+  Widget build(BuildContext context) {
+    final navigation = battle.displayStage == BattleDisplayStage.navigation;
+    final strings = BattleDetailStrings.of(context);
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final confirmedName = battle.enemyFleetName;
+    final guessed =
+        confirmedName.isEmpty && battle.enemyFleetNameGuess.isNotEmpty;
+    final enemyName = confirmedName.isNotEmpty
+        ? confirmedName
+        : guessed
+        ? battle.enemyFleetNameGuess
+        : navigation
+        ? null
+        : strings.localize('敌方舰队');
+    final details = <Widget>[];
+    if (navigation) {
+      details.add(FlatNavigationTagLine(battle: battle));
+    } else {
+      final dropShipNames = <String>[
+        for (final id in battle.effectiveDropShipMasterIds)
+          gameNames(
+            context,
+          ).shipName(gameState.masterShips[id]?.name ?? 'ID: $id', shipId: id),
+      ];
+      details
+        ..add(
+          BattleTagLine(
+            battle: battle,
+            metaLabels: [
+              for (final chip in _compactMetaChips(
+                battle,
+                includeEngagement: false,
+              ))
+                chip.$1,
+            ],
+          ),
+        )
+        ..add(
+          BattleDropLine(
+            dropEntries: [
+              if (dropShipNames.isNotEmpty)
+                l10n.dropLabel(dropShipNames.join('、')),
+            ],
+            rewardItems: battle.rewardItems,
+          ),
+        );
+    }
+    final header = FlatBattleHeader(
+      nodeIcon: BattleNodeIcon(nodeContext: battle.context),
+      nodeLabel: strings.localize(battle.context.forecastNodeLabel),
+      enemyName: enemyName,
+      enemyNameColor: flatEnemyNameColor(
+        guessed: guessed,
+        combined:
+            battle.enemyEscort.isNotEmpty ||
+            (enemyName?.contains('联合舰队') ?? false),
+      ),
+      mapToggle: mapToggle,
+      mapBody: mapBody,
+      details: details,
+      rank: !navigation && battle.rank != BattleRank.unknown
+          ? battle.rank
+          : null,
+    );
+    return Column(
+      key: const Key('compact-battle-panel'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (mapSection case final section?) ...[
+          section,
+          const SizedBox(height: flatSectionGap),
+        ],
+        KeyedSubtree(
+          key: Key(
+            navigation ? 'battle-navigation-header' : 'battle-result-header',
+          ),
+          child: header,
+        ),
+        if (navigation && battle.landBaseRaid != null) ...[
+          const SizedBox(height: flatSectionGap),
+          LandBaseRaidPanel(result: battle.landBaseRaid!, compact: true),
+        ],
+        const SizedBox(height: flatSectionGap),
+        _CompactFleetGrid(
+          battle: battle,
+          damagePulseMode: damagePulseMode,
+          lastFormation: showLastFormationHint ? battle.lastFormation : null,
+        ),
+      ],
+    );
+  }
+}
+
+/// Official enemy preview names, one per row at the height of a
+/// [_CompactBarRow], so they line up with the friendly HP bars beside them.
+class _PreviewNameColumn extends StatelessWidget {
+  const _PreviewNameColumn({required this.keyName, required this.ships});
+
+  final String keyName;
+  final List<EnemyPreviewShip> ships;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: Key('compact-fleet-col-$keyName'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (var index = 0; index < ships.length; index++)
+          Padding(
+            key: Key('compact-preview-$keyName-$index'),
+            padding: const EdgeInsets.symmetric(vertical: 1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  gameNames(
+                    context,
+                  ).shipName(ships[index].name, shipId: ships[index].masterId),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: appTextStyle(
+                    context,
+                    const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                // The bar row's gap and bar, kept empty.
+                const SizedBox(height: 2 + _flatBarHeight),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+const double _flatBarHeight = 4;
+
 class _CompactFleetGrid extends StatelessWidget {
   const _CompactFleetGrid({
     required this.battle,
     required this.damagePulseMode,
+    this.lastFormation,
   });
 
   final LiveBattle battle;
   final DamagePulseFilter damagePulseMode;
+
+  /// While navigating, the formation remembered for this node.
+  final int? lastFormation;
+
+  bool get _navigation => battle.displayStage == BattleDisplayStage.navigation;
+
+  List<Widget> _previewColumns() {
+    final ships = battle.enemyPreviewShips ?? const <EnemyPreviewShip>[];
+    if (ships.isEmpty) return const <Widget>[];
+    if (!battle.enemyPreviewCombined) {
+      return <Widget>[_PreviewNameColumn(keyName: 'enemy', ships: ships)];
+    }
+    return <Widget>[
+      _PreviewNameColumn(
+        keyName: 'enemy-escort',
+        ships: [
+          for (final ship in ships)
+            if (ship.fleetRole == BattleFleetRole.escort) ship,
+        ],
+      ),
+      _PreviewNameColumn(
+        keyName: 'enemy-main',
+        ships: [
+          for (final ship in ships)
+            if (ship.fleetRole == BattleFleetRole.main) ship,
+        ],
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -587,6 +783,7 @@ class _CompactFleetGrid extends StatelessWidget {
     final friendCombined = battle.friendEscort.isNotEmpty;
     final enemyCombined = battle.enemyEscort.isNotEmpty;
     final mvpPositions = battle.mvpPositions;
+    final navigation = _navigation;
     final friendFormation = battle.friendFormation > 0
         ? '（${formationLabel(battle.friendFormation)}）'
         : '';
@@ -623,7 +820,9 @@ class _CompactFleetGrid extends StatelessWidget {
         ),
       );
     }
-    if (enemyCombined) {
+    if (navigation) {
+      enemyColumns.addAll(_previewColumns());
+    } else if (enemyCombined) {
       enemyColumns.add(
         _CompactFleetColumn(
           keyName: 'enemy-escort',
@@ -657,7 +856,9 @@ class _CompactFleetGrid extends StatelessWidget {
       Color color,
       List<Widget> columns,
     ) => Expanded(
-      flex: columns.length,
+      // An unknown enemy still holds its half, so the grid does not shift
+      // when the battle fills it in.
+      flex: columns.isEmpty ? 1 : columns.length,
       child: Container(
         padding: flat ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 6, 8, 6),
         decoration: flat
@@ -715,18 +916,32 @@ class _CompactFleetGrid extends StatelessWidget {
     );
     if (!flat) return grid;
     final strings = BattleDetailStrings.of(context);
-    final formationLine = _FlatFormationLine(
-      key: const Key('compact-formation-line'),
-      friend: battle.friendFormation > 0
-          ? strings.localize(formationLabel(battle.friendFormation))
-          : null,
-      engagement: battle.engagement > 0
-          ? strings.localize(engagementLabel(battle.engagement))
-          : null,
-      enemy: battle.enemyFormation > 0
-          ? strings.localize(formationLabel(battle.enemyFormation))
-          : null,
-    );
+    final l10n =
+        AppLocalizations.of(context) ??
+        lookupAppLocalizations(const Locale('zh'));
+    final formationLine = navigation
+        ? _FlatFormationLine(
+            key: const Key('compact-formation-line'),
+            friend: lastFormation == null
+                ? null
+                : l10n.battleLastFormation(
+                    strings.localize(formationLabel(lastFormation!)),
+                  ),
+            engagement: null,
+            enemy: enemyColumns.isEmpty ? null : strings.localize('敌方预测'),
+          )
+        : _FlatFormationLine(
+            key: const Key('compact-formation-line'),
+            friend: battle.friendFormation > 0
+                ? strings.localize(formationLabel(battle.friendFormation))
+                : null,
+            engagement: battle.engagement > 0
+                ? strings.localize(engagementLabel(battle.engagement))
+                : null,
+            enemy: battle.enemyFormation > 0
+                ? strings.localize(formationLabel(battle.enemyFormation))
+                : null,
+          );
     if (formationLine.isEmpty) return grid;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -992,7 +1207,7 @@ class _CompactBarRow extends StatelessWidget {
           value: ratio,
           color: appColor(context, hpBarColor),
           backgroundColor: appColor(context, const Color(0xff263e4d)),
-          height: flat ? 4 : 6,
+          height: flat ? _flatBarHeight : 6,
         ),
       );
       final content = Column(
@@ -1201,27 +1416,6 @@ class _StatusBadge extends StatelessWidget {
       color: foreground,
       background: background,
       label: (style) => BattleUiText(label, style: style),
-    );
-  }
-}
-
-class _RankBadge extends StatelessWidget {
-  const _RankBadge({
-    required this.rank,
-    required this.phone,
-    required this.flat,
-  });
-
-  final BattleRank rank;
-  final bool phone;
-  final bool flat;
-
-  @override
-  Widget build(BuildContext context) {
-    return BattleRankBadge(
-      rank: rank,
-      size: flat ? 28 : (phone ? 50 : 48),
-      fontSize: flat ? 12 : (phone ? 21 : 20),
     );
   }
 }

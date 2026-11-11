@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 
+import 'src/battle/enemy_fleet_name_memory.dart';
 import 'src/battle/battle_controller.dart';
 import 'src/battle/battle_models.dart';
 import 'src/battle/battle_damage_alert.dart';
@@ -278,6 +279,9 @@ Future<void> runYahagi({
     SharedPreferencesFormationMemoryStore(),
     accountSession: accountSession,
   );
+  final enemyFleetNames = await EnemyFleetNameMemory.load(
+    const SharedPreferencesEnemyFleetNameStore(),
+  );
   final displayModeController = await DisplayModeController.load(
     SharedPreferencesDisplayModeStore(),
   );
@@ -493,6 +497,7 @@ Future<void> runYahagi({
         safetySettingsController.battleStatusEffects,
     nodeLabelResolver: fcdMapController,
     formationMemory: formationMemoryController,
+    enemyFleetNames: enemyFleetNames,
   );
   gameStateController.questBattleSnapshot = () => battleController.current;
   gameStateController.questBattleTrusted = () =>

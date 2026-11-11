@@ -345,7 +345,7 @@ _MapSnapshot _expectMap(
   );
   expect(paintFinder, findsOneWidget, reason: reason);
   final box = tester.renderObject<RenderBox>(paintFinder);
-  expect(box.size, const Size(326, 240), reason: reason);
+  expect(box.size.aspectRatio, closeTo(326 / 169, .00001), reason: reason);
   final origin = box.localToGlobal(Offset.zero);
   final scaleX = (box.localToGlobal(const Offset(1, 0)) - origin).distance;
   final scaleY = (box.localToGlobal(const Offset(0, 1)) - origin).distance;
@@ -359,9 +359,13 @@ _MapSnapshot _expectMap(
     viewportBox.localToGlobal(Offset.zero),
     viewportBox.localToGlobal(viewportBox.size.bottomRight(Offset.zero)),
   );
-  expect(displayRect.size.aspectRatio, closeTo(326 / 240, .00001));
+  expect(displayRect.size.aspectRatio, closeTo(326 / 169, .00001));
   expect(scaleX, closeTo(scaleY, .00001), reason: reason);
-  expect(displayRect.width, closeTo(326 * scaleX, .00001), reason: reason);
+  expect(
+    displayRect.width,
+    closeTo(box.size.width * scaleX, .00001),
+    reason: reason,
+  );
   expect(displayRect.left, closeTo(viewportRect.left, .00001), reason: reason);
   expect(displayRect.top, closeTo(viewportRect.top, .00001), reason: reason);
   expect(
