@@ -1233,7 +1233,8 @@ void main() {
       expect(find.byKey(const Key('compact-fleet-col-enemy')), findsOneWidget);
       expect(find.text('我方舰队（单纵阵）'), findsOneWidget);
       expect(find.text('敌方舰队（单纵阵）'), findsOneWidget);
-      expect(find.text('18 / 30 (-12)'), findsWidgets);
+      expect(find.text('18 / 30'), findsWidgets);
+      expect(find.byKey(const Key('prophet-hp-ghost')), findsWidgets);
       expect(find.text('昼战'), findsOneWidget);
       expect(find.text('己方 单纵阵'), findsNothing);
       expect(find.text('敌方 单纵阵'), findsNothing);
@@ -1565,11 +1566,15 @@ void main() {
 
     final row = find.byKey(const Key('compact-bar-friend-0'));
     expect(row, findsOneWidget);
-    final hpText = find.descendant(
-      of: row,
-      matching: find.text('18 / 30 (-12)'),
-    );
+    final hpText = find.descendant(of: row, matching: find.text('18 / 30'));
     expect(hpText, findsOneWidget);
+    expect(
+      find.descendant(
+        of: row,
+        matching: find.byKey(const Key('prophet-hp-ghost')),
+      ),
+      findsOneWidget,
+    );
     expect(tester.widget<Text>(hpText).style?.color, const Color(0xffffc940));
     final crown = find.byKey(const Key('compact-mvp-friend-0'));
     expect(crown, findsOneWidget);
@@ -1644,7 +1649,7 @@ void main() {
     );
     final friendHp = find.descendant(
       of: find.byKey(const Key('compact-bar-friend-0')),
-      matching: find.text('18 / 30 (-12)'),
+      matching: find.text('18 / 30'),
     );
 
     expect(tester.widget<Text>(friendTitle).style?.fontSize, 11);
@@ -1760,12 +1765,13 @@ void main() {
 
     await _pumpCard(tester, controller);
 
-    expect(find.text('18 / 30 (-12)'), findsOneWidget);
+    expect(find.text('18 / 30'), findsOneWidget);
+    expect(find.byKey(const Key('prophet-hp-ghost')), findsWidgets);
     expect(find.textContaining('疲劳'), findsNothing);
     expect(find.textContaining('伤害 '), findsNothing);
 
     final shipRow = find.byKey(const Key('battle-ship-friend-0'));
-    final hpCenter = tester.getCenter(find.text('18 / 30 (-12)'));
+    final hpCenter = tester.getCenter(find.text('18 / 30'));
     final nameCenter = tester.getCenter(
       find.descendant(of: shipRow, matching: find.byType(Text)).first,
     );
@@ -1775,7 +1781,7 @@ void main() {
     );
     expect(barFinder, findsOneWidget);
     expect(
-      tester.widget<Text>(find.text('18 / 30 (-12)')).style?.color,
+      tester.widget<Text>(find.text('18 / 30')).style?.color,
       const Color(0xffffc940),
     );
     expect(

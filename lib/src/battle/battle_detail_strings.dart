@@ -32,6 +32,44 @@ class BattleDetailStrings {
       ? hant
       : zh;
 
+  String get airBattle => _text('航空战', '航空戰', '航空戦', '항공전', 'Air battle');
+  String get airJet => _text('喷气', '噴射', '噴式', '제트', 'Jet');
+  String get airFighter => _text('制空战', '制空戰', '制空戦', '제공전', 'Fighters');
+  String get airAntiAir => _text('对空', '對空', '対空', '대공', 'AA');
+  String get airAlly => _text('我方', '我方', '味方', '아군', 'Ally');
+  String get airEnemy => _text('敌方', '敵方', '敵', '적', 'Enemy');
+  String get airAllyShort => _text('我', '我', '味方', '아군', 'Ally');
+  String get airEnemyShort => _text('敌', '敵', '敵', '적', 'Enemy');
+  String get airContact => _text('触接', '觸接', '触接', '촉접', 'Contact');
+  String get antiAirCutIn => _text('对空CI', '對空CI', '対空CI', '대공CI', 'AACI');
+  String antiAirKind(int n) =>
+      _text('（第 $n 种）', '（第 $n 種）', '（$n種）', '($n종)', '(type $n)');
+  String get landBaseJet => _text('基地喷气', '基地噴射', '基地噴式', '기지 제트', 'LB jet');
+  String landBaseWave(int base, int wave) => _text(
+    '基地 $base-$wave',
+    '基地 $base-$wave',
+    '基地 $base-$wave',
+    '기지 $base-$wave',
+    'LB $base-$wave',
+  );
+  String get friendlyAir =>
+      _text('友军航空', '友軍航空', '友軍航空', '우군 항공', 'Friend air');
+  String get supportAir =>
+      _text('支援·航空', '支援·航空', '支援·航空', '지원·항공', 'Support·Air');
+  String get supportShelling =>
+      _text('支援·炮击', '支援·砲擊', '支援·砲撃', '지원·포격', 'Support·Gun');
+  String get supportTorpedo =>
+      _text('支援·雷击', '支援·雷擊', '支援·雷撃', '지원·뇌격', 'Support·Torp');
+  String get supportAntiSub =>
+      _text('支援·反潜', '支援·反潛', '支援·対潜', '지원·대잠', 'Support·ASW');
+  String get nightBattle => _text('夜战', '夜戰', '夜戦', '야전', 'Night');
+  String get nightContact =>
+      _text('夜侦触接', '夜偵觸接', '夜偵触接', '야정 촉접', 'Night contact');
+  String get starShell => _text('照明弹', '照明彈', '照明弾', '조명탄', 'Star shell');
+  String get nightSupport =>
+      _text('夜战支援', '夜戰支援', '夜戦支援', '야전 지원', 'Night support');
+  String get airDamage => _text('伤害', '傷害', 'ダメージ', '피해', 'Dmg');
+
   String get fleet => _text('舰队', '艦隊', '艦隊', '함대', 'Fleet');
   String get process =>
       _text('战斗过程', '戰鬥過程', '戦闘経過', '전투 경과', 'Battle sequence');
