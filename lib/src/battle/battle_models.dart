@@ -424,6 +424,7 @@ class LiveBattle {
     this.enemyFormation = 0,
     this.engagement = 0,
     this.enemyFleetName = '',
+    this.enemyFleetNameGuess = '',
     this.mvpPositions = const <int>[],
     this.dropShipMasterId,
     this.dropShipMasterIds = const <int>[],
@@ -451,6 +452,10 @@ class LiveBattle {
   final int enemyFormation;
   final int engagement;
   final String enemyFleetName;
+
+  /// A name remembered from an earlier result at this node, shown until the
+  /// battle result names the fleet.
+  final String enemyFleetNameGuess;
   final List<int> mvpPositions;
   final int? dropShipMasterId;
   final List<int> dropShipMasterIds;
@@ -498,6 +503,7 @@ class LiveBattle {
     int? enemyFormation,
     int? engagement,
     String? enemyFleetName,
+    String? enemyFleetNameGuess,
     List<int>? mvpPositions,
     int? dropShipMasterId,
     List<int>? dropShipMasterIds,
@@ -525,6 +531,7 @@ class LiveBattle {
       enemyFormation: enemyFormation ?? this.enemyFormation,
       engagement: engagement ?? this.engagement,
       enemyFleetName: enemyFleetName ?? this.enemyFleetName,
+      enemyFleetNameGuess: enemyFleetNameGuess ?? this.enemyFleetNameGuess,
       mvpPositions: mvpPositions ?? this.mvpPositions,
       dropShipMasterId: dropShipMasterId ?? this.dropShipMasterId,
       dropShipMasterIds: dropShipMasterIds ?? this.dropShipMasterIds,

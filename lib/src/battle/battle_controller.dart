@@ -12,6 +12,7 @@ import '../game_state/game_api_decoder.dart';
 import '../game_state/game_api_event_pipeline.dart';
 import '../game_state/game_state.dart';
 import '../game_state/land_base_raid.dart';
+import 'enemy_fleet_name_memory.dart';
 import 'formation_memory.dart';
 import 'battle_models.dart';
 import 'battle_ship_details.dart';
@@ -52,6 +53,7 @@ final class BattleController extends ChangeNotifier
     FrameNotificationCoalescer? captureNotifications,
     BattlePredictionExecutor? predictionExecutor,
     this.formationMemory,
+    this.enemyFleetNames,
     this.accountSession,
   }) : _friendlyHpUpdater = onFriendlyHpUpdated,
        _damageControlUpdater = onDamageControlConsumed,
@@ -87,6 +89,7 @@ final class BattleController extends ChangeNotifier
   final int maxRecords;
   final BattleNodeLabelResolver nodeLabelResolver;
   final FormationMemoryController? formationMemory;
+  final EnemyFleetNameMemory? enemyFleetNames;
   final AccountSession? accountSession;
   final SortieWarningSession warningSession = SortieWarningSession();
   AccountScope? _accountScope;
@@ -428,6 +431,7 @@ final class BattleController extends ChangeNotifier
       _context = _contextFromMap(map, event);
       final state = gameState();
       final landBaseRaid = _landBaseRaid(map, state);
+      final previewShips = _officialEnemyPreviewShips(map, state);
       _current = LiveBattle(
         context: _context,
         friendMain: _friendFleet(
@@ -448,8 +452,14 @@ final class BattleController extends ChangeNotifier
         phaseLabel: landBaseRaid == null ? '航行中' : '基地空袭',
         displayStage: BattleDisplayStage.navigation,
         landBaseRaid: landBaseRaid,
-        enemyPreviewShips: _officialEnemyPreviewShips(map, state),
+        enemyPreviewShips: previewShips,
         enemyPreviewCombined: _officialEnemyPreviewCombined(map),
+        enemyFleetNameGuess:
+            enemyFleetNames?.nameFor(
+              _enemyFleetNameNode(_context),
+              ships: [for (final ship in previewShips) ship.masterId],
+            ) ??
+            '',
         rewardItems: _mapRewardItems(map),
         resourceChanges: _mapResourceChanges(map),
         lastFormation: formationMemory?.formationFor(
@@ -930,6 +940,14 @@ final class BattleController extends ChangeNotifier
     final airSuperiority = seiku >= 0 && seiku <= 4
         ? kAirSuperiorityLabels[seiku]
         : previousBattle?.airSuperiority;
+    final enemyFleetNameGuess =
+        enemyFleetNames?.nameFor(
+          _enemyFleetNameNode(_context),
+          ships: _enemyMasterIds(parsed.enemyMain, parsed.enemyEscort),
+          formation: _atInt(formation, 1),
+        ) ??
+        previous?.enemyFleetNameGuess ??
+        '';
     final rank = (_session?.isConfirmed ?? parsed.issues.isEmpty)
         ? parsed.rank
         : BattleRank.unknown;
@@ -959,6 +977,7 @@ final class BattleController extends ChangeNotifier
       enemyFormation: _atInt(formation, 1),
       engagement: _atInt(formation, 2),
       enemyFleetName: enemyFleetName,
+      enemyFleetNameGuess: enemyFleetNameGuess,
       airSuperiority: airSuperiority ?? '未知',
       mvpPositions: parsed.mvpPositions.isNotEmpty
           ? parsed.mvpPositions
@@ -1107,6 +1126,23 @@ final class BattleController extends ChangeNotifier
       rewardItems: rewardItems,
     );
     _current = confirmed;
+    if (!confirmed.context.practice && confirmed.enemyFleetName.isNotEmpty) {
+      unawaited(
+        enemyFleetNames
+            ?.remember(
+              _enemyFleetNameNode(confirmed.context),
+              ships: _enemyMasterIds(
+                confirmed.enemyMain,
+                confirmed.enemyEscort,
+              ),
+              formation: confirmed.enemyFormation,
+              name: confirmed.enemyFleetName,
+            )
+            .catchError((Object error) {
+              debugPrint('Failed to persist enemy fleet name: $error');
+            }),
+      );
+    }
     if (!confirmed.context.practice && formationMemory != null) {
       unawaited(
         formationMemory!
@@ -1679,3 +1715,17 @@ final class BattleController extends ChangeNotifier
     super.dispose();
   }
 }
+
+String _enemyFleetNameNode(BattleContext context) =>
+    EnemyFleetNameMemory.nodeKey(
+      mapAreaId: context.mapAreaId,
+      mapInfoNo: context.mapInfoNo,
+      node: context.node,
+    );
+
+List<int> _enemyMasterIds(
+  List<BattleShipSnapshot> main,
+  List<BattleShipSnapshot> escort,
+) => <int>[
+  for (final ship in <BattleShipSnapshot>[...main, ...escort]) ship.masterId,
+];
