@@ -14,6 +14,7 @@ import '../game_state/game_state.dart';
 import '../game_state/land_base_raid.dart';
 import 'enemy_fleet_name_memory.dart';
 import 'formation_memory.dart';
+import 'battle_air_report.dart';
 import 'battle_models.dart';
 import 'battle_ship_details.dart';
 import 'battle_node_label_resolver.dart';
@@ -982,6 +983,8 @@ final class BattleController extends ChangeNotifier
       mvpPositions: parsed.mvpPositions.isNotEmpty
           ? parsed.mvpPositions
           : _predictedMvpPositions(parsed.friendMain, parsed.friendEscort),
+      dayAir: parseDayAirReport(data) ?? previousBattle?.dayAir,
+      night: parseNightReport(data) ?? previousBattle?.night,
     );
     _lastBattleCapturedAt = event.capturedAt;
     if (!practice) {

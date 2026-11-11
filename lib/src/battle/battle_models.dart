@@ -1,4 +1,5 @@
 import '../game_state/game_state.dart';
+import 'battle_air_report.dart';
 import 'battle_detail_models.dart';
 import 'battle_ship_details.dart';
 
@@ -46,6 +47,8 @@ const _unsetNodeTypeOverride = Object();
 const _unsetLandBaseRaid = Object();
 const _unsetEnemyPreviewShips = Object();
 const _unsetLastFormation = Object();
+const _unsetDayAir = Object();
+const _unsetNight = Object();
 
 enum BattleRank {
   ss('SS'),
@@ -437,6 +440,8 @@ class LiveBattle {
     this.enemyPreviewShips,
     this.enemyPreviewCombined = false,
     this.lastFormation,
+    this.dayAir,
+    this.night,
   });
 
   final BattleContext context;
@@ -472,6 +477,8 @@ class LiveBattle {
   final List<EnemyPreviewShip>? enemyPreviewShips;
   final bool enemyPreviewCombined;
   final int? lastFormation;
+  final DayAirReport? dayAir;
+  final NightReport? night;
 
   List<BattleShipSnapshot> get friendShips =>
       List.unmodifiable(<BattleShipSnapshot>[...friendMain, ...friendEscort]);
@@ -516,6 +523,8 @@ class LiveBattle {
     Object? enemyPreviewShips = _unsetEnemyPreviewShips,
     bool? enemyPreviewCombined,
     Object? lastFormation = _unsetLastFormation,
+    Object? dayAir = _unsetDayAir,
+    Object? night = _unsetNight,
   }) {
     return LiveBattle(
       context: context ?? this.context,
@@ -550,6 +559,10 @@ class LiveBattle {
       lastFormation: identical(lastFormation, _unsetLastFormation)
           ? this.lastFormation
           : lastFormation as int?,
+      dayAir: identical(dayAir, _unsetDayAir)
+          ? this.dayAir
+          : dayAir as DayAirReport?,
+      night: identical(night, _unsetNight) ? this.night : night as NightReport?,
     );
   }
 }

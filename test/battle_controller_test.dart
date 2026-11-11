@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_damage_alert.dart';
+import 'package:yahagi_kancolle_browser/src/bridge/captured_api_event.dart';
 import 'package:yahagi_kancolle_browser/src/settings/battle_status_effect_settings.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_models.dart';
@@ -1690,6 +1691,139 @@ void main() {
       expect(controller.records, isEmpty);
     },
   );
+
+  group('air reports', () {
+    late GameState state;
+
+    setUp(() {
+      final reducer = GameStateReducer();
+      state = reducer.reduce(GameState.empty, start2Event);
+      state = reducer.reduce(state, portEvent);
+    });
+
+    Map<String, Object?> kouku() => <String, Object?>{
+      'api_stage1': <String, Object?>{
+        'api_f_count': 10,
+        'api_f_lostcount': 1,
+        'api_e_count': 20,
+        'api_e_lostcount': 5,
+        'api_disp_seiku': 1,
+        'api_touch_plane': <int>[-1, -1],
+      },
+      'api_stage2': null,
+    };
+
+    CapturedApiEvent dayWithKouku() =>
+        kcsapiEvent('/kcsapi/api_req_sortie/battle', <String, Object?>{
+          'api_deck_id': 1,
+          'api_formation': <int>[1, 1, 1],
+          'api_f_nowhps': <int>[40, 15],
+          'api_f_maxhps': <int>[40, 15],
+          'api_e_nowhps': <int>[20, 10],
+          'api_e_maxhps': <int>[20, 10],
+          'api_ship_ke': <int>[501, 502],
+          'api_ship_lv': <int>[1, 1],
+          'api_kouku': kouku(),
+        }, sequence: 30);
+
+    CapturedApiEvent nightWithFlare() =>
+        kcsapiEvent('/kcsapi/api_req_battle_midnight/battle', <String, Object?>{
+          'api_f_nowhps': <int>[25, 15],
+          'api_f_maxhps': <int>[40, 15],
+          'api_e_nowhps': <int>[20, 10],
+          'api_e_maxhps': <int>[20, 10],
+          'api_flare_pos': <int>[0, -1],
+          'api_touch_plane': <int>[-1, -1],
+          'api_hougeki': <String, Object?>{
+            'api_at_eflag': <int>[1],
+            'api_at_list': <int>[0],
+            'api_df_list': <Object?>[
+              <int>[0],
+            ],
+            'api_damage': <Object?>[
+              <num>[15],
+            ],
+          },
+        }, sequence: 31);
+
+    BattleController build() {
+      final controller = BattleController(gameState: () => state);
+      addTearDown(controller.dispose);
+      return controller;
+    }
+
+    test('day battle exposes day air report', () async {
+      final controller = build()
+        ..accept(mapStartEvent)
+        ..accept(dayWithKouku());
+      await controller.idle;
+
+      expect(controller.current!.dayAir!.fighter, isNotNull);
+      expect(controller.current!.night, isNull);
+    });
+
+    test('night packet keeps day air report and initial HP', () async {
+      final controller = build()
+        ..accept(mapStartEvent)
+        ..accept(dayWithKouku());
+      await controller.idle;
+      final dayAir = controller.current!.dayAir;
+
+      controller.accept(nightWithFlare());
+      await controller.idle;
+
+      expect(controller.current!.dayAir, dayAir);
+      expect(controller.current!.night!.friendFlarePosition, 0);
+      expect(controller.current!.friendMain.first.initialHp, 40);
+    });
+
+    test('night-to-day packet fills both reports', () async {
+      final controller = build()..accept(mapStartEvent);
+      controller.accept(
+        kcsapiEvent(
+          '/kcsapi/api_req_combined_battle/ec_night_to_day',
+          <String, Object?>{
+            'api_deck_id': 1,
+            'api_formation': <int>[1, 1, 1],
+            'api_f_nowhps': <int>[40, 15],
+            'api_f_maxhps': <int>[40, 15],
+            'api_e_nowhps': <int>[20, 10],
+            'api_e_maxhps': <int>[20, 10],
+            'api_ship_ke': <int>[501, 502],
+            'api_ship_lv': <int>[1, 1],
+            'api_flare_pos': <int>[1, -1],
+            'api_kouku': kouku(),
+          },
+          sequence: 32,
+        ),
+      );
+      await controller.idle;
+
+      expect(controller.current!.dayAir, isNotNull);
+      expect(controller.current!.night, isNotNull);
+    });
+
+    test('next node clears air reports', () async {
+      final controller = build()
+        ..accept(mapStartEvent)
+        ..accept(dayWithKouku())
+        ..accept(nightWithFlare());
+      await controller.idle;
+      expect(controller.current!.dayAir, isNotNull);
+
+      controller.accept(
+        kcsapiEvent('/kcsapi/api_req_map/next', <String, Object?>{
+          'api_maparea_id': 1,
+          'api_mapinfo_no': 1,
+          'api_no': 2,
+        }, sequence: 33),
+      );
+      await controller.idle;
+
+      expect(controller.current!.dayAir, isNull);
+      expect(controller.current!.night, isNull);
+    });
+  });
 }
 
 final class _RecordingDamageAlertPort implements BattleDamageAlertPort {
