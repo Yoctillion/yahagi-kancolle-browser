@@ -206,9 +206,7 @@ class _LiveBattleCardState extends State<LiveBattleCard> {
         final battle = widget.controller.current;
         final idle = battle == null || battle.friendShips.isEmpty;
         // The flat header carries the map toggle on its own row.
-        final headerMap = flat && !idle
-            ? _buildHeaderMap(battle)
-            : null;
+        final headerMap = flat && !idle ? _buildHeaderMap(battle) : null;
         // Flat battle and navigation headers already name the current node.
         final mapSection = headerMap != null
             ? null
@@ -580,10 +578,7 @@ class _CompactBattlePanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              BattleFleetGrid(
-                battle: battle,
-                damagePulseMode: damagePulseMode,
-              ),
+              BattleFleetGrid(battle: battle, damagePulseMode: damagePulseMode),
             ],
           ),
         ),
@@ -636,6 +631,10 @@ class _FlatBattlePanel extends StatelessWidget {
         : navigation
         ? null
         : strings.localize('敌方舰队');
+    final dayAir = detailed && !(battle.dayAir?.isEmpty ?? true)
+        ? battle.dayAir
+        : null;
+    final airExchange = FlatAirExchangeLine.hasContent(dayAir);
     final details = <Widget>[];
     if (navigation) {
       details.add(FlatNavigationTagLine(battle: battle));
@@ -650,12 +649,22 @@ class _FlatBattlePanel extends StatelessWidget {
         ..add(
           BattleTagLine(
             battle: battle,
+            extras: dayAir == null
+                ? const <String>[]
+                : flatAirExtras(
+                    context,
+                    report: dayAir,
+                    friendMain: battle.friendMain,
+                    friendEscort: battle.friendEscort,
+                    slotItems: gameState.masterSlotItems,
+                  ),
             metaLabels: [
               for (final chip in _compactMetaChips(
                 battle,
                 includeEngagement: false,
               ))
-                chip.$1,
+                // Day battle is the usual case; only the others are news.
+                if (chip.$1 != '昼战') chip.$1,
             ],
           ),
         )
@@ -686,9 +695,6 @@ class _FlatBattlePanel extends StatelessWidget {
           ? battle.rank
           : null,
     );
-    final dayAir = detailed && !(battle.dayAir?.isEmpty ?? true)
-        ? battle.dayAir
-        : null;
     final night = detailed && !(battle.night?.isEmpty ?? true)
         ? battle.night
         : null;
@@ -710,6 +716,10 @@ class _FlatBattlePanel extends StatelessWidget {
           const SizedBox(height: flatSectionGap),
           LandBaseRaidPanel(result: battle.landBaseRaid!, compact: true),
         ],
+        if (airExchange) ...[
+          const SizedBox(height: flatSectionGap),
+          FlatAirExchangeLine(report: dayAir!),
+        ],
         const SizedBox(height: flatSectionGap),
         BattleFleetGrid(
           battle: battle,
@@ -717,14 +727,9 @@ class _FlatBattlePanel extends StatelessWidget {
           lastFormation: showLastFormationHint ? battle.lastFormation : null,
           showShipNames: detailed,
         ),
-        if (dayAir != null) ...[
+        if (FlatAirBattleSection.hasContent(dayAir)) ...[
           const SizedBox(height: flatSectionGap),
-          FlatAirBattleSection(
-            report: dayAir,
-            friendMain: battle.friendMain,
-            friendEscort: battle.friendEscort,
-            slotItems: gameState.masterSlotItems,
-          ),
+          FlatAirBattleSection(report: dayAir!),
         ],
         if (night != null) ...[
           const SizedBox(height: flatSectionGap),

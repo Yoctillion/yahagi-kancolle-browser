@@ -2067,7 +2067,8 @@ void main() {
           .textSpan!
           .toPlainText();
       expect(text, contains('制空：确保'));
-      expect(text, contains(' · '));
+      // Day battle is the usual case and is no longer spelled out.
+      expect(text, isNot(contains('昼战')));
     });
 
     testWidgets('a boss node is named by the badge, not the tag line', (

@@ -8,8 +8,6 @@ import 'battle_air_report.dart';
 import 'battle_detail_strings.dart';
 import 'battle_models.dart';
 
-const _none = '—';
-
 String _equipmentLabel(
   BuildContext context,
   Map<int, MasterSlotItem> slotItems,
@@ -57,17 +55,9 @@ class FlatAirBattleSection extends StatelessWidget {
   const FlatAirBattleSection({
     super.key = const Key('flat-air-section'),
     required this.report,
-    required this.friendMain,
-    required this.friendEscort,
-    required this.slotItems,
   });
 
   final DayAirReport report;
-  final List<BattleShipSnapshot> friendMain;
-
-  /// AACI positions >= 6 index the escort when the fleet is combined.
-  final List<BattleShipSnapshot> friendEscort;
-  final Map<int, MasterSlotItem> slotItems;
 
   String _phaseLabel(BattleDetailStrings s, AirPhaseLine line) =>
       switch (line.kind) {
@@ -83,129 +73,14 @@ class FlatAirBattleSection extends StatelessWidget {
         AirPhaseKind.supportAntiSub => s.supportAntiSub,
       };
 
+  /// Land-base and support rows; the main exchange is [FlatAirSummaryLine].
+  static bool hasContent(DayAirReport? report) =>
+      report != null && report.phases.isNotEmpty;
+
   @override
-  Widget build(BuildContext context) {
-    final s = BattleDetailStrings.of(context);
-    final children = <Widget>[];
-    if (report.hasMainTable) {
-      children.add(_mainTable(context, s));
-      for (final ci in report.antiAirCutIns) {
-        final index = ci.position;
-        final inEscort = friendEscort.isNotEmpty && index >= 6;
-        final fleet = inEscort ? friendEscort : friendMain;
-        final fleetIndex = inEscort ? index - 6 : index;
-        final ship = fleetIndex >= 0 && fleetIndex < fleet.length
-            ? fleet[fleetIndex]
-            : null;
-        final name = ship == null
-            ? '#${index + 1}'
-            : gameNames(context).shipName(ship.name, shipId: ship.masterId);
-        children.add(
-          Padding(
-            padding: const EdgeInsets.only(top: flatRowSpacing),
-            child: Text(
-              '${s.antiAirCutIn} $name${s.antiAirKind(ci.kind)}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: flatAirPhaseFontSize,
-                color: appColor(context, flatMutedColor),
-              ),
-            ),
-          ),
-        );
-      }
-    }
-    if (report.phases.isNotEmpty) {
-      if (children.isNotEmpty) {
-        children.add(const SizedBox(height: flatSectionGap));
-      }
-      children.add(_phaseRows(context, s));
-    }
-    return _SectionFrame(children: children);
-  }
-
-  Widget _mainTable(BuildContext context, BattleDetailStrings s) {
-    final headStyle = TextStyle(
-      fontSize: flatAirHeadFontSize,
-      color: appColor(context, flatMutedColor),
-    );
-    const cellStyle = TextStyle(fontSize: flatAirTableFontSize);
-    final hasContact =
-        report.friendContactPlaneId > 0 || report.enemyContactPlaneId > 0;
-    final friendContact = report.friendContactPlaneId > 0
-        ? _equipmentLabel(context, slotItems, report.friendContactPlaneId)
-        : _none;
-    final enemyContact = report.enemyContactPlaneId > 0
-        ? _equipmentLabel(context, slotItems, report.enemyContactPlaneId)
-        : _none;
-    final title = report.secondWave ? '${s.airBattle} ×2' : s.airBattle;
-
-    Widget cell(PlaneCount? count, Color lossColor) => count == null
-        ? const Text(_none, style: cellStyle)
-        : Text.rich(_planeSpan(context, count, lossColor), style: cellStyle);
-
-    TableRow row(String label, PlaneExchange? exchange) => TableRow(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: Text(label, style: headStyle),
-        ),
-        cell(exchange?.friend, flatAllyLossColor),
-        cell(exchange?.enemy, flatEnemyLossColor),
-      ],
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: flatAirHeadFontSize,
-                color: appColor(context, flatSectionTitleColor),
-              ),
-            ),
-            if (hasContact) ...[
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  '${s.airContact} $friendContact / $enemyContact',
-                  textAlign: TextAlign.right,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: headStyle,
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: flatRowSpacing),
-        Table(
-          columnWidths: const {
-            0: IntrinsicColumnWidth(),
-            1: FlexColumnWidth(),
-            2: FlexColumnWidth(),
-          },
-          children: [
-            TableRow(
-              children: [
-                const SizedBox.shrink(),
-                Text(s.airAlly, style: headStyle),
-                Text(s.airEnemy, style: headStyle),
-              ],
-            ),
-            if (report.jet != null) row(s.airJet, report.jet),
-            row(s.airFighter, report.fighter),
-            row(s.airAntiAir, report.antiAir),
-          ],
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => _SectionFrame(
+    children: [_phaseRows(context, BattleDetailStrings.of(context))],
+  );
 
   Widget _phaseRows(BuildContext context, BattleDetailStrings s) {
     const style = TextStyle(fontSize: flatAirPhaseFontSize);
@@ -293,6 +168,123 @@ class FlatAirBattleSection extends StatelessWidget {
     }
     return TextSpan(children: parts);
   }
+}
+
+/// The day air exchange as one full-width line split like the fleet grid:
+/// friend on the left half, enemy on the right. Each half lists the stages
+/// in battle order as "sortie −lost", the jet strike on a tinted ground, the
+/// loss set smaller.
+class FlatAirExchangeLine extends StatelessWidget {
+  const FlatAirExchangeLine({
+    super.key = const Key('flat-air-exchange'),
+    required this.report,
+  });
+
+  final DayAirReport report;
+
+  static bool hasContent(DayAirReport? report) =>
+      report != null && report.hasMainTable;
+
+  static const double fontSize = 10;
+  static const double lossFontSize = 8.5;
+
+  Widget _half(BuildContext context, {required bool friend}) {
+    PlaneCount? pick(PlaneExchange? exchange) =>
+        friend ? exchange?.friend : exchange?.enemy;
+    final lossColor = appColor(
+      context,
+      friend ? flatAllyLossColor : flatEnemyLossColor,
+    );
+    final ground = appColor(context, flatJetGroundColor);
+    final spans = <InlineSpan>[];
+    void stage(PlaneCount? count, {bool jet = false}) {
+      if (count == null) return;
+      if (spans.isNotEmpty) spans.add(const TextSpan(text: '  '));
+      final background = jet ? (Paint()..color = ground) : null;
+      // Spaces inside a jet stage pad its ground around the numbers.
+      spans.add(
+        TextSpan(
+          text: jet ? ' ${count.count}' : '${count.count}',
+          style: TextStyle(background: background),
+        ),
+      );
+      spans.add(
+        TextSpan(
+          text: jet ? '−${count.lost} ' : '−${count.lost}',
+          style: TextStyle(
+            fontSize: lossFontSize,
+            color: lossColor,
+            background: background,
+          ),
+        ),
+      );
+    }
+
+    stage(pick(report.jet), jet: true);
+    stage(pick(report.fighter));
+    stage(pick(report.antiAir));
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Text.rich(
+        TextSpan(children: spans),
+        key: Key(
+          friend ? 'flat-air-exchange-friend' : 'flat-air-exchange-enemy',
+        ),
+        maxLines: 1,
+        softWrap: false,
+        style: appTextStyle(
+          context,
+          const TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(child: _half(context, friend: true)),
+      // The fleet grid's gap, so each half sits over its fleet.
+      const SizedBox(width: 6),
+      Expanded(child: _half(context, friend: false)),
+    ],
+  );
+}
+
+/// Contact planes and anti-air cut-ins of the day air battle, as tag line
+/// segments.
+List<String> flatAirExtras(
+  BuildContext context, {
+  required DayAirReport report,
+  required List<BattleShipSnapshot> friendMain,
+  // AACI positions >= 6 index the escort when the fleet is combined.
+  required List<BattleShipSnapshot> friendEscort,
+  required Map<int, MasterSlotItem> slotItems,
+}) {
+  final s = BattleDetailStrings.of(context);
+  String plane(int id) => _equipmentLabel(context, slotItems, id);
+  String cutInShip(int index) {
+    final inEscort = friendEscort.isNotEmpty && index >= 6;
+    final fleet = inEscort ? friendEscort : friendMain;
+    final fleetIndex = inEscort ? index - 6 : index;
+    if (fleetIndex < 0 || fleetIndex >= fleet.length) return '#${index + 1}';
+    final ship = fleet[fleetIndex];
+    return gameNames(context).shipName(ship.name, shipId: ship.masterId);
+  }
+
+  final contacts = <String>[
+    if (report.friendContactPlaneId > 0)
+      '${s.airAllyShort} ${plane(report.friendContactPlaneId)}',
+    if (report.enemyContactPlaneId > 0)
+      '${s.airEnemyShort} ${plane(report.enemyContactPlaneId)}',
+  ];
+  return <String>[
+    if (report.secondWave) s.airBattleTwice,
+    if (contacts.isNotEmpty) '${s.airContact} ${contacts.join(' / ')}',
+    for (final ci in report.antiAirCutIns)
+      '${s.antiAirCutIn} ${cutInShip(ci.position)}(${ci.kind})',
+  ];
 }
 
 class FlatNightBattleSection extends StatelessWidget {
