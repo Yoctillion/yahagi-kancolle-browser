@@ -24,6 +24,8 @@ const flatNamedHpFontSize = 9.0;
 const flatAllyLossColor = Color(0xffe6a04a);
 const flatEnemyLossColor = Color(0xffff8c78);
 const flatSectionTitleColor = Color(0xff70c7bc);
-const flatAirTableFontSize = 10.0;
+
+/// Tinted ground that marks the jet strike stage among the air losses.
+const flatJetGroundColor = Color(0xff2a3f52);
 const flatAirPhaseFontSize = 9.5;
 const flatAirHeadFontSize = 9.0;

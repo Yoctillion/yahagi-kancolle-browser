@@ -80,7 +80,15 @@ class AdaptiveBattleHeader extends StatelessWidget {
   }
 }
 
-const Color _flatAirColor = Color(0xff7fd6c8);
+/// Flat-style air state color, from best (green) to worst (red).
+Color flatAirStateColor(String state) => switch (state) {
+  '确保' => flatDoneColor,
+  '优势' => const Color(0xff83d5c8),
+  '均衡' => const Color(0xffffc95c),
+  '劣势' => const Color(0xffffa05c),
+  '丧失' => const Color(0xffff8c78),
+  _ => flatMutedColor,
+};
 const Color _flatGainColor = Color(0xff83d5c8);
 const Color _flatLossColor = Color(0xffff8c78);
 
@@ -97,10 +105,15 @@ class BattleTagLine extends StatelessWidget {
     super.key = const Key('battle-tag-line'),
     required this.battle,
     this.metaLabels = const <String>[],
+    this.extras = const <String>[],
   });
 
   final LiveBattle battle;
   final List<String> metaLabels;
+
+  /// Muted trailing segments that wrap whole, such as contact planes, so a
+  /// ship or plane name never splits across lines.
+  final List<String> extras;
 
   @override
   Widget build(BuildContext context) {
@@ -112,11 +125,17 @@ class BattleTagLine extends StatelessWidget {
       if (battle.airSuperiority != null)
         (
           l10n.airStateLabel(strings.localize(battle.airSuperiority!)),
-          _flatAirColor,
+          flatAirStateColor(battle.airSuperiority!),
         ),
       for (final label in metaLabels) (strings.localize(label), flatMutedColor),
     ];
+    if (segments.isEmpty && extras.isEmpty) return const SizedBox.shrink();
     const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
+    final extraStyle = TextStyle(
+      fontSize: flatAirPhaseFontSize,
+      fontWeight: FontWeight.w400,
+      color: appColor(context, flatMutedColor),
+    );
     return Text.rich(
       appTextSpan(
         context,
@@ -134,14 +153,24 @@ class BattleTagLine extends StatelessWidget {
                 style: TextStyle(color: segments[index].$2),
               ),
             ],
+            for (var index = 0; index < extras.length; index++) ...<InlineSpan>[
+              if (segments.isNotEmpty || index > 0) flatSegmentSeparator,
+              TextSpan(text: _unbreakable(extras[index]), style: extraStyle),
+            ],
           ],
         ),
       ),
-      maxLines: 2,
+      maxLines: 3,
       overflow: TextOverflow.ellipsis,
     );
   }
 }
+
+// Word joiners between characters and no-break spaces keep a segment on one
+// line; CJK text may otherwise break between any two characters.
+String _unbreakable(String text) => String.fromCharCodes(
+  text.runes.expand((rune) => <int>[rune == 0x20 ? 0xa0 : rune, 0x2060]),
+);
 
 /// Drops and rewards split out of [BattleTagLine] so they wrap instead of
 /// being cut off by its ellipsis. Carries its own top gap so an empty line

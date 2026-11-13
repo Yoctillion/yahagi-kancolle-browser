@@ -32,18 +32,12 @@ class BattleDetailStrings {
       ? hant
       : zh;
 
-  String get airBattle => _text('航空战', '航空戰', '航空戦', '항공전', 'Air battle');
-  String get airJet => _text('喷气', '噴射', '噴式', '제트', 'Jet');
-  String get airFighter => _text('制空战', '制空戰', '制空戦', '제공전', 'Fighters');
-  String get airAntiAir => _text('对空', '對空', '対空', '대공', 'AA');
-  String get airAlly => _text('我方', '我方', '味方', '아군', 'Ally');
-  String get airEnemy => _text('敌方', '敵方', '敵', '적', 'Enemy');
+  String get airBattleTwice =>
+      _text('航空战×2', '航空戰×2', '航空戦×2', '항공전×2', 'Air raid ×2');
   String get airAllyShort => _text('我', '我', '味方', '아군', 'Ally');
   String get airEnemyShort => _text('敌', '敵', '敵', '적', 'Enemy');
   String get airContact => _text('触接', '觸接', '触接', '촉접', 'Contact');
   String get antiAirCutIn => _text('对空CI', '對空CI', '対空CI', '대공CI', 'AACI');
-  String antiAirKind(int n) =>
-      _text('（第 $n 种）', '（第 $n 種）', '（$n種）', '($n종)', '(type $n)');
   String get landBaseJet => _text('基地喷气', '基地噴射', '基地噴式', '기지 제트', 'LB jet');
   String landBaseWave(int base, int wave) => _text(
     '基地 $base-$wave',

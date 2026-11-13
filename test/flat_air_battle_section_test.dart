@@ -44,6 +44,7 @@ Future<void> _pump(
   WidgetTester tester,
   Widget child, {
   Locale locale = const Locale('zh'),
+  double width = 210,
 }) => tester.pumpWidget(
   MaterialApp(
     locale: locale,
@@ -53,13 +54,52 @@ Future<void> _pump(
       body: Align(
         alignment: Alignment.topLeft,
         child: SizedBox(
-          width: 210,
+          width: width,
           child: PanelStyleScope(style: PanelStyle.flat, child: child),
         ),
       ),
     ),
   ),
 );
+
+TextSpan? _spanWithText(InlineSpan root, String text) {
+  TextSpan? found;
+  root.visitChildren((span) {
+    if (span is TextSpan && span.text == text) {
+      found = span;
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
+Future<List<String>> _extras(
+  WidgetTester tester,
+  DayAirReport report, {
+  List<BattleShipSnapshot>? friendMain,
+  List<BattleShipSnapshot> friendEscort = const [],
+  Locale locale = const Locale('zh'),
+}) async {
+  late List<String> extras;
+  await _pump(
+    tester,
+    Builder(
+      builder: (context) {
+        extras = flatAirExtras(
+          context,
+          report: report,
+          friendMain: friendMain ?? _main,
+          friendEscort: friendEscort,
+          slotItems: _slotItems,
+        );
+        return const SizedBox.shrink();
+      },
+    ),
+    locale: locale,
+  );
+  return extras;
+}
 
 Finder _rich(String text) => find.textContaining(text, findRichText: true);
 
@@ -77,47 +117,91 @@ const _fullReport = DayAirReport(
 );
 
 void main() {
-  testWidgets('renders main table with jet row and second wave', (
+  testWidgets('exchange line puts friend left and enemy right in order', (
     tester,
   ) async {
     await _pump(
       tester,
-      FlatAirBattleSection(
-        report: _fullReport,
-        friendMain: _main.take(6).toList(),
-        friendEscort: _escort,
-        slotItems: _slotItems,
-      ),
+      const FlatAirExchangeLine(report: _fullReport),
+      // The test font draws every glyph a full em wide.
+      width: 500,
     );
-    expect(find.text('航空战 ×2'), findsOneWidget);
-    expect(find.text('喷气'), findsOneWidget);
-    expect(find.text('制空战'), findsOneWidget);
-    expect(find.text('对空'), findsOneWidget);
-    expect(_rich('12 −1'), findsOneWidget);
-    expect(_rich('135 −9'), findsOneWidget);
-    expect(_rich('触接 彩云 / 九七式艦攻'), findsOneWidget);
-    expect(_rich('对空CI 主1'), findsOneWidget);
-    expect(_rich('对空CI 随1'), findsOneWidget);
+    final friend = find.byKey(const Key('flat-air-exchange-friend'));
+    final enemy = find.byKey(const Key('flat-air-exchange-enemy'));
+    final friendText = tester.widget<RichText>(
+      find.descendant(of: friend, matching: find.byType(RichText)),
+    );
+    final enemyText = tester.widget<RichText>(
+      find.descendant(of: enemy, matching: find.byType(RichText)),
+    );
+    expect(friendText.text.toPlainText(), ' 8−0   12−1  30−2');
+    expect(enemyText.text.toPlainText(), ' 20−4   135−9  40−5');
+    expect(
+      tester.getTopLeft(enemy).dx,
+      greaterThan(tester.getTopRight(friend).dx),
+    );
+    final jet = _spanWithText(friendText.text, ' 8')!;
+    expect(jet.style!.background, isNotNull);
+    final loss = _spanWithText(friendText.text, '−1')!;
+    expect(loss.style!.fontSize, FlatAirExchangeLine.lossFontSize);
+    expect(loss.style!.background, isNull);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('hides jet row without jets', (tester) async {
+  testWidgets('exchange halves shrink rather than overflow', (tester) async {
     await _pump(
       tester,
-      FlatAirBattleSection(
-        report: const DayAirReport(
+      const FlatAirExchangeLine(report: _fullReport),
+      width: 110,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('exchange leaves out stages without data', (tester) async {
+    await _pump(
+      tester,
+      const FlatAirExchangeLine(
+        report: DayAirReport(
           fighter: PlaneExchange(
             friend: PlaneCount(12, 0),
             enemy: PlaneCount(3, 3),
           ),
         ),
-        friendMain: _main,
-        friendEscort: const [],
-        slotItems: _slotItems,
       ),
     );
-    expect(find.text('喷气'), findsNothing);
-    expect(find.text('对空'), findsOneWidget);
-    expect(_rich('12 −0'), findsOneWidget);
+    String plain(String key) => tester
+        .widget<RichText>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(RichText),
+          ),
+        )
+        .text
+        .toPlainText();
+    expect(plain('flat-air-exchange-friend'), '12−0');
+    expect(plain('flat-air-exchange-enemy'), '3−3');
+  });
+
+  testWidgets('extras list the second wave, contact and cut-ins', (
+    tester,
+  ) async {
+    final extras = await _extras(
+      tester,
+      _fullReport,
+      friendMain: _main.take(6).toList(),
+      friendEscort: _escort,
+    );
+    expect(extras, ['航空战×2', '触接 我 彩云 / 敌 九七式艦攻', '对空CI 主1(5)', '对空CI 随1(9)']);
+  });
+
+  testWidgets('no extras without contact, cut-ins or a second wave', (
+    tester,
+  ) async {
+    final extras = await _extras(
+      tester,
+      const DayAirReport(fighter: PlaneExchange(friend: PlaneCount(1, 0))),
+    );
+    expect(extras, isEmpty);
   });
 
   testWidgets('keeps a land-base jet phase row on one line at 210px', (
@@ -138,9 +222,6 @@ void main() {
             ),
           ],
         ),
-        friendMain: _main,
-        friendEscort: const [],
-        slotItems: _slotItems,
       ),
     );
     final value = find.byWidgetPredicate(
@@ -180,9 +261,6 @@ void main() {
             AirPhaseLine(kind: AirPhaseKind.supportAir, damage: 90),
           ],
         ),
-        friendMain: _main,
-        friendEscort: const [],
-        slotItems: _slotItems,
       ),
     );
     final ys = [
@@ -297,12 +375,7 @@ void main() {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FlatAirBattleSection(
-              report: report,
-              friendMain: _main.take(6).toList(),
-              friendEscort: _escort,
-              slotItems: _slotItems,
-            ),
+            FlatAirBattleSection(report: report),
             FlatNightBattleSection(
               report: const NightReport(
                 friendContactPlaneId: 7,
@@ -326,37 +399,32 @@ void main() {
     expect(find.text('Night'), findsOneWidget);
   });
 
-  testWidgets('shows the AACI kind with locale brackets', (tester) async {
-    await _pump(
+  testWidgets('writes the AACI kind the same way in every locale', (
+    tester,
+  ) async {
+    final extras = await _extras(
       tester,
-      FlatAirBattleSection(
-        report: _fullReport,
-        friendMain: _main.take(6).toList(),
-        friendEscort: _escort,
-        slotItems: _slotItems,
-      ),
+      _fullReport,
+      friendMain: _main.take(6).toList(),
+      friendEscort: _escort,
       locale: const Locale('en'),
     );
-    expect(_rich('AACI 主1(type 5)'), findsOneWidget);
-    expect(_rich('（'), findsNothing);
+    expect(extras, contains('AACI 主1(5)'));
   });
 
   testWidgets('resolves AACI position past a short main fleet to the escort', (
     tester,
   ) async {
-    await _pump(
+    final extras = await _extras(
       tester,
-      FlatAirBattleSection(
-        report: const DayAirReport(
-          fighter: PlaneExchange(friend: PlaneCount(1, 0)),
-          antiAirCutIns: [AntiAirCutIn(position: 7, kind: 5)],
-        ),
-        friendMain: _main.take(5).toList(),
-        friendEscort: _escort,
-        slotItems: _slotItems,
+      const DayAirReport(
+        fighter: PlaneExchange(friend: PlaneCount(1, 0)),
+        antiAirCutIns: [AntiAirCutIn(position: 7, kind: 5)],
       ),
+      friendMain: _main.take(5).toList(),
+      friendEscort: _escort,
     );
-    expect(_rich('对空CI 随1'), findsOneWidget);
+    expect(extras, ['对空CI 随1(5)']);
   });
 
   testWidgets('names the enemy star shell ship only for a single fleet', (
@@ -402,9 +470,6 @@ void main() {
                       ),
                     ],
                   ),
-                  friendMain: _main,
-                  friendEscort: const [],
-                  slotItems: _slotItems,
                 ),
               ),
             ),
@@ -427,34 +492,33 @@ void main() {
     scaled.dispose();
   });
 
-  testWidgets('maps section colors through the light palette', (tester) async {
+  testWidgets('maps loss colors through the light palette', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: createAppTheme(mode: AppThemeMode.skyBlue),
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
+        home: const Scaffold(
           body: SizedBox(
-            width: 210,
-            child: FlatAirBattleSection(
-              report: _fullReport,
-              friendMain: _main.take(6).toList(),
-              friendEscort: _escort,
-              slotItems: _slotItems,
-            ),
+            width: 500,
+            child: FlatAirExchangeLine(report: _fullReport),
           ),
         ),
       ),
     );
-    final context = tester.element(find.byType(FlatAirBattleSection));
-    final expected = appColor(context, flatSectionTitleColor);
-    expect(expected, isNot(flatSectionTitleColor));
-    final title = tester.widget<Text>(find.text('航空战 ×2'));
-    expect(title.style?.color, expected);
+    final context = tester.element(find.byType(FlatAirExchangeLine));
+    final expected = appColor(context, flatAllyLossColor);
+    expect(expected, isNot(flatAllyLossColor));
+    final text = tester.widget<RichText>(
+      find.descendant(
+        of: find.byKey(const Key('flat-air-exchange-friend')),
+        matching: find.byType(RichText),
+      ),
+    );
+    expect(_spanWithText(text.text, '−1')!.style!.color, expected);
   });
 
-  testWidgets('panel shows sections only in detailed mode', (tester) async {
+  testWidgets('panel shows the air exchange only in detailed mode', (
+    tester,
+  ) async {
     final reducer = GameStateReducer();
     var state = reducer.reduce(GameState.empty, start2Event);
     state = reducer.reduce(state, portEvent);
@@ -507,11 +571,17 @@ void main() {
         ),
       ),
     );
-    expect(find.byKey(const Key('flat-air-section')), findsOneWidget);
+    expect(find.byKey(const Key('flat-air-exchange')), findsOneWidget);
+    // Without land-base or support rows there is no section below the grid.
+    expect(find.byKey(const Key('flat-air-section')), findsNothing);
+    expect(_rich('制空：确保'), findsOneWidget);
+    expect(_rich('昼战'), findsNothing);
 
     await tester.tap(find.byKey(const Key('battle-mode-compact')));
     await tester.pump();
-    expect(find.byKey(const Key('flat-air-section')), findsNothing);
+    expect(find.byKey(const Key('flat-air-exchange')), findsNothing);
+    expect(_rich('制空：确保'), findsOneWidget);
+    expect(_rich('昼战'), findsNothing);
   });
 }
 
