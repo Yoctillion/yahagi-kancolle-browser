@@ -73,6 +73,7 @@
 "lib/src/battle/battle_pills.dart|单纵阵"
 "lib/src/battle/battle_pills.dart|反航战"
 "lib/src/battle/battle_pills.dart|同航战"
+"lib/src/battle/battle_pills.dart|未知"
 "lib/src/battle/battle_pills.dart|均衡"
 "lib/src/battle/battle_pills.dart|复纵阵"
 "lib/src/battle/battle_pills.dart|夜战"

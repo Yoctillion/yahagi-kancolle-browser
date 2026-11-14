@@ -134,17 +134,17 @@ void main() {
     final enemyText = tester.widget<RichText>(
       find.descendant(of: enemy, matching: find.byType(RichText)),
     );
-    expect(friendText.text.toPlainText(), ' 8−0   12−1  30−2');
-    expect(enemyText.text.toPlainText(), ' 20−4   135−9  40−5');
+    expect(friendText.text.toPlainText(), '8−0  12−1  30−2');
+    expect(enemyText.text.toPlainText(), '20−4  135−9  40−5');
     expect(
       tester.getTopLeft(enemy).dx,
       greaterThan(tester.getTopRight(friend).dx),
     );
-    final jet = _spanWithText(friendText.text, ' 8')!;
-    expect(jet.style!.background, isNotNull);
+    expect(_spanWithText(friendText.text, '8')!.style!.color, flatJetColor);
+    expect(_spanWithText(friendText.text, '−0')!.style!.color, flatJetColor);
     final loss = _spanWithText(friendText.text, '−1')!;
     expect(loss.style!.fontSize, FlatAirExchangeLine.lossFontSize);
-    expect(loss.style!.background, isNull);
+    expect(loss.style!.color, flatAllyLossColor);
     expect(tester.takeException(), isNull);
   });
 

@@ -51,12 +51,21 @@ final class _InlinePredictionExecutor implements BattlePredictionExecutor {
       (engine: engine, prediction: engine.append(path: path, data: data));
 }
 
-CapturedApiEvent _dayBattleWithAirSuperiority(int seiku) {
+CapturedApiEvent _dayBattleWithAirSuperiority(
+  int seiku, {
+  int enemyPlanes = 30,
+}) {
   final decoded =
       jsonDecode(dayBattleEvent.responseBody) as Map<String, dynamic>;
   final data = Map<String, Object?>.from(decoded['api_data'] as Map);
   data['api_kouku'] = <String, Object?>{
-    'api_stage1': <String, Object?>{'api_disp_seiku': seiku},
+    'api_stage1': <String, Object?>{
+      'api_disp_seiku': seiku,
+      'api_f_count': 12,
+      'api_f_lostcount': 0,
+      'api_e_count': enemyPlanes,
+      'api_e_lostcount': enemyPlanes ~/ 2,
+    },
   };
   return kcsapiEvent(
     dayBattleEvent.path,
@@ -2100,20 +2109,29 @@ void main() {
             .data,
         nodeName,
       );
-      final segments = tester
-          .widget<Text>(
-            find.descendant(
-              of: find.byKey(const Key('battle-tag-line')),
-              matching: find.byType(Text),
-            ),
-          )
-          .textSpan!
-          .toPlainText()
-          .split('·')
-          .map((s) => s.trim())
-          .toList();
-      expect(segments, contains('制空：未知'));
-      expect(segments, isNot(contains('Boss 战')));
+      // Nothing flew, so neither "unknown" air nor the boss tag is listed.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('battle-tag-line')),
+          matching: find.byType(Text),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('air state is left out when the enemy sent no planes', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(mapStartEvent)
+        ..accept(_dayBattleWithAirSuperiority(1, enemyPlanes: 0));
+      await controller.idle;
+
+      await _pumpFlatCompactCard(tester, controller);
+
+      expect(find.textContaining('制空', findRichText: true), findsNothing);
     });
 
     testWidgets('bars are 4 high and fleet columns have no backing block', (

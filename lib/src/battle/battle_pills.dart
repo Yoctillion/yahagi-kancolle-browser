@@ -121,11 +121,12 @@ class BattleTagLine extends StatelessWidget {
         AppLocalizations.of(context) ??
         lookupAppLocalizations(const Locale('zh'));
     final strings = BattleDetailStrings.of(context);
+    final airState = _contestedAirState(battle);
     final segments = <(String, Color)>[
-      if (battle.airSuperiority != null)
+      if (airState != null)
         (
-          l10n.airStateLabel(strings.localize(battle.airSuperiority!)),
-          flatAirStateColor(battle.airSuperiority!),
+          l10n.airStateLabel(strings.localize(airState)),
+          flatAirStateColor(airState),
         ),
       for (final label in metaLabels) (strings.localize(label), flatMutedColor),
     ];
@@ -164,6 +165,15 @@ class BattleTagLine extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     );
   }
+}
+
+// The game still reports supremacy when the enemy sent no planes, and
+// "unknown" when nothing flew; neither tells the player anything.
+String? _contestedAirState(LiveBattle battle) {
+  final state = battle.airSuperiority;
+  final enemyPlanes = battle.dayAir?.fighter?.enemy?.count ?? 0;
+  if (state == null || state == '未知' || enemyPlanes <= 0) return null;
+  return state;
 }
 
 // Word joiners between characters and no-break spaces keep a segment on one

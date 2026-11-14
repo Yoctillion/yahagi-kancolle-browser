@@ -25,7 +25,7 @@ const flatAllyLossColor = Color(0xffe6a04a);
 const flatEnemyLossColor = Color(0xffff8c78);
 const flatSectionTitleColor = Color(0xff70c7bc);
 
-/// Tinted ground that marks the jet strike stage among the air losses.
-const flatJetGroundColor = Color(0xff2a3f52);
+/// Marks the jet strike stage among the air losses; no loss color is gold.
+const flatJetColor = Color(0xffffd65c);
 const flatAirPhaseFontSize = 9.5;
 const flatAirHeadFontSize = 9.0;
