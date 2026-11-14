@@ -172,8 +172,8 @@ class FlatAirBattleSection extends StatelessWidget {
 
 /// The day air exchange as one full-width line split like the fleet grid:
 /// friend on the left half, enemy on the right. Each half lists the stages
-/// in battle order as "sortie −lost", the jet strike on a tinted ground, the
-/// loss set smaller.
+/// in battle order as "sortie −lost", the loss set smaller and the jet strike
+/// in gold. A ground behind it would follow the two text sizes unevenly.
 class FlatAirExchangeLine extends StatelessWidget {
   const FlatAirExchangeLine({
     super.key = const Key('flat-air-exchange'),
@@ -195,26 +195,23 @@ class FlatAirExchangeLine extends StatelessWidget {
       context,
       friend ? flatAllyLossColor : flatEnemyLossColor,
     );
-    final ground = appColor(context, flatJetGroundColor);
+    final jetColor = appColor(context, flatJetColor);
     final spans = <InlineSpan>[];
     void stage(PlaneCount? count, {bool jet = false}) {
       if (count == null) return;
       if (spans.isNotEmpty) spans.add(const TextSpan(text: '  '));
-      final background = jet ? (Paint()..color = ground) : null;
-      // Spaces inside a jet stage pad its ground around the numbers.
       spans.add(
         TextSpan(
-          text: jet ? ' ${count.count}' : '${count.count}',
-          style: TextStyle(background: background),
+          text: '${count.count}',
+          style: jet ? TextStyle(color: jetColor) : null,
         ),
       );
       spans.add(
         TextSpan(
-          text: jet ? '−${count.lost} ' : '−${count.lost}',
+          text: '−${count.lost}',
           style: TextStyle(
             fontSize: lossFontSize,
-            color: lossColor,
-            background: background,
+            color: jet ? jetColor : lossColor,
           ),
         ),
       );

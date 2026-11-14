@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -722,7 +724,26 @@ void main() {
     Future<BattleController> resultController() async {
       final controller = createController();
       await send(controller, mapStartEvent);
-      await send(controller, dayBattleEvent);
+      final decoded =
+          jsonDecode(dayBattleEvent.responseBody) as Map<String, dynamic>;
+      final data = Map<String, Object?>.from(decoded['api_data'] as Map);
+      data['api_kouku'] = <String, Object?>{
+        'api_stage1': <String, Object?>{
+          'api_disp_seiku': 2,
+          'api_f_count': 12,
+          'api_f_lostcount': 1,
+          'api_e_count': 30,
+          'api_e_lostcount': 9,
+        },
+      };
+      await send(
+        controller,
+        kcsapiEvent(
+          dayBattleEvent.path,
+          data,
+          sequence: dayBattleEvent.sequence,
+        ),
+      );
       await send(controller, battleResultEvent);
       return controller;
     }
@@ -793,7 +814,7 @@ void main() {
           final tagParagraph = _paragraphsUnder(tester, tags).single;
           final air = lookupAppLocalizations(
             locale,
-          ).airStateLabel(strings.localize('未知'));
+          ).airStateLabel(strings.localize('优势'));
           final airStart = tagText.indexOf(air);
           expect(airStart, isNonNegative);
           final visibleEnd = tagParagraph
@@ -813,9 +834,7 @@ void main() {
       }
     }
 
-    testWidgets('flat detailed mode shares the compact header', (
-      tester,
-    ) async {
+    testWidgets('flat detailed mode shares the compact header', (tester) async {
       final controller = createController(withMap: true);
       await send(controller, mapStartEvent);
       await send(controller, dayBattleEvent);
@@ -831,14 +850,12 @@ void main() {
       expect(
         find.byWidgetPredicate(
           (widget) =>
-              widget is BattleRankBadge && (widget.size == 48 || widget.size == 50),
+              widget is BattleRankBadge &&
+              (widget.size == 48 || widget.size == 50),
         ),
         findsNothing,
       );
-      expect(
-        find.byKey(const Key('battle-side-by-side-fleets')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('battle-side-by-side-fleets')), findsNothing);
       expect(find.byKey(const Key('detailed-battle-panel')), findsOneWidget);
       expect(find.byKey(const Key('compact-battle-panel')), findsNothing);
       expect(tester.takeException(), isNull);
