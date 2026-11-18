@@ -97,19 +97,32 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
   int _presentationSyncEpoch = 0;
 
   // didFinishNavigation waits for the whole DMM iframe tree including the
-  // multi-megabyte main.js; the account is already logged in long before
-  // that. Reveal as soon as the game frame or a login page is on screen.
-  static const _earlyRevealProbeInterval = Duration(milliseconds: 500);
+  // multi-megabyte main.js, so every main-frame navigation installs the
+  // presentation runtime as soon as its document is parsed, and the startup
+  // overlay is revealed as soon as the game frame or a login page is on screen.
+  static const _documentProbeInterval = Duration(milliseconds: 500);
+  static const _documentProbeLimit = Duration(seconds: 30);
   static const _revealDeadline = Duration(seconds: 15);
   // The initial about:blank document is already "complete"; only a real
-  // page may install the presentation runtime.
-  static const _documentReadyProbe = '''
-    (() => /^https?:/i.test(location.href) && document.readyState !== 'loading'
-      && document.body ? '__yahagiIOSDocumentReady' : '')();
+  // page may install the presentation runtime. The token tells the parsed
+  // replacement apart from the outgoing document, which stays current until
+  // the navigation commits and was synchronized already.
+  static const _documentTokenProbe = '''
+    (() => {
+      if (!/^https?:/i.test(location.href) || document.readyState === 'loading'
+        || !document.body) return '';
+      if (!window.__yahagiIOSDocumentToken) {
+        window.__yahagiIOSDocumentToken =
+          Date.now().toString(36) + Math.random().toString(36).slice(2);
+      }
+      return window.__yahagiIOSDocumentToken;
+    })();
   ''';
-  Timer? _earlyRevealProbe;
+  Timer? _documentProbe;
+  Timer? _documentProbeLimitTimer;
   Timer? _revealDeadlineTimer;
-  bool _earlyRevealProbeInFlight = false;
+  bool _documentProbeInFlight = false;
+  String? _synchronizedDocumentToken;
 
   GameStartupState _startupState = GameStartupState.loadingSettings;
   String _startupErrorMessage = '';
@@ -173,8 +186,9 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
               setState(() => _startupState = GameStartupState.loadingGame);
             }
             if (_startupState == GameStartupState.loadingGame) {
-              _startEarlyReveal();
+              _revealDeadlineTimer ??= Timer(_revealDeadline, _revealGame);
             }
+            _startDocumentProbe();
             _frameRateRuntimeController?.onPageStarted();
             await _prepareCapture();
             await _injectAudioContextTracker();
@@ -200,6 +214,7 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
             } catch (error, stackTrace) {
               debugPrint('iOS game page finish failed: $error\n$stackTrace');
             } finally {
+              _stopDocumentProbe();
               _revealGame();
             }
           },
@@ -227,53 +242,65 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
     _executeStartupSequence();
   }
 
-  void _startEarlyReveal() {
-    _revealDeadlineTimer ??= Timer(_revealDeadline, _revealGame);
-    // A new main-frame document invalidates any runtime installed earlier.
-    _earlyRevealProbe?.cancel();
-    _earlyRevealProbe = Timer.periodic(
-      _earlyRevealProbeInterval,
-      (_) => unawaited(_probeDocumentReady()),
+  void _startDocumentProbe() {
+    _stopDocumentProbe();
+    _documentProbe = Timer.periodic(
+      _documentProbeInterval,
+      (_) => unawaited(_probeDocument()),
     );
+    _documentProbeLimitTimer = Timer(_documentProbeLimit, _stopDocumentProbe);
   }
 
-  void _stopEarlyReveal() {
-    _earlyRevealProbe?.cancel();
-    _earlyRevealProbe = null;
+  void _stopDocumentProbe() {
+    _documentProbe?.cancel();
+    _documentProbe = null;
+    _documentProbeLimitTimer?.cancel();
+    _documentProbeLimitTimer = null;
+  }
+
+  void _stopNavigationTimers() {
+    _stopDocumentProbe();
     _revealDeadlineTimer?.cancel();
     _revealDeadlineTimer = null;
   }
 
-  Future<void> _probeDocumentReady() async {
-    if (_earlyRevealProbeInFlight ||
-        !mounted ||
-        _startupState != GameStartupState.loadingGame) {
-      return;
+  Future<String?> _readDocumentToken() async {
+    final result = await _webViewController.runJavaScriptReturningResult(
+      _documentTokenProbe,
+    );
+    var token = result.toString().trim();
+    if (token.length >= 2 && token.startsWith('"') && token.endsWith('"')) {
+      token = token.substring(1, token.length - 1);
     }
-    _earlyRevealProbeInFlight = true;
+    return token.isEmpty ? null : token;
+  }
+
+  Future<void> _probeDocument() async {
+    if (_documentProbeInFlight || !mounted) return;
+    _documentProbeInFlight = true;
     try {
-      final result = await _webViewController.runJavaScriptReturningResult(
-        _documentReadyProbe,
-      );
+      final token = await _readDocumentToken();
       if (!mounted ||
-          _startupState != GameStartupState.loadingGame ||
-          !result.toString().contains('__yahagiIOSDocumentReady')) {
+          _documentProbe == null ||
+          token == null ||
+          token == _synchronizedDocumentToken) {
         return;
       }
-      // Installing the runtime once is enough: a still-pending game frame is
-      // reported later through YahagiPresentation by its MutationObserver.
-      _earlyRevealProbe?.cancel();
-      _earlyRevealProbe = null;
+      // Installing the runtime once per document is enough: a still-pending
+      // game frame is reported later through YahagiPresentation by its
+      // MutationObserver. Probing continues because a document that was
+      // never synchronized may still be the outgoing one.
       await _synchronizeGamePresentation();
     } catch (_) {
       // The document may be replaced mid-probe; the next tick retries.
     } finally {
-      _earlyRevealProbeInFlight = false;
+      _documentProbeInFlight = false;
     }
   }
 
   void _revealGame() {
-    _stopEarlyReveal();
+    _revealDeadlineTimer?.cancel();
+    _revealDeadlineTimer = null;
     if (!mounted || _startupState != GameStartupState.loadingGame) return;
     setState(() => _startupState = GameStartupState.ready);
   }
@@ -328,8 +355,13 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
   Future<void> _synchronizeGamePresentation() async {
     final epoch = ++_presentationSyncEpoch;
     try {
+      // Read before injecting: should the document change in between, the
+      // stale token only causes one more idempotent injection, whereas the
+      // reverse order could mark an uninjected document as synchronized.
+      final documentToken = await _readDocumentToken();
       final gameSurfaceResult = await _webViewController
           .runJavaScriptReturningResult(gamePageAlignmentScript);
+      if (documentToken != null) _synchronizedDocumentToken = documentToken;
       if (epoch != _presentationSyncEpoch || !mounted) return;
       final state = decodeGamePresentationState(gameSurfaceResult);
       try {
@@ -375,7 +407,7 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
   }
 
   Future<void> _executeStartupSequence() async {
-    _stopEarlyReveal();
+    _stopNavigationTimers();
     setState(() => _startupState = GameStartupState.applyingNetwork);
 
     await _compatibilityReady;
@@ -637,7 +669,7 @@ class _IOSGameWebViewState extends State<IOSGameWebView>
 
   @override
   void dispose() {
-    _stopEarlyReveal();
+    _stopNavigationTimers();
     WidgetsBinding.instance.removeObserver(this);
     _frameRateRuntimeController?.dispose();
     widget.audioController.removeListener(_onAudioControllerChanged);
