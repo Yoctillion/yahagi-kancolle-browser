@@ -1,6 +1,6 @@
 const String gamePageAlignmentScript = r'''
 (() => {
-  const runtimeVersion = 7;
+  const runtimeVersion = 9;
   if (
     window.__yahagiMobilePresentationRuntimeVersion === runtimeVersion &&
     typeof window.__yahagiMobileSyncPresentation === 'function' &&
@@ -104,6 +104,10 @@ const String gamePageAlignmentScript = r'''
       touch-action: none !important;
     }
 
+    [data-yahagi-isolated] {
+      display: none !important;
+    }
+
     .naviapp,
     #ntg-recommend,
     #spacing_top,
@@ -160,7 +164,38 @@ const String gamePageAlignmentScript = r'''
     delete window.__yahagiMobileOoiAlignGame;
   };
 
+  const isolatedAttribute = 'data-yahagi-isolated';
+  const isolatedElements = new Set();
+  // An open dialog switches the page to web mode, which requires it to be
+  // visible; ARIA modals keep the stacking they had before isolation.
+  const isolationExemptSelector = 'dialog[open], [aria-modal="true"]';
+  const unrenderedTags = new Set([
+    'HEAD', 'SCRIPT', 'STYLE', 'LINK', 'META', 'TITLE', 'BASE', 'TEMPLATE', 'NOSCRIPT',
+  ]);
+  const isIsolationExempt = (element) =>
+    Boolean(element.matches?.(isolationExemptSelector)) ||
+    Boolean(element.querySelector?.(isolationExemptSelector));
+  const releaseIsolatedElement = (element) => {
+    isolatedElements.delete(element);
+    if (element.getAttribute?.(isolatedAttribute) !== null) {
+      element.removeAttribute(isolatedAttribute);
+    }
+  };
+  const releaseExemptIsolation = () => {
+    for (const element of Array.from(isolatedElements)) {
+      if (!element.isConnected || isIsolationExempt(element)) {
+        releaseIsolatedElement(element);
+      }
+    }
+  };
+  const releaseIsolation = () => {
+    for (const element of Array.from(isolatedElements)) {
+      releaseIsolatedElement(element);
+    }
+  };
+
   const cleanupGamePresentation = () => {
+    releaseIsolation();
     restoreGameViewport();
     document.getElementById(styleId)?.remove();
 
@@ -226,8 +261,8 @@ const String gamePageAlignmentScript = r'''
       isVisibleElement,
     );
 
-  const hasStandaloneGameCanvas = () =>
-    Array.from(document.querySelectorAll('canvas')).some(
+  const findStandaloneGameCanvases = () =>
+    Array.from(document.querySelectorAll('canvas')).filter(
       (canvas) =>
         canvas.width === 1200 &&
         canvas.height === 720 &&
@@ -245,6 +280,37 @@ const String gamePageAlignmentScript = r'''
     document.querySelectorAll('input[type="password"], input[name="password"], input[autocomplete="current-password"], input[autocomplete="new-password"]'),
   ).some(isVisibleElement);
 
+  // Hides every sibling along each visible surface's ancestor chain instead of
+  // naming DMM's page chrome, so a page redesign cannot leak content around
+  // the game, and hidden content stops consuming layout and paint.
+  const isolateGameSurfaces = (surfaces) => {
+    const anchors = surfaces.filter(isVisibleElement);
+    const keeps = (element) =>
+      surfaces.some((surface) => element === surface || element.contains?.(surface)) ||
+      isIsolationExempt(element);
+    const next = new Set();
+    for (const anchor of anchors) {
+      for (let node = anchor; node && node !== document.body; node = node.parentElement) {
+        const parent = node.parentElement;
+        if (!parent) break;
+        for (const sibling of Array.from(parent.children || [])) {
+          if (sibling === node || unrenderedTags.has(sibling.tagName) || keeps(sibling)) continue;
+          next.add(sibling);
+        }
+      }
+    }
+    for (const element of Array.from(isolatedElements)) {
+      if (!next.has(element)) releaseIsolatedElement(element);
+    }
+    for (const element of next) {
+      isolatedElements.add(element);
+      // The observer ignores this attribute, so isolation cannot re-trigger sync.
+      if (element.getAttribute(isolatedAttribute) === null) {
+        element.setAttribute(isolatedAttribute, '');
+      }
+    }
+  };
+
   const notifyPresentationState = (nextState, forceFit = false) => {
     // Explicit fits must survive both JS and native state deduplication.
     if (forceFit && nextState === 'game') {
@@ -259,7 +325,7 @@ const String gamePageAlignmentScript = r'''
     }
   };
 
-  const applyGamePresentation = () => {
+  const applyGamePresentation = (surfaces = []) => {
     if (isOoiBrowserPage) hadOoiGameSurface = true;
     applyGameViewport();
     let style = document.getElementById(styleId);
@@ -271,6 +337,7 @@ const String gamePageAlignmentScript = r'''
     if (style.textContent !== fixedCanvasCss) {
       style.textContent = fixedCanvasCss;
     }
+    isolateGameSurfaces(surfaces);
 
     if (!window.__yahagiMobileAlignGame) {
       window.__yahagiMobileAlignGame = () => {
@@ -420,15 +487,21 @@ const String gamePageAlignmentScript = r'''
       return {state: 'game', ooi: true};
     }
 
-    const hasGameSurface =
-      Array.from(
-        document.querySelectorAll('#game_frame, #game-container'),
-      ).some(isVisibleElement) || hasStandaloneGameCanvas();
+    const frames = Array.from(
+      document.querySelectorAll('#game_frame, #game-container'),
+    );
+    const surfaces = frames.some(isVisibleElement)
+      ? frames
+      : findStandaloneGameCanvases();
+    const hasGameSurface = surfaces.length > 0;
 
     // Initial loading is pending. Once OOI has shown a game, removing its
     // surface releases the viewport and native fit for ordinary page content.
     // Mutation batching keeps a synchronous frame replacement in game mode.
-    return {state: hasGameSurface ? 'game' : isOoiBrowserPage && hadOoiGameSurface ? 'web' : 'pending'};
+    return {
+      state: hasGameSurface ? 'game' : isOoiBrowserPage && hadOoiGameSurface ? 'web' : 'pending',
+      surfaces,
+    };
   };
   // Native hints may be queued by an older document. Re-read without fitting
   // or notifying the bridge again, so acknowledgement cannot form a loop.
@@ -436,6 +509,9 @@ const String gamePageAlignmentScript = r'''
 
   window.__yahagiMobileSyncPresentation = (forceFit = false) => {
     cancelScheduledSync();
+    // A dialog opened inside isolated content must become visible before the
+    // read, or it could never switch the page to web mode.
+    releaseExemptIsolation();
     const presentation = readPresentation();
     if (presentation.unparsed) {
       notifyPresentationState(presentation.state);
@@ -458,7 +534,7 @@ const String gamePageAlignmentScript = r'''
       return 'pending';
     }
 
-    applyGamePresentation();
+    applyGamePresentation(presentation.surfaces);
     notifyPresentationState('game', forceFit);
     return 'game';
   };
