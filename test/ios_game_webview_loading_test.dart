@@ -142,6 +142,62 @@ void main() {
     await settle(tester);
     expect(overlay, findsNothing);
   });
+
+  Future<void> loadFirstDocument(WidgetTester tester) async {
+    await pump(tester);
+    platform.controller
+      ..documentReady = true
+      ..document = 'first'
+      ..presentation = 'game';
+    platform.delegate.started(_gameUrl);
+    await tester.pump(const Duration(milliseconds: 600));
+    await settle(tester);
+    platform.delegate.finished(_gameUrl);
+    await settle(tester);
+    expect(overlay, findsNothing);
+  }
+
+  testWidgets('a reloaded game document is fitted before page finish', (
+    tester,
+  ) async {
+    await loadFirstDocument(tester);
+
+    platform.controller.runtimeDocuments.clear();
+    platform.delegate.started(_gameUrl);
+    // The outgoing document stays current until the new one commits.
+    await tester.pump(const Duration(milliseconds: 1600));
+    await settle(tester);
+    expect(platform.controller.runtimeDocuments, isEmpty);
+
+    platform.controller.document = 'reloaded';
+    await tester.pump(const Duration(milliseconds: 600));
+    await settle(tester);
+    expect(platform.controller.runtimeDocuments, ['reloaded']);
+
+    await tester.pump(const Duration(seconds: 2));
+    await settle(tester);
+    expect(
+      platform.controller.runtimeDocuments,
+      ['reloaded'],
+      reason: 'A synchronized document needs no further probing',
+    );
+    expect(overlay, findsNothing);
+  });
+
+  testWidgets('document probing stops at page finish', (tester) async {
+    await loadFirstDocument(tester);
+
+    platform.delegate.started(_gameUrl);
+    await tester.pump(const Duration(milliseconds: 600));
+    platform.delegate.finished(_gameUrl);
+    await settle(tester);
+    platform.controller.runtimeDocuments.clear();
+
+    platform.controller.document = 'late';
+    await tester.pump(const Duration(seconds: 2));
+    await settle(tester);
+    expect(platform.controller.runtimeDocuments, isEmpty);
+  });
 }
 
 class _WebViewPlatform extends WebViewPlatform {
@@ -166,6 +222,8 @@ class _Controller extends PlatformWebViewController {
   final List<Uri> loads = [];
   String presentation = 'web';
   bool documentReady = false;
+  String document = 'initial';
+  final List<String> runtimeDocuments = [];
   bool rejectScripts = false;
   final Map<String, JavaScriptChannelParams> channels = {};
   @override
@@ -195,8 +253,12 @@ class _Controller extends PlatformWebViewController {
 
   @override
   Future<Object> runJavaScriptReturningResult(String script) async {
-    if (script.contains('__yahagiIOSDocumentReady')) {
-      return documentReady ? '__yahagiIOSDocumentReady' : '';
+    if (rejectScripts) throw PlatformException(code: 'js');
+    if (script.contains('__yahagiIOSDocumentToken')) {
+      return documentReady ? '"$document"' : '""';
+    }
+    if (script.contains('__yahagiMobilePresentationRuntimeVersion')) {
+      runtimeDocuments.add(document);
     }
     return presentation;
   }
