@@ -10,6 +10,7 @@ import '../fleet/equipment_type_icon.dart';
 import '../fleet/fleet_ui_strings.dart';
 import '../browser/game_workspace_visibility.dart';
 import '../game_state/game_state.dart';
+import '../layout/window_metrics_change.dart';
 import 'battle_models.dart';
 import 'battle_detail_strings.dart';
 import 'battle_ship_details.dart';
@@ -42,6 +43,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
   LocalHistoryEntry? _history;
   BuildContext? _rowContext;
   BuildContext? _viewportContext;
+  WindowMetricsSnapshot? _metricsAtOpen;
   int _selectionRevision = 0;
 
   void _afterSelectionFrame(VoidCallback action) {
@@ -83,7 +85,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
     super.didUpdateWidget(oldWidget);
     if (_selected != null && oldWidget.battle != widget.battle) {
       // A new node/phase must not leave the old fleet's details on screen.
-      _afterSelectionFrame(_close);
+      _afterSelectionFrame(() => _close('battle-changed'));
     }
   }
 
@@ -93,23 +95,36 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
     final workspaceActive = GameWorkspaceActive.of(context);
     final routeActive = ModalRoute.isCurrentOf(context) ?? true;
     if (_selected != null && (!workspaceActive || !routeActive)) {
-      _afterSelectionFrame(_close);
+      _afterSelectionFrame(() => _close('route-inactive'));
     }
   }
 
   @override
-  void didChangeMetrics() => _close();
+  void didChangeMetrics() {
+    final opened = _metricsAtOpen;
+    if (!mounted || _selected == null || opened == null) return;
+    // iOS resends unchanged metrics whenever the native game WebView lays
+    // out again, which used to close the popover right after it opened.
+    final current = WindowMetricsSnapshot.fromView(View.of(context));
+    if (classifyWindowMetricsChange(opened, current) ==
+        WindowMetricsChange.geometry) {
+      _close('metrics');
+    }
+  }
+
+  void _closeOnScroll() => _close('scroll');
 
   void _detach() {
-    _scroll?.removeListener(_close);
+    _scroll?.removeListener(_closeOnScroll);
     _scroll = null;
     final history = _history;
     _history = null;
     history?.remove();
   }
 
-  void _close() {
+  void _close(String reason) {
     if (!mounted || _selected == null) return;
+    debugPrint('[ship-popover] close: $reason');
     _selected = null;
     _selectionRevision++;
     _rowContext = null;
@@ -121,7 +136,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
 
   void _toggle(BuildContext rowContext, BattleShipSnapshot ship) {
     if (selection == _identity(ship)) {
-      _close();
+      _close('toggle');
       return;
     }
     final anchor = _rectInOverlay(rowContext);
@@ -134,13 +149,13 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
     _viewportContext = scrollable?.context;
     _viewport = _rectInOverlay(_viewportContext);
     _scroll = scrollable?.position;
-    _scroll?.addListener(_close);
+    _scroll?.addListener(_closeOnScroll);
     final route = ModalRoute.of(rowContext);
     if (route != null) {
       _history = LocalHistoryEntry(
         onRemove: () {
           _history = null;
-          _close();
+          _close('history-pop');
         },
       );
       route.addLocalHistoryEntry(_history!);
@@ -151,6 +166,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
           ? ship
           : ship.withLatestFriendlyProficiency(latest),
     );
+    _metricsAtOpen = WindowMetricsSnapshot.fromView(View.of(context));
     _portal.show();
     _afterSelectionFrame(_focus.requestFocus);
   }
@@ -172,7 +188,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
       _afterSelectionFrame(() {
         if (_rectInOverlay(_rowContext) != _anchor ||
             _rectInOverlay(_viewportContext) != _viewport) {
-          _close();
+          _close('anchor-moved');
         }
       });
     }
@@ -195,13 +211,13 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
             ),
             child: TapRegion(
               groupId: this,
-              onTapOutside: (_) => _close(),
+              onTapOutside: (_) => _close('outside-tap'),
               child: Focus(
                 focusNode: _focus,
                 onKeyEvent: (_, event) {
                   if (event is KeyDownEvent &&
                       event.logicalKey == LogicalKeyboardKey.escape) {
-                    _close();
+                    _close('escape');
                     return KeyEventResult.handled;
                   }
                   return KeyEventResult.ignored;
@@ -209,7 +225,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
                 child: _ShipPopover(
                   key: ValueKey(_identity(ship)),
                   ship: ship,
-                  onClose: _close,
+                  onClose: () => _close('button'),
                 ),
               ),
             ),

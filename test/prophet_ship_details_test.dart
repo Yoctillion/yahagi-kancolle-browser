@@ -333,6 +333,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('popover survives a metrics callback without geometry change', (
+    tester,
+  ) async {
+    final controller = _controller();
+    await _startBattle(controller);
+    await _pumpCard(tester, controller);
+    await tester.tap(_row('enemy', 0));
+    await tester.pump();
+    expect(_popover, findsOneWidget);
+
+    // iOS resends unchanged window metrics when the native WebView relayouts.
+    tester.binding.handleMetricsChanged();
+    await tester.pump();
+    await tester.pump();
+
+    expect(_popover, findsOneWidget);
+  });
+
+  testWidgets('popover closes when the window size changes', (tester) async {
+    final controller = _controller();
+    await _startBattle(controller);
+    await _pumpCard(tester, controller);
+    await tester.tap(_row('enemy', 0));
+    await tester.pump();
+    expect(_popover, findsOneWidget);
+
+    tester.view.physicalSize = tester.view.physicalSize + const Offset(0, 120);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pump();
+    await tester.pump();
+
+    expect(_popover, findsNothing);
+  });
+
   testWidgets('covering the card with another route clears its back entry', (
     tester,
   ) async {
