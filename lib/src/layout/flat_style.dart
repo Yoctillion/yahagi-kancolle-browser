@@ -30,6 +30,10 @@ const flatJetColor = Color(0xffffd65c);
 const flatAirPhaseFontSize = 9.5;
 const flatAirHeadFontSize = 9.0;
 
+/// Pre-battle HP behind the bar. One neutral tone, like KC3Kai's gray
+/// pre-battle bar: HP colors would put green next to red on a heavy hit.
+const flatHpGhostColor = Color(0xffd5dbdf);
+
 /// Text marking a friend or enemy side, as in the formation row.
 const flatFriendSideColor = Color(0xff70c7bc);
 const flatEnemySideColor = Color(0xffff8c78);

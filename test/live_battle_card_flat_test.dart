@@ -1210,6 +1210,31 @@ void main() {
       expect(find.byKey(const Key('prophet-hp-ghost')), findsWidgets);
     });
 
+    testWidgets('ghost color does not follow pre-battle HP', (tester) async {
+      await pumpGrid(
+        tester,
+        battleOf(<BattleShipSnapshot>[
+          // Full HP down to heavy damage, and lightly damaged down further.
+          ship(BattleSide.friend, 0, initialHp: 50, currentHp: 5),
+          ship(BattleSide.friend, 1, initialHp: 30, currentHp: 10),
+        ]),
+        showShipNames: false,
+      );
+
+      Color ghostColor(int index) => tester
+          .widget<ColoredBox>(
+            find.descendant(
+              of: find.descendant(
+                of: find.byKey(Key('compact-bar-friend-$index')),
+                matching: find.byKey(const Key('prophet-hp-ghost')),
+              ),
+              matching: find.byType(ColoredBox),
+            ),
+          )
+          .color;
+      expect(ghostColor(0), ghostColor(1));
+    });
+
     testWidgets('damage-control revive shows no ghost', (tester) async {
       await pumpGrid(
         tester,

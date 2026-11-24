@@ -67,7 +67,7 @@ const double _flatBarHeight = 4;
 ({double? value, Color? color}) battleHpGhost(BattleShipSnapshot ship) {
   if (ship.isEscaped || ship.maxHp <= 0) return (value: null, color: null);
   final pre = ship.initialHp.clamp(0, ship.maxHp) / ship.maxHp;
-  return (value: pre, color: shipHpBarColor(pre, isZeroHp: false));
+  return (value: pre, color: flatHpGhostColor);
 }
 
 class BattleFleetGrid extends StatelessWidget {
