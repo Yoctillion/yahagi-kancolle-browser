@@ -336,7 +336,7 @@ class _PopoverPosition extends SingleChildLayoutDelegate {
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     final bounds = _bounds(constraints.biggest);
-    final width = math.min(270.0, bounds.width);
+    final width = math.min(220.0, bounds.width);
     return BoxConstraints(
       minWidth: width,
       maxWidth: width,
@@ -417,22 +417,22 @@ class _ShipPopoverState extends State<_ShipPopover> {
     final strings = BattleDetailStrings.of(context);
     String number(int? value) => value?.toString() ?? '—';
     final labelStyle = TextStyle(
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffa9bac4)),
     );
     final valueStyle = TextStyle(
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffe5ebee)),
     );
     final metaLabelStyle = TextStyle(
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffa9bac4)),
     );
     final metaValueStyle = TextStyle(
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffe5ebee)),
     );
@@ -464,7 +464,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(asset, width: 14, height: 14),
+            Image.asset(asset, width: 11, height: 11),
             const SizedBox(width: 3),
             Text(
               value == null ? '—' : '$value%',
@@ -483,7 +483,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
         elevation: 14,
         shadowColor: appColor(context, Colors.black87),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(
             color: appColor(context, color.withValues(alpha: .55)),
           ),
@@ -493,12 +493,12 @@ class _ShipPopoverState extends State<_ShipPopover> {
           style: appTextStyle(
             context,
             (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-                .copyWith(color: Color(0xffe5ebee), fontSize: 12, height: 1.25),
+                .copyWith(color: Color(0xffe5ebee), fontSize: 10, height: 1.25),
           ),
           child: SingleChildScrollView(
             controller: _scrollController,
             primary: false,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -518,8 +518,9 @@ class _ShipPopoverState extends State<_ShipPopover> {
                                 gameNames(
                                   context,
                                 ).shipName(ship.name, shipId: ship.masterId),
+                                key: const Key('battle-ship-details-name'),
                                 style: const TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -529,7 +530,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                                   style: appTextStyle(
                                     context,
                                     TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 10,
                                       color: appColor(
                                         context,
                                         Color(0xffffbe67),
@@ -548,7 +549,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                       onPressed: onClose,
                       icon: Icon(
                         Icons.close,
-                        size: 19,
+                        size: 14,
                         color: appColor(context, Color(0xffa5bac4)),
                       ),
                       visualDensity: VisualDensity.compact,
@@ -556,8 +557,8 @@ class _ShipPopoverState extends State<_ShipPopover> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
+                        width: 20,
+                        height: 20,
                       ),
                       padding: EdgeInsets.zero,
                     ),
@@ -722,7 +723,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xff93aab8)),
-                        fontSize: 12,
+                        fontSize: 10,
                       ),
                     ),
                   )
@@ -733,7 +734,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xff93aab8)),
-                        fontSize: 12,
+                        fontSize: 10,
                       ),
                     ),
                   )
@@ -762,8 +763,8 @@ class _EquipmentRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
         children: [
-          EquipmentTypeIconImage(iconId: item.iconId, width: 20, height: 20),
-          const SizedBox(width: 7),
+          EquipmentTypeIconImage(iconId: item.iconId, width: 14, height: 14),
+          const SizedBox(width: 5),
           Expanded(
             child: Text(
               (item.name == null
@@ -793,7 +794,7 @@ class _EquipmentRow extends StatelessWidget {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xff7bcba7)),
-                        fontSize: 11,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -804,8 +805,8 @@ class _EquipmentRow extends StatelessWidget {
                     child: Image.asset(
                       'assets/images/airplane/alv${item.proficiency.clamp(1, 7)}.png',
                       key: Key('battle-equipment-proficiency-${item.masterId}'),
-                      width: 18,
-                      height: 16,
+                      width: 13,
+                      height: 11,
                     ),
                   ),
                 if (item.extra)
@@ -815,7 +816,7 @@ class _EquipmentRow extends StatelessWidget {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xffa9bac4)),
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

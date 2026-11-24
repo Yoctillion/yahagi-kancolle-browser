@@ -281,9 +281,23 @@ void main() {
       tester.getTopLeft(remodel).dx,
       tester.getTopLeft(find.byKey(const Key('battle-ship-fuel'))).dx,
     );
-    expect(tester.widget<Text>(next).style?.fontSize, 12);
-    expect(tester.widget<Text>(remodel).style?.fontSize, 12);
+    expect(tester.widget<Text>(next).style?.fontSize, 10);
+    expect(tester.widget<Text>(remodel).style?.fontSize, 10);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('popover is compact like the flat panel', (tester) async {
+    final controller = _controller();
+    await _startBattle(controller);
+    await _pumpCard(tester, controller);
+    await tester.tap(_row('enemy', 0));
+    await tester.pump();
+
+    expect(tester.getSize(_popover).width, lessThanOrEqualTo(220));
+    final name = tester.widget<Text>(
+      find.byKey(const Key('battle-ship-details-name')),
+    );
+    expect(name.style?.fontSize, 11);
   });
 
   testWidgets('large system text remains usable inside a narrow panel', (
