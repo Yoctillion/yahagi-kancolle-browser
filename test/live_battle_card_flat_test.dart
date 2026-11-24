@@ -406,7 +406,7 @@ void main() {
       )..addFont(rootBundle.load('assets/fonts/HarmonyOS_Sans_SC.ttf'))).load();
     });
 
-    testWidgets('the compact header holds the map under its node row', (
+    testWidgets('the compact header holds the map above its node row', (
       tester,
     ) async {
       final controller = createController(withMap: true);
@@ -425,8 +425,8 @@ void main() {
         findsOneWidget,
       );
       expect(
-        tester.getTopLeft(map).dy,
-        greaterThanOrEqualTo(tester.getBottomLeft(find.byKey(_nodeIcon)).dy),
+        tester.getBottomLeft(map).dy,
+        lessThanOrEqualTo(tester.getTopLeft(find.byKey(_nodeIcon)).dy),
       );
       expect(
         tester.getTopLeft(find.byKey(_formationLine)).dy,

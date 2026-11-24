@@ -82,8 +82,10 @@ class FlatBattleHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        titleRow,
+        // The map opens above the title row so the node and enemy name stay
+        // next to the battle details they describe.
         ?mapBody,
+        titleRow,
         if (hasDetails)
           Row(
             children: <Widget>[
