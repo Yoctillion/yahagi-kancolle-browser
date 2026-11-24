@@ -20,7 +20,6 @@ import 'battle_ship_details_popover.dart';
 import 'land_base_raid_panel.dart';
 import 'official_enemy_preview.dart';
 import 'prophet_hp_bar.dart';
-import 'battle_tap_tip.dart';
 
 class DetailedBattlePanel extends StatelessWidget {
   const DetailedBattlePanel({
@@ -521,23 +520,18 @@ class _BattleShipRow extends StatelessWidget {
                 child: Row(
                   children: <Widget>[
                     Flexible(
-                      child: BattleTapTip(
-                        message: gameNames(
+                      child: Text(
+                        gameNames(
                           context,
                         ).shipName(ship.name, shipId: ship.masterId),
-                        child: Text(
-                          gameNames(
-                            context,
-                          ).shipName(ship.name, shipId: ship.masterId),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appTextStyle(
-                            context,
-                            TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: isEscaped ? const Color(0xff8197a5) : null,
-                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isEscaped ? const Color(0xff8197a5) : null,
                           ),
                         ),
                       ),

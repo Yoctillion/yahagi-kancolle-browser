@@ -1802,8 +1802,11 @@ void main() {
     final hpBlockMid = (hpCenter.dy + barCenter.dy) / 2;
     expect((nameCenter.dy - hpBlockMid).abs(), lessThan(3));
 
-    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip).first);
-    expect(tooltip.message, isNotEmpty);
+    // Tapping the row opens the details popover, so the name has no tip.
+    expect(
+      find.descendant(of: shipRow, matching: find.byType(Tooltip)),
+      findsNothing,
+    );
     expect(find.byKey(const Key('battle-mvp-friend-0')), findsOneWidget);
     expect(
       find.byKey(const Key('battle-damage-row-pulse-friend-0')),
@@ -1830,7 +1833,7 @@ void main() {
     );
     expect(
       find.ancestor(
-        of: find.byType(Tooltip).first,
+        of: find.descendant(of: shipRow, matching: find.byType(Text)).first,
         matching: find.byType(Opacity),
       ),
       findsNothing,
