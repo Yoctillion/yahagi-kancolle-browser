@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../layout/flat_style.dart';
 import '../theme/app_palette.dart';
@@ -39,30 +38,6 @@ class FlatBattleHeader extends StatelessWidget {
   /// Latin UI fonts sit near 0.7).
   static const double capHeightEm = 0.73;
 
-  /// How far down the node icon (and, when negative, the text) must move so
-  /// the icon's center meets the middle of the node letter's capitals. The
-  /// letter's line box depends on the font, so a fixed offset drifts with
-  /// system or custom fonts.
-  double _iconTop(BuildContext context, TextStyle labelStyle) {
-    final textScaler = MediaQuery.textScalerOf(context);
-    final painter = TextPainter(
-      text: TextSpan(
-        text: nodeLabel,
-        style: DefaultTextStyle.of(context).style.merge(labelStyle),
-      ),
-      textDirection: Directionality.of(context),
-      textScaler: textScaler,
-      maxLines: 1,
-    )..layout();
-    final baseline = painter.computeDistanceToActualBaseline(
-      TextBaseline.alphabetic,
-    );
-    painter.dispose();
-    final capCenter =
-        baseline - capHeightEm * textScaler.scale(nodeFontSize) / 2;
-    return capCenter - flatNodeIconSize / 2;
-  }
-
   @override
   Widget build(BuildContext context) {
     final name = enemyName;
@@ -74,14 +49,17 @@ class FlatBattleHeader extends StatelessWidget {
         fontWeight: FontWeight.w800,
       ),
     );
-    final iconTop = _iconTop(context, labelStyle);
-    final textShift = math.max(0.0, -iconTop);
+    final capHalf =
+        capHeightEm * MediaQuery.textScalerOf(context).scale(nodeFontSize) / 2;
+    // Texts share the alphabetic baseline; the icon has none, so it reports
+    // one that puts its center on the middle of the letter's capitals.
     final titleRow = LayoutBuilder(
       builder: (context, constraints) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: <Widget>[
-          Padding(
-            padding: EdgeInsets.only(top: math.max(0, iconTop)),
+          ReportedBaseline(
+            baseline: flatNodeIconSize / 2 + capHalf,
             child: nodeIcon,
           ),
           const SizedBox(width: 4),
@@ -89,15 +67,12 @@ class FlatBattleHeader extends StatelessWidget {
           // languages run longer; it never takes more than half the row.
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: constraints.maxWidth / 2),
-            child: Padding(
-              padding: EdgeInsets.only(top: textShift),
-              child: Text(
-                nodeLabel,
-                key: const Key('flat-battle-header-node'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: labelStyle,
-              ),
+            child: Text(
+              nodeLabel,
+              key: const Key('flat-battle-header-node'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: labelStyle,
             ),
           ),
           const SizedBox(width: 6),
@@ -107,8 +82,6 @@ class FlatBattleHeader extends StatelessWidget {
                 : FittedEnemyName(
                     name: name,
                     color: appColor(context, enemyNameColor),
-                    firstLineCenter:
-                        math.max(0.0, iconTop) + flatNodeIconSize / 2,
                   ),
           ),
           ?mapToggle,
@@ -158,24 +131,12 @@ class FittedEnemyName extends StatelessWidget {
     this.color,
     this.maxFontSize = 11,
     this.minFontSize = 9.5,
-    this.firstLineCenter,
   });
 
   final String name;
   final Color? color;
   final double maxFontSize;
   final double minFontSize;
-
-  /// Where the middle of the first line's em box should sit, measured from
-  /// the top of this widget; the text moves down to meet it. The line box
-  /// varies by font, so a fixed offset cannot line it up with a neighbor.
-  final double? firstLineCenter;
-
-  /// Height of the middle of CJK glyphs above the alphabetic baseline, in
-  /// ems (HarmonyOS Sans SC measures 0.385; CJK em boxes usually span
-  /// -0.12 to 0.88). Flutter's ideographic baseline is the line box bottom,
-  /// not the em box bottom, so it cannot stand in for this.
-  static const double glyphCenterEm = 0.385;
 
   TextStyle _style(double fontSize) => TextStyle(
     color: color,
@@ -218,30 +179,15 @@ class FittedEnemyName extends StatelessWidget {
           }
         }
         final singleLine = fontSize >= minFontSize;
-        final shownSize = singleLine ? fontSize : minFontSize;
-        final text = Text(
+        return Text(
           name,
           maxLines: singleLine ? 1 : 2,
           softWrap: !singleLine,
           overflow: TextOverflow.ellipsis,
-          style: appTextStyle(context, _style(shownSize)),
-        );
-        final center = firstLineCenter;
-        if (center == null) return text;
-        final painter = TextPainter(
-          text: TextSpan(text: name, style: base.merge(_style(shownSize))),
-          textDirection: textDirection,
-          textScaler: textScaler,
-          locale: locale,
-          maxLines: 1,
-        )..layout();
-        final emCenter =
-            painter.computeDistanceToActualBaseline(TextBaseline.alphabetic) -
-            glyphCenterEm * textScaler.scale(shownSize);
-        painter.dispose();
-        return Padding(
-          padding: EdgeInsets.only(top: math.max(0, center - emCenter)),
-          child: text,
+          style: appTextStyle(
+            context,
+            _style(singleLine ? fontSize : minFontSize),
+          ),
         );
       },
     );
@@ -253,4 +199,45 @@ class FittedEnemyName extends StatelessWidget {
 Color? flatEnemyNameColor({required bool guessed, required bool combined}) {
   if (guessed) return flatMutedColor;
   return combined ? const Color(0xffff8c78) : null;
+}
+
+/// Reports [baseline] as the child's alphabetic and ideographic baseline, so
+/// a box without text, such as an icon, can join a baseline-aligned row.
+class ReportedBaseline extends SingleChildRenderObjectWidget {
+  const ReportedBaseline({
+    super.key,
+    required this.baseline,
+    required super.child,
+  });
+
+  final double baseline;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderReportedBaseline(baseline);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _RenderReportedBaseline).baseline = baseline;
+  }
+}
+
+class _RenderReportedBaseline extends RenderProxyBox {
+  _RenderReportedBaseline(this._baseline);
+
+  double _baseline;
+  set baseline(double value) {
+    if (value == _baseline) return;
+    _baseline = value;
+    markNeedsLayout();
+  }
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) => _baseline;
+
+  @override
+  double? computeDryBaseline(
+    BoxConstraints constraints,
+    TextBaseline baseline,
+  ) => _baseline;
 }
