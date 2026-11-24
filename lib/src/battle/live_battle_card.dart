@@ -10,6 +10,7 @@ import '../layout/flat_list_row.dart';
 import '../layout/flat_style.dart';
 import '../layout/module_summaries.dart';
 
+import 'battle_contact.dart';
 import 'battle_controller.dart';
 import 'battle_fleet_grid.dart';
 import 'battle_models.dart';
@@ -658,6 +659,17 @@ class _FlatBattlePanel extends StatelessWidget {
                     friendEscort: battle.friendEscort,
                     slotItems: gameState.masterSlotItems,
                   ),
+            extraWidgets: [
+              if (dayAir != null &&
+                  (dayAir.friendContactPlaneId > 0 ||
+                      dayAir.enemyContactPlaneId > 0))
+                ContactPlaneMarks(
+                  friendPlaneId: dayAir.friendContactPlaneId,
+                  enemyPlaneId: dayAir.enemyContactPlaneId,
+                  slotItems: gameState.masterSlotItems,
+                  night: false,
+                ),
+            ],
             metaLabels: [
               for (final chip in _compactMetaChips(
                 battle,

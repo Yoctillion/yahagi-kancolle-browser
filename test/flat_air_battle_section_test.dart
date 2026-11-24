@@ -182,7 +182,7 @@ void main() {
     expect(plain('flat-air-exchange-enemy'), '3−3');
   });
 
-  testWidgets('extras list the second wave, contact and cut-ins', (
+  testWidgets('extras list the second wave and cut-ins but not contact', (
     tester,
   ) async {
     final extras = await _extras(
@@ -191,7 +191,7 @@ void main() {
       friendMain: _main.take(6).toList(),
       friendEscort: _escort,
     );
-    expect(extras, ['航空战×2', '触接 我 彩云 / 敌 九七式艦攻', '对空CI 主1(5)', '对空CI 随1(9)']);
+    expect(extras, ['航空战×2', '对空CI 主1(5)', '对空CI 随1(9)']);
   });
 
   testWidgets('no extras without contact, cut-ins or a second wave', (
