@@ -50,4 +50,25 @@ void main() {
     expect(find.textContaining('ab', findRichText: true), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('tip text keeps the theme font', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(fontFamily: 'PanelFont'),
+        home: const Scaffold(
+          body: Center(child: BattleTapTip(message: '彩雲', child: Text('x'))),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('x'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final span = _paragraphContaining(tester, '彩雲').text as TextSpan;
+    final family =
+        span.style?.fontFamily ??
+        (span.children?.first as TextSpan).style?.fontFamily;
+    expect(family, 'PanelFont');
+    await tester.pump(const Duration(seconds: 5));
+  });
 }

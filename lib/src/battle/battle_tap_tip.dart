@@ -28,13 +28,15 @@ class BattleTapTip extends StatelessWidget {
     preferBelow: true,
     verticalOffset: 10,
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+    // Tooltip uses this style as is, so start from the theme's to keep the
+    // app (or custom) font.
     textStyle: appTextStyle(
       context,
-      const TextStyle(
+      (Theme.of(context).textTheme.bodySmall ?? const TextStyle()).copyWith(
         fontSize: fontSize,
         fontWeight: FontWeight.w600,
         height: 1.35,
-        color: Color(0xffe5ebee),
+        color: const Color(0xffe5ebee),
       ),
     ),
     decoration: BoxDecoration(
