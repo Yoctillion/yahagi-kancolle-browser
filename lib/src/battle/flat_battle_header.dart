@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../layout/flat_style.dart';
@@ -6,8 +8,8 @@ import 'battle_pills.dart';
 import 'battle_models.dart';
 
 /// Flat battle and navigation header: node icon, node letter, enemy fleet
-/// name and the sortie map toggle on one row; the expanded map under it; then
-/// the detail lines with a small result badge beside them.
+/// name and the sortie map toggle on one row, with the expanded map above it;
+/// then the detail lines with a small result badge beside them.
 class FlatBattleHeader extends StatelessWidget {
   const FlatBattleHeader({
     super.key = const Key('flat-battle-header'),
@@ -31,32 +33,70 @@ class FlatBattleHeader extends StatelessWidget {
   final BattleRank? rank;
 
   static const double rankBadgeSize = 22;
+  static const double nodeFontSize = 12;
+
+  /// Cap height of the node letter in ems (HarmonyOS Sans measures 0.72;
+  /// Latin UI fonts sit near 0.7).
+  static const double capHeightEm = 0.72;
+
+  /// How far down the node icon (and, when negative, the text) must move so
+  /// the icon's center meets the middle of the node letter's capitals. The
+  /// letter's line box depends on the font, so a fixed offset drifts with
+  /// system or custom fonts.
+  double _iconTop(BuildContext context, TextStyle labelStyle) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final painter = TextPainter(
+      text: TextSpan(
+        text: nodeLabel,
+        style: DefaultTextStyle.of(context).style.merge(labelStyle),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: textScaler,
+      maxLines: 1,
+    )..layout();
+    final baseline = painter.computeDistanceToActualBaseline(
+      TextBaseline.alphabetic,
+    );
+    painter.dispose();
+    final capCenter =
+        baseline - capHeightEm * textScaler.scale(nodeFontSize) / 2;
+    return capCenter - flatNodeIconSize / 2;
+  }
 
   @override
   Widget build(BuildContext context) {
     final name = enemyName;
+    final labelStyle = appTextStyle(
+      context,
+      const TextStyle(
+        color: Color(0xffffd65c),
+        fontSize: nodeFontSize,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+    final iconTop = _iconTop(context, labelStyle);
+    final textShift = math.max(0.0, -iconTop);
     final titleRow = LayoutBuilder(
       builder: (context, constraints) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(padding: const EdgeInsets.only(top: 1), child: nodeIcon),
+          Padding(
+            padding: EdgeInsets.only(top: math.max(0, iconTop)),
+            child: nodeIcon,
+          ),
           const SizedBox(width: 4),
           // Usually a letter, but an unresolved node reads "Node 12" and some
           // languages run longer; it never takes more than half the row.
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: constraints.maxWidth / 2),
-            child: Text(
-              nodeLabel,
-              key: const Key('flat-battle-header-node'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: appTextStyle(
-                context,
-                const TextStyle(
-                  color: Color(0xffffd65c),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
+            child: Padding(
+              padding: EdgeInsets.only(top: textShift),
+              child: Text(
+                nodeLabel,
+                key: const Key('flat-battle-header-node'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle,
               ),
             ),
           ),
@@ -66,7 +106,7 @@ class FlatBattleHeader extends StatelessWidget {
                 ? const SizedBox.shrink()
                 : Padding(
                     // Centers a shrunken single line on the 12px node letter.
-                    padding: const EdgeInsets.only(top: 1),
+                    padding: EdgeInsets.only(top: 1 + textShift),
                     child: FittedEnemyName(
                       name: name,
                       color: appColor(context, enemyNameColor),
