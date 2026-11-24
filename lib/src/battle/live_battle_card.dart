@@ -652,13 +652,7 @@ class _FlatBattlePanel extends StatelessWidget {
             battle: battle,
             extras: dayAir == null
                 ? const <String>[]
-                : flatAirExtras(
-                    context,
-                    report: dayAir,
-                    friendMain: battle.friendMain,
-                    friendEscort: battle.friendEscort,
-                    slotItems: gameState.masterSlotItems,
-                  ),
+                : flatAirExtras(context, report: dayAir),
             extraWidgets: [
               if (dayAir != null &&
                   (dayAir.friendContactPlaneId > 0 ||

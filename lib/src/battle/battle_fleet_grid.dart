@@ -9,6 +9,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'battle_models.dart';
 import 'battle_pills.dart';
 import 'battle_ship_details_popover.dart';
+import '../fleet/equipment_type_icon.dart';
 import '../fleet/ship_status_style.dart';
 import '../fleet/ship_status_visuals.dart';
 import '../layout/flat_style.dart';
@@ -121,6 +122,18 @@ class BattleFleetGrid extends StatelessWidget {
     final enemyCombined = battle.enemyEscort.isNotEmpty;
     final mvpPositions = battle.mvpPositions;
     final navigation = _navigation;
+    final mainCutIns = <int, int>{};
+    final escortCutIns = <int, int>{};
+    if (!navigation) {
+      for (final cutIn in battle.dayAir?.antiAirCutIns ?? const []) {
+        // Positions from 6 index the escort when the fleet is combined.
+        if (friendCombined && cutIn.position >= 6) {
+          escortCutIns[cutIn.position - 6] = cutIn.kind;
+        } else {
+          mainCutIns[cutIn.position] = cutIn.kind;
+        }
+      }
+    }
     final friendFormation = battle.friendFormation > 0
         ? '（${formationLabel(battle.friendFormation)}）'
         : '';
@@ -135,6 +148,7 @@ class BattleFleetGrid extends StatelessWidget {
           keyName: 'friend-main',
           ships: battle.friendMain,
           mvpPositions: mvpPositions,
+          antiAirCutIns: mainCutIns,
           damagePulseMode: damagePulseMode,
           showShipNames: showShipNames,
         ),
@@ -144,6 +158,7 @@ class BattleFleetGrid extends StatelessWidget {
           keyName: 'friend-escort',
           ships: battle.friendEscort,
           mvpPositions: mvpPositions,
+          antiAirCutIns: escortCutIns,
           positionOffset: 6,
           damagePulseMode: damagePulseMode,
           showShipNames: showShipNames,
@@ -155,6 +170,7 @@ class BattleFleetGrid extends StatelessWidget {
           keyName: 'friend',
           ships: battle.friendMain,
           mvpPositions: mvpPositions,
+          antiAirCutIns: mainCutIns,
           damagePulseMode: damagePulseMode,
           showShipNames: showShipNames,
         ),
@@ -447,11 +463,15 @@ class _CompactFleetColumn extends StatelessWidget {
     required this.damagePulseMode,
     required this.showShipNames,
     this.positionOffset = 0,
+    this.antiAirCutIns = const <int, int>{},
   });
 
   final String keyName;
   final List<BattleShipSnapshot> ships;
   final List<int> mvpPositions;
+
+  /// Anti-air cut-in kind by row index within this column.
+  final Map<int, int> antiAirCutIns;
   final DamagePulseFilter damagePulseMode;
   final bool showShipNames;
   final int positionOffset;
@@ -470,6 +490,7 @@ class _CompactFleetColumn extends StatelessWidget {
               keyName: keyName,
               index: index,
               isMvp: mvpPositions.contains(index + positionOffset),
+              antiAirCutInKind: antiAirCutIns[index],
               damagePulseMode: damagePulseMode,
               showShipNames: showShipNames,
             ),
@@ -487,12 +508,14 @@ class _CompactBarRow extends StatelessWidget {
     required this.isMvp,
     required this.damagePulseMode,
     required this.showShipNames,
+    this.antiAirCutInKind,
   });
 
   final BattleShipSnapshot ship;
   final String keyName;
   final int index;
   final bool isMvp;
+  final int? antiAirCutInKind;
   final DamagePulseFilter damagePulseMode;
   final bool showShipNames;
 
@@ -521,6 +544,28 @@ class _CompactBarRow extends StatelessWidget {
       size: 9,
       color: appColor(context, Color(0xffffd65c)),
     );
+    final cutInKind = antiAirCutInKind;
+    final cutInMark = cutInKind == null
+        ? null
+        : Row(
+            key: Key('compact-aaci-$keyName-$index'),
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              // The anti-aircraft gun type icon.
+              const EquipmentTypeIconImage(iconId: 15, width: 10, height: 10),
+              Text(
+                '$cutInKind',
+                style: appTextStyle(
+                  context,
+                  const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: flatMutedColor,
+                  ),
+                ),
+              ),
+            ],
+          );
     Widget nameLine(Widget trailing) => Row(
       key: Key('compact-name-$keyName-$index'),
       children: <Widget>[
@@ -540,6 +585,7 @@ class _CompactBarRow extends StatelessWidget {
           ),
         ),
         if (isMvp) ...<Widget>[const SizedBox(width: 2), mvpIcon],
+        if (cutInMark != null) ...<Widget>[const SizedBox(width: 2), cutInMark],
         const SizedBox(width: 3),
         trailing,
       ],
@@ -644,6 +690,10 @@ class _CompactBarRow extends StatelessWidget {
                 children: <Widget>[
                   hpNumber,
                   if (isMvp) ...<Widget>[const SizedBox(width: 2), mvpIcon],
+                  if (cutInMark != null) ...<Widget>[
+                    const SizedBox(width: 2),
+                    cutInMark,
+                  ],
                 ],
               ),
             ),

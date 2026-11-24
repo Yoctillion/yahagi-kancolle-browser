@@ -241,32 +241,14 @@ class FlatAirExchangeLine extends StatelessWidget {
   );
 }
 
-/// The second wave and anti-air cut-ins of the day air battle, as tag line
-/// segments. Contact planes are [ContactPlaneMarks].
+/// The second wave of the day air battle, as tag line segments. Contact
+/// planes are [ContactPlaneMarks]; anti-air cut-ins sit on the fleet grid.
 List<String> flatAirExtras(
   BuildContext context, {
   required DayAirReport report,
-  required List<BattleShipSnapshot> friendMain,
-  // AACI positions >= 6 index the escort when the fleet is combined.
-  required List<BattleShipSnapshot> friendEscort,
-  required Map<int, MasterSlotItem> slotItems,
-}) {
-  final s = BattleDetailStrings.of(context);
-  String cutInShip(int index) {
-    final inEscort = friendEscort.isNotEmpty && index >= 6;
-    final fleet = inEscort ? friendEscort : friendMain;
-    final fleetIndex = inEscort ? index - 6 : index;
-    if (fleetIndex < 0 || fleetIndex >= fleet.length) return '#${index + 1}';
-    final ship = fleet[fleetIndex];
-    return gameNames(context).shipName(ship.name, shipId: ship.masterId);
-  }
-
-  return <String>[
-    if (report.secondWave) s.airBattleTwice,
-    for (final ci in report.antiAirCutIns)
-      '${s.antiAirCutIn} ${cutInShip(ci.position)}(${ci.kind})',
-  ];
-}
+}) => <String>[
+  if (report.secondWave) BattleDetailStrings.of(context).airBattleTwice,
+];
 
 class FlatNightBattleSection extends StatelessWidget {
   const FlatNightBattleSection({

@@ -8,6 +8,7 @@ import 'package:yahagi_kancolle_browser/l10n/app_localizations.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_controller.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_detail_strings.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_fleet_grid.dart';
+import 'package:yahagi_kancolle_browser/src/battle/battle_air_report.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_models.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_node_label_resolver.dart';
 import 'package:yahagi_kancolle_browser/src/battle/battle_pills.dart';
@@ -1246,6 +1247,100 @@ void main() {
         tester.getSize(find.byKey(const Key('compact-preview-enemy-0'))).height,
         tester.getSize(find.byKey(const Key('compact-bar-friend-0'))).height,
       );
+    });
+
+    LiveBattle cutInBattle(
+      int position, {
+      List<BattleShipSnapshot> escort = const <BattleShipSnapshot>[],
+      BattleDisplayStage stage = BattleDisplayStage.battle,
+    }) => LiveBattle(
+      context: const BattleContext(),
+      friendMain: <BattleShipSnapshot>[
+        for (var i = 0; i < 3; i++) ship(BattleSide.friend, i),
+      ],
+      friendEscort: escort,
+      enemyMain: <BattleShipSnapshot>[ship(BattleSide.enemy, 0)],
+      displayStage: stage,
+      dayAir: DayAirReport(
+        antiAirCutIns: <AntiAirCutIn>[
+          AntiAirCutIn(position: position, kind: 5),
+        ],
+      ),
+    );
+
+    testWidgets('anti-air cut-in mark sits on the firing ship', (tester) async {
+      await pumpGrid(tester, cutInBattle(1), showShipNames: false);
+
+      final mark = find.byKey(const Key('compact-aaci-friend-1'));
+      expect(mark, findsOneWidget);
+      expect(
+        find.descendant(of: mark, matching: find.text('5')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('compact-aaci-friend-0')), findsNothing);
+      final hp = find.descendant(
+        of: find.byKey(const Key('compact-bar-friend-1')),
+        matching: find.text('30 / 50'),
+      );
+      expect(
+        tester.getTopLeft(mark).dx,
+        greaterThan(tester.getTopRight(hp).dx),
+      );
+    });
+
+    testWidgets('anti-air cut-in mark follows the name when names show', (
+      tester,
+    ) async {
+      await pumpGrid(tester, cutInBattle(1));
+
+      final mark = find.byKey(const Key('compact-aaci-friend-1'));
+      final name = find.descendant(
+        of: find.byKey(const Key('compact-name-friend-1')),
+        matching: find.text('夕張'),
+      );
+      expect(mark, findsOneWidget);
+      expect(
+        tester.getTopLeft(mark).dx,
+        greaterThan(tester.getTopLeft(name).dx),
+      );
+      expect(
+        (tester.getCenter(mark).dy - tester.getCenter(name).dy).abs(),
+        lessThan(4),
+      );
+    });
+
+    testWidgets('anti-air cut-in position 7 marks the escort ship', (
+      tester,
+    ) async {
+      final escort = <BattleShipSnapshot>[
+        for (var i = 0; i < 3; i++)
+          BattleShipSnapshot(
+            masterId: 115,
+            name: '夕張',
+            side: BattleSide.friend,
+            fleetRole: BattleFleetRole.escort,
+            position: i,
+            initialHp: 30,
+            maxHp: 50,
+            currentHp: 30,
+          ),
+      ];
+      await pumpGrid(tester, cutInBattle(7, escort: escort));
+
+      expect(
+        find.byKey(const Key('compact-aaci-friend-escort-1')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('compact-aaci-friend-main-1')), findsNothing);
+    });
+
+    testWidgets('no anti-air cut-in mark while navigating', (tester) async {
+      await pumpGrid(
+        tester,
+        cutInBattle(1, stage: BattleDisplayStage.navigation),
+      );
+
+      expect(find.byKey(const Key('compact-aaci-friend-1')), findsNothing);
     });
   });
 }
