@@ -35,9 +35,9 @@ class FlatBattleHeader extends StatelessWidget {
   static const double rankBadgeSize = 22;
   static const double nodeFontSize = 12;
 
-  /// Cap height of the node letter in ems (HarmonyOS Sans measures 0.72;
+  /// Cap height of the node letter in ems (HarmonyOS Sans measures 0.73;
   /// Latin UI fonts sit near 0.7).
-  static const double capHeightEm = 0.72;
+  static const double capHeightEm = 0.73;
 
   /// How far down the node icon (and, when negative, the text) must move so
   /// the icon's center meets the middle of the node letter's capitals. The
@@ -104,13 +104,11 @@ class FlatBattleHeader extends StatelessWidget {
           Expanded(
             child: name == null || name.isEmpty
                 ? const SizedBox.shrink()
-                : Padding(
-                    // Centers a shrunken single line on the 12px node letter.
-                    padding: EdgeInsets.only(top: 1 + textShift),
-                    child: FittedEnemyName(
-                      name: name,
-                      color: appColor(context, enemyNameColor),
-                    ),
+                : FittedEnemyName(
+                    name: name,
+                    color: appColor(context, enemyNameColor),
+                    firstLineCenter:
+                        math.max(0.0, iconTop) + flatNodeIconSize / 2,
                   ),
           ),
           ?mapToggle,
@@ -160,12 +158,24 @@ class FittedEnemyName extends StatelessWidget {
     this.color,
     this.maxFontSize = 11,
     this.minFontSize = 9.5,
+    this.firstLineCenter,
   });
 
   final String name;
   final Color? color;
   final double maxFontSize;
   final double minFontSize;
+
+  /// Where the middle of the first line's em box should sit, measured from
+  /// the top of this widget; the text moves down to meet it. The line box
+  /// varies by font, so a fixed offset cannot line it up with a neighbor.
+  final double? firstLineCenter;
+
+  /// Height of the middle of CJK glyphs above the alphabetic baseline, in
+  /// ems (HarmonyOS Sans SC measures 0.385; CJK em boxes usually span
+  /// -0.12 to 0.88). Flutter's ideographic baseline is the line box bottom,
+  /// not the em box bottom, so it cannot stand in for this.
+  static const double glyphCenterEm = 0.385;
 
   TextStyle _style(double fontSize) => TextStyle(
     color: color,
@@ -208,15 +218,30 @@ class FittedEnemyName extends StatelessWidget {
           }
         }
         final singleLine = fontSize >= minFontSize;
-        return Text(
+        final shownSize = singleLine ? fontSize : minFontSize;
+        final text = Text(
           name,
           maxLines: singleLine ? 1 : 2,
           softWrap: !singleLine,
           overflow: TextOverflow.ellipsis,
-          style: appTextStyle(
-            context,
-            _style(singleLine ? fontSize : minFontSize),
-          ),
+          style: appTextStyle(context, _style(shownSize)),
+        );
+        final center = firstLineCenter;
+        if (center == null) return text;
+        final painter = TextPainter(
+          text: TextSpan(text: name, style: base.merge(_style(shownSize))),
+          textDirection: textDirection,
+          textScaler: textScaler,
+          locale: locale,
+          maxLines: 1,
+        )..layout();
+        final emCenter =
+            painter.computeDistanceToActualBaseline(TextBaseline.alphabetic) -
+            glyphCenterEm * textScaler.scale(shownSize);
+        painter.dispose();
+        return Padding(
+          padding: EdgeInsets.only(top: math.max(0, center - emCenter)),
+          child: text,
         );
       },
     );

@@ -102,4 +102,34 @@ void main() {
       );
     });
   }
+
+  for (final scale in <double>[1, 1.5]) {
+    testWidgets('enemy name centers on the node icon ($scale)', (tester) async {
+      await _pump(tester, expanded: false, textScale: scale);
+
+      final rich = find.descendant(
+        of: find.byKey(const Key('flat-battle-header-enemy')),
+        matching: find.byType(RichText),
+      );
+      final widget = tester.widget<RichText>(rich);
+      final painter = TextPainter(
+        text: widget.text,
+        textDirection: TextDirection.ltr,
+        textScaler: widget.textScaler,
+        maxLines: 1,
+      )..layout();
+      final fontSize = widget.textScaler.scale(
+        (widget.text as TextSpan).style!.fontSize!,
+      );
+      final emCenter =
+          tester.getTopLeft(rich).dy +
+          painter.computeDistanceToActualBaseline(TextBaseline.alphabetic) -
+          FittedEnemyName.glyphCenterEm * fontSize;
+      painter.dispose();
+      expect(
+        tester.getCenter(find.byKey(const Key('test-node-icon'))).dy,
+        moreOrLessEquals(emCenter, epsilon: 0.5),
+      );
+    });
+  }
 }
