@@ -10,6 +10,7 @@ import '../fleet/equipment_type_icon.dart';
 import '../fleet/fleet_ui_strings.dart';
 import '../browser/game_workspace_visibility.dart';
 import '../game_state/game_state.dart';
+import '../layout/window_metrics_change.dart';
 import 'battle_models.dart';
 import 'battle_detail_strings.dart';
 import 'battle_ship_details.dart';
@@ -42,6 +43,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
   LocalHistoryEntry? _history;
   BuildContext? _rowContext;
   BuildContext? _viewportContext;
+  WindowMetricsSnapshot? _metricsAtOpen;
   int _selectionRevision = 0;
 
   void _afterSelectionFrame(VoidCallback action) {
@@ -83,7 +85,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
     super.didUpdateWidget(oldWidget);
     if (_selected != null && oldWidget.battle != widget.battle) {
       // A new node/phase must not leave the old fleet's details on screen.
-      _afterSelectionFrame(_close);
+      _afterSelectionFrame(() => _close('battle-changed'));
     }
   }
 
@@ -93,23 +95,36 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
     final workspaceActive = GameWorkspaceActive.of(context);
     final routeActive = ModalRoute.isCurrentOf(context) ?? true;
     if (_selected != null && (!workspaceActive || !routeActive)) {
-      _afterSelectionFrame(_close);
+      _afterSelectionFrame(() => _close('route-inactive'));
     }
   }
 
   @override
-  void didChangeMetrics() => _close();
+  void didChangeMetrics() {
+    final opened = _metricsAtOpen;
+    if (!mounted || _selected == null || opened == null) return;
+    // iOS resends unchanged metrics whenever the native game WebView lays
+    // out again, which used to close the popover right after it opened.
+    final current = WindowMetricsSnapshot.fromView(View.of(context));
+    if (classifyWindowMetricsChange(opened, current) ==
+        WindowMetricsChange.geometry) {
+      _close('metrics');
+    }
+  }
+
+  void _closeOnScroll() => _close('scroll');
 
   void _detach() {
-    _scroll?.removeListener(_close);
+    _scroll?.removeListener(_closeOnScroll);
     _scroll = null;
     final history = _history;
     _history = null;
     history?.remove();
   }
 
-  void _close() {
+  void _close(String reason) {
     if (!mounted || _selected == null) return;
+    debugPrint('[ship-popover] close: $reason');
     _selected = null;
     _selectionRevision++;
     _rowContext = null;
@@ -121,7 +136,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
 
   void _toggle(BuildContext rowContext, BattleShipSnapshot ship) {
     if (selection == _identity(ship)) {
-      _close();
+      _close('toggle');
       return;
     }
     final anchor = _rectInOverlay(rowContext);
@@ -134,13 +149,13 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
     _viewportContext = scrollable?.context;
     _viewport = _rectInOverlay(_viewportContext);
     _scroll = scrollable?.position;
-    _scroll?.addListener(_close);
+    _scroll?.addListener(_closeOnScroll);
     final route = ModalRoute.of(rowContext);
     if (route != null) {
       _history = LocalHistoryEntry(
         onRemove: () {
           _history = null;
-          _close();
+          _close('history-pop');
         },
       );
       route.addLocalHistoryEntry(_history!);
@@ -151,6 +166,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
           ? ship
           : ship.withLatestFriendlyProficiency(latest),
     );
+    _metricsAtOpen = WindowMetricsSnapshot.fromView(View.of(context));
     _portal.show();
     _afterSelectionFrame(_focus.requestFocus);
   }
@@ -172,7 +188,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
       _afterSelectionFrame(() {
         if (_rectInOverlay(_rowContext) != _anchor ||
             _rectInOverlay(_viewportContext) != _viewport) {
-          _close();
+          _close('anchor-moved');
         }
       });
     }
@@ -195,13 +211,13 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
             ),
             child: TapRegion(
               groupId: this,
-              onTapOutside: (_) => _close(),
+              onTapOutside: (_) => _close('outside-tap'),
               child: Focus(
                 focusNode: _focus,
                 onKeyEvent: (_, event) {
                   if (event is KeyDownEvent &&
                       event.logicalKey == LogicalKeyboardKey.escape) {
-                    _close();
+                    _close('escape');
                     return KeyEventResult.handled;
                   }
                   return KeyEventResult.ignored;
@@ -209,7 +225,7 @@ class _BattleShipDetailsHostState extends State<BattleShipDetailsHost>
                 child: _ShipPopover(
                   key: ValueKey(_identity(ship)),
                   ship: ship,
-                  onClose: _close,
+                  onClose: () => _close('button'),
                 ),
               ),
             ),
@@ -320,7 +336,7 @@ class _PopoverPosition extends SingleChildLayoutDelegate {
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     final bounds = _bounds(constraints.biggest);
-    final width = math.min(270.0, bounds.width);
+    final width = math.min(220.0, bounds.width);
     return BoxConstraints(
       minWidth: width,
       maxWidth: width,
@@ -401,22 +417,22 @@ class _ShipPopoverState extends State<_ShipPopover> {
     final strings = BattleDetailStrings.of(context);
     String number(int? value) => value?.toString() ?? '—';
     final labelStyle = TextStyle(
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffa9bac4)),
     );
     final valueStyle = TextStyle(
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffe5ebee)),
     );
     final metaLabelStyle = TextStyle(
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffa9bac4)),
     );
     final metaValueStyle = TextStyle(
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: FontWeight.w700,
       color: appColor(context, Color(0xffe5ebee)),
     );
@@ -448,7 +464,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(asset, width: 14, height: 14),
+            Image.asset(asset, width: 11, height: 11),
             const SizedBox(width: 3),
             Text(
               value == null ? '—' : '$value%',
@@ -467,7 +483,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
         elevation: 14,
         shadowColor: appColor(context, Colors.black87),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(
             color: appColor(context, color.withValues(alpha: .55)),
           ),
@@ -477,12 +493,12 @@ class _ShipPopoverState extends State<_ShipPopover> {
           style: appTextStyle(
             context,
             (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-                .copyWith(color: Color(0xffe5ebee), fontSize: 12, height: 1.25),
+                .copyWith(color: Color(0xffe5ebee), fontSize: 10, height: 1.25),
           ),
           child: SingleChildScrollView(
             controller: _scrollController,
             primary: false,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -502,8 +518,9 @@ class _ShipPopoverState extends State<_ShipPopover> {
                                 gameNames(
                                   context,
                                 ).shipName(ship.name, shipId: ship.masterId),
+                                key: const Key('battle-ship-details-name'),
                                 style: const TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -513,7 +530,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                                   style: appTextStyle(
                                     context,
                                     TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 10,
                                       color: appColor(
                                         context,
                                         Color(0xffffbe67),
@@ -532,7 +549,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                       onPressed: onClose,
                       icon: Icon(
                         Icons.close,
-                        size: 19,
+                        size: 14,
                         color: appColor(context, Color(0xffa5bac4)),
                       ),
                       visualDensity: VisualDensity.compact,
@@ -540,8 +557,8 @@ class _ShipPopoverState extends State<_ShipPopover> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       constraints: const BoxConstraints.tightFor(
-                        width: 22,
-                        height: 22,
+                        width: 20,
+                        height: 20,
                       ),
                       padding: EdgeInsets.zero,
                     ),
@@ -706,7 +723,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xff93aab8)),
-                        fontSize: 12,
+                        fontSize: 10,
                       ),
                     ),
                   )
@@ -717,7 +734,7 @@ class _ShipPopoverState extends State<_ShipPopover> {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xff93aab8)),
-                        fontSize: 12,
+                        fontSize: 10,
                       ),
                     ),
                   )
@@ -746,8 +763,8 @@ class _EquipmentRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
         children: [
-          EquipmentTypeIconImage(iconId: item.iconId, width: 20, height: 20),
-          const SizedBox(width: 7),
+          EquipmentTypeIconImage(iconId: item.iconId, width: 14, height: 14),
+          const SizedBox(width: 5),
           Expanded(
             child: Text(
               (item.name == null
@@ -777,7 +794,7 @@ class _EquipmentRow extends StatelessWidget {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xff7bcba7)),
-                        fontSize: 11,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -788,8 +805,8 @@ class _EquipmentRow extends StatelessWidget {
                     child: Image.asset(
                       'assets/images/airplane/alv${item.proficiency.clamp(1, 7)}.png',
                       key: Key('battle-equipment-proficiency-${item.masterId}'),
-                      width: 18,
-                      height: 16,
+                      width: 13,
+                      height: 11,
                     ),
                   ),
                 if (item.extra)
@@ -799,7 +816,7 @@ class _EquipmentRow extends StatelessWidget {
                       context,
                       TextStyle(
                         color: appColor(context, Color(0xffa9bac4)),
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

@@ -7,6 +7,7 @@ import '../game_state/game_state.dart';
 import '../layout/panel_style.dart';
 import 'battle_fleet_block.dart';
 import 'battle_models.dart';
+import 'battle_tap_tip.dart';
 
 class OfficialEnemyPreview extends StatelessWidget {
   const OfficialEnemyPreview({
@@ -147,7 +148,7 @@ class OfficialEnemyPreview extends StatelessWidget {
             const SizedBox(width: 7),
           ],
           Expanded(
-            child: Tooltip(
+            child: BattleTapTip(
               message: name,
               child: Text(
                 name,

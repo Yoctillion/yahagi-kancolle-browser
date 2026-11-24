@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../layout/flat_style.dart';
 import 'battle_detail_strings.dart';
 import 'battle_models.dart';
+import 'battle_tap_tip.dart';
 
 // The mark is drawn on a fixed 28-unit grid and scaled to the icon size.
 const double _grid = 28;
@@ -69,7 +70,7 @@ class BattleNodeIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = BattleDetailStrings.of(context);
-    return Tooltip(
+    return BattleTapTip(
       message: nodeContext.nodeTypeLabels.map(strings.localize).join(' · '),
       child: SizedBox.square(
         dimension: size,

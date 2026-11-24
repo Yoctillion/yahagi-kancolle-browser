@@ -37,6 +37,14 @@ class BattleDetailStrings {
   String get airAllyShort => _text('我', '我', '味方', '아군', 'Ally');
   String get airEnemyShort => _text('敌', '敵', '敵', '적', 'Enemy');
   String get airContact => _text('触接', '觸接', '触接', '촉접', 'Contact');
+  String get contactFriend =>
+      _text('我方触接', '我方觸接', '味方触接', '아군 촉접', 'Ally contact');
+  String get contactEnemy =>
+      _text('敌方触接', '敵方觸接', '敵触接', '적 촉접', 'Enemy contact');
+  String get accuracy => _text('命中', '命中', '命中', '명중', 'ACC');
+  String get airStrikeDamage =>
+      _text('航空战伤害', '航空戰傷害', '航空戦火力', '항공전 피해', 'Air strike dmg');
+  String get nightPower => _text('夜战火力', '夜戰火力', '夜戦火力', '야전 화력', 'Night FP');
   String get antiAirCutIn => _text('对空CI', '對空CI', '対空CI', '대공CI', 'AACI');
   String get landBaseJet => _text('基地喷气', '基地噴射', '基地噴式', '기지 제트', 'LB jet');
   String landBaseWave(int base, int wave) => _text(

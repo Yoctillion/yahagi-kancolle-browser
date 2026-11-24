@@ -5,7 +5,7 @@ const _prophetHpThresholds = <double>[0.25, 0.50, 0.75];
 
 const prophetHpBarHeight = 6.0;
 
-const _ghostOpacity = 0.32;
+const _ghostOpacity = 0.4;
 
 class ProphetHpBar extends StatelessWidget {
   const ProphetHpBar({

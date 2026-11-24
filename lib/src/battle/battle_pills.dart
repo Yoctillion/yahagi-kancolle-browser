@@ -106,14 +106,18 @@ class BattleTagLine extends StatelessWidget {
     required this.battle,
     this.metaLabels = const <String>[],
     this.extras = const <String>[],
+    this.extraWidgets = const <Widget>[],
   });
 
   final LiveBattle battle;
   final List<String> metaLabels;
 
-  /// Muted trailing segments that wrap whole, such as contact planes, so a
-  /// ship or plane name never splits across lines.
+  /// Muted trailing segments that wrap whole, so a ship or plane name never
+  /// splits across lines.
   final List<String> extras;
+
+  /// Trailing segments drawn as widgets, such as contact plane marks.
+  final List<Widget> extraWidgets;
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +134,9 @@ class BattleTagLine extends StatelessWidget {
         ),
       for (final label in metaLabels) (strings.localize(label), flatMutedColor),
     ];
-    if (segments.isEmpty && extras.isEmpty) return const SizedBox.shrink();
+    if (segments.isEmpty && extras.isEmpty && extraWidgets.isEmpty) {
+      return const SizedBox.shrink();
+    }
     const style = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600);
     final extraStyle = TextStyle(
       fontSize: flatAirPhaseFontSize,
@@ -158,6 +164,18 @@ class BattleTagLine extends StatelessWidget {
               if (segments.isNotEmpty || index > 0) flatSegmentSeparator,
               TextSpan(text: _unbreakable(extras[index]), style: extraStyle),
             ],
+            for (
+              var index = 0;
+              index < extraWidgets.length;
+              index++
+            ) ...<InlineSpan>[
+              if (segments.isNotEmpty || extras.isNotEmpty || index > 0)
+                flatSegmentSeparator,
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: extraWidgets[index],
+              ),
+            ],
           ],
         ),
       ),
@@ -167,12 +185,13 @@ class BattleTagLine extends StatelessWidget {
   }
 }
 
-// The game still reports supremacy when the enemy sent no planes, and
-// "unknown" when nothing flew; neither tells the player anything.
+// The game still reports an air state when neither side sent planes, and
+// "unknown" when no air phase ran; neither tells the player anything.
 String? _contestedAirState(LiveBattle battle) {
   final state = battle.airSuperiority;
-  final enemyPlanes = battle.dayAir?.fighter?.enemy?.count ?? 0;
-  if (state == null || state == '未知' || enemyPlanes <= 0) return null;
+  final fighter = battle.dayAir?.fighter;
+  final planes = (fighter?.friend?.count ?? 0) + (fighter?.enemy?.count ?? 0);
+  if (state == null || state == '未知' || planes <= 0) return null;
   return state;
 }
 

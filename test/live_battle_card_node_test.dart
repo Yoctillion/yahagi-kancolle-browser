@@ -53,6 +53,7 @@ final class _InlinePredictionExecutor implements BattlePredictionExecutor {
 
 CapturedApiEvent _dayBattleWithAirSuperiority(
   int seiku, {
+  int friendPlanes = 12,
   int enemyPlanes = 30,
 }) {
   final decoded =
@@ -61,7 +62,7 @@ CapturedApiEvent _dayBattleWithAirSuperiority(
   data['api_kouku'] = <String, Object?>{
     'api_stage1': <String, Object?>{
       'api_disp_seiku': seiku,
-      'api_f_count': 12,
+      'api_f_count': friendPlanes,
       'api_f_lostcount': 0,
       'api_e_count': enemyPlanes,
       'api_e_lostcount': enemyPlanes ~/ 2,
@@ -1801,8 +1802,11 @@ void main() {
     final hpBlockMid = (hpCenter.dy + barCenter.dy) / 2;
     expect((nameCenter.dy - hpBlockMid).abs(), lessThan(3));
 
-    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip).first);
-    expect(tooltip.message, isNotEmpty);
+    // Tapping the row opens the details popover, so the name has no tip.
+    expect(
+      find.descendant(of: shipRow, matching: find.byType(Tooltip)),
+      findsNothing,
+    );
     expect(find.byKey(const Key('battle-mvp-friend-0')), findsOneWidget);
     expect(
       find.byKey(const Key('battle-damage-row-pulse-friend-0')),
@@ -1829,7 +1833,7 @@ void main() {
     );
     expect(
       find.ancestor(
-        of: find.byType(Tooltip).first,
+        of: find.descendant(of: shipRow, matching: find.byType(Text)).first,
         matching: find.byType(Opacity),
       ),
       findsNothing,
@@ -2119,7 +2123,7 @@ void main() {
       );
     });
 
-    testWidgets('air state is left out when the enemy sent no planes', (
+    testWidgets('air state shows supremacy when only the friend sent planes', (
       tester,
     ) async {
       final controller = _createController();
@@ -2127,6 +2131,23 @@ void main() {
       controller
         ..accept(mapStartEvent)
         ..accept(_dayBattleWithAirSuperiority(1, enemyPlanes: 0));
+      await controller.idle;
+
+      await _pumpFlatCompactCard(tester, controller);
+
+      expect(find.textContaining('确保', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('air state is left out when neither side sent planes', (
+      tester,
+    ) async {
+      final controller = _createController();
+      addTearDown(controller.dispose);
+      controller
+        ..accept(mapStartEvent)
+        ..accept(
+          _dayBattleWithAirSuperiority(1, friendPlanes: 0, enemyPlanes: 0),
+        );
       await controller.idle;
 
       await _pumpFlatCompactCard(tester, controller);

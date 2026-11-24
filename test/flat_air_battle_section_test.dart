@@ -77,8 +77,6 @@ TextSpan? _spanWithText(InlineSpan root, String text) {
 Future<List<String>> _extras(
   WidgetTester tester,
   DayAirReport report, {
-  List<BattleShipSnapshot>? friendMain,
-  List<BattleShipSnapshot> friendEscort = const [],
   Locale locale = const Locale('zh'),
 }) async {
   late List<String> extras;
@@ -86,13 +84,7 @@ Future<List<String>> _extras(
     tester,
     Builder(
       builder: (context) {
-        extras = flatAirExtras(
-          context,
-          report: report,
-          friendMain: friendMain ?? _main,
-          friendEscort: friendEscort,
-          slotItems: _slotItems,
-        );
+        extras = flatAirExtras(context, report: report);
         return const SizedBox.shrink();
       },
     ),
@@ -182,16 +174,9 @@ void main() {
     expect(plain('flat-air-exchange-enemy'), '3−3');
   });
 
-  testWidgets('extras list the second wave, contact and cut-ins', (
-    tester,
-  ) async {
-    final extras = await _extras(
-      tester,
-      _fullReport,
-      friendMain: _main.take(6).toList(),
-      friendEscort: _escort,
-    );
-    expect(extras, ['航空战×2', '触接 我 彩云 / 敌 九七式艦攻', '对空CI 主1(5)', '对空CI 随1(9)']);
+  testWidgets('extras list only the second wave', (tester) async {
+    final extras = await _extras(tester, _fullReport);
+    expect(extras, ['航空战×2']);
   });
 
   testWidgets('no extras without contact, cut-ins or a second wave', (
@@ -397,34 +382,6 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     expect(find.text('Night'), findsOneWidget);
-  });
-
-  testWidgets('writes the AACI kind the same way in every locale', (
-    tester,
-  ) async {
-    final extras = await _extras(
-      tester,
-      _fullReport,
-      friendMain: _main.take(6).toList(),
-      friendEscort: _escort,
-      locale: const Locale('en'),
-    );
-    expect(extras, contains('AACI 主1(5)'));
-  });
-
-  testWidgets('resolves AACI position past a short main fleet to the escort', (
-    tester,
-  ) async {
-    final extras = await _extras(
-      tester,
-      const DayAirReport(
-        fighter: PlaneExchange(friend: PlaneCount(1, 0)),
-        antiAirCutIns: [AntiAirCutIn(position: 7, kind: 5)],
-      ),
-      friendMain: _main.take(5).toList(),
-      friendEscort: _escort,
-    );
-    expect(extras, ['对空CI 随1(5)']);
   });
 
   testWidgets('names the enemy star shell ship only for a single fleet', (

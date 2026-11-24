@@ -5,17 +5,9 @@ import '../layout/flat_style.dart';
 import '../localization/game_name_localizations.dart';
 import '../theme/app_palette.dart';
 import 'battle_air_report.dart';
+import 'battle_contact.dart';
 import 'battle_detail_strings.dart';
 import 'battle_models.dart';
-
-String _equipmentLabel(
-  BuildContext context,
-  Map<int, MasterSlotItem> slotItems,
-  int id,
-) {
-  final raw = slotItems[id]?.name;
-  return raw == null ? 'ID: $id' : gameNames(context).equipmentName(raw);
-}
 
 // lost 为 0 也显示「−0」，让「没损失」与「没数据」可区分。
 TextSpan _planeSpan(BuildContext context, PlaneCount count, Color lossColor) =>
@@ -249,40 +241,14 @@ class FlatAirExchangeLine extends StatelessWidget {
   );
 }
 
-/// Contact planes and anti-air cut-ins of the day air battle, as tag line
-/// segments.
+/// The second wave of the day air battle, as tag line segments. Contact
+/// planes are [ContactPlaneMarks]; anti-air cut-ins sit on the fleet grid.
 List<String> flatAirExtras(
   BuildContext context, {
   required DayAirReport report,
-  required List<BattleShipSnapshot> friendMain,
-  // AACI positions >= 6 index the escort when the fleet is combined.
-  required List<BattleShipSnapshot> friendEscort,
-  required Map<int, MasterSlotItem> slotItems,
-}) {
-  final s = BattleDetailStrings.of(context);
-  String plane(int id) => _equipmentLabel(context, slotItems, id);
-  String cutInShip(int index) {
-    final inEscort = friendEscort.isNotEmpty && index >= 6;
-    final fleet = inEscort ? friendEscort : friendMain;
-    final fleetIndex = inEscort ? index - 6 : index;
-    if (fleetIndex < 0 || fleetIndex >= fleet.length) return '#${index + 1}';
-    final ship = fleet[fleetIndex];
-    return gameNames(context).shipName(ship.name, shipId: ship.masterId);
-  }
-
-  final contacts = <String>[
-    if (report.friendContactPlaneId > 0)
-      '${s.airAllyShort} ${plane(report.friendContactPlaneId)}',
-    if (report.enemyContactPlaneId > 0)
-      '${s.airEnemyShort} ${plane(report.enemyContactPlaneId)}',
-  ];
-  return <String>[
-    if (report.secondWave) s.airBattleTwice,
-    if (contacts.isNotEmpty) '${s.airContact} ${contacts.join(' / ')}',
-    for (final ci in report.antiAirCutIns)
-      '${s.antiAirCutIn} ${cutInShip(ci.position)}(${ci.kind})',
-  ];
-}
+}) => <String>[
+  if (report.secondWave) BattleDetailStrings.of(context).airBattleTwice,
+];
 
 class FlatNightBattleSection extends StatelessWidget {
   const FlatNightBattleSection({
@@ -309,6 +275,21 @@ class FlatNightBattleSection extends StatelessWidget {
     final labelStyle = TextStyle(
       fontSize: flatAirPhaseFontSize,
       color: appColor(context, flatMutedColor),
+    );
+    Widget widgetLine(String label, Widget body) => Padding(
+      padding: const EdgeInsets.only(top: flatRowSpacing),
+      child: Row(
+        children: <Widget>[
+          Text('$label  ', style: style.merge(labelStyle)),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: body,
+            ),
+          ),
+        ],
+      ),
     );
     Widget line(String label, String body, {Color? bodyColor}) => Padding(
       padding: const EdgeInsets.only(top: flatRowSpacing),
@@ -337,16 +318,18 @@ class FlatNightBattleSection extends StatelessWidget {
         ),
       ),
     ];
-    final friendContact = report.friendContactPlaneId > 0;
-    final enemyContact = report.enemyContactPlaneId > 0;
-    if (friendContact || enemyContact) {
-      final parts = <String>[
-        if (friendContact)
-          '${s.airAllyShort} ${_equipmentLabel(context, slotItems, report.friendContactPlaneId)}',
-        if (enemyContact)
-          '${s.airEnemyShort} ${_equipmentLabel(context, slotItems, report.enemyContactPlaneId)}',
-      ];
-      children.add(line(s.nightContact, parts.join(' · ')));
+    if (report.friendContactPlaneId > 0 || report.enemyContactPlaneId > 0) {
+      children.add(
+        widgetLine(
+          s.nightContact,
+          ContactPlaneMarks(
+            friendPlaneId: report.friendContactPlaneId,
+            enemyPlaneId: report.enemyContactPlaneId,
+            slotItems: slotItems,
+            night: true,
+          ),
+        ),
+      );
     }
     final friendFlare = report.friendFlarePosition;
     final enemyFlare = report.enemyFlarePosition;

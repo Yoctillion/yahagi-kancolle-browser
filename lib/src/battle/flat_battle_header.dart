@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../layout/flat_style.dart';
 import '../theme/app_palette.dart';
@@ -6,8 +7,8 @@ import 'battle_pills.dart';
 import 'battle_models.dart';
 
 /// Flat battle and navigation header: node icon, node letter, enemy fleet
-/// name and the sortie map toggle on one row; the expanded map under it; then
-/// the detail lines with a small result badge beside them.
+/// name and the sortie map toggle on one row, with the expanded map above it;
+/// then the detail lines with a small result badge beside them.
 class FlatBattleHeader extends StatelessWidget {
   const FlatBattleHeader({
     super.key = const Key('flat-battle-header'),
@@ -31,15 +32,36 @@ class FlatBattleHeader extends StatelessWidget {
   final BattleRank? rank;
 
   static const double rankBadgeSize = 22;
+  static const double nodeFontSize = 12;
+
+  /// Cap height of the node letter in ems (HarmonyOS Sans measures 0.73;
+  /// Latin UI fonts sit near 0.7).
+  static const double capHeightEm = 0.73;
 
   @override
   Widget build(BuildContext context) {
     final name = enemyName;
+    final labelStyle = appTextStyle(
+      context,
+      const TextStyle(
+        color: Color(0xffffd65c),
+        fontSize: nodeFontSize,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+    final capHalf =
+        capHeightEm * MediaQuery.textScalerOf(context).scale(nodeFontSize) / 2;
+    // Texts share the alphabetic baseline; the icon has none, so it reports
+    // one that puts its center on the middle of the letter's capitals.
     final titleRow = LayoutBuilder(
       builder: (context, constraints) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: <Widget>[
-          Padding(padding: const EdgeInsets.only(top: 1), child: nodeIcon),
+          ReportedBaseline(
+            baseline: flatNodeIconSize / 2 + capHalf,
+            child: nodeIcon,
+          ),
           const SizedBox(width: 4),
           // Usually a letter, but an unresolved node reads "Node 12" and some
           // languages run longer; it never takes more than half the row.
@@ -50,27 +72,16 @@ class FlatBattleHeader extends StatelessWidget {
               key: const Key('flat-battle-header-node'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: appTextStyle(
-                context,
-                const TextStyle(
-                  color: Color(0xffffd65c),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              style: labelStyle,
             ),
           ),
           const SizedBox(width: 6),
           Expanded(
             child: name == null || name.isEmpty
                 ? const SizedBox.shrink()
-                : Padding(
-                    // Centers a shrunken single line on the 12px node letter.
-                    padding: const EdgeInsets.only(top: 1),
-                    child: FittedEnemyName(
-                      name: name,
-                      color: appColor(context, enemyNameColor),
-                    ),
+                : FittedEnemyName(
+                    name: name,
+                    color: appColor(context, enemyNameColor),
                   ),
           ),
           ?mapToggle,
@@ -82,8 +93,10 @@ class FlatBattleHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        titleRow,
+        // The map opens above the title row so the node and enemy name stay
+        // next to the battle details they describe.
         ?mapBody,
+        titleRow,
         if (hasDetails)
           Row(
             children: <Widget>[
@@ -186,4 +199,45 @@ class FittedEnemyName extends StatelessWidget {
 Color? flatEnemyNameColor({required bool guessed, required bool combined}) {
   if (guessed) return flatMutedColor;
   return combined ? const Color(0xffff8c78) : null;
+}
+
+/// Reports [baseline] as the child's alphabetic and ideographic baseline, so
+/// a box without text, such as an icon, can join a baseline-aligned row.
+class ReportedBaseline extends SingleChildRenderObjectWidget {
+  const ReportedBaseline({
+    super.key,
+    required this.baseline,
+    required super.child,
+  });
+
+  final double baseline;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderReportedBaseline(baseline);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _RenderReportedBaseline).baseline = baseline;
+  }
+}
+
+class _RenderReportedBaseline extends RenderProxyBox {
+  _RenderReportedBaseline(this._baseline);
+
+  double _baseline;
+  set baseline(double value) {
+    if (value == _baseline) return;
+    _baseline = value;
+    markNeedsLayout();
+  }
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) => _baseline;
+
+  @override
+  double? computeDryBaseline(
+    BoxConstraints constraints,
+    TextBaseline baseline,
+  ) => _baseline;
 }

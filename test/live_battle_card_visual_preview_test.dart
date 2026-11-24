@@ -25,6 +25,30 @@ import 'package:yahagi_kancolle_browser/src/layout/panel_style.dart';
 import 'fixtures/kcsapi_fixtures.dart';
 
 const _boundary = Key('battle-panel-preview-root');
+// The whole screen, for overlays such as the ship popover and tips.
+const _screen = Key('battle-panel-preview-screen');
+
+// Contact planes of the air and night battles, absent from the fixture master.
+const _previewSlotItems = <int, MasterSlotItem>{
+  54: MasterSlotItem(
+    id: 54,
+    name: '彩雲',
+    accuracy: 2,
+    type: <int>[5, 7, 9, 9, 0],
+  ),
+  102: MasterSlotItem(
+    id: 102,
+    name: '深海偵察機',
+    accuracy: 3,
+    type: <int>[5, 7, 10, 10, 0],
+  ),
+  100: MasterSlotItem(
+    id: 100,
+    name: '九八式水上偵察機(夜偵)',
+    accuracy: 1,
+    type: <int>[5, 7, 10, 50, 0],
+  ),
+};
 final _outputDirectory = Platform.environment['BATTLE_PANEL_PREVIEW_DIR'];
 const _font = 'HarmonyOS_Sans_SC';
 
@@ -269,6 +293,12 @@ void main() {
   testWidgets('flat detailed battle panel previews', (tester) async {
     state = reducer.reduce(GameState.empty, start2Event);
     state = reducer.reduce(state, portEvent);
+    state = state.copyWith(
+      masterSlotItems: <int, MasterSlotItem>{
+        ...state.masterSlotItems,
+        ..._previewSlotItems,
+      },
+    );
     final controller = BattleController(
       gameState: () => state,
       nodeLabelResolver: dataset,
@@ -318,6 +348,22 @@ void main() {
     await tester.tap(find.byKey(const Key('battle-mode-compact')));
     await tester.pump();
     await _capture(tester, '11-compact-ghost');
+
+    await tester.tap(find.byKey(const Key('compact-bar-friend-0')));
+    await tester.pump();
+    await _capture(tester, '12-ship-popover', boundary: _screen);
+    await tester.tap(find.byKey(const Key('battle-ship-details-close')));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('battle-mode-detailed')));
+    await tester.pump();
+    await sortieToK(70);
+    await send(_airBattle(74));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('contact-plane-marks')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await _capture(tester, '13-contact-tip', boundary: _screen);
+    await tester.pump(const Duration(seconds: 5));
   }, skip: _outputDirectory == null);
 }
 
@@ -338,6 +384,7 @@ Future<void> _pump(WidgetTester tester, BattleController controller) async {
     MaterialApp(
       locale: const Locale('zh'),
       theme: ThemeData(brightness: Brightness.dark, fontFamily: _font),
+      builder: (context, child) => RepaintBoundary(key: _screen, child: child),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -369,14 +416,22 @@ Future<void> _pump(WidgetTester tester, BattleController controller) async {
   );
 }
 
-Future<void> _capture(WidgetTester tester, String name) async {
+Future<void> _capture(
+  WidgetTester tester,
+  String name, {
+  Key boundary = _boundary,
+}) async {
+  // Equipment icons decode asynchronously; give them real time first.
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 100)),
+  );
   await tester.pump(const Duration(milliseconds: 200));
   expect(tester.takeException(), isNull, reason: name);
-  final boundary = tester.renderObject<RenderRepaintBoundary>(
-    find.byKey(_boundary),
+  final repaint = tester.renderObject<RenderRepaintBoundary>(
+    find.byKey(boundary),
   );
   await tester.runAsync(() async {
-    final image = await boundary.toImage(pixelRatio: 3);
+    final image = await repaint.toImage(pixelRatio: 3);
     try {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       await File('$_outputDirectory/$name.png').writeAsBytes(

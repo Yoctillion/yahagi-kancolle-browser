@@ -78,10 +78,7 @@ class DetailedBattlePanel extends StatelessWidget {
         key: const Key('detailed-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (navigation) ...[
-            navigationOverview,
-            const SizedBox(height: 7),
-          ],
+          if (navigation) ...[navigationOverview, const SizedBox(height: 7)],
           BattlePredictionSections(
             order: sectionOrder,
             legacyEnemyPreviewPosition: enemyPreviewPosition,
@@ -523,23 +520,18 @@ class _BattleShipRow extends StatelessWidget {
                 child: Row(
                   children: <Widget>[
                     Flexible(
-                      child: Tooltip(
-                        message: gameNames(
+                      child: Text(
+                        gameNames(
                           context,
                         ).shipName(ship.name, shipId: ship.masterId),
-                        child: Text(
-                          gameNames(
-                            context,
-                          ).shipName(ship.name, shipId: ship.masterId),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appTextStyle(
-                            context,
-                            TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: isEscaped ? const Color(0xff8197a5) : null,
-                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: appTextStyle(
+                          context,
+                          TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isEscaped ? const Color(0xff8197a5) : null,
                           ),
                         ),
                       ),
