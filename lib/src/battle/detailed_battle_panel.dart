@@ -20,6 +20,7 @@ import 'battle_ship_details_popover.dart';
 import 'land_base_raid_panel.dart';
 import 'official_enemy_preview.dart';
 import 'prophet_hp_bar.dart';
+import 'battle_tap_tip.dart';
 
 class DetailedBattlePanel extends StatelessWidget {
   const DetailedBattlePanel({
@@ -78,10 +79,7 @@ class DetailedBattlePanel extends StatelessWidget {
         key: const Key('detailed-battle-panel'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (navigation) ...[
-            navigationOverview,
-            const SizedBox(height: 7),
-          ],
+          if (navigation) ...[navigationOverview, const SizedBox(height: 7)],
           BattlePredictionSections(
             order: sectionOrder,
             legacyEnemyPreviewPosition: enemyPreviewPosition,
@@ -523,7 +521,7 @@ class _BattleShipRow extends StatelessWidget {
                 child: Row(
                   children: <Widget>[
                     Flexible(
-                      child: Tooltip(
+                      child: BattleTapTip(
                         message: gameNames(
                           context,
                         ).shipName(ship.name, shipId: ship.masterId),
