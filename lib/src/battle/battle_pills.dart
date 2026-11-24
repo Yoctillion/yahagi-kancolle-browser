@@ -167,12 +167,13 @@ class BattleTagLine extends StatelessWidget {
   }
 }
 
-// The game still reports supremacy when the enemy sent no planes, and
-// "unknown" when nothing flew; neither tells the player anything.
+// The game still reports an air state when neither side sent planes, and
+// "unknown" when no air phase ran; neither tells the player anything.
 String? _contestedAirState(LiveBattle battle) {
   final state = battle.airSuperiority;
-  final enemyPlanes = battle.dayAir?.fighter?.enemy?.count ?? 0;
-  if (state == null || state == '未知' || enemyPlanes <= 0) return null;
+  final fighter = battle.dayAir?.fighter;
+  final planes = (fighter?.friend?.count ?? 0) + (fighter?.enemy?.count ?? 0);
+  if (state == null || state == '未知' || planes <= 0) return null;
   return state;
 }
 
